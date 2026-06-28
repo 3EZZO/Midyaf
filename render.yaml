@@ -3,13 +3,13 @@ services:
     name: midyaf
     runtime: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma db push --accept-data-loss && npx prisma db seed && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: CLIENT_ORIGIN
         sync: false
       - key: JWT_ACCESS_SECRET
@@ -18,7 +18,7 @@ services:
         generateValue: true
       - key: DATABASE_URL
         fromDatabase:
-          name: midyaf-db
+          name: riyada-db
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
@@ -32,7 +32,3 @@ services:
         value: "12"
       - key: VITE_API_BASE_URL
         value: /api
-
-databases:
-  - name: midyaf-db
-    plan: free
