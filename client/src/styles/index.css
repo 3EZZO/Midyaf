@@ -896,3 +896,9 @@ textarea:focus-visible {
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
 }
+
+@media (max-width: 480px) {
+  input, select, textarea { font-size: 16px !important; }
+  .login-card { padding: 1.25rem !important; }
+  main { padding-top: 3rem !important; padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+}
