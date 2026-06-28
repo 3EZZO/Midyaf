@@ -1008,11 +1008,6 @@ function LoginPage({
               </span>
             ) : t("signIn")}
           </button>
-
-          <p className="mt-4 text-center text-xs text-slate-400">
-            {isArabic ? 'بيانات تجريبية: ' : 'Demo: '}
-            <span className="font-mono text-slate-500">organizer@midyaf.local</span>
-          </p>
         </form>
       </main>
     </div>
