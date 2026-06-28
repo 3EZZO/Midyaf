@@ -87,10 +87,10 @@ const platformLeaders = [
     nameAr: "راشد محمد"
   },
   {
-    roleEn: "Developer & Quantitative Specialist",
-    roleAr: "المطور والمتخصص الكمي",
-    nameEn: "Mohamed Izeldin",
-    nameAr: "محمد عزالدين"
+    roleEn: "Developer & Quantitative Strategist",
+    roleAr: "المطور والاستراتيجي الكمي",
+    nameEn: "Mohamed Izeldin Al Shayghey",
+    nameAr: "محمد عزالدين الشايقي"
   }
 ];
 
