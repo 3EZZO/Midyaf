@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: echo 'CREATE SCHEMA IF NOT EXISTS "midyaf";' | npx prisma db execute --stdin --url="$DATABASE_URL" && export DATABASE_URL=$(node -e "console.log(process.env.DATABASE_URL.includes('?') ? process.env.DATABASE_URL + '&schema=midyaf' : process.env.DATABASE_URL + '?schema=midyaf')") && npx prisma db push --accept-data-loss && npx prisma db seed && npm start
+    startCommand: node start.mjs
     envVars:
       - key: NODE_ENV
         value: production
