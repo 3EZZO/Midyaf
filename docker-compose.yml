@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: midyaf-postgres
+    environment:
+      POSTGRES_USER: midyaf
+      POSTGRES_PASSWORD: midyaf
+      POSTGRES_DB: midyaf
+    ports:
+      - "5432:5432"
+    volumes:
+      - midyaf-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U midyaf -d midyaf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: midyaf-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      CLIENT_ORIGIN: http://localhost:4000
+      DATABASE_URL: postgresql://midyaf:midyaf@postgres:5432/midyaf?schema=public
+      JWT_ACCESS_SECRET: change-me-access-secret
+      JWT_REFRESH_SECRET: change-me-refresh-secret
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: gpt-4o
+      ENABLE_CITY: "true"
+      DEFAULT_CITY: riyadh
+      COMMISSION_DEFAULT_PERCENT: 12
+      AWS_REGION: me-south-1
+      AWS_S3_BUCKET: midyaf-assets
+      HYPERPAY_BASE_URL: https://eu-test.oppwa.com
+    ports:
+      - "4000:4000"
+
+volumes:
+  midyaf-postgres:

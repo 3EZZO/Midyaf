@@ -1,0 +1,9 @@
+node_modules
+dist
+client/dist
+.env
+.git
+*.log
+coverage
+MIDYAF DOC .pdf
+M_Financial_Model.xlsx

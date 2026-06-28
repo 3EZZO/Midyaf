@@ -1,0 +1,615 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  DRIVER
+  ORGANIZER
+  SUPPLIER
+  SUPER_ADMIN
+  COORDINATOR
+  LOGISTICS_MANAGER
+  COMPANY_ORGANIZER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RsvpStatus {
+  INVITED
+  CONFIRMED
+  DECLINED
+  ARRIVED
+}
+
+enum DriverStatus {
+  OFFLINE
+  AVAILABLE
+  ASSIGNED
+  EN_ROUTE
+  BUSY
+}
+
+enum CaptainType {
+  VIP_CAPTAIN
+  SHUTTLE
+  EMERGENCY
+}
+
+enum DriverZone {
+  NORTH_RIYADH
+  CENTRAL_RIYADH
+  EAST_RIYADH
+  WEST_RIYADH
+  SOUTH_RIYADH
+  DIRIYAH_CORRIDOR
+}
+
+enum TaskType {
+  AIRPORT_PICKUP
+  HOTEL_TRANSFER
+  VENUE_TRANSFER
+  RESTAURANT_PICKUP
+  VIP_ESCORT
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  EN_ROUTE
+  ARRIVED
+  PICKED_UP
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum SupplierCategory {
+  HOTEL
+  CAR
+  TICKET
+  CATERING
+  EQUIPMENT
+  TOURISM
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum ActivityStatus {
+  DRAFT
+  AI_PLANNING
+  PLAN_CONFIRMED
+  QUOTING
+  CONTRACTING
+  OPERATIONS_OPEN
+}
+
+enum TransportationProfile {
+  VIP
+  SHUTTLE
+  MIXED
+}
+
+enum TicketProfile {
+  FIRST_CLASS
+  NORMAL
+  MIXED
+}
+
+enum HotelProfile {
+  FIVE_STAR
+  FOUR_STAR
+  MIXED
+}
+
+enum CarProfile {
+  LUXURY_SEDAN
+  SUV_GMC_TAHOE
+  MIXED
+}
+
+enum QuoteStatus {
+  REQUESTED
+  RECEIVED
+  RECOMMENDED
+  APPROVED
+  REJECTED
+}
+
+enum ContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  SIGNED
+  ACTIVE
+}
+
+enum JourneyStage {
+  ARRIVAL
+  EVENT_TRANSPORTATION
+  DEPARTURE
+}
+
+enum ArrivalStatus {
+  PRE_ARRIVAL
+  PASSPORT
+  LUGGAGE
+  GATE
+  PICKED_UP
+}
+
+enum CoordinatorRequestStatus {
+  NEW
+  SENT_TO_SUPERVISOR
+  ASSIGNED
+  CLOSED
+}
+
+enum CompanyReportStatus {
+  DRAFT
+  MANAGER_CONFIRMED
+  SENT_TO_COMPANY
+}
+
+enum FileAssetType {
+  VISA
+  TICKET
+  GUEST_PHOTO
+  DRIVER_PHOTO
+  PROMO_VIDEO
+  REPORT_PDF
+  OTHER
+}
+
+model User {
+  id              String         @id @default(cuid())
+  name            String
+  email           String         @unique
+  phone           String         @unique
+  role            Role           @default(GUEST)
+  language        String         @default("ar")
+  avatar          String?
+  passwordHash    String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organizedEvents Event[]        @relation("OrganizerEvents")
+  guestProfiles   Guest[]
+  driverProfile   Driver?
+  supplierProfile Supplier?
+  notifications   Notification[]
+  auditLogs       AuditLog[]     @relation("AuditActor")
+  sentMessages    Message[]      @relation("SentMessages")
+  receivedMessages Message[]     @relation("ReceivedMessages")
+}
+
+model CityConfig {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  nameAr      String
+  nameEn      String
+  centerLat   Float
+  centerLng   Float
+  defaultZoom Int        @default(12)
+  timezone    String
+  currency    String
+  vatPercent  Decimal    @default(15) @db.Decimal(5, 2)
+  enabled     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  events      Event[]
+  suppliers   Supplier[]
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  name        String
+  date        DateTime
+  venue       String
+  venueLat    Float?
+  venueLng    Float?
+  cityId      String?
+  organizerId String
+  status      EventStatus @default(DRAFT)
+  brief       String?
+  timezone    String      @default("Asia/Riyadh")
+  currency    String      @default("SAR")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  city        CityConfig? @relation(fields: [cityId], references: [id])
+  organizer   User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  guests      Guest[]
+  tasks       Task[]
+  bookings    Booking[]
+
+  @@index([organizerId])
+  @@index([status])
+}
+
+model Guest {
+  id          String     @id @default(cuid())
+  userId      String
+  eventId     String
+  rsvpStatus  RsvpStatus @default(INVITED)
+  isVIP       Boolean    @default(false)
+  qrCode      String     @unique
+  tier        String     @default("standard")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id])
+  event       Event      @relation(fields: [eventId], references: [id])
+  tasks       Task[]
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+}
+
+model Driver {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  licenseNo       String       @unique
+  nationalIdIqama String
+  currentLat      Float?
+  currentLng      Float?
+  zone            DriverZone   @default(CENTRAL_RIYADH)
+  status          DriverStatus @default(OFFLINE)
+  shiftStart      DateTime?
+  shiftEnd        DateTime?
+  earnings        Decimal      @default(0) @db.Decimal(10, 2)
+  lastLocationAt  DateTime?
+  captainType     CaptainType  @default(SHUTTLE)
+  visitsCompleted Int          @default(0)
+  overtimeAvailable Boolean    @default(false)
+  active          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id])
+  tasks           Task[]
+
+  @@index([status, zone])
+}
+
+model Task {
+  id              String     @id @default(cuid())
+  eventId         String
+  driverId        String?
+  guestId         String?
+  type            TaskType
+  status          TaskStatus @default(PENDING)
+  pickupLocation  String
+  dropoffLocation String
+  pickupLat       Float?
+  pickupLng       Float?
+  dropoffLat      Float?
+  dropoffLng      Float?
+  scheduledAt     DateTime
+  deadlineAt      DateTime?
+  ownerName       String?
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  event           Event      @relation(fields: [eventId], references: [id])
+  driver          Driver?    @relation(fields: [driverId], references: [id])
+  guest           Guest?     @relation(fields: [guestId], references: [id])
+
+  @@index([eventId, status])
+  @@index([driverId])
+  @@index([guestId])
+}
+
+model Supplier {
+  id                String           @id @default(cuid())
+  userId            String?          @unique
+  cityId            String?
+  name              String
+  category          SupplierCategory
+  rating            Float            @default(4.5)
+  verified          Boolean          @default(false)
+  crNumber          String?
+  commissionPercent Decimal          @default(12) @db.Decimal(5, 2)
+  sponsoredRank     Int?
+  zone              DriverZone?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User?            @relation(fields: [userId], references: [id])
+  city              CityConfig?      @relation(fields: [cityId], references: [id])
+  services          Service[]
+  bookings          Booking[]
+
+  @@index([category, verified])
+  @@index([sponsoredRank])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  supplierId  String
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  unit        String
+  available   Boolean  @default(true)
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  bookings    Booking[]
+
+  @@index([supplierId, available])
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  eventId           String
+  supplierId        String
+  serviceId         String
+  quantity          Int
+  totalPrice        Decimal       @db.Decimal(12, 2)
+  commissionPercent Decimal       @default(12) @db.Decimal(5, 2)
+  commissionAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  status            BookingStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  event             Event         @relation(fields: [eventId], references: [id])
+  supplier          Supplier      @relation(fields: [supplierId], references: [id])
+  service           Service       @relation(fields: [serviceId], references: [id])
+
+  @@index([eventId])
+  @@index([supplierId])
+}
+
+model CommissionConfig {
+  id                       String            @id @default(cuid())
+  category                 SupplierCategory? @unique
+  defaultPercent           Decimal           @default(12) @db.Decimal(5, 2)
+  minPercent               Decimal           @default(10) @db.Decimal(5, 2)
+  maxPercent               Decimal           @default(15) @db.Decimal(5, 2)
+  sponsoredPlacementPrice  Decimal           @default(1500) @db.Decimal(10, 2)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  body            String
+  channel         String   @default("IN_APP")
+  deliveryStatus  String   @default("queued")
+  provider        String?
+  recipientPhone  String?
+  metadata        Json?
+  read            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([channel, deliveryStatus])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorRole   Role?
+  action      String
+  entityType  String
+  entityId    String
+  eventId     String?
+  beforeData  Json?
+  afterData   Json?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor      User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId])
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  body       String
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@index([senderId, receiverId])
+}
+
+model ActivityIntake {
+  id                 String                @id @default(cuid())
+  eventId            String?
+  activityName       String
+  activityPlace      String
+  visitorCount       Int
+  vipVisitorCount    Int
+  normalVisitorCount Int
+  transportationType TransportationProfile @default(MIXED)
+  ticketType         TicketProfile         @default(MIXED)
+  hotelType          HotelProfile          @default(MIXED)
+  carType            CarProfile            @default(MIXED)
+  status             ActivityStatus        @default(DRAFT)
+  submittedBy        String
+  submittedAt        DateTime              @default(now())
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model AiLogisticsPlan {
+  id                String   @id @default(cuid())
+  intakeId          String
+  summary           String
+  assumptions       Json
+  visitorGrouping   String
+  vipCars           Int
+  shuttleVehicles   Int
+  hotelRooms        Int
+  firstClassTickets Int
+  normalTickets     Int
+  phases            Json
+  risks             Json
+  confirmed         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([intakeId])
+}
+
+model VendorQuote {
+  id                String      @id @default(cuid())
+  intakeId          String
+  category          String
+  vendorName        String
+  item              String
+  quantity          Int
+  unitPrice         Decimal     @db.Decimal(12, 2)
+  totalPrice        Decimal     @db.Decimal(12, 2)
+  commissionPercent Decimal     @db.Decimal(5, 2)
+  commissionAmount  Decimal     @db.Decimal(12, 2)
+  score             Int
+  status            QuoteStatus @default(REQUESTED)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([intakeId])
+  @@index([status])
+}
+
+model VendorContract {
+  id               String         @id @default(cuid())
+  quoteId          String
+  vendorName       String
+  category         String
+  amount           Decimal        @db.Decimal(12, 2)
+  commissionAmount Decimal        @db.Decimal(12, 2)
+  status           ContractStatus @default(DRAFT)
+  signedAt         DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([quoteId])
+  @@index([status])
+}
+
+model GuestJourneyRecord {
+  id                    String       @id @default(cuid())
+  guestId               String
+  stage                 JourneyStage @default(ARRIVAL)
+  visaStatus            String       @default("READY")
+  ticketStatus          String       @default("READY")
+  promoVideos           Json
+  arrivalStatus         ArrivalStatus @default(PRE_ARRIVAL)
+  arrivalGate           String
+  luggageStatus         String       @default("WAITING")
+  driverName            String
+  driverPhoto           String?
+  driverPhone           String
+  carDetails            String
+  etaMinutes            Int
+  personalTripRequests  Json
+  notes                 Json
+  complaints            Json
+  departureFlight       String
+  departurePickupTime   DateTime
+  departureConfirmed    Boolean      @default(false)
+  leavingWithMidyaf     Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([guestId])
+  @@index([stage])
+}
+
+model CoordinatorRequest {
+  id         String                   @id @default(cuid())
+  guestName  String
+  request    String
+  route      String
+  priority   String                   @default("NORMAL")
+  status     CoordinatorRequestStatus @default(NEW)
+  supervisor String
+  deadline   DateTime
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  @@index([status])
+  @@index([deadline])
+}
+
+model CompanyReport {
+  id        String              @id @default(cuid())
+  title     String
+  status    CompanyReportStatus @default(DRAFT)
+  kpis      Json
+  pdfUrl    String?
+  updatedAt DateTime            @updatedAt
+  createdAt DateTime            @default(now())
+
+  @@index([status])
+}
+
+model CaptainFeedback {
+  id        String   @id @default(cuid())
+  driverId  String
+  taskId    String
+  rating    Int
+  note      String
+  createdAt DateTime @default(now())
+
+  @@index([driverId])
+  @@index([taskId])
+}
+
+model FileAsset {
+  id        String        @id @default(cuid())
+  type      FileAssetType
+  url       String
+  key       String
+  mimeType  String
+  size      Int
+  userId    String?
+  guestId   String?
+  driverId  String?
+  eventId   String?
+  createdAt DateTime      @default(now())
+
+  @@index([type])
+  @@index([userId])
+  @@index([guestId])
+  @@index([driverId])
+  @@index([eventId])
+}
