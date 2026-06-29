@@ -897,8 +897,23 @@ textarea:focus-visible {
   animation-delay: 0.4s;
 }
 
+@media (max-width: 768px) {
+  /* Force multi-column grids in dashboards to collapse cleanly on mobile */
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Ensure header navigation wraps properly without colliding with notch */
+  header, .shell-header {
+    padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+    flex-wrap: wrap !important;
+  }
+}
+
 @media (max-width: 480px) {
   input, select, textarea { font-size: 16px !important; }
   .login-card { padding: 1.25rem !important; }
-  main { padding-top: 3rem !important; padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+  main { padding-top: calc(2rem + env(safe-area-inset-top)) !important; padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
+  button, .btn-primary, .btn-secondary { min-height: 44px; }
 }
