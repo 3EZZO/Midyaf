@@ -25,6 +25,7 @@ import { MetricCard } from "../components/MetricCard";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { Section } from "../components/Section";
 import { money, percent, shortDate, shortTime } from "../lib/format";
+import { apiFetch } from "../lib/api";
 import {
   isArabicLanguage,
   localizeText,
@@ -820,6 +821,91 @@ export function CaptainsApp({
         />
       </div>
 
+      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-5 text-white border border-amber-400/30 shadow-[0_4px_20px_rgba(201,168,76,0.15)]">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+              ⚡
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Airport Walk-in Express Pickup (ركوب مباشر من المطار)
+              </h3>
+              <p className="text-[11px] text-slate-300">
+                Register unannounced VIP arriving at gate without prior reservation
+              </p>
+            </div>
+          </div>
+        </div>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const nameInput = form.elements.namedItem("walkinName") as HTMLInputElement;
+            const destInput = form.elements.namedItem("walkinDest") as HTMLInputElement;
+            if (!nameInput.value.trim() || !event || !captain) return;
+            try {
+              const stored = window.localStorage.getItem("midyaf.session");
+              const token = stored ? JSON.parse(stored).accessToken : "";
+              const res = await fetch("/api/operations/express-arrival", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  guestName: nameInput.value.trim(),
+                  destination: destInput.value.trim() || "Mandarin Oriental Al Faisaliah",
+                  driverId: captain.id,
+                  eventId: event.id,
+                  isVIP: true
+                })
+              });
+              if (res.ok) {
+                alert("⚡ VIP Walk-in Registered! Trip assigned to your active queue.");
+                nameInput.value = "";
+              } else {
+                alert("Failed to register walk-in");
+              }
+            } catch (err) {
+              alert("Error registering walk-in");
+            }
+          }}
+          className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end"
+        >
+          <div>
+            <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+              VIP Guest Name (اسم الضيف) *
+            </label>
+            <input
+              name="walkinName"
+              type="text"
+              required
+              placeholder="e.g. Mr. French Delegation Aide"
+              className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+              Destination Venue (الوجهة) *
+            </label>
+            <input
+              name="walkinDest"
+              type="text"
+              required
+              defaultValue="Mandarin Oriental Al Faisaliah"
+              className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
+          >
+            ⚡ Start VIP Trip
+          </button>
+        </form>
+      </section>
+
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <Section
           title={ui.l("Task routes and feedback")}
@@ -1067,6 +1153,307 @@ function HospitalityRidersSection({
   );
 }
 
+function AirportExpressSection({
+  data,
+  session,
+  refreshData
+}: Pick<PortalProps, "data" | "session" | "refreshData">) {
+  const ui = useOpsText();
+  const event = data.events[0];
+  const [isOpen, setIsOpen] = useState(false);
+  const [isKioskMode, setIsKioskMode] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [title, setTitle] = useState("");
+  const [destination, setDestination] = useState("Mandarin Oriental Al Faisaliah");
+  const [driverId, setDriverId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{
+    qrCode: string;
+    guestName: string;
+    driverName: string;
+    driverPhone: string;
+  } | null>(null);
+
+  const availableDrivers = data.drivers.filter((d) => d.status === "AVAILABLE");
+
+  async function handleExpressSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!guestName.trim() || !event || !session?.accessToken) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiFetch<{
+        ok: boolean;
+        qrCode: string;
+        guest: any;
+        task: any;
+      }>("/operations/express-arrival", session.accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          guestName: guestName.trim(),
+          title: title.trim() || undefined,
+          destination: destination.trim(),
+          driverId: driverId || undefined,
+          eventId: event.id,
+          isVIP: true
+        })
+      });
+
+      const assignedDriver = data.drivers.find((d) => d.id === (res.task?.driverId || driverId));
+      setResult({
+        qrCode: res.qrCode,
+        guestName: title ? `${title} - ${guestName}` : guestName,
+        driverName: assignedDriver?.user.name || "Auto-assigned Nearest VIP Captain",
+        driverPhone: assignedDriver?.user.phone || "+966 50 000 0000"
+      });
+      setGuestName("");
+      setTitle("");
+      refreshData();
+    } catch (err: any) {
+      alert(err.message || "Failed to register walk-in guest");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isKioskMode) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 p-6 text-white animate-fadeIn kiosk-bg">
+        <button
+          onClick={() => setIsKioskMode(false)}
+          className="absolute top-6 right-6 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white/80 backdrop-blur-md hover:bg-white/20 transition-all"
+        >
+          ✕ {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
+        </button>
+        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-3xl border border-amber-500/30 shadow-[0_0_50px_rgba(201,168,76,0.15)] backdrop-blur-2xl">
+          <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
+            <Crown size={48} className="animate-pulse" />
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">
+            مِضْيَافٌ | MIDYAF ROYAL RECEPTION
+          </h1>
+          <p className="text-slate-300 text-base sm:text-lg">
+            {ui.p(
+              "Welcome to Riyadh Season. Please enter your name or delegation title for instant Chauffeur & Escort dispatch.",
+              "مرحباً بكم في موسم الرياض. يرجى إدخال الاسم أو الوفد لتجهيز سيارة الضيافة الفورية."
+            )}
+          </p>
+
+          {result ? (
+            <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-left sm:text-center space-y-4 animate-scaleUp">
+              <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                ⚡ {ui.p("Chauffeur Dispatched Instantly", "تم توجيه السائق فورا")}
+              </div>
+              <h3 className="text-xl font-bold text-amber-300">{result.guestName}</h3>
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center">
+                <span className="text-xs text-slate-400 mb-1">{ui.p("Digital VIP Access QR", "رمز الدخول الملكي")}</span>
+                <span className="font-mono text-xl sm:text-2xl font-black tracking-wider text-amber-400 bg-black/40 px-4 py-2 rounded-lg border border-amber-500/30">
+                  {result.qrCode}
+                </span>
+              </div>
+              <p className="text-sm text-slate-300">
+                🚘 {ui.p("Assigned Captain:", "السائق المخصص:")} <strong className="text-white">{result.driverName}</strong> ({result.driverPhone})
+              </p>
+              <button
+                onClick={() => setResult(null)}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 font-bold text-slate-950 hover:brightness-110 transition-all shadow-lg shadow-amber-500/20"
+              >
+                {ui.p("Register Another VIP Arrival", "تسجيل وصول جديد")}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleExpressSubmit} className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-bold text-amber-300/80 mb-1">
+                  {ui.p("Guest Name / Delegation Title", "اسم الضيف / الوفد الملكي")} *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder={ui.p("e.g. H.E. French Delegation Aide", "مثال: مساعد معالي الوزير")}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-amber-300/80 mb-1">
+                  {ui.p("Destination Venue / Hotel", "وجهة الضيافة / الفندق")} *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting || !guestName.trim()}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 font-black text-slate-950 text-lg hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50"
+              >
+                {isSubmitting ? ui.p("Dispatching...", "جارٍ التوجيه...") : ui.p("🚘 Request Royal Shuttle & Escort", "🚘 طلب سيارة ضيافة ومرافقة فورية")}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Section title="">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-6 text-white border border-amber-400/30 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-400">
+              <Crown size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  ⚡ INSTANT DISPATCH
+                </span>
+                <h3 className="text-lg font-bold text-white">
+                  {ui.p("Airport Walk-in Express Intake", "تسجيل وصول المطار الفوري والتوجيه السريع")}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300">
+                {ui.p(
+                  "Register unannounced VIP delegations arriving at KKIA or Royal Terminals in 3 seconds without prior credentials.",
+                  "تسجيل وفود الشخصيات الهامة غير المجدولة القادمين في مطار الملك خالد أو الصالات الملكية بثوانٍ ومطابقة السائق فورا."
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => setIsKioskMode(true)}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition-all"
+            >
+              🖥️ {ui.p("Kiosk Mode", "وضع شاشة الترحيب")}
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(!isOpen);
+                setResult(null);
+              }}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-xs font-black text-slate-950 shadow-md shadow-amber-500/20 transition-all"
+            >
+              {isOpen ? ui.p("Close Form", "إغلاق النموذج") : ui.p("⚡ New Walk-in VIP", "⚡ تسجيل وصول فوري")}
+            </button>
+          </div>
+        </div>
+
+        {isOpen && (
+          <div className="mt-4 pt-2 animate-fadeIn">
+            {result ? (
+              <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-amber-300">🎉 {ui.p("VIP Walk-in Registered & Dispatched!", "تم تسجيل الضيف الملكي وتوجيه السائق بنجاح!")}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {ui.p("Task Created", "تم إنشاء المهمة")}
+                  </span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-xs text-slate-400 block">{ui.p("Guest / Title", "الضيف / المنصب")}</span>
+                    <strong className="text-white">{result.guestName}</strong>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/5">
+                    <span className="text-xs text-slate-400 block">{ui.p("Digital Access QR", "رمز الدخول الفوري")}</span>
+                    <strong className="text-amber-400 font-mono tracking-wider">{result.qrCode}</strong>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/30 border border-white/5 sm:col-span-2">
+                    <span className="text-xs text-slate-400 block">{ui.p("Assigned Chauffeur & Escort", "السائق الفوري المخصص")}</span>
+                    <strong className="text-white">{result.driverName}</strong> <span className="text-slate-400">({result.driverPhone})</span>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setResult(null)}
+                    className="px-4 py-2 rounded-lg bg-amber-400 font-bold text-slate-950 text-xs hover:bg-amber-300 transition-all"
+                  >
+                    + {ui.p("Register Another Walk-in", "تسجيل ضيف فوري آخر")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleExpressSubmit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {ui.p("Guest Name", "اسم الضيف")} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder={ui.p("e.g. H.E. Minister Aide", "مثال: مساعد معالي الوزير")}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-white/15 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {ui.p("Title / Delegation", "المنصب / الوفد")}
+                  </label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={ui.p("e.g. French VIP Delegation", "مثال: وفد وزارة الخارجية")}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-white/15 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {ui.p("Destination Venue", "وجهة التوصيل")} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-white/15 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {ui.p("Assign Captain", "تخصيص الكابتن")}
+                  </label>
+                  <select
+                    value={driverId}
+                    onChange={(e) => setDriverId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="">⚡ {ui.p("Auto-Assign Nearest Captain", "تخصيص تلقائي لأقرب كابتن")}</option>
+                    {availableDrivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.user.name} ({d.zone})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !guestName.trim()}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 font-bold text-slate-950 text-sm shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
+                  >
+                    {isSubmitting ? ui.p("Registering & Dispatching...", "جارٍ التسجيل والتوجيه...") : ui.p("⚡ Submit & Dispatch Captain", "⚡ تسجيل وتوجيه السائق فورا")}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 export function CoordinatorsApp({
   data,
   session,
@@ -1127,6 +1514,7 @@ export function CoordinatorsApp({
       />
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
+      <AirportExpressSection data={data} session={session} refreshData={refreshData} />
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <Section title={ui.l("Who is moving now?")}>
@@ -1389,6 +1777,7 @@ export function LogisticsDashboard({
       />
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
+      <AirportExpressSection data={data} session={session} refreshData={refreshData} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard

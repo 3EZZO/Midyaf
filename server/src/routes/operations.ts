@@ -1103,4 +1103,124 @@ function uniqueStrings(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+const expressArrivalSchema = z.object({
+  guestName: z.string().min(2),
+  title: z.string().optional(),
+  destination: z.string().min(2),
+  driverId: z.string().optional(),
+  eventId: z.string().min(1),
+  isVIP: z.boolean().default(true)
+});
+
+router.post(
+  "/express-arrival",
+  requireRole(coordinatorRoles),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const body = expressArrivalSchema.parse(req.body);
+    const event = requireEntity(
+      await prisma.event.findUnique({ where: { id: body.eventId } }),
+      "Event not found"
+    );
+
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000).toString();
+    const placeholderEmail = `walkin.vip.${randomSuffix}@midyaf.local`;
+    const placeholderPhone = `+9665${randomSuffix}${Math.floor(100 + Math.random() * 900)}`;
+
+    const user = await prisma.user.create({
+      data: {
+        name: body.title ? `${body.title} - ${body.guestName}` : body.guestName,
+        email: placeholderEmail,
+        phone: placeholderPhone,
+        role: Role.GUEST,
+        language: "ar",
+        passwordHash: "$2a$12$e0M2/Wq5y5q5y5q5y5q5yO/e0M2/Wq5y5q5y5q5y5q5yO/e0M2"
+      }
+    });
+
+    const qrCode = `MIDYAF-EXPRESS-${randomSuffix}`;
+
+    const guest = await prisma.guest.create({
+      data: {
+        userId: user.id,
+        eventId: event.id,
+        isVIP: body.isVIP,
+        tier: "Platinum (Walk-in)",
+        rsvpStatus: "ARRIVED",
+        qrCode
+      },
+      include: { user: true }
+    });
+
+    let assignedDriverId = body.driverId;
+    if (!assignedDriverId) {
+      const availableDriver = await prisma.driver.findFirst({
+        where: { active: true, status: "AVAILABLE" },
+        orderBy: { visitsCompleted: "asc" }
+      });
+      assignedDriverId = availableDriver?.id;
+    }
+
+    let task = null;
+    if (assignedDriverId) {
+      task = await prisma.task.create({
+        data: {
+          eventId: event.id,
+          guestId: guest.id,
+          driverId: assignedDriverId,
+          type: "AIRPORT_PICKUP",
+          status: "EN_ROUTE",
+          pickupLocation: "King Khalid International Airport (KKIA) - Royal Terminal",
+          dropoffLocation: body.destination,
+          scheduledAt: new Date(),
+          ownerName: `⚡ VIP WALK-IN: ${body.title ? body.title + ' ' : ''}${body.guestName}`
+        },
+        include: { driver: { include: { user: true } }, guest: { include: { user: true } } }
+      });
+
+      await prisma.driver.update({
+        where: { id: assignedDriverId },
+        data: { status: "EN_ROUTE" }
+      });
+    }
+
+    const rider = await prisma.hospitalityRider.create({
+      data: {
+        guestId: guest.id,
+        dietaryNeeds: ["Halal / حلال", "Saudi Coffee & Sukkari Dates / قهوة عربية وتمر سكري", "Evian Still Water / مياه إيفيان"],
+        roomPreferences: ["21°C Ambient Temp / حرارة الغرفة 21 مئوية", "King Suite / جناح ملكي", "Express Check-in / دخول سريع"],
+        vehicleRider: ["VIP Luxury Sedan / سيارة سيدان فاخرة", "Quiet Driver / سائق هادئ", "Tinted Windows / زجاج مظلل"],
+        securityNotes: ["Airport Walk-in VIP Escort / مراقبة أمنية للوصول المباشر"],
+        fulfilled: false
+      }
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("guest:arrived", {
+        guestId: guest.id,
+        guestName: user.name,
+        eventId: event.id,
+        isExpress: true,
+        destination: body.destination
+      });
+      if (task) {
+        io.emit("task:status_change", {
+          taskId: task.id,
+          status: "EN_ROUTE",
+          driverId: assignedDriverId
+        });
+      }
+      io.emit("rider:update", { rider });
+    }
+
+    res.status(201).json({
+      ok: true,
+      guest,
+      task,
+      rider,
+      qrCode
+    });
+  })
+);
+
 export default router;

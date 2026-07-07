@@ -897,6 +897,44 @@ textarea:focus-visible {
   animation-delay: 0.4s;
 }
 
+/* ══════════════════════════════════════════════════════════
+   ROYAL EMERALD & GOLD AIRPORT / KIOSK STYLES
+   ══════════════════════════════════════════════════════════ */
+
+.kiosk-bg {
+  background: radial-gradient(circle at 50% 30%, rgba(201, 168, 76, 0.15), transparent 60%),
+              radial-gradient(circle at 80% 80%, rgba(74, 26, 138, 0.2), transparent 50%),
+              #020617;
+  background-size: 200% 200%;
+  animation: kioskPulse 15s ease infinite alternate;
+}
+
+@keyframes kioskPulse {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+@keyframes scaleUp {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scaleUp {
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium Card Glows */
+.shadow-luxury {
+  box-shadow: 0 10px 30px -10px rgba(201, 168, 76, 0.25), 0 0 15px rgba(74, 26, 138, 0.15);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  transition: all 0.3s ease;
+}
+
+.shadow-luxury:hover {
+  box-shadow: 0 15px 35px -5px rgba(201, 168, 76, 0.35), 0 0 25px rgba(201, 168, 76, 0.2);
+  border-color: rgba(201, 168, 76, 0.6);
+}
+
 @media (max-width: 768px) {
   /* Force multi-column grids in dashboards to collapse cleanly on mobile */
   .grid {

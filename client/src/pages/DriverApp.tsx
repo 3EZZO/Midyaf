@@ -93,6 +93,91 @@ export function DriverApp({
           />
         </div>
 
+        <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-5 text-white border border-amber-400/30 shadow-[0_4px_20px_rgba(201,168,76,0.15)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                ⚡
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-white">
+                  Airport Walk-in Express Pickup (ركوب مباشر من المطار)
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Register unannounced VIP arriving at gate without prior reservation
+                </p>
+              </div>
+            </div>
+          </div>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const nameInput = form.elements.namedItem("walkinName") as HTMLInputElement;
+              const destInput = form.elements.namedItem("walkinDest") as HTMLInputElement;
+              if (!nameInput.value.trim() || !event || !driver) return;
+              try {
+                const stored = window.localStorage.getItem("midyaf.session");
+                const token = stored ? JSON.parse(stored).accessToken : "";
+                const res = await fetch("/api/operations/express-arrival", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    guestName: nameInput.value.trim(),
+                    destination: destInput.value.trim() || "Mandarin Oriental Al Faisaliah",
+                    driverId: driver.id,
+                    eventId: event.id,
+                    isVIP: true
+                  })
+                });
+                if (res.ok) {
+                  alert("⚡ VIP Walk-in Registered! Trip assigned to your active queue.");
+                  nameInput.value = "";
+                } else {
+                  alert("Failed to register walk-in");
+                }
+              } catch (err) {
+                alert("Error registering walk-in");
+              }
+            }}
+            className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end"
+          >
+            <div>
+              <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+                VIP Guest Name (اسم الضيف) *
+              </label>
+              <input
+                name="walkinName"
+                type="text"
+                required
+                placeholder="e.g. Mr. French Delegation Aide"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+                Destination Venue (الوجهة) *
+              </label>
+              <input
+                name="walkinDest"
+                type="text"
+                required
+                defaultValue="Mandarin Oriental Al Faisaliah"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
+            >
+              ⚡ Start VIP Trip
+            </button>
+          </form>
+        </section>
+
         <Section
           title={t("common.transport")}
           action={
