@@ -24,6 +24,7 @@ import uploadsRouter from "./routes/uploads.js";
 import communicationsRouter from "./routes/communications.js";
 import usersRouter from "./routes/users.js";
 import auditLogsRouter from "./routes/auditLogs.js";
+import ridersRouter from "./routes/riders.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 
@@ -62,6 +63,7 @@ mount("/ai", aiRouter);
 mount("/notifications", notificationsRouter);
 mount("/users", usersRouter);
 mount("/audit-logs", auditLogsRouter);
+mount("/riders", ridersRouter);
 app.use("/api", bootstrapRouter);
 app.use("/", bootstrapRouter);
 app.use("/api", operationsRouter);
@@ -81,9 +83,45 @@ io.on("connection", (socket) => {
     socket.join("organizers");
   });
 
-  socket.on("driver:location_update", (payload) => {
+  socket.on("driver:location_update", async (payload) => {
     const eventRoom = payload?.eventId ? `event:${payload.eventId}` : "organizers";
     io.to(eventRoom).emit("driver:location_update", payload);
+    io.to("organizers").emit("driver:location_update", payload);
+    if (payload?.driverId && typeof payload?.lat === "number" && typeof payload?.lng === "number") {
+      try {
+        await prisma.driver.update({
+          where: { id: payload.driverId },
+          data: {
+            currentLat: payload.lat,
+            currentLng: payload.lng,
+            lastLocationAt: new Date()
+          }
+        });
+      } catch (err) {
+        // ignore db error on high freq updates
+      }
+    }
+  });
+
+  socket.on("user:location_update", async (payload) => {
+    io.to("organizers").emit("user:location_update", payload);
+    if (payload?.eventId) {
+      io.to(`event:${payload.eventId}`).emit("user:location_update", payload);
+    }
+    if (payload?.driverId && typeof payload?.lat === "number" && typeof payload?.lng === "number") {
+      try {
+        await prisma.driver.update({
+          where: { id: payload.driverId },
+          data: {
+            currentLat: payload.lat,
+            currentLng: payload.lng,
+            lastLocationAt: new Date()
+          }
+        });
+      } catch (err) {
+        // ignore db error on high freq updates
+      }
+    }
   });
 
   socket.on("task:status_change", (payload) => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Banknote, CheckCircle2, Clock, Map, Navigation } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../components/Badge";
@@ -6,6 +6,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Section } from "../components/Section";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { money, shortTime } from "../lib/format";
+import { useLiveLocation } from "../lib/useLiveLocation";
 import type { PortalProps } from "./types";
 
 export function DriverApp({
@@ -24,9 +25,42 @@ export function DriverApp({
     [driver.id, event.tasks]
   );
 
+  const [gpsEnabled, setGpsEnabled] = useState(true);
+  const locationState = useLiveLocation({
+    enabled: gpsEnabled,
+    userId: driver?.user?.id,
+    role: "DRIVER",
+    driverId: driver?.id,
+    eventId: event?.id
+  });
+
   return (
     <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
       <div className="space-y-4">
+        <div className={`flex items-center justify-between rounded-xl px-4 py-3 text-white shadow-md transition-all ${
+          locationState.tracking ? "bg-gradient-to-r from-emerald-600 to-teal-700" : "bg-gradient-to-r from-slate-700 to-slate-800"
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <span className={`size-3 rounded-full ${locationState.tracking ? "bg-emerald-300 animate-ping" : "bg-slate-400"}`} />
+            <div>
+              <p className="text-xs font-bold tracking-wide uppercase">
+                {locationState.tracking ? "📍 Live GPS Auto-Tracking Active" : "GPS Tracking Offline"}
+              </p>
+              <p className="text-[11px] text-white/80">
+                {locationState.tracking
+                  ? `Lat: ${locationState.lat?.toFixed(4)} · Lng: ${locationState.lng?.toFixed(4)} · Acc: ±${Math.round(locationState.accuracy ?? 0)}m`
+                  : locationState.error ?? "Click toggle to enable real-time location streaming"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setGpsEnabled(!gpsEnabled)}
+            className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 transition-colors"
+          >
+            {gpsEnabled ? "Turn Off" : "Turn On"}
+          </button>
+        </div>
+
         <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
           <Badge tone="gold">{t("driver.title")}</Badge>
           <h1 className="mt-4 text-2xl font-bold">{driver.user.name}</h1>
@@ -108,6 +142,26 @@ export function DriverApp({
                     {task.dropoffLocation}
                   </p>
                 </div>
+                {(() => {
+                  const rider = data.hospitalityRiders?.find((r) => r.guestId === task.guestId);
+                  if (!rider) return null;
+                  return (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900 shadow-sm dark:bg-amber-950/40 dark:text-amber-200">
+                      <div className="flex items-center justify-between font-bold text-amber-800 dark:text-amber-300 mb-1.5">
+                        <span>⚠️ VIP Hospitality Rider (Vehicle & Protocol)</span>
+                        <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[10px] uppercase text-amber-900">VIP Priority</span>
+                      </div>
+                      <ul className="list-disc start-4 space-y-1 text-[11px]">
+                        {rider.vehicleRider?.map((item: string, idx: number) => (
+                          <li key={idx} className="font-medium">{item}</li>
+                        ))}
+                        {rider.securityNotes?.map((item: string, idx: number) => (
+                          <li key={`sec-${idx}`} className="font-semibold text-red-700 dark:text-red-400">🛡️ {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => void updateTaskStatus(task.id, "PICKED_UP")}

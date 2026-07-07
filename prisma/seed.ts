@@ -21,6 +21,7 @@ async function main() {
   await prisma.supplier.deleteMany();
   await prisma.task.deleteMany();
   await prisma.driver.deleteMany();
+  await prisma.hospitalityRider.deleteMany();
   await prisma.guest.deleteMany();
   await prisma.event.deleteMany();
   await prisma.user.deleteMany();
@@ -201,6 +202,36 @@ async function main() {
       }
     })
   ]);
+
+  await prisma.hospitalityRider.create({
+    data: {
+      guestId: vipGuest.id,
+      dietaryNeeds: [
+        "Halal catering only",
+        "Ajwa Saudi dates upon arrival",
+        "Chilled Evian mineral water in glass bottles",
+        "Sugar-free Arabic coffee blend"
+      ],
+      roomPreferences: [
+        "Room temperature maintained at 21°C",
+        "King size bed with firm memory foam pillows",
+        "High floor overlooking KAFD",
+        "Welcome floral arrangement of white roses"
+      ],
+      vehicleRider: [
+        "Black GMC Yukon or Mercedes S-Class only",
+        "Maintain vehicle AC at 20°C",
+        "Quiet driver / no unnecessary conversation",
+        "Tinted privacy windows",
+        "Apple Lightning and USB Type-C charging cables"
+      ],
+      securityNotes: [
+        "Bilingual English/Arabic driver required",
+        "VIP luggage priority handling at Gate A4"
+      ],
+      fulfilled: false
+    }
+  });
 
   const driver = await prisma.driver.create({
     data: {

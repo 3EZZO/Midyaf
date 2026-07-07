@@ -193,6 +193,44 @@ export function App() {
       );
     });
 
+    socket.on("user:location_update", (payload) => {
+      setRealtimeLog((current) => [
+        `${p("User GPS location updated", "تم تحديث موقع المستخدم GPS")} · ${new Date().toLocaleTimeString(
+          isArabic ? "ar-SA" : "en-SA"
+        )}`,
+        ...current.slice(0, 4)
+      ]);
+      if (payload.driverId) {
+        setData((current) =>
+          current
+            ? {
+                ...current,
+                drivers: current.drivers.map((driver) =>
+                  driver.id === payload.driverId
+                    ? {
+                        ...driver,
+                        currentLat: payload.lat,
+                        currentLng: payload.lng,
+                        lastLocationAt: payload.timestamp
+                      }
+                    : driver
+                )
+              }
+            : current
+        );
+      }
+    });
+
+    socket.on("rider:update", () => {
+      setRealtimeLog((current) => [
+        `${p("VIP Hospitality Rider updated", "تم تحديث رايدر الضيافة VIP")} · ${new Date().toLocaleTimeString(
+          isArabic ? "ar-SA" : "en-SA"
+        )}`,
+        ...current.slice(0, 4)
+      ]);
+      void refreshData();
+    });
+
     socket.on("task:status_change", (payload) => {
       setRealtimeLog((current) => [
         `${p("Task status changed", "تم تحديث حالة المهمة")} · ${l(

@@ -30,10 +30,16 @@ export function GuestApp({ data, session }: PortalProps) {
       <div className="space-y-4">
         <section className="overflow-hidden rounded-lg bg-midyaf-purple text-white shadow-luxury">
           <div className="bg-[radial-gradient(circle_at_10%_20%,rgba(201,168,76,0.35),transparent_24%),radial-gradient(circle_at_85%_0%,rgba(255,255,255,0.16),transparent_28%)] p-5">
-            <Badge tone="gold" className="ring-white/20">
-              <Crown size={13} />
-              {t("guest.vip")} · {guest?.tier}
-            </Badge>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Badge tone="gold" className="ring-white/20">
+                <Crown size={13} />
+                {t("guest.vip")} · {guest?.tier}
+              </Badge>
+              <div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300 border border-emerald-400/30">
+                <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>📍 Live GPS Tracking & Concierge Sync Active</span>
+              </div>
+            </div>
             <h1 className="mt-4 text-2xl font-bold">{t("guest.title")}</h1>
             <p className="mt-2 max-w-xl text-sm text-white/75">
               {event.name} · {shortDate(event.date, i18n.language)} ·{" "}
@@ -41,6 +47,60 @@ export function GuestApp({ data, session }: PortalProps) {
             </p>
           </div>
         </section>
+
+        {(() => {
+          const rider = data.hospitalityRiders?.find((r) => r.guestId === guest?.id);
+          if (!rider) return null;
+          return (
+            <Section title="🌟 Your Platinum Hospitality Rider">
+              <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-white via-amber-50/30 to-amber-100/40 p-5 shadow-card dark:border-amber-900/40 dark:bg-dark-card">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="text-amber-500 animate-pulse" size={20} />
+                    <span className="font-bold text-midyaf-ink dark:text-dark-primary">
+                      Personalized Royal Reception & Protocol
+                    </span>
+                  </div>
+                  <Badge tone={rider.fulfilled ? "green" : "gold"}>
+                    {rider.fulfilled ? "✓ Rider Verified & Ready" : "⏳ In Preparation by Concierge"}
+                  </Badge>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3 text-xs">
+                  <div className="rounded-lg bg-white/90 p-3.5 shadow-sm border border-amber-100 dark:bg-dark-surface dark:border-dark">
+                    <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1.5 flex items-center gap-1.5 text-[13px]">
+                      🍽️ Dietary & Refreshments
+                    </p>
+                    <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                      {rider.dietaryNeeds?.map((item: string, idx: number) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg bg-white/90 p-3.5 shadow-sm border border-amber-100 dark:bg-dark-surface dark:border-dark">
+                    <p className="font-bold text-purple-800 dark:text-purple-400 mb-1.5 flex items-center gap-1.5 text-[13px]">
+                      🏨 Suite & Environment
+                    </p>
+                    <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                      {rider.roomPreferences?.map((item: string, idx: number) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg bg-white/90 p-3.5 shadow-sm border border-amber-100 dark:bg-dark-surface dark:border-dark">
+                    <p className="font-bold text-amber-800 dark:text-amber-400 mb-1.5 flex items-center gap-1.5 text-[13px]">
+                      🚘 Chauffeur & Fleet
+                    </p>
+                    <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                      {rider.vehicleRider?.map((item: string, idx: number) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </Section>
+          );
+        })()}
 
         <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
           <Section title={t("guest.qr")}>

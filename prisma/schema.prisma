@@ -258,9 +258,27 @@ model Guest {
   user        User       @relation(fields: [userId], references: [id])
   event       Event      @relation(fields: [eventId], references: [id])
   tasks       Task[]
+  hospitalityRider HospitalityRider?
 
   @@unique([userId, eventId])
   @@index([eventId])
+}
+
+model HospitalityRider {
+  id              String   @id @default(cuid())
+  guestId         String   @unique
+  dietaryNeeds    Json
+  roomPreferences Json
+  vehicleRider    Json
+  securityNotes   Json?
+  fulfilled       Boolean  @default(false)
+  fulfilledBy     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  guest           Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([guestId, fulfilled])
 }
 
 model Driver {

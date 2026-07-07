@@ -171,13 +171,14 @@ router.get(
       companyReports,
       fileAssets,
       notifications,
-      auditLogs
+      auditLogs,
+      hospitalityRiders
     ] = await Promise.all([
       prisma.event.findMany({
         where: eventWhere,
         include: {
           city: true,
-          guests: { where: eventGuestWhere, include: { user: true } },
+          guests: { where: eventGuestWhere, include: { user: true, hospitalityRider: true } },
           tasks: {
             where: eventTaskWhere,
             include: {
@@ -318,7 +319,14 @@ router.get(
             orderBy: { createdAt: "desc" },
             take: 100
           })
-        : Promise.resolve([])
+        : Promise.resolve([]),
+      prisma.hospitalityRider.findMany({
+        where: isGuest
+          ? { guestId: { in: guestIds } }
+          : isDriver
+            ? { guestId: { in: driverGuestIds } }
+            : undefined
+      })
     ]);
 
     res.json({
@@ -349,7 +357,8 @@ router.get(
       companyReports,
       fileAssets,
       notifications,
-      auditLogs
+      auditLogs,
+      hospitalityRiders
     });
   })
 );

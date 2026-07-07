@@ -208,9 +208,14 @@ function addMarker({
   L.marker(point, {
     icon: L.divIcon({
       className: "",
-      html: `<div class="midyaf-map-marker midyaf-map-marker-${tone}">${markerText(
-        tone
-      )}</div>`,
+      html:
+        tone === "driver"
+          ? `<div class="relative flex items-center justify-center"><span class="absolute inline-flex size-10 animate-ping rounded-full bg-emerald-400 opacity-75"></span><div class="midyaf-map-marker midyaf-map-marker-driver z-10 shadow-lg">${markerText(
+              tone
+            )}</div></div>`
+          : `<div class="midyaf-map-marker midyaf-map-marker-${tone}">${markerText(
+              tone
+            )}</div>`,
       iconSize: [34, 34],
       iconAnchor: [17, 17]
     })

@@ -140,6 +140,19 @@ export type CityConfig = {
   enabled: boolean;
 };
 
+export type HospitalityRider = {
+  id: string;
+  guestId: string;
+  dietaryNeeds: string[];
+  roomPreferences: string[];
+  vehicleRider: string[];
+  securityNotes?: string[] | null;
+  fulfilled: boolean;
+  fulfilledBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Guest = {
   id: string;
   userId: string;
@@ -149,6 +162,7 @@ export type Guest = {
   qrCode: string;
   tier: string;
   user: User;
+  hospitalityRider?: HospitalityRider | null;
 };
 
 export type CaptainFeedback = {
@@ -419,6 +433,7 @@ export type MidyafData = {
   fileAssets: FileAsset[];
   notifications: AppNotification[];
   auditLogs: AuditLog[];
+  hospitalityRiders?: HospitalityRider[];
 };
 
 export type Session = {

@@ -938,8 +938,139 @@ function CaptainTaskCard({
   );
 }
 
+function HospitalityRidersSection({
+  data,
+  session,
+  refreshData
+}: {
+  data: PortalProps["data"];
+  session?: PortalProps["session"];
+  refreshData?: () => Promise<void>;
+}) {
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function toggleFulfilled(riderId: string, currentStatus: boolean) {
+    if (!session?.accessToken) return;
+    setUpdatingId(riderId);
+    try {
+      await fetch(`/api/riders/${riderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`
+        },
+        body: JSON.stringify({ fulfilled: !currentStatus })
+      });
+      if (refreshData) await refreshData();
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const riders = data.hospitalityRiders ?? [];
+  if (riders.length === 0) {
+    return (
+      <Section title="VIP Hospitality Riders & Protocols">
+        <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+          No VIP hospitality riders are currently registered for this event.
+        </p>
+      </Section>
+    );
+  }
+
+  return (
+    <Section title="VIP Hospitality Riders & Protocols">
+      <div className="grid gap-4 md:grid-cols-2">
+        {riders.map((rider) => {
+          const guest = data.events[0]?.guests.find((g) => g.id === rider.guestId);
+          return (
+            <div key={rider.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 shadow-card transition-all hover:shadow-luxury dark:border-amber-900/50 dark:bg-dark-card">
+              <div className="flex items-start justify-between gap-3 border-b border-amber-100 pb-3 dark:border-amber-900/30">
+                <div>
+                  <Badge tone="gold">VIP Platinum Protocol</Badge>
+                  <h3 className="mt-2 text-lg font-bold text-midyaf-ink dark:text-dark-primary">
+                    {guest?.user.name ?? "VIP Guest"}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-dark-secondary">
+                    Tier: {guest?.tier ?? "Platinum"} · {guest?.rsvpStatus ?? "CONFIRMED"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => void toggleFulfilled(rider.id, rider.fulfilled)}
+                  disabled={updatingId === rider.id}
+                  className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                    rider.fulfilled
+                      ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                      : "bg-amber-500 text-white shadow-sm hover:bg-amber-600"
+                  }`}
+                >
+                  {updatingId === rider.id ? (
+                    "Updating..."
+                  ) : rider.fulfilled ? (
+                    `✓ Fulfilled ${rider.fulfilledBy ? `by ${rider.fulfilledBy}` : ""}`
+                  ) : (
+                    "Mark as Fulfilled"
+                  )}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs">
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                  <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                    🍽️ Dietary Needs
+                  </p>
+                  <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                    {rider.dietaryNeeds?.map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                  <p className="font-bold text-purple-800 dark:text-purple-400 mb-1 flex items-center gap-1">
+                    🏨 Room Preferences
+                  </p>
+                  <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                    {rider.roomPreferences?.map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                  <p className="font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1">
+                    🚘 Vehicle & Transit
+                  </p>
+                  <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
+                    {rider.vehicleRider?.map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-lg bg-red-50/80 p-3 shadow-sm border border-red-100 dark:bg-red-950/20 dark:border-red-900/30">
+                  <p className="font-bold text-red-800 dark:text-red-400 mb-1 flex items-center gap-1">
+                    🛡️ Security & Protocol
+                  </p>
+                  <ul className="list-disc start-4 space-y-1 text-red-700 dark:text-red-300">
+                    {rider.securityNotes?.map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 export function CoordinatorsApp({
   data,
+  session,
+  refreshData,
   createCoordinatorRequest,
   updateCoordinatorRequest
 }: PortalProps) {
@@ -994,6 +1125,8 @@ export function CoordinatorsApp({
           "Coordinators see who is coming from the airport, hotel, or venue, process guest car requests, escalate to supervisors, and submit feedback to the logistics manager."
         )}
       />
+
+      <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <Section title={ui.l("Who is moving now?")}>
@@ -1150,6 +1283,7 @@ export function CoordinatorsApp({
 export function LogisticsDashboard({
   data,
   session,
+  refreshData,
   inviteGuests,
   importGuests,
   createDriver,
@@ -1253,6 +1387,8 @@ export function LogisticsDashboard({
           "The logistics manager owns the full event: tasks, managers, supervisors, captains, vendor contracts, deadlines, progress tracking, access distribution, and confirmed reports."
         )}
       />
+
+      <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
