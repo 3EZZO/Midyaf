@@ -2,7 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/http.js";
-import { analyzeSuppliers, chatGuide, planEvent } from "../services/ai.js";
+import {
+  analyzeSuppliers,
+  chatGuide,
+  generatePostEventReport,
+  getCommandCenterInsights,
+  planEvent,
+  verifyDocument
+} from "../services/ai.js";
 
 const router = Router();
 
@@ -24,6 +31,39 @@ router.post(
 
     const reply = await chatGuide(body);
     res.json({ reply });
+  })
+);
+
+router.post(
+  "/verify-document",
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        fileName: z.string().optional(),
+        documentType: z.string().optional(),
+        eventEndDate: z.string().optional(),
+        content: z.string().optional()
+      })
+      .parse(req.body ?? {});
+
+    const verification = await verifyDocument(body);
+    res.json({ verification });
+  })
+);
+
+router.post(
+  "/command-center/insights",
+  asyncHandler(async (req, res) => {
+    const insights = await getCommandCenterInsights(req.body);
+    res.json({ insights });
+  })
+);
+
+router.post(
+  "/post-event-report",
+  asyncHandler(async (req, res) => {
+    const report = await generatePostEventReport(req.body);
+    res.json({ report });
   })
 );
 

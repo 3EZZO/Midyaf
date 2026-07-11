@@ -30,6 +30,7 @@ import type {
   TaskStatus
 } from "@shared/domain";
 import { Badge } from "./components/Badge";
+import { RoyalCard } from "./components/RoyalCard";
 import {
   ActivityIntakePage,
   CaptainsApp,
@@ -751,17 +752,17 @@ function ShellFrame({
       }
       style={{ background: "var(--m-pearl)" }}
     >
-      <header className="sticky top-0 z-30 glass" style={{ borderBottom: 'none' }}>
+      <header className="sticky top-0 z-30 glass-royal shadow-sm transition-all duration-300" style={{ borderBottom: 'none' }}>
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3.5">
             <img
               src="/midyaf-icon.png"
               alt={t("brand")}
-              className="size-11 rounded-xl object-cover shadow-card-sm ring-2 ring-midyaf-gold/20"
+              className="size-11 rounded-xl object-cover shadow-card-sm ring-2 ring-midyaf-gold/30 transition-transform duration-300 hover:scale-105"
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight text-midyaf-purple">
+                <h1 className="text-lg font-black tracking-tight text-midyaf-purple dark:text-white">
                   {t("brand")}
                 </h1>
                 <span className="text-shimmer text-sm font-bold">
@@ -784,28 +785,28 @@ function ShellFrame({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onDarkModeToggle}
-              className="btn-ghost rounded-xl px-2.5 py-2"
+              className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95"
               aria-label="Toggle dark mode"
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? <Sun size={18} className="text-midyaf-gold" /> : <Moon size={18} className="text-midyaf-purple" />}
             </button>
             <button
               onClick={onLanguageToggle}
-              className="btn-ghost rounded-xl"
+              className="btn-ghost rounded-xl transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               {t("switchLanguage")}
             </button>
-            <div className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 px-3 py-2">
-              <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-xs font-black text-white shadow-sm">
+            <div className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 px-3 py-2 ring-1 ring-midyaf-purple/10 dark:bg-midyaf-purple/20">
+              <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-xs font-black text-white shadow-sm ring-1 ring-midyaf-gold/30">
                 {initials}
               </div>
-              <span className="text-sm font-bold">
+              <span className="text-sm font-bold text-midyaf-purple dark:text-white">
                 {l(session.user.name)}
               </span>
             </div>
             <button
               onClick={onLogout}
-              className="btn-primary rounded-xl px-3.5 py-2 text-xs"
+              className="btn-primary rounded-xl px-3.5 py-2 text-xs transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               {t("logout")}
             </button>
@@ -823,8 +824,8 @@ function ShellFrame({
                 onClick={() => setPortal(item)}
                 className={
                   active
-                    ? "flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark px-4 py-2.5 text-sm font-bold text-white shadow-glow-purple transition-all duration-300"
-                    : "flex min-w-fit items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-all duration-300 hover:bg-midyaf-purple/5 hover:text-midyaf-purple"
+                    ? "flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark px-4 py-2.5 text-sm font-bold text-white shadow-glow-purple transition-all duration-300 hover:scale-[1.03] active:scale-95"
+                    : "flex min-w-fit items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-all duration-300 hover:bg-midyaf-purple/5 hover:text-midyaf-purple hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white"
                 }
               >
                 <Icon size={16} />
@@ -833,28 +834,28 @@ function ShellFrame({
             );
           })}
         </nav>
-        <div className="accent-line-gold" />
+        <div className="accent-line-gold shadow-glow" />
       </header>
 
       <main className="mx-auto max-w-7xl px-5 py-6">
-        <section className="mb-6 glass-card rounded-xl p-5 pattern-arabesque animate-fadeInUp">
+        <RoyalCard tone="purple" elevated interactive={false} className="mb-6 pattern-arabesque animate-fadeInUp">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
             <div>
               <p className="text-sm font-bold text-shimmer">
                 {t("common.riyadhOnly")}
               </p>
-              <h2 className="mt-1.5 text-2xl font-black tracking-tight text-midyaf-purple">
+              <h2 className="mt-1.5 text-2xl font-black tracking-tight text-midyaf-purple dark:text-white">
                 {t("heroTitle")}
               </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 {t("heroSubtitle")}
               </p>
               <PlatformLeadership isArabic={isArabic} />
             </div>
-            <div className="rounded-xl bg-midyaf-purple/5 p-4 text-xs text-slate-600 ring-1 ring-midyaf-purple/10">
+            <div className="rounded-xl bg-midyaf-purple/5 p-4 text-xs text-slate-600 ring-1 ring-midyaf-purple/10 dark:bg-midyaf-purple/20 dark:text-slate-300 dark:ring-midyaf-purple/30">
               <div className="flex items-center gap-2">
                 <span className="live-dot" />
-                <p className="font-bold text-midyaf-purple">
+                <p className="font-bold text-midyaf-purple dark:text-white">
                   {l("Realtime operations")}
                 </p>
               </div>
@@ -864,7 +865,7 @@ function ShellFrame({
                     <p key={item} className="animate-fadeInUp" style={{ animationDelay: `${i * 75}ms` }}>{item}</p>
                   ))
                 ) : (
-                  <p className="text-slate-400">
+                  <p className="text-slate-400 dark:text-slate-400">
                     {l(
                       "Socket.IO waiting for driver, task, guest, and delay events"
                     )}
@@ -873,7 +874,7 @@ function ShellFrame({
               </div>
             </div>
           </div>
-        </section>
+        </RoyalCard>
 
         {children}
       </main>

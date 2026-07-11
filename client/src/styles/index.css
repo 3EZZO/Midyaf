@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -335,18 +335,22 @@ textarea:focus-visible {
 
 .animate-fadeInUp {
   animation: fadeInUp 0.5s var(--m-ease-out) both;
+  will-change: transform, opacity;
 }
 
 .animate-fadeInDown {
   animation: fadeInDown 0.4s var(--m-ease-out) both;
+  will-change: transform, opacity;
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.4s var(--m-ease-out) both;
+  will-change: opacity;
 }
 
 .animate-scaleIn {
   animation: scaleIn 0.35s var(--m-ease-spring) both;
+  will-change: transform, opacity;
 }
 
 .animate-shimmer {
@@ -357,6 +361,7 @@ textarea:focus-visible {
 
 .animate-float {
   animation: float 4s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-pulseGlow {
@@ -444,6 +449,21 @@ textarea:focus-visible {
 [data-theme="dark"] .glass-strong {
   background: rgba(26, 23, 38, 0.92);
   border-color: rgba(74, 26, 138, 0.30);
+}
+
+.glass-royal {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.62) 100%);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 18px 48px -12px rgba(45, 10, 95, 0.14), inset 0 1px 1px 0 rgba(255, 255, 255, 0.90);
+  transition: background-color var(--m-duration) var(--m-ease-out), box-shadow var(--m-duration) var(--m-ease-out), transform var(--m-duration) var(--m-ease-out);
+}
+
+[data-theme="dark"] .glass-royal {
+  background: linear-gradient(135deg, rgba(26, 23, 38, 0.88) 0%, rgba(18, 14, 28, 0.75) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.50), inset 0 1px 1px 0 rgba(201, 168, 76, 0.30);
 }
 
 /* ══════════════════════════════════════════════════════════

@@ -19,8 +19,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        arabic: ["Tajawal", "Inter", "sans-serif"],
-        english: ["Inter", "Tajawal", "sans-serif"],
+        arabic: ["Tajawal", "Cairo", "Inter", "sans-serif"],
+        english: ["Outfit", "Inter", "Tajawal", "sans-serif"],
         display: ["Noto Naskh Arabic", "Tajawal", "serif"]
       },
       boxShadow: {
