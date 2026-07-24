@@ -8,12 +8,28 @@ import {
   generatePostEventReport,
   getCommandCenterInsights,
   planEvent,
-  verifyDocument
+  verifyDocument,
+  smartAssistant
 } from "../services/ai.js";
 
 const router = Router();
 
 router.use(requireAuth);
+
+router.post(
+  "/assistant",
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        query: z.string().min(1),
+        language: z.enum(["ar", "en"]).default("en")
+      })
+      .parse(req.body);
+
+    const reply = await smartAssistant(body.query, body.language);
+    res.json({ reply });
+  })
+);
 
 router.post(
   "/chat",

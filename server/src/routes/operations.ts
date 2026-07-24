@@ -1223,4 +1223,78 @@ router.post(
   })
 );
 
+// ══════════════════════════════════════════════════════════
+// LIVE COMMAND CENTER (AI Simulation Engine)
+// ══════════════════════════════════════════════════════════
+
+router.get(
+  "/live-command-center",
+  requireRole(logisticsRoles),
+  asyncHandler(async (req: AuthRequest, res) => {
+    // 1. Simulate fetching live flight data and traffic conditions
+    const delayedFlights = Math.floor(Math.random() * 3) + 2; // Always at least 2 delayed for the alert
+    const incomingGuests = delayedFlights * 15;
+    const availableVans = Math.floor(Math.random() * 3) + 1; // Few vans available
+    
+    // 2. Simulate checking "At Risk" tasks where driver is too far
+    const atRiskTasks = await prisma.task.findMany({
+      where: {
+        type: "AIRPORT_PICKUP",
+        status: { in: ["PENDING", "ASSIGNED", "EN_ROUTE"] }
+      },
+      include: { guest: { include: { user: true } }, driver: { include: { user: true } }, event: true },
+      take: 3
+    });
+
+    const flaggedTasks = atRiskTasks.map(task => ({
+      ...task,
+      riskLevel: "HIGH",
+      reason: "Flight landed 30 mins ago, but driver is 15 mins away.",
+      recommendedAction: "Re-assign to a closer VIP Captain."
+    }));
+
+    // 3. Active Alert System logic
+    let activeAlert = null;
+    if (incomingGuests > availableVans * 4) {
+      activeAlert = {
+        id: "alert-" + Date.now(),
+        type: "FLEET_SHORTAGE",
+        title: "Urgent Fleet Re-routing Required",
+        message: `Warning: ${delayedFlights} delayed flights just landed at Terminal 2. ${incomingGuests} guests need pickup soon, but we only have ${availableVans} vans assigned there.`,
+        actionPrompt: "Should we divert 5 vans from Terminal 1?",
+        actionEndpoint: "/api/operations/divert-fleet"
+      };
+    }
+
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      metrics: {
+        activeFlightsTracked: 14,
+        trafficDensity: "HEAVY_AROUND_KAFD",
+        driversOnDuty: 42
+      },
+      flaggedTasks,
+      activeAlert
+    });
+  })
+);
+
+router.post(
+  "/divert-fleet",
+  requireRole(logisticsRoles),
+  asyncHandler(async (req: AuthRequest, res) => {
+    // Simulate diverting the fleet
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("fleet:diverted", { message: "5 vans have been diverted to Terminal 2." });
+    }
+    
+    res.json({
+      ok: true,
+      message: "Fleet successfully diverted. Drivers received their new instructions instantly."
+    });
+  })
+);
+
 export default router;

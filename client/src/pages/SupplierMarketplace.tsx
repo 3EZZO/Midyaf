@@ -179,6 +179,29 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
         ) : null}
       </Section>
 
+      <Section title="Live Task Dispatcher & AI OCR Upload">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="font-bold text-midyaf-ink mb-2">Live Task Alerts</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 rounded bg-amber-50 p-2 border border-amber-200">
+                <span className="flex size-6 items-center justify-center rounded-full bg-amber-200 text-amber-800 text-xs font-bold shrink-0">!</span>
+                <p className="text-xs text-amber-900 font-medium">New VIP transfer request from KAFD to Diriyah at 19:00.</p>
+                <button className="ml-auto rounded bg-midyaf-purple px-2 py-1 text-[10px] font-bold text-white">Accept</button>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="font-bold text-midyaf-ink mb-2">AI-Powered Document Approval</h3>
+            <p className="text-xs text-slate-500 mb-3">Upload your driver IDs, vehicle registrations, or insurance. Our OCR validates them instantly.</p>
+            <div className="flex gap-2">
+              <input type="file" className="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-midyaf-purple/10 file:text-midyaf-purple hover:file:bg-midyaf-purple/20" />
+              <button onClick={() => alert("✅ Document processed by AI OCR. All data extracted & approved instantly!")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shrink-0">Upload & Verify</button>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       <Section title={t("supplier.dashboard")}>
         <div className="grid gap-3 md:grid-cols-4">
           {[

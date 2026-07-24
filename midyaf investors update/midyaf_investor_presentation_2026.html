@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مضياف (Midyaf) - العرض الاستثماري الشامل 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #04150F;
+            --bg-card: #08261C;
+            --bg-card-hover: #0D3527;
+            --emerald: #0F5132;
+            --emerald-light: #1A7A4C;
+            --emerald-bright: #239D60;
+            --gold: #D4AF37;
+            --gold-light: #F3E5AB;
+            --gold-dark: #997D21;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --text-dark: #0F172A;
+            --accent-purple: #8B5CF6;
+            --accent-blue: #3B82F6;
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(212, 175, 55, 0.25);
+            --shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Tajawal', 'Cairo', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(15, 81, 50, 0.4) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.15) 0%, transparent 40%);
+        }
+
+        /* Top Navigation Bar */
+        .top-nav {
+            height: 64px;
+            background: rgba(4, 21, 15, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            z-index: 1000;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: var(--bg-dark);
+            font-size: 20px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .brand-text {
+            font-family: 'Cairo', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--gold-light), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtext {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: var(--bg-dark);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(212, 175, 55, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--gold-light);
+            border: 1px solid var(--gold);
+        }
+
+        .btn-outline:hover {
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        /* Slide Deck Container */
+        .deck-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 40px;
+        }
+
+        .slide {
+            position: absolute;
+            width: calc(100% - 80px);
+            max-width: 1400px;
+            height: calc(100% - 48px);
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 40px 50px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: scale(0.96) translateY(20px);
+            transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* Slide Header */
+        .slide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 16px;
+        }
+
+        .slide-title-wrapper {
+            max-width: 80%;
+        }
+
+        .slide-tag {
+            display: inline-block;
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--gold-light);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .slide-title {
+            font-family: 'Cairo', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1.3;
+        }
+
+        .slide-number {
+            font-family: 'Cairo', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--gold);
+            opacity: 0.6;
+        }
+
+        /* Slide Content Areas */
+        .slide-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Grids */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(212, 175, 55, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .card-gold {
+            background: linear-gradient(145deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.02));
+            border: 1px solid rgba(212, 175, 55, 0.35);
+        }
+
+        .card-emerald {
+            background: linear-gradient(145deg, rgba(26, 122, 76, 0.25), rgba(15, 81, 50, 0.1));
+            border: 1px solid rgba(35, 157, 96, 0.4);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gold-light);
+            margin-bottom: 10px;
+        }
+
+        .card-desc {
+            font-size: 15px;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* Stat Boxes */
+        .stat-box {
+            text-align: center;
+            padding: 24px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .stat-val {
+            font-family: 'Cairo', sans-serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Table Styling */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            margin-top: 10px;
+        }
+
+        .data-table th {
+            background: linear-gradient(90deg, #0A2E23, #114232);
+            color: var(--gold-light);
+            font-weight: 800;
+            font-size: 16px;
+            padding: 14px 18px;
+            text-align: right;
+            border-bottom: 2px solid var(--gold);
+        }
+
+        .data-table td {
+            padding: 14px 18px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 15px;
+            color: #FFFFFF;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover td {
+            background: rgba(212, 175, 55, 0.08);
+        }
+
+        .highlight-row td {
+            background: rgba(212, 175, 55, 0.15) !important;
+            font-weight: 800;
+            color: var(--gold-light);
+        }
+
+        /* Bottom Control Bar */
+        .bottom-bar {
+            height: 72px;
+            background: rgba(4, 21, 15, 0.9);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            z-index: 1000;
+            flex-shrink: 0;
+        }
+
+        .slide-indicators {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .indicator.active {
+            background: var(--gold);
+            transform: scale(1.3);
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            color: #FFF;
+            border: 1px solid rgba(255,255,255,0.15);
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--gold);
+            color: var(--bg-dark);
+            border-color: var(--gold);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Specific Slide Layouts */
+        .hero-slide {
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-title {
+            font-family: 'Cairo', sans-serif;
+            font-size: 52px;
+            font-weight: 900;
+            line-height: 1.25;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #FFFFFF 30%, var(--gold-light) 70%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 24px;
+            color: var(--text-muted);
+            max-width: 900px;
+            margin: 0 auto 36px auto;
+            line-height: 1.6;
+        }
+
+        /* Print Mode & Responsive */
+        @media print {
+            body {
+                background: var(--bg-dark) !important;
+                overflow: visible !important;
+                height: auto !important;
+            }
+            .top-nav, .bottom-bar {
+                display: none !important;
+            }
+            .deck-container {
+                padding: 0 !important;
+                display: block !important;
+            }
+            .slide {
+                position: relative !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                opacity: 1 !important;
+                transform: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="brand">
+            <div class="brand-logo">م</div>
+            <div>
+                <div class="brand-text">مضياف | Midyaf</div>
+                <div class="brand-subtext">نظام تشغيل فعاليات الضيافة الذكي مدعوم بالذكاء الاصطناعي السيادي</div>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button class="btn btn-outline" onclick="toggleFullScreen()">🖥️ ملء الشاشة</button>
+            <button class="btn btn-gold" onclick="window.print()">🖨️ طباعة / تصدير PDF للمستثمرين</button>
+        </div>
+    </nav>
+
+    <!-- Slide Deck Container -->
+    <main class="deck-container">
+
+        <!-- Slide 1: الغلاف -->
+        <section class="slide active hero-slide" id="slide-1">
+            <div class="slide-tag">🚀 العرض للاستثمار الأولي - Seed Round 2026</div>
+            <h1 class="hero-title">نظام ضيافة ذكي ومتكامل لفعاليات الخليج<br>مدعوم بالذكاء الاصطناعي السيادي</h1>
+            <p class="hero-subtitle">المنصة المركزية الموحدة الأولى في المملكة العربية السعودية والخليج لربط المنظم، كبار الشخصيات (VIP)، السائقين، الموردين، والمرشد السياحي الذكي (سيف ومنيره) في تجربة استثنائية من الدعوة حتى العودة.</p>
+            <div class="grid-3" style="max-width: 900px; width: 100%; margin-top: 20px;">
+                <div class="stat-box">
+                    <div class="stat-val">12 مليار ﷼</div>
+                    <div class="stat-label">حجم السوق الإجمالي (TAM)</div>
+                    <div class="stat-sub">قطاع فعاليات الضيافة في الخليج</div>
+                </div>
+                <div class="stat-box" style="border-color: var(--gold);">
+                    <div class="stat-val">2 مليون ﷼</div>
+                    <div class="stat-label">الجولة الاستثمارية المطلوبة</div>
+                    <div class="stat-sub">لتسريع النمو ونشر البنية السيادية</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val">83.6%</div>
+                    <div class="stat-label">هامش صافي الربح (2029)</div>
+                    <div class="stat-sub">نموذج أعمال عالي الكفاءة (SaaS + Marketplace)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 2: المشكلة والفوضى التشغيلية -->
+        <section class="slide" id="slide-2">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">⚠️ التحدي التشغيلي</span>
+                    <h2 class="slide-title">الفوضى في إدارة فعاليات الضيافة الكبرى</h2>
+                </div>
+                <div class="slide-number">02</div>
+            </div>
+            <div class="slide-body">
+                <p style="font-size: 18px; color: var(--text-muted); margin-bottom: 24px;">تدار الفعاليات والمؤتمرات الكبرى حالياً عبر أدوات بدائية وغير متصلة، مما يتسبب في خسائر تشغيلية وسوء في تجربة الضيف:</p>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-icon">📱</div>
+                        <h3 class="card-title">تشتت التواصل عبر مجموعات الواتساب</h3>
+                        <p class="card-desc">إدارة حركة عشرات الضيوف والسائقين عبر عشرات المجموعات المنفصلة دون مركزية، مما يؤدي إلى ضياع التعليمات وتأخر التنسيق اللحظي.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">❌</div>
+                        <h3 class="card-title">أخطاء متكررة في الحجوزات والنقل</h3>
+                        <p class="card-desc">تعديلات مواعيد الرحلات والوصول لا تتحدث تلقائياً لدى السائق أو الفندق، مما ينتج عنه انتظار طويل لضيوف الـ VIP وارتباك في الاستقبال.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">💸</div>
+                        <h3 class="card-title">هدر مالي وارتفاع التكاليف التشغيلية</h3>
+                        <p class="card-desc">الاعتماد على وسطاء وموردين غير معتمدين بأسعار مبالغ فيها، مع تكاليف تشغيلية مرتفعة لإدارة الفعالية دون وجود أي تحكم ورقابة مالية لحظية.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">⚡</div>
+                        <h3 class="card-title">تفاوت وجودة غير متسقة في تجربة الضيف</h3>
+                        <p class="card-desc">غياب الرؤية الموحدة يجعل تجربة الضيف تختلف من محطة لأخرى، ويفتقر المنظم لأي أدوات قياس ورصد لانطباعات كبار الشخصيات.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3: حجم المشكلة وتعدد الأطراف -->
+        <section class="slide" id="slide-3">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">🔗 تعقيد المنظومة</span>
+                    <h2 class="slide-title">عشرات الأطراف تعمل في جزر معزولة في كل فعالية</h2>
+                </div>
+                <div class="slide-number">03</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-gold">
+                        <div class="card-icon">👔</div>
+                        <h3 class="card-title">الجهة المنظّمة للفعالية</h3>
+                        <p class="card-desc">تتحمل ضغط التنسيق الهائل وتحتاج للرؤية الشاملة والتحكم الفوري في كل شاردة وواردة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">👑</div>
+                        <h3 class="card-title">الضيف الملكي (VIP)</h3>
+                        <p class="card-desc">يتوقع سلاسة مطلقة، جداول دقيقة، ترحيباً خاصاً، واستجابة فورية لأي طلب طوال الرحلة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🚘</div>
+                        <h3 class="card-title">كابتن النقل والسائقين</h3>
+                        <p class="card-desc">يحتاج لمسارات محدثة لحظياً، بيانات الضيف الدقيقة، وإشعار فوري عند تغير بوابة أو موعد الرحلة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🏨</div>
+                        <h3 class="card-title">الفندق ومقار الإقامة</h3>
+                        <p class="card-desc">يتطلب تنسيقاً مسبقاً للغرف، تسكين سريع للوفود (Express Check-in)، وتلبية خدمات الضيافة الخاصة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">✈️</div>
+                        <h3 class="card-title">المطار وصالات الاستقبال</h3>
+                        <p class="card-desc">متابعة دقيقة لحركة الطيران وإجراءات الاستقبال والتوديع الفوري للوفود الرسمية.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🤝</div>
+                        <h3 class="card-title">موردو التموين والخدمات</h3>
+                        <p class="card-desc">توفير متطلبات الإعاشة والتجهيزات الفنية وفق معايير جودة معتمدة وبأسعار تنافسية ومحددة.</p>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 24px; padding: 16px; background: rgba(212, 175, 55, 0.1); border-radius: 12px; border: 1px solid var(--gold);">
+                    <strong style="color: var(--gold); font-size: 18px;">✨ النتيجة دون منصة موحدة:</strong> <span>فجوة تشغيلية كبرى، هدر في الميزانية، ومخاطرة بسمعة الجهة المنظمة أمام كبار الضيوف.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: الحل الجذري - منصة مضياف -->
+        <section class="slide" id="slide-4">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">💡 الحل الجذري</span>
+                    <h2 class="slide-title">منصة واحدة توحد المنظومة وتدير التشغيل بذكاء</h2>
+                </div>
+                <div class="slide-number">04</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-emerald">
+                        <div class="card-icon">🎯</div>
+                        <h3 class="card-title">المركزية المطلقة للمنظمين</h3>
+                        <p class="card-desc">لوحة قيادة تشغيلية موحدة (Command Dashboard) تمنح المنظم تحكماً كاملاً ورؤية حية (Real-time tracking) لحركة الأسطول، الحجوزات، وجدول مهام كل فريق في الفعالية.</p>
+                    </div>
+                    <div class="card card-gold">
+                        <div class="card-icon">🤖</div>
+                        <h3 class="card-title">المرشد السياحي والتشغيلي الذكي</h3>
+                        <p class="card-desc">دمج الذكاء الاصطناعي السيادي عبر المساعد الذكي (سيف ومنيره)، لمرافقة الضيف والرد على استفساراته فورياً وتنظيم تنقلاته واقتراح التجارب الثقافية المناسبة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">📲</div>
+                        <h3 class="card-title">تجربة ضيف سلسة ومتصلة</h3>
+                        <p class="card-desc">تطبيق مخصص ووثيقة إلكترونية تفاعلية (Smart Pass / QR Code) تتيح للضيف استعراض جدول الفعالية، التواصل مع السائق المخصص، وطلب الخدمات بضغطة زر واحدة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🛡️</div>
+                        <h3 class="card-title">سوق موردين معتمد وشفاف</h3>
+                        <p class="card-desc">ربط المنظمين بنخبة الموردين المعتمدين في النقل الفاخر، الفنادق، الإعاشة، والتذاكر، بأسعار تعاقدية واضحة وجودة مضمونة، مع عمولة مجزية لمنصة مضياف.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: منظومة التشغيل المتكاملة -->
+        <section class="slide" id="slide-5">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">🧩 مكونات المنصة</span>
+                    <h2 class="slide-title">منظومة تشغيل متكاملة تغطي كافة احتياجات الفعالية</h2>
+                </div>
+                <div class="slide-number">05</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-4">
+                    <div class="card" style="text-align: center;">
+                        <div class="card-icon">📱</div>
+                        <h3 class="card-title">تطبيق الضيف الملكي</h3>
+                        <p class="card-desc">استعراض الأجندة، تتبع السائق لحظياً، تصاريح الدخول الفورية، والتواصل المباشر مع المرشد الذكي.</p>
+                    </div>
+                    <div class="card card-emerald" style="text-align: center;">
+                        <div class="card-icon">🖥️</div>
+                        <h3 class="card-title">لوحة قيادة المنظم</h3>
+                        <p class="card-desc">إدارة الضيوف، توزيع الرحلات والمهام بذكاء، رصد التنبيهات الفورية، وتقارير أداء حية للفعالية.</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <div class="card-icon">🚘</div>
+                        <h3 class="card-title">تطبيق كابتن السائقين</h3>
+                        <p class="card-desc">استلام المسارات المحسنة، إشعارات الرحلات، تأكيد استلام وإيصال الضيف، والربط بالخرائط الحية.</p>
+                    </div>
+                    <div class="card card-gold" style="text-align: center;">
+                        <div class="card-icon">🧠</div>
+                        <h3 class="card-title">محرك الذكاء الاصطناعي</h3>
+                        <p class="card-desc">أتمتة الجدول التشغيلي، تنبؤ ومواجهة اختناقات الحركة، وتوجيه الضيوف آلياً عبر الـ WhatsApp.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: رحلة الضيف المتكاملة -->
+        <section class="slide" id="slide-6">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">👑 تجربة الضيف</span>
+                    <h2 class="slide-title">رحلة ضيف سلسة ومتكاملة: من الدعوة حتى العودة الآمنة</h2>
+                </div>
+                <div class="slide-number">06</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="card-title" style="color: var(--gold);">01. مرحلة الدعوة والتجهيز</div>
+                        <p class="card-desc">إرسال دعوات تفاعلية مخصصة، تأكيد الحضور آلياً، استلام بيانات الرحلة، وإصدار بطاقة الدخول الذكية (QR Pass) قبل وصول الوفد.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title" style="color: var(--gold);">02. الاستقبال الملاكي في المطار</div>
+                        <p class="card-desc">رصد هبوط الطائرة لحظياً، استقبال فوري في صالات الـ VIP، وتنبيه السائق المخصص للتوجه فوراً لبوابة الخروج الرسمية.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title" style="color: var(--gold);">03. التنقل والأسطول الذكي</div>
+                        <p class="card-desc">انتقال سلس بين المطار والفعالية ومقر الإقامة بأحدث المركبات، مع تتبع مسار الرحلة وإتاحة الاتصال الآمن مع الكابتن.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title" style="color: var(--gold);">04. التسكين الفندقي السريع</div>
+                        <p class="card-desc">تنسيق التسكين الفوري (Express Check-in) قبل وصول الضيف للفندق، مع تجهيز كافة المتطلبات الخاصة والضيافة الملكية في الغرفة.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title" style="color: var(--gold);">05. حضور الفعالية والإرشاد الفوري</div>
+                        <p class="card-desc">مرافقة الضيف في جلسات المؤتمر، إشعارات تذكير بالمواعيد الهامة، وتوجيه ذكي للأجنحة عبر المساعد (سيف ومنيره).</p>
+                    </div>
+                    <div class="card card-emerald">
+                        <div class="card-title" style="color: #FFFFFF;">06. المغادرة والتوديع الآمن</div>
+                        <p class="card-desc">تجهيز موعد المغادرة، التنسيق مع المطار، ونقل الضيف بكل حفاوة وأمان حتى إتمام الرحلة، مع جمع التقييم والانطباع العام.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: البنية التحتية والسيادة الرقمية (SCCC & TopNet) -->
+        <section class="slide" id="slide-7">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">🛡️ السيادة والموثوقية التقنية</span>
+                    <h2 class="slide-title">بنية تحتية سحابية سيادية بالشراكة مع SCCC & TopNet</h2>
+                </div>
+                <div class="slide-number">07</div>
+            </div>
+            <div class="slide-body">
+                <p style="font-size: 16px; color: var(--text-muted); margin-bottom: 16px;">تم تصميم وهندسة منصة مضياف بالاعتماد على سحابة **SCCC (Alibaba Cloud السعودية)** و **TopNet** لضمان التوافر اللحظي (99.99%) والسيادة التامة للبيانات وفق اشتراطات الهيئة الوطنية للأمن السيبراني ونظام حماية البيانات الشخصية (PDPL):</p>
+                <div class="grid-2">
+                    <div class="card card-emerald">
+                        <h3 class="card-title" style="color: #FFFFFF;">🟢 خوادم التطبيق والواجهات (Core Application Nodes)</h3>
+                        <p class="card-desc">
+                            • <strong>خوادم الإنتاج (midyaf-core-api-prod)</strong>: خوادم مزدوجة (Dual AZ) بـ 4 vCPU / 16 GB RAM مع توزيع أحمال ذكي (SLB Medium I).<br>
+                            • <strong>التقنية المستخدمة</strong>: Node.js/ExpressBackend + React/Vite Frontend مع Socket.IO للتتبع الفوري لحركة السائقين والضيوف.
+                        </p>
+                    </div>
+                    <div class="card card-gold">
+                        <h3 class="card-title">🤖 خوادم معالجة الذكاء الاصطناعي (AI & Worker Nodes)</h3>
+                        <p class="card-desc">
+                            • <strong>خوادم المرشد الذكي (midyaf-ai-worker-prod)</strong>: خوادم 8 vCPU / 16 GB VRAM مخصصة لمعالجة نماذج الذكاء الاصطناعي (سيف ومنيره).<br>
+                            • <strong>الربط الفوري</strong>: تكامل مباشر ومعالجة متوازية لرسائل WhatsApp Business API والـ SMS OTP وتنبيهات الـ Push Notifications.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="card-title" style="color: var(--gold);">🟡 قاعدة البيانات فائقة التوافر (High-Availability DB)</h3>
+                        <p class="card-desc">
+                            • <strong>عنقود قاعدة البيانات (PostgreSQL Dual-AZ)</strong>: خوادم 8 vCPU / 32 GB RAM وسعة 500 GB NVMe SSD مع النسخ الاحتياطي التلقائي.<br>
+                            • <strong>السرعة والأمان</strong>: استخدام Prisma ORM مع تشفير كامل للبيانات أثناء النقل والتخزين (Encryption at Rest & in Transit).
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3 class="card-title" style="color: var(--gold);">🛡️ الأمن السيبراني والتخزين السيادي (Security & Storage)</h3>
+                        <p class="card-desc">
+                            • <strong>مركز الأمن والجدار الناري</strong>: تفعيل SCCC Security Center Advanced و Enterprise Cloud Firewall لحماية الأصول من الهجمات السيبرانية.<br>
+                            • <strong>التخزين السحابي (OSS 1 TB)</strong>: أوعية تخزين سحابية آمنة لحفظ التصاريح، وثائق الهوية، وسجلات الفعاليات داخل الأراضي السعودية.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: حجم السوق الخليجي والسعودي -->
+        <section class="slide" id="slide-8">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">📈 الفرصة الاستثمارية</span>
+                    <h2 class="slide-title">حجم السوق الضخم وسرعة نمو قطاع الفعاليات في الخليج</h2>
+                </div>
+                <div class="slide-number">08</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3" style="margin-bottom: 24px;">
+                    <div class="stat-box" style="background: rgba(15,81,50,0.3); border-color: var(--emerald-bright);">
+                        <div class="stat-val">12 مليار ﷼</div>
+                        <div class="stat-label">TAM - حجم السوق الكلي</div>
+                        <div class="stat-sub">إجمالي إنفاق فعاليات الضيافة والنقل وإدارة الوفود في دول مجلس التعاون الخليجي.</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(212,175,55,0.15); border-color: var(--gold);">
+                        <div class="stat-val">3.5 مليار ﷼</div>
+                        <div class="stat-label">SAM - السوق المتاح للخدمة</div>
+                        <div class="stat-sub">الفعاليات الكبرى والمؤتمرات ومواسم السعودية والرياض ضمن رؤية المملكة 2030.</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(255,255,255,0.05);">
+                        <div class="stat-val">250 مليون ﷼</div>
+                        <div class="stat-label">SOM - السوق المستهدف أولياً</div>
+                        <div class="stat-sub">حصة مضياف المستهدفة خلال السنوات الثلاث الأولى من الانطلاق والتشغيل.</div>
+                    </div>
+                </div>
+                <div class="card card-gold">
+                    <h3 class="card-title">🚀 لماذا الآن هو التوقيت الذهبي لمنصة مضياف؟</h3>
+                    <p class="card-desc">
+                        تشهد المملكة العربية السعودية طفرة تاريخية غير مسبوقة في استضافة الفعاليات العالمية، المؤتمرات الدبلوماسية، البطولات الرياضية الدولية (كأس العالم 2034، إكسبو 2030)، ومواسم الترفيه الكبرى. المنصات الحالية إما أنظمة حجز فنادق عامة أو شركات نقل تقليدية، و**مضياف هو الحل التقني الوحيد** الذي يدمج كامل سلسلة القيمة التشغيلية في منصة سيادية واحدة.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: الملخص المالي ثلاثي السنوات -->
+        <section class="slide" id="slide-9">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">📊 الأداء المالي</span>
+                    <h2 class="slide-title">الملخص المالي ثلاثي السنوات 2027–2029 (Base Case)</h2>
+                </div>
+                <div class="slide-number">09</div>
+            </div>
+            <div class="slide-body">
+                <p style="font-size: 14px; color: var(--gold-light); margin-bottom: 8px;">*الأرقام أدناه مستخرجة ومحققة بدقة من النموذج المالي المعتمد (مضياف نموذج مالي.xlsx)، وتتضمن تكاليف البنية التحتية السحابية SCCC/TopNet:*</p>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>البيان المالي (بـ الريال السعودي SAR)</th>
+                            <th>السنة الأولى (2027)</th>
+                            <th>السنة الثانية (2028)</th>
+                            <th>السنة الثالثة (2029)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="highlight-row">
+                            <td>إجمالي الإيرادات (Total Revenue)</td>
+                            <td>5,972,400 ﷼</td>
+                            <td>12,286,080 ﷼</td>
+                            <td>22,114,944 ﷼</td>
+                        </tr>
+                        <tr>
+                            <td>تكاليف الإيرادات المباشرة (Direct API & Storage Cost)</td>
+                            <td>(37,632) ﷼</td>
+                            <td>(77,414) ﷼</td>
+                            <td>(139,346) ﷼</td>
+                        </tr>
+                        <tr style="font-weight: 700; color: #6EE7B7;">
+                            <td>مجمل الربح (Gross Profit) | هامش الربح 99.4%</td>
+                            <td>5,934,768 ﷼</td>
+                            <td>12,208,666 ﷼</td>
+                            <td>21,975,598 ﷼</td>
+                        </tr>
+                        <tr>
+                            <td>المصاريف التشغيلية الثابتة (شاملة خوادم SCCC & TopNet)</td>
+                            <td>(2,225,400) ﷼</td>
+                            <td>(2,347,540) ﷼</td>
+                            <td>(2,813,782) ﷼</td>
+                        </tr>
+                        <tr class="highlight-row" style="background: rgba(15,81,50,0.4) !important;">
+                            <td>الأرباح التشغيلية (EBITDA)</td>
+                            <td>3,709,368 ﷼ (62.1%)</td>
+                            <td>9,861,126 ﷼ (80.3%)</td>
+                            <td>19,161,816 ﷼ (86.6%)</td>
+                        </tr>
+                        <tr>
+                            <td>الاستهلاك السنوي والزكاة الشرعية (2.5%)</td>
+                            <td>(298,134) ﷼</td>
+                            <td>(451,928) ﷼</td>
+                            <td>(684,445) ﷼</td>
+                        </tr>
+                        <tr style="font-weight: 900; font-size: 17px; color: var(--gold);">
+                            <td>✨ صافي الربح السنوي (Net Profit)</td>
+                            <td>3,411,234 ﷼ (57.1%)</td>
+                            <td>9,409,197 ﷼ (76.6%)</td>
+                            <td>18,477,371 ﷼ (83.6%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Slide 10: اقتصاديات الوحدة ومؤشرات الكفاءة -->
+        <section class="slide" id="slide-10">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">💎 اقتصاديات الوحدة</span>
+                    <h2 class="slide-title">مؤشرات كفاءة أعمال استثنائية (SaaS & Marketplace Metrics)</h2>
+                </div>
+                <div class="slide-number">10</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-4" style="margin-bottom: 24px;">
+                    <div class="stat-box">
+                        <div class="stat-val" style="font-size: 28px;">746,550 ﷼</div>
+                        <div class="stat-label">ARR للعميل الواحد</div>
+                        <div class="stat-sub">متوسط الإيراد السنوي لكل شركة منظمة</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" style="font-size: 28px;">127,371 ﷼</div>
+                        <div class="stat-label">CAC - تكلفة الاستحواذ</div>
+                        <div class="stat-sub">معدل تكلفة كسب العميل المنظم الجديد</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" style="font-size: 28px;">3.26 مليون ﷼</div>
+                        <div class="stat-label">LTV - القيمة الدائمة</div>
+                        <div class="stat-sub">صافي القيمة الدائمة للعميل على المدى الطويل</div>
+                    </div>
+                    <div class="stat-box card-gold">
+                        <div class="stat-val" style="font-size: 36px; color: #FFFFFF;">26x</div>
+                        <div class="stat-label" style="color: var(--gold-light);">مضاعف LTV / CAC</div>
+                        <div class="stat-sub" style="color: #FFFFFF;">معدل استثنائي يؤكد قوة واستدامة النموذج</div>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="card card-emerald">
+                        <h3 class="card-title" style="color: #FFFFFF;">🔥 استبقاء وولاء العملاء (Retention Rate 92%)</h3>
+                        <p class="card-desc">معدل التسرب السنوي (Churn Rate) لا يتجاوز **8%**، وذلك بفضل الاعتماد العميق لشركات الفعاليات على منصة مضياف كبنية تحتية يومية لا يمكن الاستغناء عنها.</p>
+                    </div>
+                    <div class="card">
+                        <h3 class="card-title">💰 كفاءة التدفقات النقدية (Strong Operating Cash Flow)</h3>
+                        <p class="card-desc">تحقيق تدفقات نقدية تشغيلية موجبة منذ السنة الأولى (`+2.24 مليون ريال` في 2027 وتصل إلى `+16.51 مليون ريال` في 2029)، مما يضمن التمويل الذاتي للتوسع اللاحق دون الحاجة لإهدار السيولة.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 11: مصادر الإيرادات -->
+        <section class="slide" id="slide-11">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">💵 نموذج العمل</span>
+                    <h2 class="slide-title">4 مصادر إيرادات متكاملة تضمن النمو العالي والاستدامة</h2>
+                </div>
+                <div class="slide-number">11</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-gold">
+                        <div class="card-icon">🏨 & 🚘</div>
+                        <h3 class="card-title">1. عمولات سوق الموردين (Marketplace Commissions)</h3>
+                        <p class="card-desc">
+                            • عمولة **15%** على حجوزات أسطول السيارات والنقل الملكي الفاخر.<br>
+                            • عمولة **12%** على حجوزات الغرف الفندقية وتسكين الوفود الرسمية.<br>
+                            • عمولات مباشرة على خدمات التذاكر، الإعاشة، والتجهيزات اللوجستية.
+                        </p>
+                    </div>
+                    <div class="card card-emerald">
+                        <div class="card-icon">🖥️</div>
+                        <h3 class="card-title">2. اشتراكات المنصة البرمجية (Enterprise SaaS)</h3>
+                        <p class="card-desc">
+                            اشتراكات سنوية وشهرية لشركات تنظيم الفعاليات، الهيئات الحكومية، والشركات الكبرى لاستخدام نظام إدارة الفعاليات ولوحة التحكم الموحدة (Command Dashboard).
+                        </p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🎟️</div>
+                        <h3 class="card-title">3. رسوم إدارة وتنسيق الفعاليات الكبرى</h3>
+                        <p class="card-desc">
+                            رسوم تشغيلية مخصصة للفعاليات العملاقة (مثل بطولات موسم الرياض ومؤتمرات القمم الدولية) مقابل توفير الحل التشغيلي المتكامل على أرض الميدان.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🤖</div>
+                        <h3 class="card-title">4. خدمات المرشد السياحي الذكي (AI Assistant Fees)</h3>
+                        <p class="card-desc">
+                            إيرادات إضافية من تفعيل خدمات المساعد الذكي (سيف ومنيره) لتقديم توصيات الحجوزات والخدمات السياحية المخصصة لكبار الضيوف أثناء إقامتهم في المملكة.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 12: الجولة الاستثمارية وإستراتيجية استخدام الأموال -->
+        <section class="slide" id="slide-12">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <span class="slide-tag">🎯 الطلب الاستثماري (The Ask)</span>
+                    <h2 class="slide-title">نطلب استثمار 2,000,000 ريال سعودي لتسريع الهيمنة على السوق</h2>
+                </div>
+                <div class="slide-number">12</div>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-gold">
+                        <h3 class="card-title">📊 توزيع استخدام أموال الجولة (Use of Funds)</h3>
+                        <ul style="list-style: none; padding: 0; line-height: 2; font-size: 16px; color: #FFFFFF;">
+                            <li>💻 <strong>40% (800,000 ﷼) - التطوير التقني والذكاء الاصطناعي</strong>: توسيع فريق الهندسة وتطوير قدرات المرشد الذكي (سيف ومنيره) وتطبيقات الـ Mobile.</li>
+                            <li>☁️ <strong>25% (500,000 ﷼) - البنية السحابية والعمليات (SCCC/TopNet)</strong>: نشر الخوادم السيادية، وضمان التوافر العالي، واجتياز اختبارات الأمان السيبراني.</li>
+                            <li>📈 <strong>20% (400,000 ﷼) - التسويق وتطوير الأعمال</strong>: الاستحواذ على العملاء وتشكيل شراكات إستراتيجية مع منظمي الفعاليات والفنادق.</li>
+                            <li>💼 <strong>15% (300,000 ﷼) - رأس المال العامل والاحتياطي</strong>: دعم السيولة التشغيلية وتغطية متطلبات التوسع الفوري.</li>
+                        </ul>
+                    </div>
+                    <div class="card card-emerald">
+                        <h3 class="card-title" style="color: #FFFFFF;">🌟 لماذا الاستثمار في مضياف الآن؟</h3>
+                        <p class="card-desc" style="font-size: 16px;">
+                            • <strong>منتج حقيقي مبني ومختبر</strong>: المنصة تعمل بكفاءة عالية على السحابة ومستعدة للاستيعاب الفوري لفعاليات كبرى.<br>
+                            • <strong>فريق مؤسس خبير</strong>: معرفة عميقة بخبايا وأسرار قطاع الضيافة والفعاليات في السوق الخليجي والسعودي.<br>
+                            • <strong>طريق واضح نحو الربحية العالية</strong>: تحقيق صافي ربح يتجاوز 3.4 مليون ريال من السنة الأولى، ونمو مستدام يصل إلى 18.4 مليون ريال بحلول 2029.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Control Bar -->
+    <footer class="bottom-bar">
+        <div class="slide-indicators" id="indicators">
+            <!-- Populated via JavaScript -->
+        </div>
+        <div style="font-size: 14px; font-weight: 700; color: var(--gold);">
+            شريحة <span id="current-num">1</span> من <span id="total-num">12</span>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)" disabled>➔ السابق</button>
+            <button class="nav-btn" id="next-btn" onclick="changeSlide(1)">التالي ⬅</button>
+        </div>
+    </footer>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        document.getElementById('total-num').innerText = totalSlides;
+
+        // Build indicators
+        const indicatorsContainer = document.getElementById('indicators');
+        slides.forEach((_, idx) => {
+            const dot = document.createElement('div');
+            dot.className = `indicator ${idx === 0 ? 'active' : ''}`;
+            dot.onclick = () => goToSlide(idx);
+            indicatorsContainer.appendChild(dot);
+        });
+
+        function updateUI() {
+            slides.forEach((slide, idx) => {
+                if (idx === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            document.querySelectorAll('.indicator').forEach((dot, idx) => {
+                if (idx === currentSlide) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+
+            document.getElementById('current-num').innerText = currentSlide + 1;
+            document.getElementById('prev-btn').disabled = currentSlide === 0;
+            document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            const next = currentSlide + direction;
+            if (next >= 0 && next < totalSlides) {
+                currentSlide = next;
+                updateUI();
+            }
+        }
+
+        function goToSlide(idx) {
+            if (idx >= 0 && idx < totalSlides) {
+                currentSlide = idx;
+                updateUI();
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                changeSlide(1); // Left arrow moves forward in RTL
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                changeSlide(-1); // Right arrow moves backward in RTL
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Car,
@@ -29,6 +30,17 @@ export function GuestApp({ data, session }: PortalProps) {
     event.tasks.find((task) => task.guestId === guest?.id && task.driverId) ??
     event.tasks[0];
 
+  const [driverArrived, setDriverArrived] = useState(false);
+  const [scheduleShifted, setScheduleShifted] = useState(false);
+
+  useEffect(() => {
+    // Simulate frictionless driver matching proximity alert after 3 seconds
+    const timer1 = setTimeout(() => setDriverArrived(true), 3000);
+    // Simulate digital concierge schedule update after 6 seconds
+    const timer2 = setTimeout(() => setScheduleShifted(true), 6000);
+    return () => { clearTimeout(timer1); clearTimeout(timer2); };
+  }, []);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.55fr)]">
       <div className="space-y-4">
@@ -50,7 +62,26 @@ export function GuestApp({ data, session }: PortalProps) {
           </p>
         </RoyalCard>
 
+        {scheduleShifted && (
+          <div className="glass-royal rounded-2xl p-5 border border-purple-400/50 shadow-luxury transition-all animate-fadeIn mb-4">
+            <div className="flex items-center gap-3">
+              <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white font-black shadow-md shrink-0">
+                <Sparkles size={22} className="text-midyaf-gold animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary">
+                  Saif & Munirah (Digital Concierge)
+                </h3>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">
+                  "The Keynote Speech starts in 45 minutes. Traffic is a bit heavy today, so we recommend heading down to the lobby shuttle in the next 10 minutes so you don't have to rush."
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Touchdown Driver Banner & Proactive Concierge (PDF Page 4) */}
+        {driverArrived && (
         <div className="glass-royal rounded-2xl p-5 border border-amber-400/50 shadow-luxury transition-all animate-fadeIn">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-4 mb-4">
             <div className="flex items-center gap-3">
@@ -117,6 +148,7 @@ export function GuestApp({ data, session }: PortalProps) {
             </div>
           </div>
         </div>
+        )}
 
         {(() => {
           const rider = data.hospitalityRiders?.find((r) => r.guestId === guest?.id);
@@ -256,7 +288,7 @@ export function GuestApp({ data, session }: PortalProps) {
       </div>
 
       <aside className="space-y-4">
-        <AiPanel session={session} persona="Noura" context={{ event, guest }} />
+        <AiPanel session={session} persona="Saif & Munirah" context={{ event, guest }} />
 
         <Section title={t("guest.suggestions")}>
           <div className="space-y-3">

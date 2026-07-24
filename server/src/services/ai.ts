@@ -89,6 +89,49 @@ export async function chatGuide(input: ChatInput): Promise<ChatReply> {
   }
 }
 
+export async function smartAssistant(query: string, language: string) {
+  const isArabic = language.startsWith("ar");
+  const queryLower = query.toLowerCase();
+
+  // Simulated AI check matching the "Mudyaf AI Solutions" PDF scenario
+  if (queryLower.includes("vendor") || queryLower.includes("missing") || queryLower.includes("مفقود")) {
+    return {
+      message: isArabic
+        ? "فريق الصوتيات والمرئيات (AV) مفقود فقط. يوضح نظام تحديد المواقع (GPS) أنهم عالقون في زحمة السير ويبعدون حوالي 10 دقائق. هل تريد مني أن أرسل لهم رسالة؟"
+        : "Only the AV team is missing. Their GPS shows they are stuck in traffic about 10 minutes away. Do you want me to send them a message?",
+      actions: [
+        {
+          label: "Yes, send message",
+          labelAr: "نعم، أرسل رسالة",
+          actionId: "send_vendor_message"
+        }
+      ]
+    };
+  }
+
+  // Fallback to OpenAI if not the specific PDF scenario
+  if (!client) {
+    return {
+      message: isArabic
+        ? "أنا مساعدك الذكي. يمكنني مساعدة منظمي الفعاليات في إدارة العمليات. كيف يمكنني مساعدتك اليوم؟"
+        : "I am your smart assistant. I can help event organizers manage operations. How can I assist you today?"
+    };
+  }
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: env.OPENAI_MODEL,
+      messages: [
+        { role: "system", content: "You are the Midyaf Smart Assistant. You answer event organizer queries about operations, logistics, and vendors concisely." },
+        { role: "user", content: query }
+      ]
+    });
+    return { message: completion.choices[0]?.message.content ?? "Sorry, I couldn't process that." };
+  } catch (err) {
+    return { message: "AI Error occurred." };
+  }
+}
+
 export async function verifyDocument(input: {
   fileName?: string;
   documentType?: string;

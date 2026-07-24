@@ -1721,6 +1721,116 @@ export function CoordinatorsApp({
     </div>
   );
 }
+function LiveCommandCenterSection({ session }: { session?: PortalProps["session"] }) {
+  const ui = useOpsText();
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    apiFetch<any>("/operations/live-command-center", session.accessToken).then((res) => {
+      if (res.ok) setData(res);
+    });
+  }, [session?.accessToken]);
+
+  async function handleDivert() {
+    if (!data?.activeAlert?.actionEndpoint || !session?.accessToken) return;
+    await apiFetch<any>(data.activeAlert.actionEndpoint, session.accessToken, { method: "POST" });
+    alert(ui.l("Fleet successfully diverted."));
+    setData({ ...data, activeAlert: null });
+  }
+
+  if (!data) return null;
+
+  return (
+    <div className="border-l-4 border-amber-500 bg-slate-50 shadow-luxury rounded-lg p-6">
+      <h2 className="text-xl font-bold mb-4">{ui.l("Live Command Center")}</h2>
+      {data.activeAlert && (
+        <div className="mb-4 rounded bg-amber-50 p-4 border border-amber-200">
+          <div className="flex items-center gap-2 text-amber-800 font-bold mb-2">
+            <Sparkles size={18} /> {ui.l(data.activeAlert.title)}
+          </div>
+          <p className="text-amber-900 mb-3">{ui.l(data.activeAlert.message)}</p>
+          <button 
+            onClick={handleDivert}
+            className="bg-amber-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-amber-700 transition"
+          >
+            {ui.l(data.activeAlert.actionPrompt)}
+          </button>
+        </div>
+      )}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {data.flaggedTasks?.map((task: any) => (
+          <div key={task.id} className="rounded border border-red-100 bg-red-50 p-3 text-sm">
+            <div className="font-bold text-red-700">🚨 {ui.l("At Risk")}: {task.ownerName}</div>
+            <div className="text-red-600 mt-1">{ui.l(task.reason)}</div>
+            <div className="text-red-800 font-medium mt-2 text-xs">{ui.l("Recommendation")}: {ui.l(task.recommendedAction)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SmartAssistantSection({ session }: { session?: PortalProps["session"] }) {
+  const ui = useOpsText();
+  const [query, setQuery] = useState("");
+  const [reply, setReply] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim() || !session?.accessToken) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch<any>("/ai/assistant", session.accessToken, {
+        method: "POST",
+        body: JSON.stringify({ query, language: ui.isArabic ? "ar" : "en" })
+      });
+      setReply(res.reply);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-emerald-900 text-white shadow-luxury rounded-lg p-6">
+      <h2 className="text-xl font-bold mb-4">{ui.l("Smart Assistant")}</h2>
+      <div className="flex items-start gap-4">
+        <div className="bg-emerald-700/50 p-3 rounded-full">
+          <Sparkles className="text-emerald-300" size={24} />
+        </div>
+        <div className="flex-1">
+          <p className="text-emerald-50 mb-4">{ui.l("Ask the Smart Assistant a question in English or Arabic (e.g., 'Which vendors are missing from Hall A right now?').")}</p>
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input 
+              className="flex-1 bg-white/10 border border-emerald-700/50 rounded px-3 py-2 text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder={ui.l("Type your question...")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button type="submit" disabled={loading} className="bg-amber-500 hover:bg-amber-400 text-emerald-950 px-4 py-2 rounded font-bold transition">
+              {loading ? ui.l("Thinking...") : ui.l("Ask")}
+            </button>
+          </form>
+          {reply && (
+            <div className="mt-4 bg-emerald-950/50 p-4 rounded border border-emerald-700/30">
+              <p className="text-emerald-100 whitespace-pre-wrap">{reply.message}</p>
+              {reply.actions?.map((act: any) => (
+                <button 
+                  key={act.actionId} 
+                  onClick={() => alert("Message sent!")}
+                  className="mt-3 bg-white text-emerald-900 px-3 py-1 rounded text-sm font-medium hover:bg-amber-50 transition"
+                >
+                  {ui.isArabic ? act.labelAr : act.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function LogisticsDashboard({
   data,
@@ -1829,6 +1939,13 @@ export function LogisticsDashboard({
           "The logistics manager owns the full event: tasks, managers, supervisors, captains, vendor contracts, deadlines, progress tracking, access distribution, and confirmed reports."
         )}
       />
+
+      {canManage && (
+        <>
+          <LiveCommandCenterSection session={session} />
+          <SmartAssistantSection session={session} />
+        </>
+      )}
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
       <AirportExpressSection data={data} session={session} refreshData={refreshData} />

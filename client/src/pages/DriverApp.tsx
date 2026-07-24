@@ -53,12 +53,20 @@ export function DriverApp({
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setGpsEnabled(!gpsEnabled)}
-            className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 transition-colors"
-          >
-            {gpsEnabled ? "Turn Off" : "Turn On"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGpsEnabled(!gpsEnabled)}
+              className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 transition-colors"
+            >
+              {gpsEnabled ? "Turn Off" : "Turn On"}
+            </button>
+            <button
+              onClick={() => alert("📍 Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
+              className="rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1.5 text-xs font-bold transition-colors"
+            >
+              Simulate &lt; 2km
+            </button>
+          </div>
         </div>
 
         <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
