@@ -17,7 +17,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_8OsyqU5idCaK@ep-falling-mud-ayfwjb70-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        value: postgresql://neondb_owner:npg_8OsyqU5idCaK@ep-falling-mud-ayfwjb70.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
