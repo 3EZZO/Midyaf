@@ -127,13 +127,13 @@ export function App() {
     isArabic
   });
 
-  const isOrganizer = Boolean(
+  const canTriggerSimulation = Boolean(
     session?.user &&
-      (session.user.role === "LOGISTICS_MANAGER" ||
+      (session.user.role === "SUPER_ADMIN" ||
+        session.user.role === "LOGISTICS_MANAGER" ||
         session.user.role === "ORGANIZER" ||
-        session.user.role === "SUPER_ADMIN" ||
-        session.user.email === "organizer@midyaf.local" ||
-        session.user.email === "admin@midyaf.local")
+        session.user.email === "admin@midyaf.local" ||
+        session.user.email === "organizer@midyaf.local")
   );
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export function App() {
       const isDKey = e.key?.toLowerCase() === "d" || e.code === "KeyD";
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && isDKey) {
         e.preventDefault();
-        if (!isOrganizer) return;
+        if (!canTriggerSimulation) return;
         if (simulation.isSimulating) {
           simulation.stopSimulation();
         } else {
@@ -151,7 +151,7 @@ export function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOrganizer, simulation]);
+  }, [canTriggerSimulation, simulation]);
 
   useEffect(() => {
     document.documentElement.lang = i18n.language;
@@ -1103,7 +1103,7 @@ function LoginPage({
               onChange={(event) => setEmail(event.target.value)}
               required
               className="m-input rounded-xl"
-              placeholder="organizer@midyaf.local"
+              placeholder="admin@midyaf.local"
             />
           </label>
 
@@ -1146,13 +1146,13 @@ function LoginPage({
             <div className="mt-2.5 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => void onLogin("organizer@midyaf.local", "Midyaf@2026")}
+                onClick={() => void onLogin("admin@midyaf.local", "Midyaf@2026")}
                 className="flex items-center gap-2 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
               >
                 <span className="text-base">👑</span>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "المنظم (كافة البوابات)" : "Organizer (All Portals)"}</p>
-                  <p className="truncate text-[10px] text-slate-400">organizer@midyaf.local</p>
+                  <p className="truncate text-[11px] font-black">{isArabic ? "مسؤول النظام (كافة الصلاحيات)" : "Admin (All Portals)"}</p>
+                  <p className="truncate text-[10px] text-slate-400">admin@midyaf.local</p>
                 </div>
               </button>
 
