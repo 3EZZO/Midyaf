@@ -1,0 +1,34 @@
+[
+    {
+        "quote_id": "Q-001",
+        "event_id": "EVT-FII-2027",
+        "vendor_id": "VND-HTL-01",
+        "status": "SELECTED",
+        "total_sar": 1250000,
+        "details": "100 Royal Suites, Full Board"
+    },
+    {
+        "quote_id": "Q-002",
+        "event_id": "EVT-FII-2027",
+        "vendor_id": "VND-HTL-02",
+        "status": "REJECTED",
+        "total_sar": 1300000,
+        "details": "100 Premium Rooms, Full Board"
+    },
+    {
+        "quote_id": "Q-003",
+        "event_id": "EVT-FII-2027",
+        "vendor_id": "VND-CAR-01",
+        "status": "SELECTED",
+        "total_sar": 450000,
+        "details": "50 Mercedes S-Class, 24/7 Availability"
+    },
+    {
+        "quote_id": "Q-004",
+        "event_id": "EVT-FII-2027",
+        "vendor_id": "VND-CAR-02",
+        "status": "REJECTED",
+        "total_sar": 420000,
+        "details": "50 BMW 7-Series, 24/7 Availability"
+    }
+]

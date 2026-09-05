@@ -1,0 +1,52 @@
+[
+    {
+        "driver_id": "DRV-001",
+        "name": "Ahmed Abdullah",
+        "phone": "+966555555001",
+        "vendor_id": "VND-CAR-01",
+        "vehicle": "Mercedes S-Class 2027",
+        "plate": "R Y D 100",
+        "assigned_guest_id": "GST-001",
+        "status": "AT_AIRPORT"
+    },
+    {
+        "driver_id": "DRV-002",
+        "name": "Saud Fahad",
+        "phone": "+966555555002",
+        "vendor_id": "VND-CAR-01",
+        "vehicle": "Mercedes S-Class 2027",
+        "plate": "K S A 200",
+        "assigned_guest_id": "GST-002",
+        "status": "EN_ROUTE"
+    },
+    {
+        "driver_id": "DRV-003",
+        "name": "Majed Tariq",
+        "phone": "+966555555003",
+        "vendor_id": "VND-CAR-01",
+        "vehicle": "Mercedes S-Class 2027",
+        "plate": "V I P 300",
+        "assigned_guest_id": "GST-003",
+        "status": "AVAILABLE"
+    },
+    {
+        "driver_id": "DRV-004",
+        "name": "Faisal Mohammed",
+        "phone": "+966555555004",
+        "vendor_id": "VND-CAR-01",
+        "vehicle": "Mercedes S-Class 2027",
+        "plate": "F I I 400",
+        "assigned_guest_id": "GST-004",
+        "status": "AVAILABLE"
+    },
+    {
+        "driver_id": "DRV-005",
+        "name": "Omar Khalid",
+        "phone": "+966555555005",
+        "vendor_id": "VND-CAR-01",
+        "vehicle": "Mercedes S-Class 2027",
+        "plate": "M I D 500",
+        "assigned_guest_id": "GST-005",
+        "status": "AVAILABLE"
+    }
+]

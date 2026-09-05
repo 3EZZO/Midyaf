@@ -1,0 +1,38 @@
+{
+    "event_id": "GTS-2027",
+    "status": "LOCKED",
+    "bids": [
+        {
+            "vendor_id": "V-HTL-001",
+            "name": "The Ritz-Carlton Riyadh",
+            "category": "Hotel",
+            "encrypted_payload": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "decrypted_price_sar": 450000,
+            "items": "50 Royal Suites"
+        },
+        {
+            "vendor_id": "V-HTL-002",
+            "name": "Four Seasons Riyadh",
+            "category": "Hotel",
+            "encrypted_payload": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d",
+            "decrypted_price_sar": 410000,
+            "items": "50 Premium Rooms"
+        },
+        {
+            "vendor_id": "V-CAR-001",
+            "name": "Royal Fleet VIP",
+            "category": "Transport",
+            "encrypted_payload": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
+            "decrypted_price_sar": 120000,
+            "items": "10 Mercedes S-Class (5 days)"
+        },
+        {
+            "vendor_id": "V-CAR-002",
+            "name": "Elite Drive Co.",
+            "category": "Transport",
+            "encrypted_payload": "aabbccddeeff00112233445566778899",
+            "decrypted_price_sar": 95000,
+            "items": "10 BMW 7-Series (5 days)"
+        }
+    ]
+}

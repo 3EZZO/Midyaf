@@ -1,0 +1,20 @@
+[
+    {
+        "organizer_id": "ORG-SILA-01",
+        "company_name": "Sila Events",
+        "admins": [
+            {
+                "user_id": "U-OPS-01",
+                "name": "Khalid Al-Omar",
+                "role": "Operations Manager",
+                "email": "khalid.ops@sila.com"
+            },
+            {
+                "user_id": "U-FIN-01",
+                "name": "Noura Al-Saud",
+                "role": "Finance Manager",
+                "email": "noura.fin@sila.com"
+            }
+        ]
+    }
+]

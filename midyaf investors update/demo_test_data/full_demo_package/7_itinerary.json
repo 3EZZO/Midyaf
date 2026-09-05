@@ -1,0 +1,26 @@
+[
+    {
+        "session_id": "SES-001",
+        "event_id": "EVT-FII-2027",
+        "title": "Opening Ceremony & Keynote",
+        "time": "2027-10-24T09:00:00Z",
+        "venue": "King Abdulaziz International Conference Center",
+        "type": "PLENARY"
+    },
+    {
+        "session_id": "SES-002",
+        "event_id": "EVT-FII-2027",
+        "title": "The Future of AI in Finance",
+        "time": "2027-10-24T11:30:00Z",
+        "venue": "Main Hall A",
+        "type": "PANEL"
+    },
+    {
+        "session_id": "SES-003",
+        "event_id": "EVT-FII-2027",
+        "title": "VIP Royal Gala Dinner",
+        "time": "2027-10-24T20:00:00Z",
+        "venue": "The Ritz-Carlton Riyadh - Grand Ballroom",
+        "type": "DINNER"
+    }
+]

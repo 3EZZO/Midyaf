@@ -1,0 +1,16 @@
+[
+    {
+        "driver_id": "D-001",
+        "name": "Ahmed Al-Saud",
+        "vehicle": "Mercedes S-Class 2026",
+        "plate": "R Y H 1234",
+        "assigned_guest_id": "G-001"
+    },
+    {
+        "driver_id": "D-002",
+        "name": "Khalid Al-Fahad",
+        "vehicle": "Mercedes S-Class 2026",
+        "plate": "K S A 9999",
+        "assigned_guest_id": "G-002"
+    }
+]

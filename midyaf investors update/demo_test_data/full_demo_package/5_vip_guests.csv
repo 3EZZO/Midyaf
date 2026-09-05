@@ -1,0 +1,6 @@
+guest_id,event_id,full_name,title,organization,phone,email,flight_arrival,flight_departure,hotel_assignment,room_number,special_requests
+GST-001,EVT-FII-2027,His Excellency Yasir Al-Rumayyan,Governor,PIF,+966500000001,yr@pif.gov.sa,SV15,SV16,VND-HTL-01,Royal Suite 1,"Strict privacy, late checkout"
+GST-002,EVT-FII-2027,Jamie Dimon,CEO,JPMorgan Chase,+12125550101,jamie@jpmorgan.com,BA263,BA262,VND-HTL-01,Royal Suite 2,Dietary: Vegan
+GST-003,EVT-FII-2027,Larry Fink,CEO,BlackRock,+12125550202,larry@blackrock.com,EK817,EK818,VND-HTL-01,Royal Suite 3,Requires 2 security cars
+GST-004,EVT-FII-2027,Ruth Porat,President & CIO,Alphabet,+16505550303,ruth@google.com,QR1164,QR1165,VND-HTL-01,Premium Suite 4,Meeting room access required
+GST-005,EVT-FII-2027,Ray Dalio,Founder,Bridgewater,+12035550404,ray@bridgewater.com,SV43,SV44,VND-HTL-01,Premium Suite 5,None

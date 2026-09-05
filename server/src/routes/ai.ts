@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/http.js";
 import {
   analyzeSuppliers,
   chatGuide,
+  executeSmartAction,
   generatePostEventReport,
   getCommandCenterInsights,
   planEvent,
@@ -22,11 +23,12 @@ router.post(
     const body = z
       .object({
         query: z.string().min(1),
-        language: z.enum(["ar", "en"]).default("en")
+        language: z.string().default("en"),
+        context: z.unknown().optional()
       })
       .parse(req.body);
 
-    const reply = await smartAssistant(body.query, body.language);
+    const reply = await smartAssistant(body.query, body.language, body.context);
     res.json({ reply });
   })
 );
@@ -37,16 +39,31 @@ router.post(
     const body = z
       .object({
         message: z.string().min(1),
-        language: z.enum(["ar", "en"]).default("en"),
+        language: z.string().default("en"),
         persona: z
-          .enum(["Saud", "Noura", "Ops Manager", "Supply Chain AI"])
-          .default("Noura"),
+          .enum(["Saud", "Noura", "Saif & Munirah", "Ops Manager", "Supply Chain AI"])
+          .default("Saif & Munirah"),
         context: z.unknown().optional()
       })
       .parse(req.body);
 
     const reply = await chatGuide(body);
     res.json({ reply });
+  })
+);
+
+router.post(
+  "/execute-action",
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        actionId: z.string().min(1),
+        params: z.unknown().optional()
+      })
+      .parse(req.body);
+
+    const execution = await executeSmartAction(body.actionId, body.params);
+    res.json({ execution });
   })
 );
 

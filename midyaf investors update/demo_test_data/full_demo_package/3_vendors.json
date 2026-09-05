@@ -1,0 +1,30 @@
+[
+    {
+        "vendor_id": "VND-HTL-01",
+        "name": "The Ritz-Carlton Riyadh",
+        "category": "HOTEL",
+        "rating": 5.0,
+        "contact": "sales@ritzriyadh.com"
+    },
+    {
+        "vendor_id": "VND-HTL-02",
+        "name": "Four Seasons Riyadh",
+        "category": "HOTEL",
+        "rating": 4.9,
+        "contact": "events@fourseasons.com"
+    },
+    {
+        "vendor_id": "VND-CAR-01",
+        "name": "Royal Fleet VIP",
+        "category": "TRANSPORT",
+        "rating": 4.8,
+        "contact": "vip@royalfleet.sa"
+    },
+    {
+        "vendor_id": "VND-CAR-02",
+        "name": "Elite Drive",
+        "category": "TRANSPORT",
+        "rating": 4.7,
+        "contact": "booking@elitedrive.sa"
+    }
+]
