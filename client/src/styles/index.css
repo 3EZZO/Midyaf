@@ -975,3 +975,110 @@ textarea:focus-visible {
   main { padding-top: calc(2rem + env(safe-area-inset-top)) !important; padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
   button, .btn-primary, .btn-secondary { min-height: 44px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   SOVEREIGN COMMAND BRIDGE (WAR ROOM) & TACTICAL RADAR
+   ══════════════════════════════════════════════════════════ */
+
+.command-deck-bg {
+  background: radial-gradient(circle at 50% 10%, rgba(201, 168, 76, 0.12) 0%, transparent 50%),
+              radial-gradient(circle at 10% 90%, rgba(45, 10, 95, 0.35) 0%, transparent 60%),
+              radial-gradient(circle at 90% 90%, rgba(5, 150, 105, 0.15) 0%, transparent 50%),
+              #03050C;
+}
+
+.radar-sweep-grid {
+  background-image: 
+    linear-gradient(rgba(201, 168, 76, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 168, 76, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-radar-sweep {
+  animation: radarSpin 4s linear infinite;
+}
+
+@keyframes holoGleam {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
+}
+
+.hologram-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(201, 168, 76, 0.08));
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(201, 168, 76, 0.2);
+}
+
+.hologram-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(201, 168, 76, 0.25) 55%,
+    transparent 65%
+  );
+  animation: holoGleam 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.glass-tactical {
+  background: rgba(10, 12, 22, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+.pulse-ring-emerald {
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseEmerald 2s infinite;
+}
+
+@keyframes pulseEmerald {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.pulse-ring-gold {
+  box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.7);
+  animation: pulseGold 2s infinite;
+}
+
+@keyframes pulseGold {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgba(201, 168, 76, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+  }
+}
+

@@ -9,6 +9,7 @@ import {
   Globe2,
   LayoutDashboard,
   Moon,
+  Shield,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -20,6 +21,8 @@ import { PORTALS } from "@shared/constants";
 import type {
   ActivityIntake,
   CoordinatorRequest,
+  Driver,
+  Event,
   FileAsset,
   FileUploadInput,
   GuestJourney,
@@ -27,6 +30,7 @@ import type {
   PortalKey,
   Role,
   Session,
+  Task,
   TaskStatus
 } from "@shared/domain";
 import { Badge } from "./components/Badge";
@@ -58,6 +62,8 @@ import {
   pickText
 } from "./lib/localize";
 import { useLiveDemoSimulation } from "./lib/useLiveDemoSimulation";
+import { SovereignCommandBridge } from "./components/SovereignCommandBridge";
+import { tacticalAudio } from "./lib/tacticalAudio";
 
 const portalIcons: Record<PortalKey, LucideIcon> = {
   intake: ClipboardList,
@@ -117,6 +123,7 @@ export function App() {
     if (stored) return stored === "dark";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+  const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
   const eventId = data?.events[0]?.id;
 
@@ -147,6 +154,13 @@ export function App() {
         } else {
           simulation.startSimulation();
         }
+      }
+
+      // Ctrl + Space or Cmd + Space: Sovereign Command Bridge (War Room)
+      if ((e.ctrlKey || e.metaKey) && (e.code === "Space" || e.key === " ")) {
+        e.preventDefault();
+        tacticalAudio.playChime();
+        setIsWarRoomOpen((prev) => !prev);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -361,6 +375,8 @@ export function App() {
         portal={portal}
         setPortal={setPortal}
         simulation={simulation}
+        isWarRoomOpen={isWarRoomOpen}
+        setIsWarRoomOpen={setIsWarRoomOpen}
         onDarkModeToggle={() => setDarkMode((v) => !v)}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -387,6 +403,11 @@ export function App() {
       setPortal={setPortal}
       realtimeLog={realtimeLog}
       simulation={simulation}
+      event={data.events[0]}
+      drivers={data.drivers}
+      tasks={data.events[0]?.tasks ?? []}
+      isWarRoomOpen={isWarRoomOpen}
+      setIsWarRoomOpen={setIsWarRoomOpen}
       onDarkModeToggle={() => setDarkMode((v) => !v)}
       onLanguageToggle={() =>
         void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -924,6 +945,11 @@ function ShellFrame({
   setPortal,
   realtimeLog = [],
   simulation,
+  event,
+  drivers,
+  tasks,
+  isWarRoomOpen,
+  setIsWarRoomOpen,
   onDarkModeToggle,
   onLanguageToggle,
   onLogout
@@ -937,6 +963,11 @@ function ShellFrame({
   setPortal: (portal: PortalKey) => void;
   realtimeLog?: string[];
   simulation?: ReturnType<typeof useLiveDemoSimulation>;
+  event?: Event;
+  drivers?: Driver[];
+  tasks?: Task[];
+  isWarRoomOpen?: boolean;
+  setIsWarRoomOpen?: (open: boolean) => void;
   onDarkModeToggle: () => void;
   onLanguageToggle: () => void;
   onLogout: () => void;
@@ -991,6 +1022,24 @@ function ShellFrame({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Sovereign Command Bridge (War Room) Button */}
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playChime();
+                setIsWarRoomOpen?.(true);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-glow ring-1 ring-midyaf-gold/50 transition-all duration-300 hover:scale-105 active:scale-95 hover:ring-midyaf-gold"
+              title={isArabic ? "غرفة العمليات والقيادة السيادية (Ctrl + Space)" : "Sovereign Command Bridge (Ctrl + Space)"}
+            >
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              <Shield size={14} className="text-midyaf-gold" />
+              <span>{isArabic ? "🌐 غرفة العمليات" : "🌐 WAR ROOM"}</span>
+            </button>
+
             <button
               onClick={onDarkModeToggle}
               className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95"
@@ -1086,6 +1135,16 @@ function ShellFrame({
 
         {children}
       </main>
+
+      {isWarRoomOpen && (
+        <SovereignCommandBridge
+          isOpen={isWarRoomOpen}
+          onClose={() => setIsWarRoomOpen?.(false)}
+          event={event}
+          drivers={drivers ?? []}
+          tasks={tasks ?? []}
+        />
+      )}
     </div>
   );
 }
