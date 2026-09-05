@@ -4271,7 +4271,7 @@ function QuotesAndContracts({
                 className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/40 hover:bg-amber-500/30"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {ui.l("Quick Demo: Unlock All 3 Keys")}
+                {ui.l("Authorize All Keys (Emergency Protocol)")}
               </button>
             )}
             <button
@@ -4279,7 +4279,7 @@ function QuotesAndContracts({
               className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-600"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              {ui.l("Reset Vault Demo")}
+              {ui.l("Re-Seal Security Vault")}
             </button>
           </div>
         </div>

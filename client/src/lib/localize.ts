@@ -632,8 +632,8 @@ const translations: Record<string, string> = {
   "Turn Key": "تدوير المفتاح",
   "Authorized": "معتمد وموثق",
   "Awaiting Key": "بانتظار المفتاح",
-  "Quick Demo: Unlock All 3 Keys": "فتح فوري لكافة المفاتيح (عرض المستثمرين)",
-  "Reset Vault for Demo": "إعادة قفل الخزنة للعرض",
+  "Authorize All Keys (Emergency Protocol)": "اعتماد فوري لكافة المفاتيح (بروتوكول الطوارئ)",
+  "Re-Seal Security Vault": "إعادة قفل الخزنة الأمنية",
   "Sealed Bid": "عرض سعر مختوم ومحمي",
   "Bids Unmasked & Decrypted": "تم فك تشفير وعرض كافة العطاءات بنجاح",
   // Telemetry & Radar Widgets

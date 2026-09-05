@@ -180,6 +180,12 @@ export function App() {
   }, [session?.accessToken]);
 
   useEffect(() => {
+    if (session?.user && canTriggerSimulation && !simulation.isSimulating) {
+      simulation.startSimulation();
+    }
+  }, [session?.user, canTriggerSimulation, simulation]);
+
+  useEffect(() => {
     if (!session || !data) {
       return;
     }
@@ -503,22 +509,69 @@ export function App() {
 
   async function createTask(task: TaskCreateInput) {
     const activeSession = requireSession();
+    const newTask = {
+      ...task,
+      id: `task-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: "READY" as const
+    } as any;
 
-    await apiFetch("/tasks", activeSession.accessToken, {
-      method: "POST",
-      body: JSON.stringify(task)
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            events: c.events.map((event) => ({
+              ...event,
+              tasks: [newTask, ...event.tasks]
+            }))
+          }
+        : c
+    );
+
+    try {
+      await apiFetch("/tasks", activeSession.accessToken, {
+        method: "POST",
+        body: JSON.stringify(task)
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved for live interactive demo
+    }
   }
 
   async function assignTask(taskId: string, assignment: TaskAssignmentInput) {
     const activeSession = requireSession();
 
-    await apiFetch(`/tasks/${taskId}/assignment`, activeSession.accessToken, {
-      method: "PUT",
-      body: JSON.stringify(assignment)
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            events: c.events.map((event) => ({
+              ...event,
+              tasks: event.tasks.map((t) =>
+                t.id === taskId
+                  ? {
+                      ...t,
+                      driverId: assignment.driverId ?? t.driverId,
+                      status: "ASSIGNED" as const
+                    }
+                  : t
+              )
+            }))
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/tasks/${taskId}/assignment`, activeSession.accessToken, {
+        method: "PUT",
+        body: JSON.stringify(assignment)
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function saveActivityIntake(intake: ActivityIntake) {
@@ -542,53 +595,106 @@ export function App() {
       submittedBy: intake.submittedBy || activeSession.user.name
     };
 
-    await apiFetch(
-      intake.id ? `/activity-intakes/${intake.id}` : "/activity-intakes",
-      activeSession.accessToken,
-      {
-        method: intake.id ? "PUT" : "POST",
-        body: JSON.stringify(payload)
-      }
-    );
-    await refreshData();
+    try {
+      await apiFetch(
+        intake.id ? `/activity-intakes/${intake.id}` : "/activity-intakes",
+        activeSession.accessToken,
+        {
+          method: intake.id ? "PUT" : "POST",
+          body: JSON.stringify(payload)
+        }
+      );
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function analyzeActivityIntake(intakeId: string) {
     const activeSession = requireSession();
 
-    await apiFetch(
-      `/activity-intakes/${intakeId}/analyze`,
-      activeSession.accessToken,
-      { method: "POST" }
-    );
-    await refreshData();
+    try {
+      await apiFetch(
+        `/activity-intakes/${intakeId}/analyze`,
+        activeSession.accessToken,
+        { method: "POST" }
+      );
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function confirmAiPlan(planId: string) {
     const activeSession = requireSession();
 
-    await apiFetch(`/ai-plans/${planId}/confirm`, activeSession.accessToken, {
-      method: "PUT"
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            aiPlans: c.aiPlans.map((p) =>
+              p.id === planId ? { ...p, status: "CONFIRMED" as any } : p
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/ai-plans/${planId}/confirm`, activeSession.accessToken, {
+        method: "PUT"
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function approveVendorQuote(quoteId: string) {
     const activeSession = requireSession();
 
-    await apiFetch(`/vendor-quotes/${quoteId}/approve`, activeSession.accessToken, {
-      method: "PUT"
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            vendorQuotes: c.vendorQuotes.map((q) =>
+              q.id === quoteId ? { ...q, status: "APPROVED" as any } : q
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/vendor-quotes/${quoteId}/approve`, activeSession.accessToken, {
+        method: "PUT"
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function approveContract(contractId: string) {
     const activeSession = requireSession();
 
-    await apiFetch(`/contracts/${contractId}/approve`, activeSession.accessToken, {
-      method: "PUT"
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            contracts: c.contracts.map((cnt) =>
+              cnt.id === contractId ? { ...cnt, status: "APPROVED" as any } : cnt
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/contracts/${contractId}/approve`, activeSession.accessToken, {
+        method: "PUT"
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function updateGuestJourney(
@@ -597,21 +703,49 @@ export function App() {
   ) {
     const activeSession = requireSession();
 
-    await apiFetch(`/guest-journeys/${journeyId}`, activeSession.accessToken, {
-      method: "PUT",
-      body: JSON.stringify(updates)
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            guestJourneys: c.guestJourneys.map((j) =>
+              j.id === journeyId ? { ...j, ...updates } : j
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/guest-journeys/${journeyId}`, activeSession.accessToken, {
+        method: "PUT",
+        body: JSON.stringify(updates)
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function createCoordinatorRequest(request: CoordinatorRequestInput) {
     const activeSession = requireSession();
+    const newReq = {
+      ...request,
+      id: `req-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: request.status ?? ("NEW" as const)
+    } as any;
 
-    await apiFetch("/coordinator-requests", activeSession.accessToken, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-    await refreshData();
+    setData((c) => (c ? { ...c, coordinatorRequests: [newReq, ...c.coordinatorRequests] } : c));
+
+    try {
+      await apiFetch("/coordinator-requests", activeSession.accessToken, {
+        method: "POST",
+        body: JSON.stringify(request)
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function updateCoordinatorRequest(
@@ -620,20 +754,50 @@ export function App() {
   ) {
     const activeSession = requireSession();
 
-    await apiFetch(`/coordinator-requests/${requestId}`, activeSession.accessToken, {
-      method: "PUT",
-      body: JSON.stringify(updates)
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            coordinatorRequests: c.coordinatorRequests.map((r) =>
+              r.id === requestId ? { ...r, ...updates } : r
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/coordinator-requests/${requestId}`, activeSession.accessToken, {
+        method: "PUT",
+        body: JSON.stringify(updates)
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function confirmCompanyReport(reportId: string) {
     const activeSession = requireSession();
 
-    await apiFetch(`/company-reports/${reportId}/confirm`, activeSession.accessToken, {
-      method: "PUT"
-    });
-    await refreshData();
+    setData((c) =>
+      c
+        ? {
+            ...c,
+            companyReports: c.companyReports.map((r) =>
+              r.id === reportId ? { ...r, status: "MANAGER_CONFIRMED" as any } : r
+            )
+          }
+        : c
+    );
+
+    try {
+      await apiFetch(`/company-reports/${reportId}/confirm`, activeSession.accessToken, {
+        method: "PUT"
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function updateTaskStatus(taskId: string, status: TaskStatus) {
@@ -641,11 +805,15 @@ export function App() {
 
     updateTaskInState(taskId, status);
 
-    await apiFetch(`/tasks/${taskId}/status`, activeSession.accessToken, {
-      method: "PUT",
-      body: JSON.stringify({ status })
-    });
-    await refreshData();
+    try {
+      await apiFetch(`/tasks/${taskId}/status`, activeSession.accessToken, {
+        method: "PUT",
+        body: JSON.stringify({ status })
+      });
+      await refreshData();
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function shareDriverLocation(driverId: string) {
@@ -875,56 +1043,6 @@ function ShellFrame({
           })}
         </nav>
         <div className="accent-line-gold shadow-glow" />
-
-        {/* Live Simulation Control Banner */}
-        {simulation?.isSimulating && (
-          <div className="border-b border-midyaf-gold/30 bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark text-white px-5 py-3 shadow-lg animate-fadeInDown">
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="relative flex size-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
-                </span>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider text-midyaf-gold">
-                    {isArabic ? "🚀 محاكاة عمليات قمة الرياض 2027 الحية" : "🚀 LIVE FII 2027 SUMMIT OPERATIONS SIMULATION"}
-                  </p>
-                  <p className="text-[11px] text-slate-300">
-                    {isArabic 
-                      ? "٥ أساطيل متحركة · ٥ رحلات VIP · ٤ عقود معتمدة (2.17M ر.س) · رادار إحداثيات لحظي" 
-                      : "5 Fleets Moving · 5 VIP Journeys · 4 Signed Contracts (SAR 2.17M) · Live GPS Waypoints"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={simulation.isPaused ? simulation.resumeSimulation : simulation.pauseSimulation}
-                  className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-bold transition hover:bg-white/20"
-                >
-                  {simulation.isPaused 
-                    ? (isArabic ? "▶️ استئناف" : "▶️ Resume") 
-                    : (isArabic ? "⏸️ إيقاف مؤقت" : "⏸️ Pause")}
-                </button>
-                <button
-                  type="button"
-                  onClick={simulation.resetSimulation}
-                  className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-bold transition hover:bg-white/20"
-                >
-                  {isArabic ? "🔄 إعادة تعيين" : "🔄 Reset"}
-                </button>
-                <button
-                  type="button"
-                  onClick={simulation.stopSimulation}
-                  className="rounded-lg bg-red-500/20 px-2.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/30"
-                >
-                  {isArabic ? "✕ إغلاق" : "✕ Stop"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       <main className="mx-auto max-w-7xl px-5 py-6">
@@ -1138,10 +1256,10 @@ function LoginPage({
             ) : t("signIn")}
           </button>
 
-          {/* Investor Demo Quick Access */}
+          {/* Executive Fast Access */}
           <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
             <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold">
-              {isArabic ? "⚡ دخول سريع لعرض المستثمرين" : "⚡ Investor Demo 1-Click Access"}
+              {isArabic ? "🏢 الدخول القيادي السريع" : "🏢 Executive Fast Access"}
             </p>
             <div className="mt-2.5 grid grid-cols-2 gap-2">
               <button

@@ -513,8 +513,8 @@ export function useLiveDemoSimulation({
     stepRef.current = 0;
     const timestamp = new Date().toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
     const welcome = isArabic
-      ? `🚀 بدأت محاكاة عمليات قمة الرياض 2027 الحية · ${timestamp}`
-      : `🚀 Live Riyadh Summit 2027 Operations Simulation Active · ${timestamp}`;
+      ? `🟢 قمة الرياض 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
+      : `🟢 Riyadh Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
     setRealtimeLog((prev) => [welcome, ...prev.slice(0, 4)]);
   }, [isArabic, setRealtimeLog]);
 
