@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Users,
@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import type { MidyafData, Event, Session, TaskStatus } from "@shared/domain";
 import { isArabicLanguage, localizeText } from "../lib/localize";
 import { tacticalAudio } from "../lib/tacticalAudio";
+import { useTacticalToast } from "./TacticalToast";
 import { Badge } from "./Badge";
 
 interface LogisticsMetricModalProps {
@@ -163,10 +164,27 @@ export function LogisticsMetricModal({
   const { t, i18n } = useTranslation();
   const isArabic = isArabicLanguage(i18n.language);
   const l = (val: string | number | null | undefined) => localizeText(val, isArabic);
+  const toast = useTacticalToast();
 
   const [guestSearch, setGuestSearch] = useState("");
   const [taskFilter, setTaskFilter] = useState<string>("ALL");
   const [verifiedSeal, setVerifiedSeal] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!modal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [modal, onClose]);
 
   if (!modal) return null;
 
@@ -190,6 +208,10 @@ export function LogisticsMetricModal({
   const handleVerifySeal = (seal: string) => {
     tacticalAudio.playBiometricAuth();
     setVerifiedSeal(seal);
+    toast.success(
+      isArabic ? "تم التحقق من البصمة الرقمية المشفرة" : "Cryptographic Seal Verified",
+      seal
+    );
     setTimeout(() => setVerifiedSeal(null), 3500);
   };
 
@@ -323,6 +345,10 @@ export function LogisticsMetricModal({
                         type="button"
                         onClick={() => {
                           tacticalAudio.playChime();
+                          toast.success(
+                            isArabic ? "تم إرسال المرافق الملكي" : "Chauffeur Escort Dispatched",
+                            `${guest.name} · ${guest.driver}`
+                          );
                         }}
                         className="rounded-lg bg-white/10 px-3 py-1 text-[11px] font-bold text-slate-200 hover:bg-white/20 transition"
                       >
@@ -426,6 +452,10 @@ export function LogisticsMetricModal({
                           type="button"
                           onClick={() => {
                             tacticalAudio.playChime();
+                            toast.success(
+                              isArabic ? "تم توقيع واعتماد العقد رسمياً" : "Contract Executed & Sealed",
+                              `${contract.vendor} (${contract.amount})`
+                            );
                             if (onApproveContract) {
                               void onApproveContract(contract.id);
                             }
@@ -511,6 +541,10 @@ export function LogisticsMetricModal({
                             type="button"
                             onClick={() => {
                               tacticalAudio.playTacticalPing();
+                              toast.info(
+                                isArabic ? "تم تحديث حالة المهمة" : "Task Status Updated",
+                                `${l(task.type)} → ${l(st)}`
+                              );
                               if (onUpdateTaskStatus) {
                                 void onUpdateTaskStatus(task.id, st);
                               }
@@ -641,6 +675,10 @@ export function LogisticsMetricModal({
                   type="button"
                   onClick={() => {
                     tacticalAudio.playChime();
+                    toast.success(
+                      isArabic ? "جاري تصدير التقرير التنفيذي الرسمي" : "Exporting Executive Report",
+                      isArabic ? "صيغة PDF معتمدة وموثقة" : "Official Certified PDF"
+                    );
                     window.open(`/api/company-reports/${data.companyReports[0]?.id || "r-1"}/pdf`, "_blank");
                   }}
                   className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-gold to-amber-600 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg hover:brightness-110 transition active:scale-95"

@@ -154,9 +154,11 @@ export function RiyadhMap({
     return () => clearTimeout(timer);
   }, [isFullscreen]);
 
-  // Handle Escape key to exit fullscreen
+  // Handle Escape key and body scroll lock in fullscreen
   useEffect(() => {
     if (!isFullscreen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         tacticalAudio.playTacticalPing();
@@ -164,7 +166,10 @@ export function RiyadhMap({
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isFullscreen]);
 
   // Handle Map Mode switch

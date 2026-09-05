@@ -56,6 +56,19 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    emptyOutDir: true
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("leaflet")) return "vendor-leaflet";
+            if (id.includes("lucide-react")) return "vendor-lucide";
+            if (id.includes("socket.io-client") || id.includes("engine.io")) return "vendor-socket";
+            if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
+          }
+        }
+      }
+    }
   }
 });

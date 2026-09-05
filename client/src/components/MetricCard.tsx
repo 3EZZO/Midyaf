@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { RoyalCard } from "./RoyalCard";
 import { tacticalAudio } from "../lib/tacticalAudio";
+import { isArabicLanguage } from "../lib/localize";
 
 export function MetricCard({
   label,
@@ -16,6 +18,8 @@ export function MetricCard({
   icon?: ReactNode;
   onClick?: () => void;
 }) {
+  const { i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const isClickable = Boolean(onClick);
 
   return (
@@ -65,7 +69,7 @@ export function MetricCard({
             <span>{detail}</span>
             {isClickable && (
               <span className="text-[10px] text-midyaf-gold font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                Click to expand ↗
+                {isArabic ? "انقر للتوسيع ↗" : "Click to expand ↗"}
               </span>
             )}
           </div>

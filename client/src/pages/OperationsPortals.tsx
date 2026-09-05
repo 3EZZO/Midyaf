@@ -29,6 +29,7 @@ import {
 import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
 import { LogisticsMetricModal } from "../components/LogisticsMetricModal";
+import { useTacticalToast } from "../components/TacticalToast";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { Section } from "../components/Section";
 import { localAiReply } from "../components/AiPanel";
@@ -2281,6 +2282,7 @@ export function LogisticsDashboard({
   uploadFile
 }: PortalProps) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const event = data.events[0];
   const report = data.companyReports[0];
   const canManage = canManageOperations(session);
@@ -2320,6 +2322,16 @@ export function LogisticsDashboard({
       if (journey?.id && type === "TICKET") {
         await updateGuestJourney(journey.id, { ticketStatus: "SENT" });
       }
+
+      toast.success(
+        ui.isArabic ? "تم رفع وتحديث المستند بنجاح" : "Asset Uploaded & Sent",
+        `${ui.l(guest.user.name)} · ${type}`
+      );
+    } catch {
+      toast.alert(
+        ui.isArabic ? "فشل رفع المستند" : "Asset Upload Failed",
+        file.name
+      );
     } finally {
       setUploadingAsset(null);
     }
@@ -2701,6 +2713,7 @@ function TaskAssignmentBoard({
   updateTaskStatus: PortalProps["updateTaskStatus"];
 }) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const delayedCount = event.tasks.filter(
     (task) => task.status === "DELAYED"
@@ -2719,12 +2732,21 @@ function TaskAssignmentBoard({
   async function handleDriverChange(task: Task, driverId: string) {
     await runTaskAction(`${task.id}:driver`, async () => {
       await assignTask(task.id, { driverId: driverId || null });
+      const driverObj = drivers.find((d) => d.id === driverId);
+      toast.success(
+        ui.isArabic ? "تم تعيين السائق للمهمة بنجاح" : "Driver Assigned to Task",
+        `${ui.l(task.type)}: ${driverObj ? driverObj.user.name : ui.l("Unassigned")}`
+      );
     });
   }
 
   async function handleStatusChange(task: Task, status: TaskStatus) {
     await runTaskAction(`${task.id}:${status}`, async () => {
       await updateTaskStatus(task.id, status);
+      toast.info(
+        ui.isArabic ? "تم تحديث حالة المهمة" : "Task Status Updated",
+        `${ui.l(task.type)} → ${ui.l(status)}`
+      );
     });
   }
 
@@ -4021,8 +4043,25 @@ function QuotesAndContracts({
   onApproveContract?: PortalProps["approveContract"];
 }) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [selectedDemoContract, setSelectedDemoContract] = useState<DemoContract | null>(null);
+
+  useEffect(() => {
+    if (!selectedDemoContract) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedDemoContract(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedDemoContract]);
 
   // Triple-Key Security Vault state for Anti-Corruption protocol
   const hasSealedQuotes = data.vendorQuotes.some((q) => q.isVaultSealed);
@@ -4043,6 +4082,15 @@ function QuotesAndContracts({
       if (keyNum === 3) next.key3 = true;
       if (next.key1 && next.key2 && next.key3) {
         next.isUnlocked = true;
+        toast.success(
+          ui.isArabic ? "تم فك تشفير الخزنة الثلاثية بنجاح" : "Triple-Key Security Vault Unlocked",
+          ui.isArabic ? "كافة العروض المشفرة أصبحت متاحة للاعتماد" : "All procurement bids unmasked"
+        );
+      } else {
+        toast.info(
+          ui.isArabic ? `تم تدوير المفتاح الأمني ${keyNum}` : `Security Key ${keyNum} Turned`,
+          ui.isArabic ? "بانتظار بقية التواقيع المعتمدة" : "Awaiting remaining multi-sig keys"
+        );
       }
       return next;
     });
@@ -4055,6 +4103,10 @@ function QuotesAndContracts({
       key3: true,
       isUnlocked: true
     });
+    toast.success(
+      ui.isArabic ? "تم فك تشفير الخزنة الثلاثية فورياً" : "Vault Instantly Unmasked",
+      ui.isArabic ? "تم التحقق من كافة المفاتيح الأمنية الثلاثة" : "All 3 cryptographic keys validated"
+    );
   }
 
   function resetVault() {
@@ -4064,6 +4116,10 @@ function QuotesAndContracts({
       key3: false,
       isUnlocked: false
     });
+    toast.info(
+      ui.isArabic ? "تم إعادة قفل وتشفير الخزنة الثلاثية" : "Vault Sealed & Re-Encrypted",
+      ui.isArabic ? "عروض الأسعار محمية ببروتوكول النزاهة" : "Bids secured under anti-corruption lock"
+    );
   }
 
   const totalCommission = data.vendorQuotes.reduce(
@@ -4079,6 +4135,11 @@ function QuotesAndContracts({
     setPendingAction(quoteId);
     try {
       await onApproveVendorQuote(quoteId);
+      const quote = data.vendorQuotes.find((q) => q.id === quoteId);
+      toast.success(
+        ui.isArabic ? "تم اعتماد عرض السعر بنجاح" : "Vendor Quote Approved",
+        `${quote ? ui.l(quote.vendorName) : quoteId}`
+      );
     } finally {
       setPendingAction(null);
     }
@@ -4092,6 +4153,10 @@ function QuotesAndContracts({
     setPendingAction(contractId);
     try {
       await onApproveContract(contractId);
+      toast.success(
+        ui.isArabic ? "تم توقيع واعتماد العقد بنجاح" : "Contract Approved & Sealed",
+        contractId
+      );
     } finally {
       setPendingAction(null);
     }

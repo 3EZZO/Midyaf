@@ -445,13 +445,37 @@ export function App() {
     setIsLoading(true);
     setLoadError(null);
 
+    // Instant offline cache restore
     try {
-      setData(await getBootstrap(activeSession.accessToken));
+      const cached = window.sessionStorage.getItem(`midyaf_data_${activeSession.user.id}`);
+      if (cached) {
+        setData(JSON.parse(cached));
+      }
+    } catch {
+      // Ignore cache parse error
+    }
+
+    try {
+      const fresh = await getBootstrap(activeSession.accessToken);
+      setData(fresh);
+      try {
+        window.sessionStorage.setItem(
+          `midyaf_data_${activeSession.user.id}`,
+          JSON.stringify(fresh)
+        );
+      } catch {
+        // Ignore cache write error
+      }
     } catch (error) {
-      setData(null);
-      setLoadError(
-        error instanceof Error ? error.message : t("workspaceLoadFailed")
-      );
+      // If cached data is present, do not disrupt the UI with a blocking error
+      setData((curr) => {
+        if (!curr) {
+          setLoadError(
+            error instanceof Error ? error.message : t("workspaceLoadFailed")
+          );
+        }
+        return curr;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -459,7 +483,20 @@ export function App() {
 
   async function refreshData() {
     const activeSession = requireSession();
-    setData(await getBootstrap(activeSession.accessToken));
+    try {
+      const fresh = await getBootstrap(activeSession.accessToken);
+      setData(fresh);
+      try {
+        window.sessionStorage.setItem(
+          `midyaf_data_${activeSession.user.id}`,
+          JSON.stringify(fresh)
+        );
+      } catch {
+        // Ignore
+      }
+    } catch {
+      // Optimistic state preserved
+    }
   }
 
   async function inviteGuests(eventId: string, guests: GuestInviteInput[]) {
