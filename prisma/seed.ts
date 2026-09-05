@@ -81,6 +81,10 @@ async function main() {
     guestA,
     guestB,
     driverUser,
+    sultanUser,
+    rakanUser,
+    tariqUser,
+    nasserUser,
     supplierUser
   ] =
     await Promise.all([
@@ -150,6 +154,46 @@ async function main() {
           name: "Fahad Al Qahtani",
           email: "driver@midyaf.local",
           phone: "+966500000005",
+          role: "DRIVER",
+          language: "ar",
+          passwordHash
+        }
+      }),
+      prisma.user.create({
+        data: {
+          name: "Sultan Al-Otaibi",
+          email: "sultan.drv@midyaf.local",
+          phone: "+966509991119",
+          role: "DRIVER",
+          language: "ar",
+          passwordHash
+        }
+      }),
+      prisma.user.create({
+        data: {
+          name: "Rakan Al-Dossary",
+          email: "rakan.drv@midyaf.local",
+          phone: "+966508882228",
+          role: "DRIVER",
+          language: "ar",
+          passwordHash
+        }
+      }),
+      prisma.user.create({
+        data: {
+          name: "Tariq Al-Ghamdi",
+          email: "tariq.drv@midyaf.local",
+          phone: "+966507773337",
+          role: "DRIVER",
+          language: "ar",
+          passwordHash
+        }
+      }),
+      prisma.user.create({
+        data: {
+          name: "Nasser Al-Mutairi",
+          email: "nasser.drv@midyaf.local",
+          phone: "+966506664446",
           role: "DRIVER",
           language: "ar",
           passwordHash
@@ -267,20 +311,78 @@ async function main() {
     }
   });
 
-  const driver = await prisma.driver.create({
-    data: {
-      userId: driverUser.id,
-      licenseNo: "RUH-DRV-8841",
-      nationalIdIqama: "1029384756",
-      currentLat: 24.7743,
-      currentLng: 46.7386,
-      zone: "NORTH_RIYADH",
-      status: "AVAILABLE",
-      shiftStart: new Date("2026-09-21T12:00:00+03:00"),
-      shiftEnd: new Date("2026-09-21T23:00:00+03:00"),
-      earnings: 420
-    }
-  });
+  const [driver, sultanDriver, rakanDriver, tariqDriver, nasserDriver] = await Promise.all([
+    prisma.driver.create({
+      data: {
+        userId: driverUser.id,
+        licenseNo: "RUH-DRV-8841",
+        nationalIdIqama: "1029384756",
+        currentLat: 24.7642,
+        currentLng: 46.6406,
+        zone: "CENTRAL_RIYADH",
+        status: "AVAILABLE",
+        shiftStart: new Date("2026-09-21T12:00:00+03:00"),
+        shiftEnd: new Date("2026-09-21T23:00:00+03:00"),
+        earnings: 420
+      }
+    }),
+    prisma.driver.create({
+      data: {
+        userId: sultanUser.id,
+        licenseNo: "RUH-DRV-9119",
+        nationalIdIqama: "1088776655",
+        currentLat: 24.9576,
+        currentLng: 46.6988,
+        zone: "NORTH_RIYADH",
+        status: "EN_ROUTE",
+        shiftStart: new Date("2026-09-21T10:00:00+03:00"),
+        shiftEnd: new Date("2026-09-21T22:00:00+03:00"),
+        earnings: 750
+      }
+    }),
+    prisma.driver.create({
+      data: {
+        userId: rakanUser.id,
+        licenseNo: "RUH-DRV-7788",
+        nationalIdIqama: "1044332211",
+        currentLat: 24.6661,
+        currentLng: 46.6302,
+        zone: "WEST_RIYADH",
+        status: "EN_ROUTE",
+        shiftStart: new Date("2026-09-21T08:00:00+03:00"),
+        shiftEnd: new Date("2026-09-21T20:00:00+03:00"),
+        earnings: 580
+      }
+    }),
+    prisma.driver.create({
+      data: {
+        userId: tariqUser.id,
+        licenseNo: "RUH-DRV-5544",
+        nationalIdIqama: "1055667788",
+        currentLat: 24.8500,
+        currentLng: 46.7300,
+        zone: "EAST_RIYADH",
+        status: "AVAILABLE",
+        shiftStart: new Date("2026-09-21T11:00:00+03:00"),
+        shiftEnd: new Date("2026-09-21T23:00:00+03:00"),
+        earnings: 490
+      }
+    }),
+    prisma.driver.create({
+      data: {
+        userId: nasserUser.id,
+        licenseNo: "RUH-DRV-1122",
+        nationalIdIqama: "1099887766",
+        currentLat: 24.7335,
+        currentLng: 46.5742,
+        zone: "DIRIYAH_CORRIDOR",
+        status: "EN_ROUTE",
+        shiftStart: new Date("2026-09-21T14:00:00+03:00"),
+        shiftEnd: new Date("2026-09-22T02:00:00+03:00"),
+        earnings: 820
+      }
+    })
+  ]);
 
   await prisma.task.createMany({
     data: [
@@ -584,21 +686,39 @@ async function main() {
     data: [
       {
         quoteId: hotelQuote.id,
-        vendorName: hotel.name,
+        vendorName: "The Ritz-Carlton Riyadh",
         category: "HOTEL_OPERATOR",
-        amount: 76250,
-        commissionAmount: 9150,
+        amount: 1250000,
+        commissionAmount: 125000,
         status: "SIGNED",
-        signedAt: new Date("2026-09-14T12:30:00+03:00")
+        signedAt: new Date("2026-09-14T10:00:00+03:00")
       },
       {
         quoteId: carQuote.id,
-        vendorName: fleet.name,
+        vendorName: "Royal Fleet VIP Services",
         category: "CAR_RENTAL",
-        amount: 22620,
-        commissionAmount: 3393,
-        status: "ACTIVE",
-        signedAt: new Date("2026-09-14T15:45:00+03:00")
+        amount: 450000,
+        commissionAmount: 45000,
+        status: "SIGNED",
+        signedAt: new Date("2026-09-14T11:30:00+03:00")
+      },
+      {
+        quoteId: ritzQuote.id,
+        vendorName: "Najd Royal Catering & Banqueting",
+        category: "CATERING",
+        amount: 180000,
+        commissionAmount: 19800,
+        status: "SIGNED",
+        signedAt: new Date("2026-09-15T09:15:00+03:00")
+      },
+      {
+        quoteId: fleetVipQuote.id,
+        vendorName: "Al-Faisal Stage & Acoustic Engineering",
+        category: "EQUIPMENT",
+        amount: 290000,
+        commissionAmount: 34800,
+        status: "SIGNED",
+        signedAt: new Date("2026-09-15T14:20:00+03:00")
       }
     ]
   });

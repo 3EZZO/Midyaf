@@ -34,6 +34,12 @@ import { localAiReply } from "../components/AiPanel";
 import { money, percent, shortDate, shortTime } from "../lib/format";
 import { apiFetch } from "../lib/api";
 import {
+  DEMO_CONTRACTS,
+  DEMO_HOTSPOTS,
+  type DemoContract,
+  type DemoHotspot
+} from "../lib/useLiveDemoSimulation";
+import {
   isArabicLanguage,
   localizeText,
   pickText
@@ -2204,6 +2210,56 @@ function SmartAssistantSection({
   );
 }
 
+function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
+  const ui = useOpsText();
+
+  return (
+    <Section title={ui.p("Live Summit Hotspots & Telemetry Radar", "رادار المواقع الحية وعمليات القمة في الرياض")}>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {hotspots.map((spot) => (
+          <div
+            key={spot.id}
+            className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-midyaf-gold">
+                  {spot.category}
+                </span>
+                <h4 className="mt-0.5 text-sm font-black text-midyaf-ink dark:text-white">
+                  {ui.p(spot.nameEn, spot.nameAr)}
+                </h4>
+              </div>
+              <span className="live-dot" />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-100 pt-2.5 dark:border-slate-800">
+              <div>
+                <span className="text-slate-400">{ui.p("Fleet:", "الأسطول:")} </span>
+                <span className="font-bold text-midyaf-purple dark:text-midyaf-gold">
+                  {spot.activeFleet} {ui.p("Vehicles", "مركبات")}
+                </span>
+              </div>
+              {spot.vipGuestsCount > 0 && (
+                <div>
+                  <span className="text-slate-400">{ui.p("VIPs:", "كبار الشخصيات:")} </span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {spot.vipGuestsCount} {ui.p("Guests", "ضيوف")}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="mt-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              ● {ui.p(spot.statusEn, spot.statusAr)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 export function LogisticsDashboard({
   data,
   session,
@@ -2321,6 +2377,7 @@ export function LogisticsDashboard({
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
       <AirportExpressSection data={data} session={session} refreshData={refreshData} />
+      <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
@@ -3939,6 +3996,7 @@ function QuotesAndContracts({
 }) {
   const ui = useOpsText();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [selectedDemoContract, setSelectedDemoContract] = useState<DemoContract | null>(null);
 
   // Triple-Key Security Vault state for Anti-Corruption protocol
   const hasSealedQuotes = data.vendorQuotes.some((q) => q.isVaultSealed);
@@ -4325,40 +4383,185 @@ function QuotesAndContracts({
           );
         })}
       </div>
-      <div className="mt-5 space-y-3">
-        <p className="text-sm font-bold text-midyaf-purple">
-          {ui.l("Contracts")}
-        </p>
-        {data.contracts.map((contract) => (
-          <div
-            key={contract.id}
-            className="grid gap-3 rounded-lg bg-white p-3 ring-1 ring-slate-100 md:grid-cols-[1fr_auto_auto]"
-          >
-            <div>
-              <p className="font-semibold text-midyaf-ink">
-                {ui.l(contract.vendorName)}
-              </p>
-              <p className="text-xs text-slate-500">
-                {ui.l(contract.category)} · {money(contract.amount)}
-              </p>
+      {/* Certified Contracts & Procurement Hub */}
+      <div className="mt-8 space-y-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-midyaf-gold" />
+              <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+                {ui.p("Certified Contracts & Procurement Hub", "مركز العقود المعتمدة والمشتريات الذكية")}
+              </h3>
             </div>
-            <Badge tone={contract.status === "SIGNED" ? "green" : "purple"}>
-              {ui.l(contract.status)}
-            </Badge>
-            {canManage && contract.status !== "SIGNED" ? (
-              <button
-                onClick={() => void handleApproveContract(contract.id)}
-                disabled={pendingAction !== null}
-                className="btn-gold rounded-xl px-3 py-2 text-xs font-bold text-white"
-              >
-                {pendingAction === contract.id
-                  ? ui.l("Saving")
-                  : ui.l("Approve contract")}
-              </button>
-            ) : null}
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {ui.p(
+                "Legally binding procurement contracts authenticated via Triple-Key Multi-Sig and sealed on-chain.",
+                "عقود توريد ملزمة قانونياً موثقة عبر بروتوكول التوقيع المتعدد ومختومة رقمياً."
+              )}
+            </p>
           </div>
-        ))}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+              {ui.p("Total: SAR 2,170,000", "الإجمالي: ٢,١٧٠,٠٠٠ ر.س")}
+            </span>
+            <span className="rounded-lg bg-midyaf-gold/15 px-2.5 py-1 text-xs font-black text-midyaf-gold">
+              {ui.p("Midyaf Take: SAR 224,600", "عمولة مضياف: ٢٢٤,٦٠٠ ر.س")}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {DEMO_CONTRACTS.map((contract) => (
+            <div
+              key={contract.id}
+              className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-midyaf-gold">
+                      {contract.contractNumber}
+                    </span>
+                    <Badge tone="green">{ui.p("SIGNED & VERIFIED", "موقع ومعتمد")}</Badge>
+                  </div>
+                  <h4 className="mt-1 text-sm font-black text-midyaf-ink dark:text-white">
+                    {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
+                  </h4>
+                  <p className="text-[11px] font-bold text-midyaf-purple dark:text-purple-300">
+                    {ui.p(contract.categoryEn, contract.categoryAr)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-black text-midyaf-purple dark:text-midyaf-gold">
+                    {money(contract.amount)}
+                  </p>
+                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    {contract.commissionPercent}% {ui.p("Take Rate", "عمولة")} ({money(contract.commissionAmount)})
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-2.5 text-xs text-slate-600 line-clamp-2 dark:text-slate-300">
+                {ui.p(contract.scopeEn, contract.scopeAr)}
+              </p>
+
+              <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                <span className="text-[10px] font-mono text-slate-400">
+                  {contract.certifiedHash}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDemoContract(contract)}
+                  className="rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+                >
+                  {ui.p("View Certified Contract 📜", "استعراض العقد المعتمد 📜")}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Certified Contract Modal */}
+      {selectedDemoContract && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-2xl rounded-2xl border-2 border-midyaf-gold bg-white p-6 shadow-2xl dark:bg-slate-900 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-gold to-amber-600 text-white shadow-glow">
+                  <Crown size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+                    {ui.p("Kingdom of Saudi Arabia · Event Procurement", "المملكة العربية السعودية · مشتريات الفعاليات")}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {selectedDemoContract.contractNumber} · {ui.p("Legally Certified Agreement", "اتفاقية توريد معتمدة")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDemoContract(null)}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4 text-xs">
+              <div className="rounded-xl bg-amber-500/10 p-3.5 border border-amber-500/20 text-midyaf-ink dark:text-amber-200">
+                <p className="font-black text-amber-800 dark:text-amber-300">
+                  {ui.p("CERTIFIED EXECUTION ORDER", "أمر تنفيذ وتوريد معتمد")}
+                </p>
+                <p className="mt-1">
+                  {ui.p(
+                    "This contract was unmasked through the Anti-Corruption Triple-Key Vault and digitally signed by Sila Operations, Sila Finance, and the Midyaf Independent Compliance Auditor.",
+                    "تم فتح هذا العقد عبر الخزنة الأمنية الثلاثية وتوقيعه رقمياً من قبل عمليات صلة، ومالية صلة، ومدقق الامتثال المستقل بمضياف."
+                  )}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Vendor Name", "اسم المورد")}</p>
+                  <p className="mt-0.5 font-bold text-sm text-midyaf-ink dark:text-white">
+                    {ui.p(selectedDemoContract.vendorNameEn, selectedDemoContract.vendorNameAr)}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Category", "التصنيف")}</p>
+                  <p className="mt-0.5 font-bold text-sm text-midyaf-ink dark:text-white">
+                    {ui.p(selectedDemoContract.categoryEn, selectedDemoContract.categoryAr)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Scope of Work", "نطاق العمل والتوريد")}</p>
+                <p className="mt-1 text-xs text-slate-700 leading-relaxed dark:text-slate-300">
+                  {ui.p(selectedDemoContract.scopeEn, selectedDemoContract.scopeAr)}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Total Contract Value", "إجمالي قيمة العقد")}</p>
+                  <p className="mt-0.5 font-black text-base text-midyaf-purple dark:text-midyaf-gold">
+                    {money(selectedDemoContract.amount)}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-emerald-500/10 p-3 border border-emerald-500/20">
+                  <p className="text-[10px] text-emerald-600 uppercase font-bold">{ui.p("Midyaf Take Rate (Platform Fee)", "عمولة منصة مضياف")}</p>
+                  <p className="mt-0.5 font-black text-base text-emerald-600 dark:text-emerald-400">
+                    {money(selectedDemoContract.commissionAmount)} ({selectedDemoContract.commissionPercent}%)
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center dark:border-slate-700">
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {ui.p("IMMUTABLE AUDIT HASH", "بصمة التدقيق المشفرة وغير القابلة للتغيير")}
+                </p>
+                <p className="mt-1 font-mono font-bold text-midyaf-purple dark:text-purple-300">
+                  SHA-256: {selectedDemoContract.certifiedHash} · TIMESTAMP: {selectedDemoContract.signedDate}T12:00:00Z
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelectedDemoContract(null)}
+                className="btn-primary rounded-xl px-5 py-2 text-xs font-bold"
+              >
+                {ui.p("Close Certificate", "إغلاق الشهادة")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Section>
   );
 }

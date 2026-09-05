@@ -57,6 +57,7 @@ import {
   localizeText,
   pickText
 } from "./lib/localize";
+import { useLiveDemoSimulation } from "./lib/useLiveDemoSimulation";
 
 const portalIcons: Record<PortalKey, LucideIcon> = {
   intake: ClipboardList,
@@ -118,6 +119,28 @@ export function App() {
   });
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
   const eventId = data?.events[0]?.id;
+
+  const simulation = useLiveDemoSimulation({
+    data,
+    setData,
+    setRealtimeLog,
+    isArabic
+  });
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        if (simulation.isSimulating) {
+          simulation.stopSimulation();
+        } else {
+          simulation.startSimulation();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [simulation]);
 
   useEffect(() => {
     document.documentElement.lang = i18n.language;
@@ -318,6 +341,7 @@ export function App() {
         allowedPortals={allowedPortals}
         portal={portal}
         setPortal={setPortal}
+        simulation={simulation}
         onDarkModeToggle={() => setDarkMode((v) => !v)}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -343,6 +367,7 @@ export function App() {
       portal={portal}
       setPortal={setPortal}
       realtimeLog={realtimeLog}
+      simulation={simulation}
       onDarkModeToggle={() => setDarkMode((v) => !v)}
       onLanguageToggle={() =>
         void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -717,6 +742,7 @@ function ShellFrame({
   portal,
   setPortal,
   realtimeLog = [],
+  simulation,
   onDarkModeToggle,
   onLanguageToggle,
   onLogout
@@ -729,6 +755,7 @@ function ShellFrame({
   portal: PortalKey;
   setPortal: (portal: PortalKey) => void;
   realtimeLog?: string[];
+  simulation?: ReturnType<typeof useLiveDemoSimulation>;
   onDarkModeToggle: () => void;
   onLanguageToggle: () => void;
   onLogout: () => void;
@@ -742,6 +769,9 @@ function ShellFrame({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const canManage = ["LOGISTICS_MANAGER", "ORGANIZER", "SUPER_ADMIN"].includes(
+    session.user.role
+  );
 
   return (
     <div
@@ -783,6 +813,32 @@ function ShellFrame({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {canManage && simulation && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (simulation.isSimulating) {
+                    simulation.stopSimulation();
+                  } else {
+                    simulation.startSimulation();
+                  }
+                }}
+                title={isArabic ? "المحاكاة الشاملة للقمة (Ctrl+Shift+D)" : "Full Summit Live Simulation (Ctrl+Shift+D)"}
+                className={
+                  simulation.isSimulating
+                    ? "flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-3 py-2 text-xs font-black text-white shadow-glow"
+                    : "flex items-center gap-1.5 rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 px-3 py-2 text-xs font-black text-midyaf-gold transition hover:bg-midyaf-gold/20 active:scale-95"
+                }
+              >
+                <Sparkles size={14} className={simulation.isSimulating ? "animate-spin text-white" : "text-midyaf-gold"} />
+                <span>
+                  {simulation.isSimulating
+                    ? (isArabic ? "محاكاة القمة نشطة" : "Simulation Running")
+                    : (isArabic ? "⚡ المحاكاة الشاملة" : "⚡ Live Demo Mode")}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={onDarkModeToggle}
               className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95"
@@ -835,6 +891,56 @@ function ShellFrame({
           })}
         </nav>
         <div className="accent-line-gold shadow-glow" />
+
+        {/* Live Simulation Control Banner */}
+        {simulation?.isSimulating && (
+          <div className="border-b border-midyaf-gold/30 bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark text-white px-5 py-3 shadow-lg animate-fadeInDown">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="relative flex size-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
+                </span>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider text-midyaf-gold">
+                    {isArabic ? "🚀 محاكاة عمليات قمة الرياض 2027 الحية" : "🚀 LIVE FII 2027 SUMMIT OPERATIONS SIMULATION"}
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    {isArabic 
+                      ? "٥ أساطيل متحركة · ٥ رحلات VIP · ٤ عقود معتمدة (2.17M ر.س) · رادار إحداثيات لحظي" 
+                      : "5 Fleets Moving · 5 VIP Journeys · 4 Signed Contracts (SAR 2.17M) · Live GPS Waypoints"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={simulation.isPaused ? simulation.resumeSimulation : simulation.pauseSimulation}
+                  className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-bold transition hover:bg-white/20"
+                >
+                  {simulation.isPaused 
+                    ? (isArabic ? "▶️ استئناف" : "▶️ Resume") 
+                    : (isArabic ? "⏸️ إيقاف مؤقت" : "⏸️ Pause")}
+                </button>
+                <button
+                  type="button"
+                  onClick={simulation.resetSimulation}
+                  className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-bold transition hover:bg-white/20"
+                >
+                  {isArabic ? "🔄 إعادة تعيين" : "🔄 Reset"}
+                </button>
+                <button
+                  type="button"
+                  onClick={simulation.stopSimulation}
+                  className="rounded-lg bg-red-500/20 px-2.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/30"
+                >
+                  {isArabic ? "✕ إغلاق" : "✕ Stop"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-7xl px-5 py-6">
