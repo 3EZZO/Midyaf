@@ -73,7 +73,7 @@ const sessionStorageKey = "midyaf.session";
 const portalsByRole: Record<Role, PortalKey[]> = {
   GUEST: ["guest"],
   DRIVER: ["captain"],
-  ORGANIZER: ["intake", "coordinator", "logistics", "company"],
+  ORGANIZER: [...PORTALS],
   SUPPLIER: ["company"],
   SUPER_ADMIN: [...PORTALS],
   COORDINATOR: ["coordinator"],
@@ -127,10 +127,21 @@ export function App() {
     isArabic
   });
 
+  const isOrganizer = Boolean(
+    session?.user &&
+      (session.user.role === "LOGISTICS_MANAGER" ||
+        session.user.role === "ORGANIZER" ||
+        session.user.role === "SUPER_ADMIN" ||
+        session.user.email === "organizer@midyaf.local" ||
+        session.user.email === "admin@midyaf.local")
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
+      const isDKey = e.key?.toLowerCase() === "d" || e.code === "KeyD";
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && isDKey) {
         e.preventDefault();
+        if (!isOrganizer) return;
         if (simulation.isSimulating) {
           simulation.stopSimulation();
         } else {
@@ -140,7 +151,7 @@ export function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [simulation]);
+  }, [isOrganizer, simulation]);
 
   useEffect(() => {
     document.documentElement.lang = i18n.language;
@@ -161,6 +172,8 @@ export function App() {
     setPortal((current) =>
       portalsByRole[session.user.role].includes(current)
         ? current
+        : portalsByRole[session.user.role].includes("logistics")
+        ? "logistics"
         : portalsByRole[session.user.role][0]
     );
     void loadSessionData(session);
@@ -769,9 +782,6 @@ function ShellFrame({
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const canManage = ["LOGISTICS_MANAGER", "ORGANIZER", "SUPER_ADMIN"].includes(
-    session.user.role
-  );
 
   return (
     <div
@@ -813,32 +823,6 @@ function ShellFrame({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {canManage && simulation && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (simulation.isSimulating) {
-                    simulation.stopSimulation();
-                  } else {
-                    simulation.startSimulation();
-                  }
-                }}
-                title={isArabic ? "المحاكاة الشاملة للقمة (Ctrl+Shift+D)" : "Full Summit Live Simulation (Ctrl+Shift+D)"}
-                className={
-                  simulation.isSimulating
-                    ? "flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 px-3 py-2 text-xs font-black text-white shadow-glow"
-                    : "flex items-center gap-1.5 rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 px-3 py-2 text-xs font-black text-midyaf-gold transition hover:bg-midyaf-gold/20 active:scale-95"
-                }
-              >
-                <Sparkles size={14} className={simulation.isSimulating ? "animate-spin text-white" : "text-midyaf-gold"} />
-                <span>
-                  {simulation.isSimulating
-                    ? (isArabic ? "محاكاة القمة نشطة" : "Simulation Running")
-                    : (isArabic ? "⚡ المحاكاة الشاملة" : "⚡ Live Demo Mode")}
-                </span>
-              </button>
-            )}
-
             <button
               onClick={onDarkModeToggle}
               className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95"
@@ -1119,7 +1103,7 @@ function LoginPage({
               onChange={(event) => setEmail(event.target.value)}
               required
               className="m-input rounded-xl"
-              placeholder="name@midyaf.local"
+              placeholder="organizer@midyaf.local"
             />
           </label>
 
@@ -1167,8 +1151,8 @@ function LoginPage({
               >
                 <span className="text-base">👑</span>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير العمليات" : "Ops Manager"}</p>
-                  <p className="truncate text-[10px] text-slate-400">All 6 Portals</p>
+                  <p className="truncate text-[11px] font-black">{isArabic ? "المنظم (كافة البوابات)" : "Organizer (All Portals)"}</p>
+                  <p className="truncate text-[10px] text-slate-400">organizer@midyaf.local</p>
                 </div>
               </button>
 
