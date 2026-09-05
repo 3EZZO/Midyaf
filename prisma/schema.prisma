@@ -520,8 +520,30 @@ model VendorQuote {
   commissionAmount  Decimal     @db.Decimal(12, 2)
   score             Int
   status            QuoteStatus @default(REQUESTED)
+  isVaultSealed     Boolean     @default(false)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  @@index([intakeId])
+  @@index([status])
+}
+
+model VaultSession {
+  id             String    @id @default(cuid())
+  intakeId       String    @unique
+  status         String    @default("LOCKED")
+  key1User       String?
+  key1Role       String?
+  key1ApprovedAt DateTime?
+  key2User       String?
+  key2Role       String?
+  key2ApprovedAt DateTime?
+  key3User       String?
+  key3Role       String?
+  key3ApprovedAt DateTime?
+  unlockedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([intakeId])
   @@index([status])

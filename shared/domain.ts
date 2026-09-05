@@ -344,6 +344,7 @@ export type VendorQuote = {
   commissionAmount: Money;
   score: number;
   status: "REQUESTED" | "RECEIVED" | "RECOMMENDED" | "APPROVED" | "REJECTED";
+  isVaultSealed?: boolean;
 };
 
 export type Contract = {

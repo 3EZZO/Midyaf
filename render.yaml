@@ -3,7 +3,7 @@ services:
     name: midyaf
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npx prisma db push && npm run db:seed && npm run build
     startCommand: node start.mjs
     envVars:
       - key: NODE_ENV
@@ -17,7 +17,9 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_8OsyqU5idCaK@ep-falling-mud-ayfwjb70.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require
+        fromDatabase:
+          name: midyaf-db
+          property: connectionString
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
@@ -30,3 +32,9 @@ services:
         value: "12"
       - key: VITE_API_BASE_URL
         value: /api
+
+databases:
+  - name: midyaf-db
+    databaseName: midyaf
+    user: midyaf
+    plan: free

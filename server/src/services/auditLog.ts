@@ -18,6 +18,7 @@ export type AuditEntityType =
   | "SUPPLIER"
   | "TASK"
   | "USER"
+  | "VAULT_SESSION"
   | "VENDOR_QUOTE";
 
 type RecordAuditLogInput = {

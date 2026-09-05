@@ -30,7 +30,7 @@ export function AiPanel({
   context
 }: {
   session?: Session;
-  persona?: "Saud" | "Noura" | "Ops Manager" | "Supply Chain AI";
+  persona?: "Saud" | "Noura" | "Saif & Munirah" | "Ops Manager" | "Supply Chain AI";
   context?: unknown;
 }) {
   const { t, i18n } = useTranslation();

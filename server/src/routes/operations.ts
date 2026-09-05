@@ -494,6 +494,132 @@ router.delete(
   })
 );
 
+router.get(
+  "/vault/:intakeId",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { intakeId } = req.params;
+    let vaultSession = await prisma.vaultSession.findUnique({
+      where: { intakeId }
+    });
+
+    if (!vaultSession) {
+      vaultSession = await prisma.vaultSession.create({
+        data: {
+          intakeId,
+          status: "LOCKED"
+        }
+      });
+    }
+
+    res.json({ vaultSession });
+  })
+);
+
+router.post(
+  "/vault/:intakeId/authorize",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { intakeId } = req.params;
+    const { keyNumber, roleName } = req.body as {
+      keyNumber: number;
+      roleName?: string;
+    };
+
+    let session = await prisma.vaultSession.findUnique({
+      where: { intakeId }
+    });
+
+    if (!session) {
+      session = await prisma.vaultSession.create({
+        data: { intakeId, status: "LOCKED" }
+      });
+    }
+
+    const updateData: any = {};
+    const userName = req.user?.email || "Authorized Official";
+    const now = new Date();
+
+    if (keyNumber === 1) {
+      updateData.key1User = userName;
+      updateData.key1Role = roleName || "Sila Operations Director";
+      updateData.key1ApprovedAt = now;
+    } else if (keyNumber === 2) {
+      updateData.key2User = userName;
+      updateData.key2Role = roleName || "Sila Procurement / Finance";
+      updateData.key2ApprovedAt = now;
+    } else if (keyNumber === 3) {
+      updateData.key3User = userName;
+      updateData.key3Role = roleName || "Midyaf Compliance Auditor";
+      updateData.key3ApprovedAt = now;
+    }
+
+    const k1 = updateData.key1ApprovedAt || session.key1ApprovedAt;
+    const k2 = updateData.key2ApprovedAt || session.key2ApprovedAt;
+    const k3 = updateData.key3ApprovedAt || session.key3ApprovedAt;
+
+    const isFullyUnlocked = Boolean(k1 && k2 && k3);
+    if (isFullyUnlocked) {
+      updateData.status = "UNLOCKED";
+      updateData.unlockedAt = now;
+
+      await prisma.vendorQuote.updateMany({
+        where: { intakeId },
+        data: { isVaultSealed: false }
+      });
+
+      await recordAuditLog({
+        req,
+        action: "vault.unlocked_all_keys",
+        entityType: "VAULT_SESSION",
+        entityId: session.id,
+        metadata: {
+          intakeId,
+          key1: session.key1User || updateData.key1User,
+          key2: session.key2User || updateData.key2User,
+          key3: session.key3User || updateData.key3User
+        }
+      });
+    }
+
+    const updatedSession = await prisma.vaultSession.update({
+      where: { intakeId },
+      data: updateData
+    });
+
+    res.json({ vaultSession: updatedSession, isFullyUnlocked });
+  })
+);
+
+router.post(
+  "/vault/:intakeId/reset",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { intakeId } = req.params;
+    const session = await prisma.vaultSession.upsert({
+      where: { intakeId },
+      create: { intakeId, status: "LOCKED" },
+      update: {
+        status: "LOCKED",
+        key1User: null,
+        key1Role: null,
+        key1ApprovedAt: null,
+        key2User: null,
+        key2Role: null,
+        key2ApprovedAt: null,
+        key3User: null,
+        key3Role: null,
+        key3ApprovedAt: null,
+        unlockedAt: null
+      }
+    });
+
+    await prisma.vendorQuote.updateMany({
+      where: { intakeId },
+      data: { isVaultSealed: true }
+    });
+
+    res.json({ vaultSession: session });
+  })
+);
+
 const contractSchema = z.object({
   quoteId: z.string(),
   vendorName: z.string().min(2),

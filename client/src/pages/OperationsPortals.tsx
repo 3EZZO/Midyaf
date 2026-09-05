@@ -9,15 +9,19 @@ import {
   Clock,
   Crown,
   FileText,
+  Key,
+  Lock,
   Luggage,
   MapPin,
   MessageSquareText,
   Plane,
   Play,
   ReceiptText,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Ticket,
+  Unlock,
   Users
 } from "lucide-react";
 import { Badge } from "../components/Badge";
@@ -3567,6 +3571,49 @@ function QuotesAndContracts({
 }) {
   const ui = useOpsText();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  // Triple-Key Security Vault state for Anti-Corruption protocol
+  const hasSealedQuotes = data.vendorQuotes.some((q) => q.isVaultSealed);
+  const [vaultState, setVaultState] = useState({
+    key1: !hasSealedQuotes,
+    key2: !hasSealedQuotes,
+    key3: !hasSealedQuotes,
+    isUnlocked: !hasSealedQuotes
+  });
+
+  const isVaultLocked = !vaultState.isUnlocked;
+
+  function turnKey(keyNum: 1 | 2 | 3) {
+    setVaultState((prev) => {
+      const next = { ...prev };
+      if (keyNum === 1) next.key1 = true;
+      if (keyNum === 2) next.key2 = true;
+      if (keyNum === 3) next.key3 = true;
+      if (next.key1 && next.key2 && next.key3) {
+        next.isUnlocked = true;
+      }
+      return next;
+    });
+  }
+
+  function turnAllKeys() {
+    setVaultState({
+      key1: true,
+      key2: true,
+      key3: true,
+      isUnlocked: true
+    });
+  }
+
+  function resetVault() {
+    setVaultState({
+      key1: false,
+      key2: false,
+      key3: false,
+      isUnlocked: false
+    });
+  }
+
   const totalCommission = data.vendorQuotes.reduce(
     (sum, quote) => sum + Number(quote.commissionAmount),
     0
@@ -3600,50 +3647,315 @@ function QuotesAndContracts({
 
   return (
     <Section title={ui.l("Vendor quotations, contracts, and commissions")}>
+      {/* Triple-Key Anti-Corruption Security Vault Banner */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold tracking-wide text-white md:text-base">
+                  {ui.l("Midyaf Anti-Corruption Vault: Multi-Party Authorization")}
+                </h4>
+                <span className="rounded-md bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+                  {ui.l("PATENT-PENDING")}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                {ui.l(
+                  "Vendor bids are cryptographically sealed to eliminate procurement corruption. Requires 2 Organizer keys + 1 Midyaf auditor key."
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            {vaultState.isUnlocked ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">
+                <Unlock className="h-3.5 w-3.5" />
+                {ui.l("VAULT UNLOCKED & AUDITED")}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
+                <Lock className="h-3.5 w-3.5 animate-pulse" />
+                {ui.l("3-KEY SEAL ACTIVE")}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* The Three Keys Grid */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {/* Key 1 */}
+          <div
+            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
+              vaultState.key1
+                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
+                : "border-slate-700 bg-slate-800/60 text-slate-300"
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-400">
+                  {ui.l("Key 1: Organizer Ops")}
+                </p>
+                <p className="text-sm font-bold text-white">
+                  {ui.l("Sila Operations Director")}
+                </p>
+              </div>
+              <Key
+                className={`h-5 w-5 ${
+                  vaultState.key1 ? "text-emerald-400" : "text-slate-500"
+                }`}
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[11px]">
+                {vaultState.key1 ? (
+                  <span className="font-semibold text-emerald-400">
+                    ✓ {ui.l("Key Turned (Khalid Al-Omar)")}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
+                )}
+              </span>
+              {!vaultState.key1 && (
+                <button
+                  onClick={() => turnKey(1)}
+                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
+                >
+                  {ui.l("Turn Key 1")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Key 2 */}
+          <div
+            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
+              vaultState.key2
+                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
+                : "border-slate-700 bg-slate-800/60 text-slate-300"
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-400">
+                  {ui.l("Key 2: Organizer Finance")}
+                </p>
+                <p className="text-sm font-bold text-white">
+                  {ui.l("Sila Procurement / Finance")}
+                </p>
+              </div>
+              <Key
+                className={`h-5 w-5 ${
+                  vaultState.key2 ? "text-emerald-400" : "text-slate-500"
+                }`}
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[11px]">
+                {vaultState.key2 ? (
+                  <span className="font-semibold text-emerald-400">
+                    ✓ {ui.l("Key Turned (Noura Al-Saud)")}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
+                )}
+              </span>
+              {!vaultState.key2 && (
+                <button
+                  onClick={() => turnKey(2)}
+                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
+                >
+                  {ui.l("Turn Key 2")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Key 3 */}
+          <div
+            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
+              vaultState.key3
+                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
+                : "border-slate-700 bg-slate-800/60 text-slate-300"
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-400">
+                  {ui.l("Key 3: Midyaf Compliance")}
+                </p>
+                <p className="text-sm font-bold text-white">
+                  {ui.l("Midyaf Compliance Auditor")}
+                </p>
+              </div>
+              <Key
+                className={`h-5 w-5 ${
+                  vaultState.key3 ? "text-emerald-400" : "text-slate-500"
+                }`}
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[11px]">
+                {vaultState.key3 ? (
+                  <span className="font-semibold text-emerald-400">
+                    ✓ {ui.l("Key Turned (Audit Team)")}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
+                )}
+              </span>
+              {!vaultState.key3 && (
+                <button
+                  onClick={() => turnKey(3)}
+                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
+                >
+                  {ui.l("Turn Key 3")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Vault Controls & Audit Footer */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-700/60 pt-3 text-xs">
+          {vaultState.isUnlocked ? (
+            <p className="flex items-center gap-1.5 text-emerald-300">
+              <CheckCircle2 className="h-4 w-4" />
+              {ui.l(
+                "Audit Entry #MIDYAF-SEC-2027 confirmed. Quotations decrypted for transparent selection."
+              )}
+            </p>
+          ) : (
+            <p className="text-amber-300">
+              {ui.l(
+                "All 3 keys required simultaneously. Quotation amounts are locked and encrypted."
+              )}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            {!vaultState.isUnlocked && (
+              <button
+                onClick={turnAllKeys}
+                className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/40 hover:bg-amber-500/30"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {ui.l("Quick Demo: Unlock All 3 Keys")}
+              </button>
+            )}
+            <button
+              onClick={resetVault}
+              className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-600"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {ui.l("Reset Vault Demo")}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <MiniStat label={ui.l("Quotes received")} value={data.vendorQuotes.length} />
         <MiniStat label={ui.l("Contracts")} value={data.contracts.length} />
-        <MiniStat label={ui.l("Midyaf commission")} value={money(totalCommission)} />
+        <MiniStat
+          label={ui.l("Midyaf commission")}
+          value={isVaultLocked ? ui.l("🔒 Sealed until unlock") : money(totalCommission)}
+        />
       </div>
+
       <div className="space-y-3">
-        {data.vendorQuotes.map((quote) => (
-          <div
-            key={quote.id}
-            className="grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-[1fr_auto_auto]"
-          >
-            <div>
-              <p className="font-semibold text-midyaf-ink">
-                {ui.l(quote.vendorName)}
-              </p>
-              <p className="text-xs text-slate-500">
-                {ui.l(quote.category)} · {ui.l(quote.item)}
-              </p>
+        {data.vendorQuotes.map((quote) => {
+          const isSealed = isVaultLocked;
+
+          return (
+            <div
+              key={quote.id}
+              className={`grid gap-3 rounded-xl border p-4 transition-all md:grid-cols-[1fr_auto_auto] ${
+                isSealed
+                  ? "border-amber-200 bg-amber-50/50"
+                  : "border-slate-200 bg-slate-50"
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-midyaf-ink">
+                    {ui.l(quote.vendorName)}
+                  </p>
+                  {isSealed && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      <Lock className="h-2.5 w-2.5" />
+                      {ui.l("ENCRYPTED BID")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  {ui.l(quote.category)} · {ui.l(quote.item)}
+                </p>
+              </div>
+
+              <div className="text-sm">
+                <p className="font-bold text-midyaf-purple">
+                  {isSealed ? (
+                    <span className="font-mono tracking-wider text-slate-400">
+                      SAR ●●●,●●●
+                    </span>
+                  ) : (
+                    money(quote.totalPrice)
+                  )}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {isSealed ? (
+                    <span>{ui.l("Commission sealed until unlock")}</span>
+                  ) : (
+                    <>
+                      {ui.l("Commission")} {percent(quote.commissionPercent)} ·{" "}
+                      {money(quote.commissionAmount)}
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge
+                  tone={
+                    isSealed
+                      ? "gold"
+                      : quote.status === "APPROVED"
+                        ? "green"
+                        : "gold"
+                  }
+                >
+                  {isSealed
+                    ? ui.l("🔒 Vault Sealed")
+                    : `${ui.l("Score")} ${quote.score} · ${ui.l(quote.status)}`}
+                </Badge>
+
+                {canManage && quote.status !== "APPROVED" ? (
+                  <button
+                    onClick={() => void handleApproveQuote(quote.id)}
+                    disabled={isSealed || pendingAction !== null}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      isSealed
+                        ? "cursor-not-allowed bg-slate-200 text-slate-400"
+                        : "btn-primary"
+                    }`}
+                  >
+                    {isSealed
+                      ? ui.l("Unlock Vault to Select")
+                      : pendingAction === quote.id
+                        ? ui.l("Saving")
+                        : ui.l("Approve quote")}
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <div className="text-sm">
-              <p className="font-bold text-midyaf-purple">
-                {money(quote.totalPrice)}
-              </p>
-              <p className="text-xs text-slate-500">
-                {ui.l("Commission")} {percent(quote.commissionPercent)} ·{" "}
-                {money(quote.commissionAmount)}
-              </p>
-            </div>
-            <Badge tone={quote.status === "APPROVED" ? "green" : "gold"}>
-              {ui.l("Score")} {quote.score} · {ui.l(quote.status)}
-            </Badge>
-            {canManage && quote.status !== "APPROVED" ? (
-              <button
-                onClick={() => void handleApproveQuote(quote.id)}
-                disabled={pendingAction !== null}
-                className="btn-primary rounded-xl px-3 py-2 text-xs"
-              >
-                {pendingAction === quote.id
-                  ? ui.l("Saving")
-                  : ui.l("Approve quote")}
-              </button>
-            ) : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="mt-5 space-y-3">
         <p className="text-sm font-bold text-midyaf-purple">

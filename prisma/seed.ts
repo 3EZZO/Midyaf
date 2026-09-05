@@ -10,6 +10,7 @@ async function main() {
   await prisma.companyReport.deleteMany();
   await prisma.coordinatorRequest.deleteMany();
   await prisma.guestJourneyRecord.deleteMany();
+  await prisma.vaultSession.deleteMany();
   await prisma.vendorContract.deleteMany();
   await prisma.vendorQuote.deleteMany();
   await prisma.aiLogisticsPlan.deleteMany();
@@ -165,6 +166,39 @@ async function main() {
         }
       })
     ]);
+
+  const [silaOps, silaFinance, midyafAuditor] = await Promise.all([
+    prisma.user.create({
+      data: {
+        name: "Khalid Al-Omar (Sila Ops)",
+        email: "khalid.ops@sila.com",
+        phone: "+966501112233",
+        role: "LOGISTICS_MANAGER",
+        language: "en",
+        passwordHash
+      }
+    }),
+    prisma.user.create({
+      data: {
+        name: "Noura Al-Saud (Sila Finance)",
+        email: "noura.fin@sila.com",
+        phone: "+966504445566",
+        role: "COMPANY_ORGANIZER",
+        language: "en",
+        passwordHash
+      }
+    }),
+    prisma.user.create({
+      data: {
+        name: "Midyaf Compliance Auditor",
+        email: "auditor@midyaf.com",
+        phone: "+966507778899",
+        role: "SUPER_ADMIN",
+        language: "en",
+        passwordHash
+      }
+    })
+  ]);
 
   const event = await prisma.event.create({
     data: {
@@ -472,38 +506,79 @@ async function main() {
     }
   });
 
-  const [hotelQuote, carQuote] = await prisma.$transaction([
+  const [hotelQuote, carQuote, ritzQuote, fleetVipQuote] = await prisma.$transaction([
     prisma.vendorQuote.create({
       data: {
         intakeId: activityIntake.id,
         category: "HOTEL_OPERATOR",
-        vendorName: hotel.name,
-        item: "5-star and 4-star room allocation",
-        quantity: 61,
-        unitPrice: 1250,
-        totalPrice: 76250,
-        commissionPercent: 12,
-        commissionAmount: 9150,
-        score: 94,
-        status: "APPROVED"
+        vendorName: "The Ritz-Carlton Riyadh",
+        item: "100 Royal Suites (FII 2027 Delegation)",
+        quantity: 100,
+        unitPrice: 12500,
+        totalPrice: 1250000,
+        commissionPercent: 10,
+        commissionAmount: 125000,
+        score: 98,
+        status: "APPROVED",
+        isVaultSealed: true
       }
     }),
     prisma.vendorQuote.create({
       data: {
         intakeId: activityIntake.id,
         category: "CAR_RENTAL",
-        vendorName: fleet.name,
-        item: "VIP SUVs, luxury sedans, and shuttle vehicles",
-        quantity: 29,
-        unitPrice: 780,
-        totalPrice: 22620,
-        commissionPercent: 15,
-        commissionAmount: 3393,
-        score: 91,
-        status: "RECOMMENDED"
+        vendorName: "Royal Fleet VIP Services",
+        item: "50 Mercedes S-Class Chauffeur Fleet (5 Days)",
+        quantity: 50,
+        unitPrice: 9000,
+        totalPrice: 450000,
+        commissionPercent: 10,
+        commissionAmount: 45000,
+        score: 95,
+        status: "RECOMMENDED",
+        isVaultSealed: true
+      }
+    }),
+    prisma.vendorQuote.create({
+      data: {
+        intakeId: activityIntake.id,
+        category: "HOTEL_OPERATOR",
+        vendorName: "Four Seasons Hotel Riyadh",
+        item: "100 Luxury Executive Rooms",
+        quantity: 100,
+        unitPrice: 13000,
+        totalPrice: 1300000,
+        commissionPercent: 10,
+        commissionAmount: 130000,
+        score: 92,
+        status: "RECEIVED",
+        isVaultSealed: true
+      }
+    }),
+    prisma.vendorQuote.create({
+      data: {
+        intakeId: activityIntake.id,
+        category: "CAR_RENTAL",
+        vendorName: "Elite Drive Co.",
+        item: "50 BMW 7-Series VIP Fleet",
+        quantity: 50,
+        unitPrice: 8400,
+        totalPrice: 420000,
+        commissionPercent: 10,
+        commissionAmount: 42000,
+        score: 89,
+        status: "RECEIVED",
+        isVaultSealed: true
       }
     })
   ]);
+
+  await prisma.vaultSession.create({
+    data: {
+      intakeId: activityIntake.id,
+      status: "LOCKED"
+    }
+  });
 
   await prisma.vendorContract.createMany({
     data: [
