@@ -1047,6 +1047,62 @@ function LoginPage({
               </span>
             ) : t("signIn")}
           </button>
+
+          {/* Investor Demo Quick Access */}
+          <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold">
+              {isArabic ? "⚡ دخول سريع لعرض المستثمرين" : "⚡ Investor Demo 1-Click Access"}
+            </p>
+            <div className="mt-2.5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void onLogin("organizer@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+              >
+                <span className="text-base">👑</span>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير العمليات" : "Ops Manager"}</p>
+                  <p className="truncate text-[10px] text-slate-400">All 6 Portals</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("guest.vip@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2 rounded-xl bg-amber-500/10 p-2.5 text-left text-xs font-bold text-amber-600 transition hover:bg-amber-500/15 dark:bg-amber-500/20 dark:text-amber-300"
+              >
+                <span className="text-base">⭐</span>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
+                  <p className="truncate text-[10px] text-slate-400">Noura Al Harbi</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("driver@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2 rounded-xl bg-emerald-500/10 p-2.5 text-left text-xs font-bold text-emerald-600 transition hover:bg-emerald-500/15 dark:bg-emerald-500/20 dark:text-emerald-300"
+              >
+                <span className="text-base">🚗</span>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "كابتن الأسطول" : "Fleet Captain"}</p>
+                  <p className="truncate text-[10px] text-slate-400">Fahad Al Qahtani</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("khalid.ops@sila.com", "Midyaf@2026")}
+                className="flex items-center gap-2 rounded-xl bg-sky-500/10 p-2.5 text-left text-xs font-bold text-sky-600 transition hover:bg-sky-500/15 dark:bg-sky-500/20 dark:text-sky-300"
+              >
+                <span className="text-base">🔐</span>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "صلة (المفتاح 1)" : "Sila (Key 1)"}</p>
+                  <p className="truncate text-[10px] text-slate-400">Vault Demo</p>
+                </div>
+              </button>
+            </div>
+          </div>
         </form>
       </main>
     </div>
