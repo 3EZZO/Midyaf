@@ -227,48 +227,52 @@ export function LogisticsMetricModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-3xl command-deck-bg text-white shadow-2xl border border-midyaf-gold/40 flex flex-col">
-        {/* Modal Top Bar */}
-        <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/90 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-slate-900 text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
-              {modal === "visitors" && <Users className="size-5" />}
-              {modal === "tasks" && <ClipboardCheck className="size-5" />}
-              {modal === "contracts" && <ReceiptText className="size-5" />}
-              {modal === "commission" && <Banknote className="size-5" />}
-              {modal === "reports" && <FileText className="size-5" />}
-            </div>
-            <div>
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span>
-                  {modal === "visitors" && l("VIP Guests & Summit Visitors Intelligence Hub")}
-                  {modal === "tasks" && l("Live Operations Task Dispatch & Execution Board")}
-                  {modal === "contracts" && l("Certified Procurement & Vendor Contracts Hub")}
-                  {modal === "commission" && l("Platform Revenue, Take Rate & Financial Settlement")}
-                  {modal === "reports" && l("Executive Post-Event Performance & Impact Analytics")}
-                </span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                {event.name} · {l("Riyadh")} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}
-              </p>
-            </div>
+    <div className="fixed inset-0 z-[99999] w-screen h-screen bg-[#0b0814] text-white flex flex-col overflow-hidden animate-fadeIn">
+      {/* Modal Top Bar */}
+      <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/95 px-6 py-4 shadow-xl shrink-0 backdrop-blur-md">
+        <div className="flex items-center gap-3.5">
+          <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-midyaf-purple to-slate-900 text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
+            {modal === "visitors" && <Users className="size-6" />}
+            {modal === "tasks" && <ClipboardCheck className="size-6" />}
+            {modal === "contracts" && <ReceiptText className="size-6" />}
+            {modal === "commission" && <Banknote className="size-6" />}
+            {modal === "reports" && <FileText className="size-6" />}
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              tacticalAudio.playTacticalPing();
-              onClose();
-            }}
-            className="grid size-8 place-items-center rounded-full bg-white/10 text-slate-300 hover:bg-white/20 transition active:scale-95"
-          >
-            <X size={16} />
-          </button>
+          <div>
+            <h3 className="text-lg font-black text-white flex items-center gap-2">
+              <span>
+                {modal === "visitors" && l("VIP Guests & Summit Visitors Intelligence Hub")}
+                {modal === "tasks" && l("Live Operations Task Dispatch & Execution Board")}
+                {modal === "contracts" && l("Certified Procurement & Vendor Contracts Hub")}
+                {modal === "commission" && l("Platform Revenue, Take Rate & Financial Settlement")}
+                {modal === "reports" && l("Executive Post-Event Performance & Impact Analytics")}
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1 rounded bg-midyaf-gold/20 px-2 py-0.5 text-[11px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40">
+                ⛶ {isArabic ? "شاشة كاملة" : "Fullscreen Deck"}
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              {event.name} · {l("Riyadh")} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}
+            </p>
+          </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <button
+          type="button"
+          onClick={() => {
+            tacticalAudio.playTacticalPing();
+            onClose();
+          }}
+          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-200 hover:text-rose-300 px-4 py-2 text-xs font-black ring-1 ring-white/15 transition active:scale-95 cursor-pointer shadow-sm"
+          title="Exit Fullscreen (Esc)"
+        >
+          <X size={16} />
+          <span>{isArabic ? "إغلاق الشاشة الكاملة (Esc)" : "Exit Fullscreen (Esc)"}</span>
+        </button>
+      </div>
+
+      {/* Modal Body: Fullscreen scroll container */}
+      <div className="flex-1 overflow-y-auto p-6 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
           {/* ══════════════════════════════════════════════════════
               MODAL 1: VISITORS & VIP DELEGATIONS
              ══════════════════════════════════════════════════════ */}
@@ -691,6 +695,5 @@ export function LogisticsMetricModal({
           )}
         </div>
       </div>
-    </div>
   );
 }

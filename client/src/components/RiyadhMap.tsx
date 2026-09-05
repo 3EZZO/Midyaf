@@ -24,10 +24,10 @@ import { tacticalAudio } from "../lib/tacticalAudio";
 
 const TILE_LAYERS = {
   dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> Dark Tactical',
-    subdomains: "abcd",
-    maxZoom: 19
+    url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a> Dark Tactical',
+    subdomains: "",
+    maxZoom: 16
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -324,23 +324,38 @@ export function RiyadhMap({
       <div
         className={`overflow-hidden rounded-2xl glass-tactical shadow-2xl transition-all ${
           isFullscreen
-            ? "fixed inset-0 z-[100] w-screen h-screen command-deck-bg flex flex-col p-4 m-0 rounded-none animate-fadeIn"
+            ? "fixed inset-0 z-[99999] w-screen h-screen command-deck-bg flex flex-col p-4 m-0 rounded-none animate-fadeIn"
             : className
         }`}
       >
         {/* Top Map Control Bar */}
         <div className="flex flex-wrap items-center justify-between border-b border-midyaf-gold/20 bg-slate-950/90 px-4 py-3 text-white backdrop-blur-md">
-          <div className="flex items-center gap-3">
+          <div
+            onClick={() => {
+              if (!isFullscreen) {
+                tacticalAudio.playChime();
+                setIsFullscreen(true);
+              }
+            }}
+            className={`flex items-center gap-3 ${!isFullscreen ? "cursor-pointer group" : ""}`}
+            title={!isFullscreen ? (isArabic ? "انقر لتكبير الخريطة للشاشة الكاملة" : "Click to Enlarge Map") : undefined}
+          >
             <div className="relative flex size-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
             </div>
             <div>
-              <p className="text-sm font-black tracking-tight text-midyaf-gold flex items-center gap-2">
+              <p className="text-sm font-black tracking-tight text-midyaf-gold flex items-center gap-2 group-hover:text-amber-300 transition-colors">
                 <span>{isFullscreen ? l("Fullscreen Operational Tactical Map") : l("Sovereign Dark Tactical")}</span>
                 <span className="rounded bg-midyaf-gold/20 px-1.5 py-0.2 text-[10px] text-midyaf-gold ring-1 ring-midyaf-gold/40">
                   {l("Riyadh")}
                 </span>
+                {!isFullscreen && (
+                  <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-black text-midyaf-gold ring-1 ring-midyaf-gold/40 group-hover:bg-midyaf-gold/30">
+                    <Maximize2 size={10} />
+                    <span>{isArabic ? "تكبير الشاشة ⛶" : "Enlarge ⛶"}</span>
+                  </span>
+                )}
               </p>
               <p className="text-[11px] text-slate-400">
                 {RIYADH.centerLat.toFixed(4)}° N, {RIYADH.centerLng.toFixed(4)}° E · {drivers.length} {l("Active Fleets")} · {tasks.length} {l("Missions")}
@@ -566,8 +581,21 @@ export function RiyadhMap({
           </div>
         ) : (
           /* Normal Inline Map Surface */
-          <div className={`relative ${height} w-full overflow-hidden bg-slate-950`}>
+          <div className={`relative ${height} w-full overflow-hidden bg-slate-950 group/map`}>
             <div ref={containerRef} className="h-full w-full" />
+
+            {/* Click to Enlarge Floating Action Banner */}
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playChime();
+                setIsFullscreen(true);
+              }}
+              className="absolute top-3 end-3 z-[500] flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple/95 via-slate-950/95 to-midyaf-purple-dark/95 px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-2xl backdrop-blur-md border border-midyaf-gold/70 hover:scale-105 active:scale-95 transition-all ring-2 ring-midyaf-gold/30 hover:ring-midyaf-gold cursor-pointer"
+            >
+              <Maximize2 size={14} className="text-midyaf-gold animate-pulse" />
+              <span>{isArabic ? "⛶ تكبير الخريطة (شاشة كاملة)" : "⛶ Enlarge Map (Fullscreen)"}</span>
+            </button>
 
             {/* Tactical HUD Overlay Floating Badge */}
             <div className="absolute bottom-3 start-3 z-[500] flex items-center gap-3 rounded-xl bg-slate-950/85 px-3.5 py-2 text-xs text-slate-300 shadow-xl backdrop-blur-md border border-midyaf-gold/25">
