@@ -701,7 +701,27 @@ const translations: Record<string, string> = {
   "Royal Apron Positioned": "متمركز في الصالة الملكية الخاصة",
   "Customs Cleared": "تم الفسح الجمركي والبروتوكولي",
   "Lead Police Scout": "دورية الاستطلاع المتقدمة",
-  "Rear Security Unit": "وحدة الحماية الخلفية"
+  "Rear Security Unit": "وحدة الحماية الخلفية",
+  // Logistics Dashboard Metrics & Fullscreen Map Modals
+  "VIP Guests & Summit Visitors Intelligence Hub": "مركز بيانات وفود كبار الشخصيات والزوار",
+  "Live Operations Task Dispatch & Execution Board": "لوحة مهام العمليات والتوجيه الميداني المباشر",
+  "Certified Procurement & Vendor Contracts Hub": "مركز العقود المعتمدة والمشتريات الحكومية",
+  "Platform Revenue, Take Rate & Financial Settlement": "عوائد المنصة ونسب العمولة والتسوية المالية",
+  "Executive Post-Event Performance & Impact Analytics": "التقرير التنفيذي لتقييم الأداء ومخرجات الفعالية",
+  "Fullscreen Operational Tactical Map": "خريطة العمليات الميدانية والتحكم المباشر",
+  "Expand Fullscreen Operational Deck": "تكبير الشاشة لمتابعة العمليات والسائقين",
+  "Fullscreen": "تكبير الشاشة",
+  "Exit Fullscreen": "تصغير الشاشة",
+  "Active Fleets & Drivers": "الأسطول والسائقين النشطين",
+  "VIP Guests & Delegations": "وفود كبار الشخصيات",
+  "Operational Tasks & Missions": "مهام العمليات الميدانية",
+  "Gross Procurement GMV": "إجمالي قيمة عقود التوريد",
+  "Supplier Payouts": "مستحقات الموردين المعتمدة",
+  "ZATCA Tax E-Invoice Compliant": "مطابق لمتطلبات الفوترة الإلكترونية (هيئة الزكاة والضريبة)",
+  "Verified Digital Signature": "توقيع رقمي موثق ومعتمد",
+  "Execute & Sign Contract": "توقيع واعتماد العقد رسمياً",
+  "Jump to Contracts Section": "الانتقال إلى قسم العقود المعتمدة",
+  "Jump to Tasks Board": "الانتقال إلى لوحة توزيع المهام"
 };
 
 export function localizeText(value: string | number | null | undefined, isArabic: boolean) {

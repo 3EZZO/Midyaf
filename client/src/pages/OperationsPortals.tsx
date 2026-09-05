@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
+import { LogisticsMetricModal } from "../components/LogisticsMetricModal";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { Section } from "../components/Section";
 import { localAiReply } from "../components/AiPanel";
@@ -2286,6 +2287,7 @@ export function LogisticsDashboard({
   const canManageVendors = canManageVendorWorkflow(session);
   const canConfirmReport = canConfirmReports(session);
   const [uploadingAsset, setUploadingAsset] = useState<string | null>(null);
+  const [activeMetricModal, setActiveMetricModal] = useState<"visitors" | "tasks" | "contracts" | "commission" | "reports" | null>(null);
   const totalCommission = data.vendorQuotes.reduce(
     (sum, quote) => sum + Number(quote.commissionAmount),
     0
@@ -2385,30 +2387,35 @@ export function LogisticsDashboard({
           value={data.activityIntakes[0].visitorCount}
           detail={`${data.activityIntakes[0].vipVisitorCount} ${ui.l("VIP")}`}
           icon={<Users size={17} />}
+          onClick={() => setActiveMetricModal("visitors")}
         />
         <MetricCard
           label={ui.l("Open tasks")}
           value={event.tasks.length}
           detail={ui.l("Owners and deadlines assigned")}
           icon={<ClipboardCheck size={17} />}
+          onClick={() => setActiveMetricModal("tasks")}
         />
         <MetricCard
           label={ui.l("Contracts")}
           value={data.contracts.length}
           detail={ui.l("Signed or active")}
           icon={<ReceiptText size={17} />}
+          onClick={() => setActiveMetricModal("contracts")}
         />
         <MetricCard
           label={ui.l("Commission")}
           value={money(totalCommission)}
           detail={ui.l("From approved quotations")}
           icon={<Banknote size={17} />}
+          onClick={() => setActiveMetricModal("commission")}
         />
         <MetricCard
           label={ui.l("Reports")}
           value={data.companyReports.length}
           detail={ui.l("Manager confirmed")}
           icon={<FileText size={17} />}
+          onClick={() => setActiveMetricModal("reports")}
         />
       </div>
 
@@ -2435,13 +2442,15 @@ export function LogisticsDashboard({
         />
       ) : null}
 
-      <TaskAssignmentBoard
-        event={event}
-        drivers={data.drivers}
-        canManage={canManage}
-        assignTask={assignTask}
-        updateTaskStatus={updateTaskStatus}
-      />
+      <div id="tasks-assignment-board">
+        <TaskAssignmentBoard
+          event={event}
+          drivers={data.drivers}
+          canManage={canManage}
+          assignTask={assignTask}
+          updateTaskStatus={updateTaskStatus}
+        />
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <Section title={ui.l("Task ownership and deadlines")}>
@@ -2618,12 +2627,14 @@ export function LogisticsDashboard({
         </div>
       </Section>
 
-      <QuotesAndContracts
-        data={data}
-        canManage={canManageVendors}
-        onApproveVendorQuote={approveVendorQuote}
-        onApproveContract={approveContract}
-      />
+      <div id="procurement-contracts-section">
+        <QuotesAndContracts
+          data={data}
+          canManage={canManageVendors}
+          onApproveVendorQuote={approveVendorQuote}
+          onApproveContract={approveContract}
+        />
+      </div>
 
       <Section title={ui.l("Confirmed report package")}>
         {report ? (
@@ -2657,6 +2668,21 @@ export function LogisticsDashboard({
           </p>
         )}
       </Section>
+
+      {/* Interactive Full-Screen Metrics Details Modal */}
+      {activeMetricModal && (
+        <LogisticsMetricModal
+          modal={activeMetricModal}
+          onClose={() => setActiveMetricModal(null)}
+          data={data}
+          event={event}
+          session={session}
+          onApproveContract={approveContract}
+          onApproveVendorQuote={approveVendorQuote}
+          onUpdateTaskStatus={updateTaskStatus}
+          onAssignTask={assignTask}
+        />
+      )}
     </div>
   );
 }
@@ -4908,13 +4934,20 @@ function DateTimeField({
 
 function MiniStat({
   label,
-  value
+  value,
+  onClick
 }: {
   label: string;
   value: string | number;
+  onClick?: () => void;
 }) {
   return (
-    <div className="rounded-xl bg-white/80 p-3.5 shadow-sm ring-1 ring-slate-100 card-gradient-border card-hover-lift">
+    <div
+      onClick={onClick}
+      className={`rounded-xl bg-white/80 p-3.5 shadow-sm ring-1 ring-slate-100 card-gradient-border card-hover-lift ${
+        onClick ? "cursor-pointer transition hover:scale-[1.02] hover:ring-midyaf-gold/60" : ""
+      }`}
+    >
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1.5 font-extrabold tabular-nums text-midyaf-purple">{value}</p>
     </div>
