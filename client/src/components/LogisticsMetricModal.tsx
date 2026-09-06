@@ -15,7 +15,9 @@ import {
   ExternalLink,
   Search,
   Filter,
-  Download
+  Download,
+  Printer,
+  Eye
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { MidyafData, Event, Session, TaskStatus } from "@shared/domain";
@@ -169,6 +171,7 @@ export function LogisticsMetricModal({
   const [guestSearch, setGuestSearch] = useState("");
   const [taskFilter, setTaskFilter] = useState<string>("ALL");
   const [verifiedSeal, setVerifiedSeal] = useState<string | null>(null);
+  const [inspectingContract, setInspectingContract] = useState<(typeof CERTIFIED_CONTRACTS)[number] | null>(null);
 
   useEffect(() => {
     if (!modal) return;
@@ -446,8 +449,19 @@ export function LogisticsMetricModal({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          onClick={() => {
+                            tacticalAudio.playTacticalPing();
+                            setInspectingContract(contract);
+                          }}
+                          className="flex items-center gap-1 rounded-lg bg-midyaf-gold/20 px-3 py-1.5 text-xs font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40 hover:bg-midyaf-gold/30 transition cursor-pointer"
+                        >
+                          <Eye size={13} />
+                          <span>{isArabic ? "معاينة بنود العقد ↗" : "Inspect Agreement ↗"}</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleVerifySeal(contract.seal)}
-                          className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/20 transition"
+                          className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/20 transition cursor-pointer"
                         >
                           <ShieldCheck size={13} className="text-midyaf-gold" />
                           <span>{l("Verified Digital Signature")}</span>
@@ -464,7 +478,7 @@ export function LogisticsMetricModal({
                               void onApproveContract(contract.id);
                             }
                           }}
-                          className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30 transition"
+                          className="flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30 transition cursor-pointer"
                         >
                           <CheckCircle2 size={13} />
                           <span>{l("Execute & Sign Contract")}</span>
@@ -474,6 +488,139 @@ export function LogisticsMetricModal({
                   </div>
                 ))}
               </div>
+
+              {/* Certified Contract Full Inspection Sheet Overlay */}
+              {inspectingContract && (
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fadeIn">
+                  <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-slate-950 border border-midyaf-gold/60 text-white shadow-2xl flex flex-col max-h-[90vh]">
+                    {/* Top Bar */}
+                    <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-900/90 px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-10 place-items-center rounded-xl bg-midyaf-gold/20 text-midyaf-gold ring-1 ring-midyaf-gold/40">
+                          <ReceiptText size={20} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-white">
+                            {isArabic ? "وثيقة التعاقد والتوريد الرسمية المعتمدة" : "Official Certified Procurement Agreement"}
+                          </h3>
+                          <p className="text-xs text-midyaf-gold font-mono">
+                            MIDYAF-CT-2027-{inspectingContract.id.toUpperCase()} · FII 2027
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setInspectingContract(null)}
+                        className="rounded-full bg-white/10 p-2 text-slate-300 hover:bg-white/20 transition cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Agreement Content */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+                      {/* Legal Header */}
+                      <div className="rounded-2xl bg-white/5 p-4 border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الأول (المنظم)" : "First Party (Organizer)"}</span>
+                          <p className="font-bold text-white text-xs mt-0.5">{event.name}</p>
+                          <p className="text-[10px] text-slate-400">{isArabic ? "سجل تجاري: 1010894421" : "CR: 1010894421"}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الثاني (المورد المعتمد)" : "Second Party (Vendor)"}</span>
+                          <p className="font-bold text-midyaf-gold text-xs mt-0.5">{inspectingContract.vendor}</p>
+                          <p className="text-[10px] text-slate-400">{inspectingContract.category}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "منصة الوساطة والضمان" : "Platform Escrow Authority"}</span>
+                          <p className="font-bold text-purple-300 text-xs mt-0.5">Midyaf Sovereign Escrow</p>
+                          <p className="text-[10px] text-slate-400">{isArabic ? "عمولة المنصة: " : "Platform Take: "}{inspectingContract.takeRate}</p>
+                        </div>
+                      </div>
+
+                      {/* Scope of Work */}
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-sm text-midyaf-gold flex items-center gap-1.5">
+                          <span>📋</span>
+                          <span>{isArabic ? "نطاق العمل ومحددات الخدمة (SOW)" : "Certified Scope of Work & Deliverables"}</span>
+                        </h4>
+                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10 text-slate-200 leading-relaxed">
+                          {inspectingContract.scope}
+                        </div>
+                      </div>
+
+                      {/* Financial Settlement Terms */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "إجمالي قيمة العقد" : "Contract Value (GMV)"}</span>
+                          <p className="text-lg font-black text-white font-mono mt-1">{inspectingContract.amount}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 p-3.5 border border-midyaf-gold/30">
+                          <span className="text-[10px] text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
+                          <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{inspectingContract.commission}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 p-3.5 border border-emerald-500/30">
+                          <span className="text-[10px] text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
+                          <p className="text-sm font-black text-emerald-400 mt-1.5">✓ {inspectingContract.status}</p>
+                        </div>
+                      </div>
+
+                      {/* Multi-Sig Cryptographic Seal Box */}
+                      <div className="rounded-2xl bg-slate-900 p-4 border border-emerald-500/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-emerald-400 text-xs flex items-center gap-1.5">
+                            <ShieldCheck size={15} />
+                            <span>{isArabic ? "أختام الموافقة المشفرة (Multi-Sig Vault)" : "Multi-Sig Cryptographic Approvals"}</span>
+                          </span>
+                          <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                            3/3 Verified
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-300 font-mono">
+                          <div className="rounded-xl bg-black/40 p-2 border border-white/5">
+                            <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 1: صلة" : "Key 1: Sila Ops"}</p>
+                            <p className="text-emerald-400 font-bold truncate">0x71a2...c890</p>
+                          </div>
+                          <div className="rounded-xl bg-black/40 p-2 border border-white/5">
+                            <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 2: المنظم" : "Key 2: Organizer"}</p>
+                            <p className="text-emerald-400 font-bold truncate">0x8f2b...c91e</p>
+                          </div>
+                          <div className="rounded-xl bg-black/40 p-2 border border-white/5">
+                            <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 3: الحارس السيادي" : "Key 3: Midyaf Guard"}</p>
+                            <p className="text-emerald-400 font-bold truncate">0x3e1a...7d44</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {inspectingContract.seal} · Immutable Ledger Record
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Inspection Footer Actions */}
+                    <div className="flex items-center justify-between border-t border-white/10 bg-slate-900/90 px-6 py-3.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          tacticalAudio.playChime();
+                          window.print();
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-white/20 transition cursor-pointer"
+                      >
+                        <Printer size={14} />
+                        <span>{isArabic ? "طباعة وثيقة العقد الرسمية" : "Print Official Agreement Voucher"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInspectingContract(null)}
+                        className="rounded-xl bg-gradient-to-r from-midyaf-gold to-amber-600 px-5 py-2 text-xs font-black text-slate-950 hover:brightness-110 transition cursor-pointer"
+                      >
+                        {isArabic ? "إغلاق المعاينة" : "Close Preview"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -683,7 +830,9 @@ export function LogisticsMetricModal({
                       isArabic ? "جاري تصدير التقرير التنفيذي الرسمي" : "Exporting Executive Report",
                       isArabic ? "صيغة PDF معتمدة وموثقة" : "Official Certified PDF"
                     );
-                    window.open(`/api/company-reports/${data.companyReports[0]?.id || "r-1"}/pdf`, "_blank");
+                    const reportId = data.companyReports[0]?.id || "r-1";
+                    const tokenParam = session?.accessToken ? `?token=${encodeURIComponent(session.accessToken)}` : "";
+                    window.open(`/api/company-reports/${reportId}/pdf${tokenParam}`, "_blank");
                   }}
                   className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-gold to-amber-600 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg hover:brightness-110 transition active:scale-95"
                 >

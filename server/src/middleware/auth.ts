@@ -42,7 +42,11 @@ export function requireAuth(
   next: NextFunction
 ) {
   const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
+  const token = header?.startsWith("Bearer ")
+    ? header.slice(7)
+    : typeof req.query?.token === "string"
+      ? req.query.token
+      : undefined;
 
   if (!token) {
     throw new HttpError(401, "Missing bearer token");

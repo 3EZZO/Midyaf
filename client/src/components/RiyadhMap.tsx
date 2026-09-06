@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L, { type LayerGroup, type Map as LeafletMap, type TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -86,6 +86,43 @@ const VIP_GUESTS_ROSTER = [
   }
 ];
 
+export const SUMMIT_CORRIDORS = [
+  {
+    nameEn: "Airport Protocol Corridor (KKIA T2 ↔ Ritz-Carlton)",
+    nameAr: "ممر الاستقبال الدبلوماسي (مطار الملك خالد ↔ الريتز-كارلتون)",
+    color: "#C9A84C",
+    points: [
+      [24.9576, 46.6988],
+      [24.9120, 46.7050],
+      [24.8540, 46.6910],
+      [24.7950, 46.6710],
+      [24.7310, 46.6500],
+      [24.6661, 46.6302]
+    ] as [number, number][]
+  },
+  {
+    nameEn: "Sovereign Financial Corridor (Ritz-Carlton ↔ KAFD Plenary)",
+    nameAr: "الممر المالي السيادي (الريتز-كارلتون ↔ كافد)",
+    color: "#38BDF8",
+    points: [
+      [24.6661, 46.6302],
+      [24.7000, 46.6350],
+      [24.7400, 46.6420],
+      [24.7642, 46.6406]
+    ] as [number, number][]
+  },
+  {
+    nameEn: "Diplomatic Heritage Corridor (KAFD ↔ Historic Diriyah)",
+    nameAr: "ممر الدرعية التراثي (كافد ↔ مطل البجيري)",
+    color: "#10B981",
+    points: [
+      [24.7642, 46.6406],
+      [24.7500, 46.6100],
+      [24.7335, 46.5742]
+    ] as [number, number][]
+  }
+];
+
 export function RiyadhMap({
   event,
   drivers,
@@ -110,11 +147,13 @@ export function RiyadhMap({
   const [mapMode, setMapMode] = useState<"dark" | "satellite" | "standard">(defaultMode);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState<"drivers" | "guests" | "tasks">("drivers");
+  const [selectedZone, setSelectedZone] = useState<"ALL" | "NORTH" | "CENTRAL" | "WEST">("ALL");
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LayerGroup | null>(null);
   const tileLayerRef = useRef<TileLayer | null>(null);
+  const hasInitialFitRef = useRef(false);
 
   // Initialize Map
   useEffect(() => {
@@ -191,16 +230,34 @@ export function RiyadhMap({
     tileLayerRef.current = newLayer;
   }, [mapMode]);
 
+  const displayedDrivers = useMemo(() => {
+    if (selectedZone === "ALL") return drivers;
+    return drivers.filter((d) => {
+      const zone = (d.zone ?? "").toUpperCase();
+      const lat = d.currentLat;
+      const lng = d.currentLng;
+      if (selectedZone === "NORTH") return zone.includes("NORTH") || (typeof lat === "number" && lat > 24.85);
+      if (selectedZone === "CENTRAL") return zone.includes("CENTRAL") || (typeof lat === "number" && lat >= 24.70 && lat <= 24.85);
+      if (selectedZone === "WEST") return zone.includes("WEST") || zone.includes("DIRIYAH") || (typeof lng === "number" && lng < 46.62);
+      return true;
+    });
+  }, [drivers, selectedZone]);
+
   // Center on Driver
   const handleLocateDriver = (driver: Driver) => {
-    tacticalAudio.playTacticalPing();
+    tacticalAudio.playChime();
     const lat = driver.currentLat;
     const lng = driver.currentLng;
     if (typeof lat === "number" && typeof lng === "number" && mapRef.current) {
-      mapRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
+      mapRef.current.flyTo([lat, lng], 15, { duration: 1.0 });
       onSelectDriver?.(driver);
     }
   };
+
+  // Reset viewport fit if event changes
+  useEffect(() => {
+    hasInitialFitRef.current = false;
+  }, [event?.id]);
 
   // Update Markers and Routes
   useEffect(() => {
@@ -210,6 +267,30 @@ export function RiyadhMap({
 
     layer.clearLayers();
     const bounds = L.latLngBounds([]);
+
+    // 0. Sovereign Arterial Corridors
+    for (const corridor of SUMMIT_CORRIDORS) {
+      // Ambient glow polyline
+      L.polyline(corridor.points, {
+        color: corridor.color,
+        weight: 8,
+        opacity: 0.22
+      }).addTo(layer);
+
+      // Core illuminated vector line
+      const line = L.polyline(corridor.points, {
+        color: corridor.color,
+        weight: 2.5,
+        opacity: 0.85,
+        dashArray: "6, 8"
+      }).addTo(layer);
+
+      line.bindTooltip(isArabic ? corridor.nameAr : corridor.nameEn, {
+        permanent: false,
+        direction: "center",
+        className: "bg-slate-950 text-white border border-midyaf-gold text-xs px-2 py-1 rounded shadow-xl"
+      });
+    }
 
     // 1. Venue Marker (Royal Gold)
     const venuePoint = coordinates(event?.venueLat, event?.venueLng);
@@ -285,7 +366,7 @@ export function RiyadhMap({
     }
 
     // 3. Drivers with Real-time GPS & Heading Telemetry
-    for (const driver of drivers) {
+    for (const driver of displayedDrivers) {
       const driverPoint = coordinates(driver.currentLat, driver.currentLng);
       if (driverPoint) {
         const vehicleName = (driver as any).vehicleModel ?? "VIP Motorcade";
@@ -308,15 +389,18 @@ export function RiyadhMap({
       }
     }
 
-    if (bounds.isValid()) {
-      map.fitBounds(bounds.pad(0.15), {
-        maxZoom: 13,
-        animate: false
-      });
-    } else {
-      map.setView([RIYADH.centerLat, RIYADH.centerLng], RIYADH.defaultZoom);
+    if (!hasInitialFitRef.current) {
+      if (bounds.isValid()) {
+        map.fitBounds(bounds.pad(0.15), {
+          maxZoom: 13,
+          animate: false
+        });
+      } else {
+        map.setView([RIYADH.centerLat, RIYADH.centerLng], RIYADH.defaultZoom);
+      }
+      hasInitialFitRef.current = true;
     }
-  }, [drivers, event, i18n.language, l, mapMode, onSelectDriver, tasks]);
+  }, [displayedDrivers, event, i18n.language, l, mapMode, onSelectDriver, tasks]);
 
   // Main Render
   return (
@@ -364,7 +448,31 @@ export function RiyadhMap({
           </div>
 
           {/* Action Tools & Switchers */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* District Zone Filters */}
+            <div className="hidden sm:flex items-center gap-1 rounded-xl bg-white/5 p-1 ring-1 ring-white/10">
+              {(["ALL", "NORTH", "CENTRAL", "WEST"] as const).map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playTacticalPing();
+                    setSelectedZone(z);
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
+                    selectedZone === z
+                      ? "bg-midyaf-gold text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {z === "ALL" && (isArabic ? "كافة المسارات" : "All Corridors")}
+                  {z === "NORTH" && (isArabic ? "شمال / المطار" : "North / KKIA")}
+                  {z === "CENTRAL" && (isArabic ? "كافد المالي" : "KAFD Plenary")}
+                  {z === "WEST" && (isArabic ? "الدرعية / الدبلوماسي" : "Diriyah / DQ")}
+                </button>
+              ))}
+            </div>
+
             {/* Tactical Cartography Switcher */}
             <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1 ring-1 ring-white/10">
               <button
@@ -493,7 +601,7 @@ export function RiyadhMap({
               <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                 {fullscreenTab === "drivers" && (
                   <div className="space-y-2">
-                    {drivers.map((driver) => {
+                    {displayedDrivers.map((driver) => {
                       const vehicle = (driver as any).vehicleModel ?? "VIP Motorcade";
                       const plate = (driver as any).plateNumber ?? "2027 KSA";
                       const speed = (driver as any).speed ?? 78;

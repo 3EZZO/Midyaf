@@ -425,6 +425,9 @@ export function useLiveDemoSimulation({
             ...driver,
             currentLat: sultanWp.lat,
             currentLng: sultanWp.lng,
+            speed: sultanWp.speed,
+            vehicleModel: "Mercedes-Maybach S680",
+            plateNumber: "KSA 9119",
             status: "EN_ROUTE" as const,
             zone: "NORTH_RIYADH" as const,
             lastLocationAt: new Date().toISOString()
@@ -434,6 +437,9 @@ export function useLiveDemoSimulation({
             ...driver,
             currentLat: fahadWp.lat,
             currentLng: fahadWp.lng,
+            speed: fahadWp.speed,
+            vehicleModel: "BMW 7-Series VIP",
+            plateNumber: "KSA 2030",
             status: "EN_ROUTE" as const,
             zone: "CENTRAL_RIYADH" as const,
             lastLocationAt: new Date().toISOString()
@@ -443,6 +449,9 @@ export function useLiveDemoSimulation({
             ...driver,
             currentLat: rakanWp.lat,
             currentLng: rakanWp.lng,
+            speed: rakanWp.speed,
+            vehicleModel: "Mercedes V-Class VIP Shuttle",
+            plateNumber: "KSA 7788",
             status: "EN_ROUTE" as const,
             zone: "WEST_RIYADH" as const,
             lastLocationAt: new Date().toISOString()
@@ -452,6 +461,9 @@ export function useLiveDemoSimulation({
             ...driver,
             currentLat: tariqWp.lat,
             currentLng: tariqWp.lng,
+            speed: tariqWp.speed,
+            vehicleModel: "Mercedes V-Class Executive",
+            plateNumber: "KSA 5544",
             status: "AVAILABLE" as const,
             zone: "EAST_RIYADH" as const,
             lastLocationAt: new Date().toISOString()
@@ -461,6 +473,9 @@ export function useLiveDemoSimulation({
             ...driver,
             currentLat: nasserWp.lat,
             currentLng: nasserWp.lng,
+            speed: nasserWp.speed,
+            vehicleModel: "Lexus LS 500 Executive",
+            plateNumber: "KSA 1122",
             status: "EN_ROUTE" as const,
             zone: "DIRIYAH_CORRIDOR" as const,
             lastLocationAt: new Date().toISOString()
@@ -472,13 +487,74 @@ export function useLiveDemoSimulation({
           ...driver,
           currentLat: sultanWp.lat,
           currentLng: sultanWp.lng,
+          speed: 65,
           lastLocationAt: new Date().toISOString()
         };
       });
 
+      // 2. Synchronize event tasks dynamically
+      const updatedEvents = current.events.map((evt, evtIdx) => {
+        if (evtIdx !== 0) return evt;
+
+        const updatedTasks = evt.tasks.map((task, tIdx) => {
+          // Task 0 or Airport Chauffeur
+          if (tIdx === 0 || (task.type as string).includes("CHAUFFEUR") || (task.type as string).includes("AIRPORT")) {
+            const sultanCycle = currentStep % DRIVER_ROUTES.sultan.length;
+            const nextStatus = sultanCycle < 2 ? "ASSIGNED" : sultanCycle < 5 ? "EN_ROUTE" : "COMPLETED";
+            return {
+              ...task,
+              status: nextStatus as any,
+              pickupLat: sultanWp.lat,
+              pickupLng: sultanWp.lng
+            };
+          }
+          // Task 1 or Plenary Shuttle
+          if (tIdx === 1 || (task.type as string).includes("SHUTTLE") || (task.type as string).includes("PLENARY")) {
+            const fahadCycle = currentStep % DRIVER_ROUTES.fahad.length;
+            const nextStatus = fahadCycle < 1 ? "ASSIGNED" : "EN_ROUTE";
+            return {
+              ...task,
+              status: nextStatus as any,
+              pickupLat: fahadWp.lat,
+              pickupLng: fahadWp.lng
+            };
+          }
+          // Task 2 or Diriyah Gala
+          if (tIdx === 2 || (task.type as string).includes("DIRIYAH") || (task.type as string).includes("GALA")) {
+            const nasserCycle = currentStep % DRIVER_ROUTES.nasser.length;
+            const nextStatus = nasserCycle === 0 ? "ASSIGNED" : nasserCycle === 1 ? "EN_ROUTE" : "COMPLETED";
+            return {
+              ...task,
+              status: nextStatus as any
+            };
+          }
+          return task;
+        });
+
+        return {
+          ...evt,
+          tasks: updatedTasks
+        };
+      });
+
+      // 3. Synchronize VIP Guest Journey App
+      const updatedJourneys = current.guestJourneys.map((journey, jIdx) => {
+        if (jIdx === 0) {
+          const sultanCycle = currentStep % DRIVER_ROUTES.sultan.length;
+          const arrivalStatus = sultanCycle < 2 ? "LANDED" : sultanCycle < 5 ? "IN_TRANSIT" : "AT_HOTEL";
+          return {
+            ...journey,
+            arrivalStatus: arrivalStatus as any
+          };
+        }
+        return journey;
+      });
+
       return {
         ...current,
-        drivers: updatedDrivers
+        drivers: updatedDrivers,
+        events: updatedEvents,
+        guestJourneys: updatedJourneys
       };
     });
 
