@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import type { Socket } from "socket.io-client";
+import {
+  encodeTelemetryFrame,
+  shouldEmitTelemetry,
+  type TelemetryFrame
+} from "./telemetryCodec";
 
 export type LiveLocationState = {
   lat: number | null;
@@ -37,6 +42,7 @@ export function useLiveLocation({
   });
 
   const lastEmitRef = useRef<number>(0);
+  const lastFrameRef = useRef<TelemetryFrame | null>(null);
 
   useEffect(() => {
     if (!enabled || !navigator.geolocation) {
@@ -52,7 +58,7 @@ export function useLiveLocation({
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude, speed, heading, accuracy } = position.coords;
+        const { latitude, longitude, speed, heading, accuracy, altitude } = position.coords;
         const now = Date.now();
 
         setState({
@@ -65,25 +71,55 @@ export function useLiveLocation({
           tracking: true
         });
 
-        // Throttle emissions to once every 8 seconds
-        if (socket && now - lastEmitRef.current > 8000) {
-          lastEmitRef.current = now;
-          const payload = {
-            userId,
-            role,
-            driverId,
-            eventId,
+        // Fast high-precision tracking (evaluated at 2s interval with deadband filtering)
+        if (socket && now - lastEmitRef.current >= 2000) {
+          const nextFrame: TelemetryFrame = {
+            driverId: driverId || userId || "unknown",
             lat: latitude,
             lng: longitude,
-            speed: speed ?? 0,
-            heading: heading ?? 0,
-            timestamp: new Date().toISOString()
+            speed: Math.round((speed ?? 0) * 3.6), // m/s to km/h
+            heading: Math.round(heading ?? 0),
+            altitude: altitude !== null ? Math.round(altitude) : undefined,
+            accuracy: accuracy !== null ? Math.round(accuracy) : undefined,
+            timestamp: now,
+            status: "EN_ROUTE",
+            eventId
           };
 
-          if (role === "DRIVER") {
-            socket.emit("driver:location_update", payload);
-          } else {
-            socket.emit("user:location_update", payload);
+          if (shouldEmitTelemetry(lastFrameRef.current, nextFrame, 5, 10, 6000)) {
+            lastEmitRef.current = now;
+            lastFrameRef.current = nextFrame;
+
+            const packed = encodeTelemetryFrame(nextFrame);
+
+            if (role === "DRIVER") {
+              // Emit compact binary-like stream
+              socket.emit("driver:telemetry_stream", packed);
+              // Emit formatted legacy update for standard UI handlers
+              socket.emit("driver:location_update", {
+                userId,
+                role,
+                driverId,
+                eventId,
+                lat: latitude,
+                lng: longitude,
+                speed: nextFrame.speed,
+                heading: nextFrame.heading,
+                timestamp: new Date(now).toISOString()
+              });
+            } else {
+              socket.emit("user:location_update", {
+                userId,
+                role,
+                driverId,
+                eventId,
+                lat: latitude,
+                lng: longitude,
+                speed: nextFrame.speed,
+                heading: nextFrame.heading,
+                timestamp: new Date(now).toISOString()
+              });
+            }
           }
         }
       },
@@ -96,8 +132,8 @@ export function useLiveLocation({
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000
+        timeout: 10000,
+        maximumAge: 3000
       }
     );
 

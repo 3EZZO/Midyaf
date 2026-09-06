@@ -27,6 +27,7 @@ import auditLogsRouter from "./routes/auditLogs.js";
 import ridersRouter from "./routes/riders.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
+import { telemetryBuffer } from "./services/telemetryBuffer.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -83,44 +84,81 @@ io.on("connection", (socket) => {
     socket.join("organizers");
   });
 
-  socket.on("driver:location_update", async (payload) => {
-    const eventRoom = payload?.eventId ? `event:${payload.eventId}` : "organizers";
-    io.to(eventRoom).emit("driver:location_update", payload);
-    io.to("organizers").emit("driver:location_update", payload);
-    if (payload?.driverId && typeof payload?.lat === "number" && typeof payload?.lng === "number") {
-      try {
-        await prisma.driver.update({
-          where: { id: payload.driverId },
-          data: {
-            currentLat: payload.lat,
-            currentLng: payload.lng,
-            lastLocationAt: new Date()
-          }
-        });
-      } catch (err) {
-        // ignore db error on high freq updates
-      }
+  socket.on("driver:location_update", (payload) => {
+    const res = telemetryBuffer.ingest(payload);
+    if (!res) return;
+
+    const eventRoom = res.frame.eventId ? `event:${res.frame.eventId}` : "organizers";
+
+    // Broadcast compact telemetry stream to war room & live clients
+    io.to(eventRoom).emit("driver:telemetry_stream", res.packed);
+    io.to("organizers").emit("driver:telemetry_stream", res.packed);
+
+    // If significant movement or status change, broadcast formatted payload
+    if (res.shouldBroadcast) {
+      const formatted = {
+        driverId: res.frame.driverId,
+        lat: res.frame.lat,
+        lng: res.frame.lng,
+        speed: res.frame.speed,
+        heading: res.frame.heading,
+        altitude: res.frame.altitude,
+        accuracy: res.frame.accuracy,
+        status: res.frame.status,
+        eventId: res.frame.eventId,
+        timestamp: new Date(res.frame.timestamp).toISOString()
+      };
+      io.to(eventRoom).emit("driver:location_update", formatted);
+      io.to("organizers").emit("driver:location_update", formatted);
     }
   });
 
-  socket.on("user:location_update", async (payload) => {
+  socket.on("driver:telemetry_stream", (packedPayload) => {
+    const res = telemetryBuffer.ingest(packedPayload);
+    if (!res) return;
+
+    const eventRoom = res.frame.eventId ? `event:${res.frame.eventId}` : "organizers";
+    io.to(eventRoom).emit("driver:telemetry_stream", res.packed);
+    io.to("organizers").emit("driver:telemetry_stream", res.packed);
+
+    if (res.shouldBroadcast) {
+      io.to(eventRoom).emit("driver:location_update", {
+        driverId: res.frame.driverId,
+        lat: res.frame.lat,
+        lng: res.frame.lng,
+        speed: res.frame.speed,
+        heading: res.frame.heading,
+        status: res.frame.status,
+        eventId: res.frame.eventId,
+        timestamp: new Date(res.frame.timestamp).toISOString()
+      });
+      io.to("organizers").emit("driver:location_update", {
+        driverId: res.frame.driverId,
+        lat: res.frame.lat,
+        lng: res.frame.lng,
+        speed: res.frame.speed,
+        heading: res.frame.heading,
+        status: res.frame.status,
+        eventId: res.frame.eventId,
+        timestamp: new Date(res.frame.timestamp).toISOString()
+      });
+    }
+  });
+
+  socket.on("user:location_update", (payload) => {
     io.to("organizers").emit("user:location_update", payload);
     if (payload?.eventId) {
       io.to(`event:${payload.eventId}`).emit("user:location_update", payload);
     }
     if (payload?.driverId && typeof payload?.lat === "number" && typeof payload?.lng === "number") {
-      try {
-        await prisma.driver.update({
-          where: { id: payload.driverId },
-          data: {
-            currentLat: payload.lat,
-            currentLng: payload.lng,
-            lastLocationAt: new Date()
-          }
-        });
-      } catch (err) {
-        // ignore db error on high freq updates
-      }
+      telemetryBuffer.ingest({
+        driverId: payload.driverId,
+        lat: payload.lat,
+        lng: payload.lng,
+        speed: payload.speed || 0,
+        heading: payload.heading || 0,
+        eventId: payload.eventId
+      });
     }
   });
 
@@ -213,6 +251,7 @@ process.on("SIGTERM", shutdown);
 
 async function shutdown() {
   stopDelayMonitor();
+  await telemetryBuffer.stop();
   await prisma.$disconnect();
   server.close(() => process.exit(0));
 }

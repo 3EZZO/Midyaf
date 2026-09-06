@@ -313,6 +313,13 @@ export function SovereignCommandBridge({
             <span>{isArabic ? "١٢ كم/س" : "12 km/h"}</span>
             <span className="text-emerald-400 font-bold ms-1">{isArabic ? "جودة الهواء ٣٢" : "AQI 32"}</span>
           </div>
+
+          {/* Spatial Buffer Ingestion Telemetry */}
+          <div className="hidden xl:flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 border border-emerald-500/30">
+            <Radio size={13} className="text-emerald-400 animate-pulse" />
+            <span className="font-mono font-bold text-[11px]">{isArabic ? "مخزن الإحداثيات: نشط (٠ تأخير)" : "Spatial Buffer: Active (0ms Lag)"}</span>
+            <span className="text-[10px] px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono">1.5 Hz</span>
+          </div>
         </div>
 
         {/* Right Action Tools */}

@@ -26,6 +26,7 @@ import {
 } from "../services/logisticsRules.js";
 import { generateReportPdf } from "../services/pdf.js";
 import { recordAuditLog } from "../services/auditLog.js";
+import { telemetryBuffer } from "../services/telemetryBuffer.js";
 
 const router = Router();
 const logisticsRoles: Role[] = [
@@ -43,6 +44,49 @@ const requestCreateRoles: Role[] = [
 ];
 
 router.use(requireAuth);
+
+router.get(
+  "/operations/telemetry/snapshot",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const eventId = typeof req.query.eventId === "string" ? req.query.eventId : undefined;
+    const snapshot = telemetryBuffer.getSnapshot(eventId);
+    res.json({
+      count: snapshot.length,
+      snapshot,
+      timestamp: new Date().toISOString()
+    });
+  })
+);
+
+router.get(
+  "/operations/telemetry/buffer-stats",
+  asyncHandler(async (_req: AuthRequest, res) => {
+    const stats = telemetryBuffer.getStats();
+    res.json({ stats });
+  })
+);
+
+router.get(
+  "/operations/telemetry/nearby",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const radius = parseFloat(req.query.radius as string) || 5000;
+    const eventId = typeof req.query.eventId === "string" ? req.query.eventId : undefined;
+
+    if (isNaN(lat) || isNaN(lng)) {
+      throw new HttpError(400, "Latitude and longitude query params are required");
+    }
+
+    const nearby = telemetryBuffer.findDriversWithinRadius(lat, lng, radius, eventId);
+    res.json({
+      origin: { lat, lng },
+      radiusMeters: radius,
+      matchesCount: nearby.length,
+      matches: nearby
+    });
+  })
+);
 
 type AuthUser = NonNullable<AuthRequest["user"]>;
 
