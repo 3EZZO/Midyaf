@@ -5,10 +5,12 @@ import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
 import { Section } from "../components/Section";
 import { money, percent } from "../lib/format";
+import { isArabicLanguage, localizeText } from "../lib/localize";
 import type { PortalProps } from "./types";
 
 export function SuperAdmin({ data }: PortalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const event = data.events[0];
   const totalCommission = event.bookings.reduce(
     (sum, booking) => sum + Number(booking.commissionAmount),
@@ -20,11 +22,12 @@ export function SuperAdmin({ data }: PortalProps) {
       <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
         <Badge tone="gold">{t("admin.title")}</Badge>
         <h1 className="mt-4 text-2xl font-bold">
-          Platform controls, analytics, and compliance
+          {isArabic ? "إدارة المنصة، التحليلات، والامتثال النظامي" : "Platform controls, analytics, and compliance"}
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-white/75">
-          Manage roles, Riyadh feature flags, supplier commission ranges,
-          sponsored placement, and PDPL-aligned hosting policy.
+          {isArabic
+            ? "إدارة الأدوار، ميزات الرياض، نطاقات عمولة الموردين، الترويج المميز، وسياسة الاستضافة المتوافقة مع نظام حماية البيانات الشخصية."
+            : "Manage roles, Riyadh feature flags, supplier commission ranges, sponsored placement, and PDPL-aligned hosting policy."}
         </p>
       </section>
 
@@ -32,39 +35,39 @@ export function SuperAdmin({ data }: PortalProps) {
         <MetricCard
           label={t("common.guests")}
           value={event.guests.length}
-          detail={`Free tier cap ${BUSINESS_RULES.freeTierGuestLimit}`}
+          detail={isArabic ? `الحد الأقصى المجاني ${BUSINESS_RULES.freeTierGuestLimit}` : `Free tier cap ${BUSINESS_RULES.freeTierGuestLimit}`}
           icon={<Users size={17} />}
         />
         <MetricCard
           label={t("common.suppliers")}
           value={data.suppliers.length}
-          detail="Verified marketplace"
+          detail={isArabic ? "سوق موثق" : "Verified marketplace"}
           icon={<Building2 size={17} />}
         />
         <MetricCard
           label={t("metrics.commission")}
           value={money(totalCommission)}
-          detail="Current event"
+          detail={isArabic ? "الفعالية الحالية" : "Current event"}
           icon={<BarChart3 size={17} />}
         />
         <MetricCard
-          label="Compliance"
+          label={isArabic ? "الامتثال" : "Compliance"}
           value="PDPL"
-          detail="AWS me-south-1 preferred"
+          detail={isArabic ? "استضافة محلية متوافقة (AWS الرياض)" : "AWS me-south-1 preferred"}
           icon={<ShieldCheck size={17} />}
         />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <Section title="Users">
+        <Section title={isArabic ? "المستخدمين" : "Users"}>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase text-slate-500">
-                  <th className="py-2 pe-4">Name</th>
-                  <th className="py-2 pe-4">Role</th>
-                  <th className="py-2 pe-4">Phone</th>
-                  <th className="py-2 pe-4">Language</th>
+                  <th className="py-2 pe-4">{isArabic ? "الاسم" : "Name"}</th>
+                  <th className="py-2 pe-4">{isArabic ? "الدور" : "Role"}</th>
+                  <th className="py-2 pe-4">{isArabic ? "الجوال" : "Phone"}</th>
+                  <th className="py-2 pe-4">{isArabic ? "اللغة" : "Language"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -74,11 +77,11 @@ export function SuperAdmin({ data }: PortalProps) {
                       {user.name}
                     </td>
                     <td className="py-3 pe-4">
-                      <Badge tone="purple">{user.role}</Badge>
+                      <Badge tone="purple">{localizeText(user.role, isArabic)}</Badge>
                     </td>
                     <td className="py-3 pe-4 text-slate-500">{user.phone}</td>
                     <td className="py-3 pe-4 text-slate-500">
-                      {user.language}
+                      {user.language === "ar" ? (isArabic ? "العربية" : "Arabic") : (isArabic ? "الإنجليزية" : "English")}
                     </td>
                   </tr>
                 ))}
@@ -92,16 +95,16 @@ export function SuperAdmin({ data }: PortalProps) {
             <div className="rounded-lg bg-emerald-50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-midyaf-ink">{data.city.nameEn}</p>
+                  <p className="font-bold text-midyaf-ink">{isArabic ? data.city.nameAr : data.city.nameEn}</p>
                   <p className="text-xs text-slate-500">
-                    {data.city.timezone} · {data.city.currency} · VAT{" "}
+                    {data.city.timezone} · {data.city.currency} · {isArabic ? "الضريبة" : "VAT"}{" "}
                     {percent(data.city.vatPercent)}
                   </p>
                 </div>
-                <Badge tone="green">Enabled</Badge>
+                <Badge tone="green">{isArabic ? "مفعل" : "Enabled"}</Badge>
               </div>
             </div>
-            {["Jeddah", "Al Khobar", "AlUla"].map((city) => (
+            {(isArabic ? ["جدة", "الخبر", "العلا"] : ["Jeddah", "Al Khobar", "AlUla"]).map((city) => (
               <div
                 key={city}
                 className="flex items-center justify-between rounded-lg bg-slate-100 p-4 text-slate-400"
@@ -127,10 +130,10 @@ export function SuperAdmin({ data }: PortalProps) {
               >
                 <div>
                   <p className="font-semibold text-midyaf-ink">
-                    {config.category ?? "Default"}
+                    {config.category ? localizeText(config.category, isArabic) : (isArabic ? "افتراضي" : "Default")}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Range {percent(config.minPercent)}-{percent(config.maxPercent)}
+                    {isArabic ? "النطاق" : "Range"} {percent(config.minPercent)}-{percent(config.maxPercent)}
                   </p>
                 </div>
                 <Badge tone="gold">{percent(config.defaultPercent)}</Badge>
@@ -142,10 +145,10 @@ export function SuperAdmin({ data }: PortalProps) {
         <Section title={t("admin.platformAnalytics")}>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              ["On-time rate", "94%"],
-              ["Cost per guest", money(2130)],
-              ["Driver utilization", "78%"],
-              ["Demand forecast", "+18%"]
+              [isArabic ? "نسبة الالتزام بالمواعيد" : "On-time rate", "94%"],
+              [isArabic ? "التكلفة لكل ضيف" : "Cost per guest", money(2130)],
+              [isArabic ? "نسبة إشغال السائقين" : "Driver utilization", "78%"],
+              [isArabic ? "توقع الطلب" : "Demand forecast", "+18%"]
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs text-slate-500">{label}</p>

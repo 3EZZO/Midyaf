@@ -52,6 +52,7 @@ import {
 } from "../lib/useLiveDemoSimulation";
 import {
   isArabicLanguage,
+  localizeStatus,
   localizeText,
   pickText
 } from "../lib/localize";
@@ -926,7 +927,7 @@ export function CaptainsApp({
             className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
           >
             <Zap size={14} className="fill-current" />
-            <span>Start VIP Trip</span>
+            <span>{ui.p("Start VIP Trip", "بدء رحلة VIP")}</span>
           </button>
         </form>
       </section>
@@ -1058,6 +1059,7 @@ function HospitalityRidersSection({
   session?: PortalProps["session"];
   refreshData?: () => Promise<void>;
 }) {
+  const ui = useOpsText();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   async function toggleFulfilled(riderId: string, currentStatus: boolean) {
@@ -1099,12 +1101,12 @@ function HospitalityRidersSection({
             <div key={rider.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 shadow-card transition-all hover:shadow-luxury dark:border-amber-900/50 dark:bg-dark-card">
               <div className="flex items-start justify-between gap-3 border-b border-amber-100 pb-3 dark:border-amber-900/30">
                 <div>
-                  <Badge tone="gold">VIP Platinum Protocol</Badge>
+                  <Badge tone="gold">{ui.p("VIP Platinum Protocol", "بروتوكول VIP البلاتيني")}</Badge>
                   <h3 className="mt-2 text-lg font-bold text-midyaf-ink dark:text-dark-primary">
-                    {guest?.user.name ?? "VIP Guest"}
+                    {guest?.user.name ?? (ui.isArabic ? "ضيف VIP" : "VIP Guest")}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-dark-secondary">
-                    Tier: {guest?.tier ?? "Platinum"} · {guest?.rsvpStatus ?? "CONFIRMED"}
+                    {ui.p("Tier: ", "الفئة: ")}{guest?.tier ?? "Platinum"} · {localizeStatus(guest?.rsvpStatus ?? "CONFIRMED", ui.isArabic)}
                   </p>
                 </div>
                 <button
@@ -1117,14 +1119,14 @@ function HospitalityRidersSection({
                   }`}
                 >
                   {updatingId === rider.id ? (
-                    "Updating..."
+                    ui.p("Updating...", "جاري التحديث...")
                   ) : rider.fulfilled ? (
                     <span className="flex items-center gap-1">
                       <CheckCircle2 size={13} />
-                      <span>Fulfilled {rider.fulfilledBy ? `by ${rider.fulfilledBy}` : ""}</span>
+                      <span>{ui.p("Fulfilled", "تمت التلبية")} {rider.fulfilledBy ? (ui.isArabic ? `بواسطة ${rider.fulfilledBy}` : `by ${rider.fulfilledBy}`) : ""}</span>
                     </span>
                   ) : (
-                    "Mark as Fulfilled"
+                    ui.p("Mark as Fulfilled", "تحديد كمكتمل ومُلبى")
                   )}
                 </button>
               </div>
@@ -1133,11 +1135,11 @@ function HospitalityRidersSection({
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
                     <Utensils size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Dietary Needs</span>
+                    <span>{ui.p("Dietary Needs", "اشتراطات التغذية")}</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.dietaryNeeds?.map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{ui.l(item)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1145,11 +1147,11 @@ function HospitalityRidersSection({
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-purple-800 dark:text-purple-400 mb-1 flex items-center gap-1.5">
                     <Building size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                    <span>Room Preferences</span>
+                    <span>{ui.p("Room Preferences", "تفضيلات الجناح")}</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.roomPreferences?.map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{ui.l(item)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1157,11 +1159,11 @@ function HospitalityRidersSection({
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1.5">
                     <Car size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span>Vehicle & Transit</span>
+                    <span>{ui.p("Vehicle & Transit", "المركبة والتنقل")}</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.vehicleRider?.map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{ui.l(item)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1169,11 +1171,11 @@ function HospitalityRidersSection({
                 <div className="rounded-lg bg-red-50/80 p-3 shadow-sm border border-red-100 dark:bg-red-950/20 dark:border-red-900/30">
                   <p className="font-bold text-red-800 dark:text-red-400 mb-1 flex items-center gap-1.5">
                     <ShieldCheck size={14} className="text-red-600 dark:text-red-400 shrink-0" />
-                    <span>Security & Protocol</span>
+                    <span>{ui.p("Security & Protocol", "الأمن والبروتوكول")}</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-red-700 dark:text-red-300">
                     {rider.securityNotes?.map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
+                      <li key={i}>{ui.l(item)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1352,7 +1354,7 @@ function AirportExpressSection({
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
                   <Zap size={11} />
-                  <span>INSTANT DISPATCH</span>
+                  <span>{ui.p("INSTANT DISPATCH", "توجيه فوري")}</span>
                 </span>
                 <h3 className="text-lg font-bold text-white">
                   {ui.p("Airport Walk-in Express Intake", "تسجيل وصول المطار الفوري والتوجيه السريع")}
@@ -3991,7 +3993,7 @@ export function CompanyDashboard({
                 <div>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
                     <Sparkles size={10} className="text-amber-400" />
-                    <span>AI EXECUTIVE REPORT</span>
+                    <span>{ui.p("AI EXECUTIVE REPORT", "التقرير التنفيذي الذكي")}</span>
                   </span>
                   <h3 className="text-lg font-bold text-amber-300">
                     {ui.p(aiReport.title, aiReport.titleAr || aiReport.title)}

@@ -16,6 +16,7 @@ import { Section } from "../components/Section";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { AiPanel } from "../components/AiPanel";
 import { money, percent, shortTime } from "../lib/format";
+import { isArabicLanguage } from "../lib/localize";
 import type { PortalProps } from "./types";
 
 const kanbanStatuses: TaskStatus[] = [
@@ -28,6 +29,7 @@ const kanbanStatuses: TaskStatus[] = [
 
 export function OrganizerDashboard({ data, session }: PortalProps) {
   const { t, i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const [inviteResult, setInviteResult] = useState("");
   const event = data.events[0];
   const vipGuests = event.guests.filter((guest) => guest.isVIP);
@@ -125,7 +127,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
                     {guest.qrCode} · {guest.rsvpStatus}
                   </p>
                 </div>
-                {guest.isVIP ? <Badge tone="gold">VIP</Badge> : null}
+                {guest.isVIP ? <Badge tone="gold">{isArabic ? "شخصية هامة VIP" : "VIP"}</Badge> : null}
               </div>
             ))}
           </div>

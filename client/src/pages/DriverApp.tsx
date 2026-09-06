@@ -7,6 +7,7 @@ import { Section } from "../components/Section";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { money, shortTime } from "../lib/format";
 import { useLiveLocation } from "../lib/useLiveLocation";
+import { isArabicLanguage, localizeStatus, localizeText } from "../lib/localize";
 import type { PortalProps } from "./types";
 
 export function DriverApp({
@@ -15,6 +16,7 @@ export function DriverApp({
   shareDriverLocation
 }: PortalProps) {
   const { t, i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const event = data.events[0];
   const driver = data.drivers[0];
   const tasks = useMemo(
@@ -44,12 +46,14 @@ export function DriverApp({
             <span className={`size-3 rounded-full ${locationState.tracking ? "bg-emerald-300 animate-ping" : "bg-slate-400"}`} />
             <div>
               <p className="text-xs font-bold tracking-wide uppercase">
-                {locationState.tracking ? "Live GPS Auto-Tracking Active" : "GPS Tracking Offline"}
+                {locationState.tracking
+                  ? (isArabic ? "التتبع التلقائي المباشر (GPS) نشط" : "Live GPS Auto-Tracking Active")
+                  : (isArabic ? "تتبع الموقع (GPS) غير متصل" : "GPS Tracking Offline")}
               </p>
               <p className="text-[11px] text-white/80">
                 {locationState.tracking
                   ? `Lat: ${locationState.lat?.toFixed(4)} · Lng: ${locationState.lng?.toFixed(4)} · Acc: ±${Math.round(locationState.accuracy ?? 0)}m`
-                  : locationState.error ?? "Click toggle to enable real-time location streaming"}
+                  : locationState.error ?? (isArabic ? "انقر للتبديل وتفعيل بث الموقع المباشر" : "Click toggle to enable real-time location streaming")}
               </p>
             </div>
           </div>
@@ -58,13 +62,13 @@ export function DriverApp({
               onClick={() => setGpsEnabled(!gpsEnabled)}
               className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 transition-colors"
             >
-              {gpsEnabled ? "Turn Off" : "Turn On"}
+              {gpsEnabled ? (isArabic ? "إيقاف" : "Turn Off") : (isArabic ? "تشغيل" : "Turn On")}
             </button>
             <button
-              onClick={() => alert("Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
+              onClick={() => alert(isArabic ? "تم تفعيل السياج الجغرافي: تم إشعار الضيف باقترابك من رصيف استقبال VIP." : "Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
               className="rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1.5 text-xs font-bold transition-colors"
             >
-              Simulate &lt; 2km
+              {isArabic ? "محاكاة قرب الوصول (< 2 كم)" : "Simulate < 2km"}
             </button>
           </div>
         </div>
@@ -73,7 +77,7 @@ export function DriverApp({
           <Badge tone="gold">{t("driver.title")}</Badge>
           <h1 className="mt-4 text-2xl font-bold">{driver.user.name}</h1>
           <p className="mt-2 text-sm text-white/70">
-            {driver.zone.replaceAll("_", " ")} · {driver.licenseNo}
+            {localizeText(driver.zone, isArabic)} · {driver.licenseNo}
           </p>
         </section>
 
@@ -84,19 +88,19 @@ export function DriverApp({
               driver.shiftEnd ?? event.date,
               i18n.language
             )}`}
-            detail={driver.status}
+            detail={localizeStatus(driver.status, isArabic)}
             icon={<Clock size={17} />}
           />
           <MetricCard
             label={t("driver.earnings")}
             value={money(driver.earnings ?? 0)}
-            detail="Today"
+            detail={isArabic ? "اليوم" : "Today"}
             icon={<Banknote size={17} />}
           />
           <MetricCard
             label={t("common.status")}
             value={tasks.length}
-            detail="Open assignments"
+            detail={isArabic ? "المهام المسندة" : "Open assignments"}
             icon={<CheckCircle2 size={17} />}
           />
         </div>
@@ -182,7 +186,7 @@ export function DriverApp({
               className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
             >
               <Zap size={14} className="fill-current" />
-              <span>Start VIP Trip</span>
+              <span>{isArabic ? "بدء رحلة VIP" : "Start VIP Trip"}</span>
             </button>
           </form>
         </section>
@@ -207,10 +211,10 @@ export function DriverApp({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <Badge tone={task.status === "DELAYED" ? "red" : "purple"}>
-                      {task.status}
+                      {localizeStatus(task.status, isArabic)}
                     </Badge>
                     <h3 className="mt-3 font-bold text-midyaf-ink">
-                      {task.type.replaceAll("_", " ")}
+                      {localizeText(task.type, isArabic)}
                     </h3>
                     <p className="text-sm text-slate-500">
                       {shortTime(task.scheduledAt, i18n.language)}
@@ -228,11 +232,11 @@ export function DriverApp({
                 </div>
                 <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                   <p className="rounded-lg bg-slate-50 p-3">
-                    <span className="block text-xs text-slate-500">Pickup</span>
+                    <span className="block text-xs text-slate-500">{isArabic ? "نقطة الركوب" : "Pickup"}</span>
                     {task.pickupLocation}
                   </p>
                   <p className="rounded-lg bg-slate-50 p-3">
-                    <span className="block text-xs text-slate-500">Dropoff</span>
+                    <span className="block text-xs text-slate-500">{isArabic ? "نقطة الوصول" : "Dropoff"}</span>
                     {task.dropoffLocation}
                   </p>
                 </div>
@@ -244,18 +248,18 @@ export function DriverApp({
                       <div className="flex items-center justify-between font-bold text-amber-800 dark:text-amber-300 mb-1.5">
                         <span className="flex items-center gap-1.5">
                           <ShieldAlert size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span>VIP Hospitality Rider (Vehicle & Protocol)</span>
+                          <span>{isArabic ? "اشتراطات الضيافة لكبار الشخصيات (المركبة والبروتوكول)" : "VIP Hospitality Rider (Vehicle & Protocol)"}</span>
                         </span>
-                        <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[10px] uppercase text-amber-900">VIP Priority</span>
+                        <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[10px] uppercase text-amber-900">{isArabic ? "أولوية قصوى" : "VIP Priority"}</span>
                       </div>
                       <ul className="list-disc start-4 space-y-1 text-[11px]">
                         {rider.vehicleRider?.map((item: string, idx: number) => (
-                          <li key={idx} className="font-medium">{item}</li>
+                          <li key={idx} className="font-medium">{localizeText(item, isArabic)}</li>
                         ))}
                         {rider.securityNotes?.map((item: string, idx: number) => (
                           <li key={`sec-${idx}`} className="font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5">
                             <ShieldCheck size={12} className="inline text-red-500 shrink-0" />
-                            <span>{item}</span>
+                            <span>{localizeText(item, isArabic)}</span>
                           </li>
                         ))}
                       </ul>
@@ -284,13 +288,25 @@ export function DriverApp({
 
       <div className="space-y-4">
         <RiyadhMap event={event} drivers={data.drivers} tasks={tasks} />
-        <Section title="Navigation stack">
+        <Section title={isArabic ? "منظومة الملاحة والتوجيه" : "Navigation stack"}>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              ["Google Maps navigation", "Driver deep links are ready per task."],
-              ["Socket.IO live sharing", "Location updates stream to organizers."],
-              ["Delay alert", "No update for 5 minutes triggers alert:delay."],
-              ["Zone logic", "Same Riyadh zone is searched before expansion."]
+              [
+                isArabic ? "ملاحة خرائط Google" : "Google Maps navigation",
+                isArabic ? "روابط توجيه مباشرة جاهزة لكل مهمة." : "Driver deep links are ready per task."
+              ],
+              [
+                isArabic ? "بث مباشر عبر Socket.IO" : "Socket.IO live sharing",
+                isArabic ? "تحديثات الموقع المباشر تتدفق للمنظمين." : "Location updates stream to organizers."
+              ],
+              [
+                isArabic ? "تنبيه التأخير الذكي" : "Delay alert",
+                isArabic ? "توقف التحديث لمدة 5 دقائق يطلق تنبيهاً فورياً." : "No update for 5 minutes triggers alert:delay."
+              ],
+              [
+                isArabic ? "توزيع المناطق في الرياض" : "Zone logic",
+                isArabic ? "يتم البحث في نفس نطاق الرياض أولاً قبل التوسع." : "Same Riyadh zone is searched before expansion."
+              ]
             ].map(([title, detail]) => (
               <div key={title} className="rounded-lg bg-slate-50 p-3">
                 <Map className="mb-2 text-midyaf-purple" size={18} />

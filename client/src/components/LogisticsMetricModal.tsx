@@ -41,66 +41,133 @@ interface LogisticsMetricModalProps {
   onAssignTask?: (taskId: string, assignment: any) => Promise<void>;
 }
 
-const VIP_GUESTS_DATA = [
+interface DisplayGuest {
+  name: string;
+  nameAr?: string;
+  title: string;
+  titleAr?: string;
+  org: string;
+  orgAr?: string;
+  flight: string;
+  flightAr?: string;
+  hotel: string;
+  hotelAr?: string;
+  driver: string;
+  driverAr?: string;
+  vehicle: string;
+  vehicleAr?: string;
+  plate: string;
+  rider: string;
+  riderAr?: string;
+  status: string;
+  statusAr?: string;
+}
+
+const VIP_GUESTS_DATA: DisplayGuest[] = [
   {
     name: "H.E. Yasir Al-Rumayyan",
+    nameAr: "معالي الأستاذ ياسر الرميان",
     title: "Governor of Public Investment Fund",
+    titleAr: "محافظ صندوق الاستثمارات العامة",
     org: "Public Investment Fund (PIF)",
+    orgAr: "صندوق الاستثمارات العامة",
     flight: "Saudia SV-1 · Royal Terminal",
+    flightAr: "الخطوط السعودية SV-1 · الصالة الملكية",
     hotel: "The Ritz-Carlton Royal Suite",
+    hotelAr: "فندق الريتز-كارلتون · الجناح الملكي",
     driver: "Capt. Sultan Al-Otaibi",
+    driverAr: "كابتن سلطان العتيبي",
     vehicle: "Mercedes-Maybach S680",
+    vehicleAr: "مرسيدس مايباخ S680",
     plate: "2027 KSA",
     rider: "Saudi Artisanal Qahwa · Organic Sukari Dates · 20.0°C Cabin · Police Escort",
-    status: "Checked In · Keynote Ready"
+    riderAr: "قهوة سعودية مختصة · تمر سكري عضوي · تكييف ٢٠°م · موكب مرافقة أمني",
+    status: "Checked In · Keynote Ready",
+    statusAr: "تم تسجيل الوصول · جاهز للكلمة الافتتاحية"
   },
   {
     name: "Jamie Dimon",
+    nameAr: "جيمي ديمون",
     title: "Chairman & CEO",
+    titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي",
     org: "JPMorgan Chase & Co.",
+    orgAr: "جي بي مورغان تشيس",
     flight: "Riyadh Air RX-101 · KKIA Gate 204",
+    flightAr: "طيران الرياض RX-101 · مطار الملك خالد بوابة 204",
     hotel: "Four Seasons Hotel Kingdom Centre",
+    hotelAr: "فندق فور سيزونز برج المملكة",
     driver: "Capt. Fahad Al-Qahtani",
+    driverAr: "كابتن فهد القحطاني",
     vehicle: "BMW 7-Series VIP",
+    vehicleAr: "بي إم دبليو الفئة السابعة VIP",
     plate: "4501 KSA",
     rider: "Espresso Bar Setup · Executive Chauffeur 24/7 · High-Security Wi-Fi",
-    status: "En Route to Kingdom Centre"
+    riderAr: "ركن إسبريسو متنقل · سائق تنفيذي على مدار الساعة · إنترنت فائق التشفير",
+    status: "En Route to Kingdom Centre",
+    statusAr: "في الطريق إلى برج المملكة"
   },
   {
     name: "Larry Fink",
+    nameAr: "لاري فينك",
     title: "Chairman & CEO",
+    titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي",
     org: "BlackRock",
+    orgAr: "بلاك روك المالية",
     flight: "Riyadh Air RX-101 · Landed KKIA T2",
+    flightAr: "طيران الرياض RX-101 · هبطت بالصالة 2",
     hotel: "The Ritz-Carlton Executive Wing",
+    hotelAr: "فندق الريتز-كارلتون الجناح التنفيذي",
     driver: "Capt. Rakan Al-Dossary",
+    driverAr: "كابتن راكان الدوسري",
     vehicle: "Mercedes-Maybach S680",
+    vehicleAr: "مرسيدس مايباخ S680",
     plate: "8890 KSA",
     rider: "Green Tea Reserve · Diplomatic Fast-Track · Private Briefing Suite",
-    status: "Escort Active to KAFD"
+    riderAr: "شاي أخضر فاخر · مسار دبلوماسي سريع · جناح اجتماعات خاص",
+    status: "Escort Active to KAFD",
+    statusAr: "موكب المرافقة متوجه لمركز الملك عبدالله المالي"
   },
   {
     name: "Ray Dalio",
+    nameAr: "راي داليو",
     title: "Founder & CIO Mentor",
+    titleAr: "المؤسس والمستشار الاستثماري",
     org: "Bridgewater Associates",
+    orgAr: "بريدج ووتر أسوشيتس",
     flight: "Private Gulfstream G650ER · Apron 4",
+    flightAr: "طائرة خاصة جلف ستريم G650ER · ساحة 4",
     hotel: "KAFD Diplomatic Residence",
+    hotelAr: "المقر الدبلوماسي مركز الملك عبدالله المالي",
     driver: "Capt. Tariq Al-Ghamdi",
+    driverAr: "كابتن طارق الغامدي",
     vehicle: "Lexus LS 500 Executive",
+    vehicleAr: "لكزس LS 500 التنفيذية",
     plate: "3312 KSA",
     rider: "Saudi Mint Tea · Macro Panel Notes · Noise-Cancelling Cabin",
-    status: "KAFD Plenary Hall"
+    riderAr: "شاي نعناع سعودي · ملخص جلسات الاقتصاد الكلي · كابينة عازلة للصوت",
+    status: "KAFD Plenary Hall",
+    statusAr: "القاعة العامة بمركز الملك عبدالله المالي"
   },
   {
     name: "Noura Al Harbi",
+    nameAr: "نورة الحربي",
     title: "VIP Summit Emissary",
+    titleAr: "موفدة القمة للشخصيات البارزة",
     org: "Cultural & Heritage Delegation",
+    orgAr: "وفد الثقافة والتراث الوطني",
     flight: "Emirates EK-2022 · Landed KKIA",
+    flightAr: "طيران الإمارات EK-2022 · هبطت بمطار الملك خالد",
     hotel: "Bujairi Terrace Heritage Residence",
+    hotelAr: "نُزل مطل البجيري التراثي بالدرعية",
     driver: "Capt. Nasser Al-Mutairi",
+    driverAr: "كابتن ناصر المطيري",
     vehicle: "Lexus LS 500 Executive",
+    vehicleAr: "لكزس LS 500 التنفيذية",
     plate: "7765 KSA",
     rider: "Traditional Incense (Bukhoor) · Gala Program · Private Chaperone",
-    status: "Diriyah Gala Confirmed"
+    riderAr: "بخور وعود فاخر · جدول حفل العشاء الفاخر · مرافقة خاصة",
+    status: "Diriyah Gala Confirmed",
+    statusAr: "تم تأكيد الحضور في حفل الدرعية"
   }
 ];
 
@@ -108,50 +175,74 @@ const CERTIFIED_CONTRACTS = [
   {
     id: "c-1",
     vendor: "The Ritz-Carlton Riyadh",
+    vendorAr: "فندق الريتز-كارلتون الرياض",
     category: "Royal Hospitality & Accommodation",
+    categoryAr: "الضيافة الملكية والإقامة الفاخرة",
     amount: "SAR 1,250,000",
+    amountAr: "١,٢٥٠,٠٠٠ ر.س",
     rawAmount: 1250000,
     commission: "SAR 125,000",
+    commissionAr: "١٢٥,٠٠٠ ر.س",
     takeRate: "10.0%",
     status: "SIGNED & EXECUTED",
+    statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 8f4a...d91c",
-    scope: "100 Royal & Executive Suites for Sovereign Delegations and PIF leadership."
+    scope: "100 Royal & Executive Suites for Sovereign Delegations and PIF leadership.",
+    scopeAr: "١٠٠ جناح ملكي وتنفيذي للوفود السيادية وقيادات صندوق الاستثمارات العامة."
   },
   {
     id: "c-2",
     vendor: "Royal Fleet VIP Services",
+    vendorAr: "خدمات الأسطول الملكي VIP",
     category: "Diplomatic Transportation & Motorcades",
+    categoryAr: "النقل الدبلوماسي ومواكب الحراسة",
     amount: "SAR 450,000",
+    amountAr: "٤٥٠,٠٠٠ ر.س",
     rawAmount: 450000,
     commission: "SAR 45,000",
+    commissionAr: "٤٥,٠٠٠ ر.س",
     takeRate: "10.0%",
     status: "SIGNED & EXECUTED",
+    statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 3c9b...7e21",
-    scope: "50 Mercedes-Maybach S680 and V-Class VIP Vans with 24/7 Diplomatic Police Escort."
+    scope: "50 Mercedes-Maybach S680 and V-Class VIP Vans with 24/7 Diplomatic Police Escort.",
+    scopeAr: "٥٠ سيارة مرسيدس مايباخ وفانات V-Class فاخرة مع مرافقة أمنية دبلوماسية على مدار الساعة."
   },
   {
     id: "c-3",
     vendor: "Najd Royal Catering & Banqueting",
+    vendorAr: "تموين وضيافة نجد الملكية",
     category: "Diplomatic Catering & Banqueting",
+    categoryAr: "الضيافة والتموين الدبلوماسي",
     amount: "SAR 210,000",
+    amountAr: "٢١٠,٠٠٠ ر.س",
     rawAmount: 210000,
     commission: "SAR 25,200",
+    commissionAr: "٢٥,٢٠٠ ر.س",
     takeRate: "12.0%",
     status: "APPROVED & ACTIVE",
+    statusAr: "معتمد ونشط",
     seal: "SHA-256: e12f...45a0",
-    scope: "VIP Plenary Barista Stations, Saudi Organic Dates & Diplomatic Banqueting."
+    scope: "VIP Plenary Barista Stations, Saudi Organic Dates & Diplomatic Banqueting.",
+    scopeAr: "محطات باريستا القاعة الرئيسية، تمور سكرية عضوية وضيافة المآدب الدبلوماسية."
   },
   {
     id: "c-4",
     vendor: "Al-Faisal Stage & Acoustic Engineering",
+    vendorAr: "الفيصل للهندسة الصوتية والمسارح",
     category: "Summit Production & Simultaneous Translation",
+    categoryAr: "إنتاج القمة والترجمة الفورية",
     amount: "SAR 260,000",
+    amountAr: "٢٦٠,٠٠٠ ر.س",
     rawAmount: 260000,
     commission: "SAR 29,400",
+    commissionAr: "٢٩,٤٠٠ ر.س",
     takeRate: "11.3%",
     status: "SIGNED & EXECUTED",
+    statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 7d88...b34f",
-    scope: "Ultra-HD Curved LED Video Wall & 8-Language Simultaneous Translation Units."
+    scope: "Ultra-HD Curved LED Video Wall & 8-Language Simultaneous Translation Units.",
+    scopeAr: "شاشة LED منحنية فائقة الدقة ووحدات ترجمة فورية لثماني لغات عالمية."
   }
 ];
 
@@ -200,7 +291,7 @@ export function LogisticsMetricModal({
     0
   );
 
-  const guestsToDisplay = useMemo(() => {
+  const guestsToDisplay: DisplayGuest[] = useMemo(() => {
     if (isDemoMode) {
       return VIP_GUESTS_DATA;
     }
@@ -210,15 +301,24 @@ export function LogisticsMetricModal({
         const rider = g.hospitalityRider;
         return {
           name: g.user.name,
+          nameAr: g.user.name,
           title: g.tier ? `${g.tier} Delegate` : (g.isVIP ? "VIP Delegate" : "Delegate"),
+          titleAr: g.tier ? `موفد فئة ${g.tier}` : (g.isVIP ? "موفد كبار الشخصيات" : "موفد"),
           org: event.name,
+          orgAr: event.name,
           flight: journey?.departureFlight ?? "Arrival Scheduled",
+          flightAr: journey?.departureFlight ?? "وصول مجدول",
           hotel: (rider?.roomPreferences && rider.roomPreferences.length > 0) ? rider.roomPreferences.join(" · ") : event.venue,
+          hotelAr: (rider?.roomPreferences && rider.roomPreferences.length > 0) ? rider.roomPreferences.join(" · ") : event.venue,
           driver: journey?.driverName ?? "VIP Chauffeur Assigned",
+          driverAr: journey?.driverName ?? "سائق VIP مخصص",
           vehicle: journey?.carDetails ?? "Executive Escort",
+          vehicleAr: journey?.carDetails ?? "موكب تنفيذي",
           plate: "KSA-GOV",
           rider: (rider?.dietaryNeeds && rider.dietaryNeeds.length > 0) ? rider.dietaryNeeds.join(" · ") : "Official Protocol Suite",
-          status: g.rsvpStatus ?? "CONFIRMED"
+          riderAr: (rider?.dietaryNeeds && rider.dietaryNeeds.length > 0) ? rider.dietaryNeeds.join(" · ") : "جناح البروتوكول الرسمي",
+          status: g.rsvpStatus ?? "CONFIRMED",
+          statusAr: localizeText(g.rsvpStatus ?? "CONFIRMED", true)
         };
       });
     }
@@ -329,17 +429,17 @@ export function LogisticsMetricModal({
                     <span>{l("VIP Dignitaries")}</span>
                   </span>
                   <p className="text-2xl font-black text-midyaf-gold mt-1">150</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">Dedicated Escorts</span>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Sovereign Delegations")}</span>
                   <p className="text-2xl font-black text-white mt-1">42</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">Global Countries</span>
+                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "دولة مشاركة" : "Global Countries"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Accredited Media")}</span>
                   <p className="text-2xl font-black text-white mt-1">350</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">Broadcasters</span>
+                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "جهة إعلامية وتلفزيونية" : "Broadcasters"}</span>
                 </div>
               </div>
 
@@ -366,32 +466,32 @@ export function LogisticsMetricModal({
                       <div>
                         <h4 className="font-bold text-white text-sm flex items-center gap-1.5">
                           <Crown size={14} className="text-midyaf-gold shrink-0" />
-                          <span>{guest.name}</span>
+                          <span>{isArabic ? guest.nameAr : guest.name}</span>
                         </h4>
-                        <p className="text-xs text-midyaf-gold">{guest.title} · {guest.org}</p>
+                        <p className="text-xs text-midyaf-gold">{(isArabic ? guest.titleAr : guest.title)} · {(isArabic ? guest.orgAr : guest.org)}</p>
                       </div>
-                      <Badge tone="purple">VIP Protocol</Badge>
+                      <Badge tone="purple">{isArabic ? "بروتوكول كبار الشخصيات" : "VIP Protocol"}</Badge>
                     </div>
 
                     <div className="text-xs text-slate-300 space-y-1.5 border-t border-white/5 pt-2.5">
                       <p className="flex items-center gap-1.5">
                         <Plane size={13} className="text-cyan-400" />
-                        <span>{guest.flight}</span>
+                        <span>{isArabic ? guest.flightAr : guest.flight}</span>
                       </p>
                       <p className="flex items-center gap-1.5">
                         <Car size={13} className="text-emerald-400" />
-                        <span>{guest.driver} · <span className="font-mono text-slate-200">{guest.vehicle}</span> ({guest.plate})</span>
+                        <span>{isArabic ? guest.driverAr : guest.driver} · <span className="font-mono text-slate-200">{isArabic ? guest.vehicleAr : guest.vehicle}</span> ({guest.plate})</span>
                       </p>
                       <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
                         <FileText size={12} className="text-midyaf-gold shrink-0" />
-                        <span>{l("Hospitality Rider")}: {guest.rider}</span>
+                        <span>{l("Hospitality Rider")}: {isArabic ? guest.riderAr : guest.rider}</span>
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-white/5 pt-2 text-xs">
                       <span className="text-emerald-400 font-semibold text-[11px] flex items-center gap-1.5">
                         <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>{guest.status}</span>
+                        <span>{isArabic ? guest.statusAr : guest.status}</span>
                       </span>
                       <button
                         type="button"
@@ -422,23 +522,23 @@ export function LogisticsMetricModal({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
                   <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("Gross Procurement GMV")}</span>
-                  <p className="text-2xl font-black text-white mt-1">SAR 2,170,000</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">4 Approved Contracts</span>
+                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "٤ عقود معتمدة" : "4 Approved Contracts"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30">
                   <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Platform Revenue Commission")}</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">SAR 224,600</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">10.3% Take Rate</span>
+                  <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٢٢٤,٦٠٠ ر.س" : "SAR 224,600"}</p>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "١٠.٣٪ نسبة العمولة" : "10.3% Take Rate"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
-                  <p className="text-2xl font-black text-white mt-1">SAR 1,945,400</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">Sila Escrow Secured</span>
+                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
+                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">ZATCA Tax Clearance</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الشهادة الضريبية (زكاة وضريبة)" : "ZATCA Tax Clearance"}</span>
                   <p className="text-2xl font-black text-white mt-1">100%</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">E-Invoicing Compliant</span>
+                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "مطابق لنظام الفوترة الإلكترونية" : "E-Invoicing Compliant"}</span>
                 </div>
               </div>
 
@@ -478,16 +578,16 @@ export function LogisticsMetricModal({
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-white text-sm">{contract.vendor}</h4>
-                        <p className="text-xs text-slate-400">{contract.category}</p>
+                        <h4 className="font-bold text-white text-sm">{isArabic ? contract.vendorAr : contract.vendor}</h4>
+                        <p className="text-xs text-slate-400">{isArabic ? contract.categoryAr : contract.category}</p>
                       </div>
                       <div className="text-right">
-                        <span className="font-mono text-base font-black text-midyaf-gold">{contract.amount}</span>
-                        <p className="text-[11px] text-emerald-400 font-semibold">{l("Commission")}: {contract.commission} ({contract.takeRate})</p>
+                        <span className="font-mono text-base font-black text-midyaf-gold">{isArabic ? contract.amountAr : contract.amount}</span>
+                        <p className="text-[11px] text-emerald-400 font-semibold">{l("Commission")}: {isArabic ? contract.commissionAr : contract.commission} ({contract.takeRate})</p>
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-300">{contract.scope}</p>
+                    <p className="text-xs text-slate-300">{isArabic ? contract.scopeAr : contract.scope}</p>
 
                     <div className="flex flex-wrap items-center justify-between border-t border-white/5 pt-2.5 text-xs gap-2">
                       <span className="font-mono text-[11px] text-slate-400">{contract.seal}</span>
@@ -573,12 +673,12 @@ export function LogisticsMetricModal({
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الثاني (المورد المعتمد)" : "Second Party (Vendor)"}</span>
-                          <p className="font-bold text-midyaf-gold text-xs mt-0.5">{inspectingContract.vendor}</p>
-                          <p className="text-[10px] text-slate-400">{inspectingContract.category}</p>
+                          <p className="font-bold text-midyaf-gold text-xs mt-0.5">{isArabic ? inspectingContract.vendorAr : inspectingContract.vendor}</p>
+                          <p className="text-[10px] text-slate-400">{isArabic ? inspectingContract.categoryAr : inspectingContract.category}</p>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "منصة الوساطة والضمان" : "Platform Escrow Authority"}</span>
-                          <p className="font-bold text-purple-300 text-xs mt-0.5">Midyaf Sovereign Escrow</p>
+                          <p className="font-bold text-purple-300 text-xs mt-0.5">{isArabic ? "حساب مضياف للضمان المالي السيادي" : "Midyaf Sovereign Escrow"}</p>
                           <p className="text-[10px] text-slate-400">{isArabic ? "عمولة المنصة: " : "Platform Take: "}{inspectingContract.takeRate}</p>
                         </div>
                       </div>
@@ -590,7 +690,7 @@ export function LogisticsMetricModal({
                           <span>{isArabic ? "نطاق العمل ومحددات الخدمة (SOW)" : "Certified Scope of Work & Deliverables"}</span>
                         </h4>
                         <div className="rounded-2xl bg-white/5 p-4 border border-white/10 text-slate-200 leading-relaxed">
-                          {inspectingContract.scope}
+                          {isArabic ? inspectingContract.scopeAr : inspectingContract.scope}
                         </div>
                       </div>
 
@@ -598,17 +698,17 @@ export function LogisticsMetricModal({
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
                           <span className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "إجمالي قيمة العقد" : "Contract Value (GMV)"}</span>
-                          <p className="text-lg font-black text-white font-mono mt-1">{inspectingContract.amount}</p>
+                          <p className="text-lg font-black text-white font-mono mt-1">{isArabic ? inspectingContract.amountAr : inspectingContract.amount}</p>
                         </div>
                         <div className="rounded-2xl bg-white/5 p-3.5 border border-midyaf-gold/30">
                           <span className="text-[10px] text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
-                          <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{inspectingContract.commission}</p>
+                          <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{isArabic ? inspectingContract.commissionAr : inspectingContract.commission}</p>
                         </div>
                         <div className="rounded-2xl bg-white/5 p-3.5 border border-emerald-500/30">
                           <span className="text-[10px] text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
                           <p className="text-sm font-black text-emerald-400 mt-1.5 flex items-center gap-1">
                             <CheckCircle2 size={14} />
-                            <span>{inspectingContract.status}</span>
+                            <span>{isArabic ? inspectingContract.statusAr : inspectingContract.status}</span>
                           </p>
                         </div>
                       </div>
@@ -774,20 +874,20 @@ export function LogisticsMetricModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-2xl glass-tactical p-5 border border-midyaf-gold/40 text-center">
                   <span className="text-xs text-midyaf-gold font-bold uppercase">{l("Platform Revenue Commission")}</span>
-                  <p className="text-3xl font-black text-white mt-1">SAR {totalCommission.toLocaleString()}</p>
-                  <p className="text-xs text-emerald-400 font-semibold mt-1">10.3% Average Take Rate</p>
+                  <p className="text-3xl font-black text-white mt-1">{isArabic ? `${totalCommission.toLocaleString("ar-SA")} ر.س` : `SAR ${totalCommission.toLocaleString()}`}</p>
+                  <p className="text-xs text-emerald-400 font-semibold mt-1">{isArabic ? "١٠.٣٪ متوسط نسبة العمولة" : "10.3% Average Take Rate"}</p>
                 </div>
 
                 <div className="rounded-2xl glass-tactical p-5 border border-white/10 text-center">
                   <span className="text-xs text-slate-400 font-bold uppercase">{l("Gross Procurement GMV")}</span>
-                  <p className="text-3xl font-black text-white mt-1">SAR 2,170,000</p>
-                  <p className="text-xs text-cyan-300 font-semibold mt-1">4 Executed Contracts</p>
+                  <p className="text-3xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
+                  <p className="text-xs text-cyan-300 font-semibold mt-1">{isArabic ? "٤ عقود منفذة رسمياً" : "4 Executed Contracts"}</p>
                 </div>
 
                 <div className="rounded-2xl glass-tactical p-5 border border-white/10 text-center">
                   <span className="text-xs text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
-                  <p className="text-3xl font-black text-white mt-1">SAR 1,945,400</p>
-                  <p className="text-xs text-purple-300 font-semibold mt-1">Sila Corporate Escrow</p>
+                  <p className="text-3xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
+                  <p className="text-xs text-purple-300 font-semibold mt-1">{isArabic ? "حساب الضمان المؤسسي (صلة)" : "Sila Corporate Escrow"}</p>
                 </div>
               </div>
 
@@ -809,11 +909,11 @@ export function LogisticsMetricModal({
                   <tbody className="divide-y divide-white/5 text-slate-200">
                     {CERTIFIED_CONTRACTS.map((item) => (
                       <tr key={item.id} className="hover:bg-white/5">
-                        <td className="py-3 pe-4 font-bold text-white">{item.vendor}</td>
-                        <td className="py-3 pe-4 text-slate-400">{item.category}</td>
-                        <td className="py-3 pe-4 text-right font-mono font-bold">{item.amount}</td>
+                        <td className="py-3 pe-4 font-bold text-white">{isArabic ? item.vendorAr : item.vendor}</td>
+                        <td className="py-3 pe-4 text-slate-400">{isArabic ? item.categoryAr : item.category}</td>
+                        <td className="py-3 pe-4 text-right font-mono font-bold">{isArabic ? item.amountAr : item.amount}</td>
                         <td className="py-3 pe-4 text-right font-bold text-emerald-400">{item.takeRate}</td>
-                        <td className="py-3 text-right font-mono font-black text-midyaf-gold">{item.commission}</td>
+                        <td className="py-3 text-right font-mono font-black text-midyaf-gold">{isArabic ? item.commissionAr : item.commission}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -824,29 +924,29 @@ export function LogisticsMetricModal({
 
           {/* ══════════════════════════════════════════════════════
               MODAL 5: REPORTS & POST-EVENT PERFORMANCE
-             ══════════════════════════════════════════════════════ */}
+              ══════════════════════════════════════════════════════ */}
           {modal === "reports" && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
                   <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("VIP Satisfaction")}</span>
                   <p className="text-2xl font-black text-white mt-1">96%</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">Net Promoter Score (NPS 88)</span>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مؤشر التوصية الصافي (NPS 88)" : "Net Promoter Score (NPS 88)"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30">
                   <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Fleet Savings")}</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">SAR 84,200</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">Fuel & Idle Reduction</span>
+                  <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٨٤,٢٠٠ ر.س" : "SAR 84,200"}</p>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "توفير الوقود وتقليص الانتظار" : "Fuel & Idle Reduction"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Punctuality Rate")}</span>
                   <p className="text-2xl font-black text-white mt-1">99.4%</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">Zero Route Failures</span>
+                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "صفر أخطاء في المسارات" : "Zero Route Failures"}</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">CO₂ Footprint Saved</span>
-                  <p className="text-2xl font-black text-white mt-1">18.2 Tons</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">Fleet Route Optimization</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "وفر الانبعاثات الكربونية" : "CO₂ Footprint Saved"}</span>
+                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "١٨.٢ طن" : "18.2 Tons"}</p>
+                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "تحسين مسارات الأسطول الذكية" : "Fleet Route Optimization"}</span>
                 </div>
               </div>
 

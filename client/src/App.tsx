@@ -1444,7 +1444,7 @@ function LoginPage({
                 </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
-                  <p className="truncate text-[10px] text-slate-400">Noura Al Harbi</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "نورة الحربي" : "Noura Al Harbi"}</p>
                 </div>
               </button>
 
@@ -1458,7 +1458,7 @@ function LoginPage({
                 </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "كابتن الأسطول" : "Fleet Captain"}</p>
-                  <p className="truncate text-[10px] text-slate-400">Fahad Al Qahtani</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "فهد القحطاني" : "Fahad Al Qahtani"}</p>
                 </div>
               </button>
 
@@ -1472,7 +1472,7 @@ function LoginPage({
                 </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "صلة (المفتاح 1)" : "Sila (Key 1)"}</p>
-                  <p className="truncate text-[10px] text-slate-400">Vault Demo</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "تجربة الخزنة" : "Vault Demo"}</p>
                 </div>
               </button>
             </div>

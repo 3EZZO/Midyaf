@@ -21,10 +21,12 @@ import { Section } from "../components/Section";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { AiPanel } from "../components/AiPanel";
 import { money, shortDate, shortTime } from "../lib/format";
+import { isArabicLanguage, localizeStatus, localizeText } from "../lib/localize";
 import type { PortalProps } from "./types";
 
 export function GuestApp({ data, session }: PortalProps) {
   const { t, i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const event = data.events[0];
   const guest =
     event.guests.find((item) => item.user.email === "guest.vip@midyaf.local") ??
@@ -95,32 +97,32 @@ export function GuestApp({ data, session }: PortalProps) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40">
                     <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400 inline" />
-                    {t("guest.touchdown", "FLIGHT TOUCHDOWN CONFIRMED")}
+                    {isArabic ? "تم تأكيد هبوط الطائرة بسلام" : t("guest.touchdown", "FLIGHT TOUCHDOWN CONFIRMED")}
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
                     <Zap size={11} className="text-amber-600 dark:text-amber-400" />
-                    <span>VIP EXPEDITED CURB</span>
+                    <span>{isArabic ? "المسار السريع لكبار الشخصيات" : "VIP EXPEDITED CURB"}</span>
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary mt-1">
-                  Your Royal Escort & Chauffeur is waiting at Gate 2 VIP Curb
+                  {isArabic ? "سائقك والمرافق الملكي في انتظارك عند رصيف VIP بوابة 2" : "Your Royal Escort & Chauffeur is waiting at Gate 2 VIP Curb"}
                 </h3>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
-                onClick={() => alert("Connecting directly via encrypted royal line to Captain Sultan Al-Otaibi (+966 50 811 9119)...")}
+                onClick={() => alert(isArabic ? "جاري الاتصال المشفر بالكابتن سلطان العتيبي (+966 50 811 9119)..." : "Connecting directly via encrypted royal line to Captain Sultan Al-Otaibi (+966 50 811 9119)...")}
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
               >
                 <Phone size={13} />
-                Call Captain
+                {isArabic ? "الاتصال بالكابتن" : "Call Captain"}
               </button>
               <button
-                onClick={() => alert("Concierge Noura notified: 'Guest has cleared immigration and is walking to Bay 4 right now.'")}
+                onClick={() => alert(isArabic ? "تم إشعار الكونسيرج نورة: الضيف أنهى إجراءات الجوازات ويتجه الآن إلى الموقف 4." : "Concierge Noura notified: 'Guest has cleared immigration and is walking to Bay 4 right now.'")}
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-midyaf-purple hover:bg-midyaf-purple-dark text-white text-xs font-bold shadow-md transition-all cursor-pointer"
               >
                 <Sparkles size={13} className="text-midyaf-gold" />
-                Notify Noura
+                {isArabic ? "إشعار نورة" : "Notify Noura"}
               </button>
             </div>
           </div>
@@ -131,24 +133,24 @@ export function GuestApp({ data, session }: PortalProps) {
                 SA
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">ASSIGNED CHAUFFEUR</span>
-                <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm">Capt. Sultan Al-Otaibi</strong>
-                <span className="text-slate-500 block text-[11px]">VIP Security Cleared #819</span>
+                <span className="text-slate-400 block text-[10px]">{isArabic ? "السائق المخصص" : "ASSIGNED CHAUFFEUR"}</span>
+                <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm">{isArabic ? "كابتن سلطان العتيبي" : "Capt. Sultan Al-Otaibi"}</strong>
+                <span className="text-slate-500 block text-[11px]">{isArabic ? "تصريح أمني VIP رقم #819" : "VIP Security Cleared #819"}</span>
               </div>
             </div>
 
             <div className="rounded-xl bg-white/70 dark:bg-dark-surface p-3.5 ring-1 ring-slate-200 dark:ring-white/10">
-              <span className="text-slate-400 block text-[10px]">VEHICLE & PLATE</span>
-              <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm block">Mercedes Maybach S680</strong>
+              <span className="text-slate-400 block text-[10px]">{isArabic ? "المركبة ورقم اللوحة" : "VEHICLE & PLATE"}</span>
+              <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm block">{isArabic ? "مرسيدس مايباخ S680" : "Mercedes Maybach S680"}</strong>
               <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded font-mono font-black bg-amber-400 text-slate-950 text-[11px]">
-                KSA · 9119
+                {isArabic ? "السعودية · ٩١١٩" : "KSA · 9119"}
               </span>
             </div>
 
             <div className="rounded-xl bg-white/70 dark:bg-dark-surface p-3.5 ring-1 ring-slate-200 dark:ring-white/10">
-              <span className="text-slate-400 block text-[10px]">MEETING POINT & ETA</span>
-              <strong className="text-emerald-600 dark:text-emerald-400 font-bold text-sm block">Gate 2 Royal VIP Curb — Bay 4</strong>
-              <span className="text-slate-500 text-[11px]">Est. transfer to Hotel: 22 mins</span>
+              <span className="text-slate-400 block text-[10px]">{isArabic ? "نقطة اللقاء والوقت المقدر" : "MEETING POINT & ETA"}</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 font-bold text-sm block">{isArabic ? "بوابة 2 رصيف الاستقبال الملكي — الموقف 4" : "Gate 2 Royal VIP Curb — Bay 4"}</strong>
+              <span className="text-slate-500 text-[11px]">{isArabic ? "الوقت المقدر للوصول للفندق: ٢٢ دقيقة" : "Est. transfer to Hotel: 22 mins"}</span>
             </div>
           </div>
         </div>
@@ -158,50 +160,52 @@ export function GuestApp({ data, session }: PortalProps) {
           const rider = data.hospitalityRiders?.find((r) => r.guestId === guest?.id);
           if (!rider) return null;
           return (
-            <Section title="Your Platinum Hospitality Rider">
+            <Section title={isArabic ? "اشتراطات الضيافة البلاتينية الخاصة بك" : "Your Platinum Hospitality Rider"}>
               <RoyalCard tone="gold" elevated interactive={true}>
                 <div className="flex items-center justify-between border-b border-amber-200/60 pb-3 mb-4 dark:border-amber-900/40">
                   <div className="flex items-center gap-2.5">
                     <Sparkles className="text-amber-500 animate-pulse" size={22} />
                     <span className="text-base font-black tracking-tight text-midyaf-purple dark:text-white">
-                      Personalized Royal Reception & Protocol
+                      {isArabic ? "الاستقبال الملكي المخصص والبروتوكول" : "Personalized Royal Reception & Protocol"}
                     </span>
                   </div>
                   <Badge tone={rider.fulfilled ? "green" : "gold"}>
-                    {rider.fulfilled ? "Rider Verified & Ready" : "In Preparation by Concierge"}
+                    {rider.fulfilled
+                      ? (isArabic ? "تم اعتماد الاشتراطات وجاهزيتها" : "Rider Verified & Ready")
+                      : (isArabic ? "قيد التجهيز من قبل الكونسيرج" : "In Preparation by Concierge")}
                   </Badge>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3 text-xs">
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-emerald-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-emerald-500/30">
                     <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-2 flex items-center gap-1.5 text-sm">
                       <Utensils size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>Dietary & Refreshments</span>
+                      <span>{isArabic ? "المأكولات والمشروبات" : "Dietary & Refreshments"}</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.dietaryNeeds?.map((item: string, idx: number) => (
-                        <li key={idx}>{item}</li>
+                        <li key={idx}>{localizeText(item, isArabic)}</li>
                       ))}
                     </ul>
                   </div>
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-purple-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-purple-500/30">
                     <p className="font-bold text-purple-800 dark:text-purple-400 mb-2 flex items-center gap-1.5 text-sm">
                       <Building size={15} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                      <span>Suite & Environment</span>
+                      <span>{isArabic ? "الجناح والبيئة المحيطة" : "Suite & Environment"}</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.roomPreferences?.map((item: string, idx: number) => (
-                        <li key={idx}>{item}</li>
+                        <li key={idx}>{localizeText(item, isArabic)}</li>
                       ))}
                     </ul>
                   </div>
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-amber-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-amber-500/30">
                     <p className="font-bold text-amber-800 dark:text-amber-400 mb-2 flex items-center gap-1.5 text-sm">
                       <Car size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>Chauffeur & Fleet</span>
+                      <span>{isArabic ? "السائق الخاص والأسطول" : "Chauffeur & Fleet"}</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.vehicleRider?.map((item: string, idx: number) => (
-                        <li key={idx}>{item}</li>
+                        <li key={idx}>{localizeText(item, isArabic)}</li>
                       ))}
                     </ul>
                   </div>
@@ -241,10 +245,22 @@ export function GuestApp({ data, session }: PortalProps) {
           <Section title={t("common.schedule")}>
             <RoyalCard tone="default" interactive={false} className="space-y-3 p-4">
               {[
-                ["13:30", "Airport pickup", "King Khalid International Airport"],
-                ["15:00", "Hotel check-in", "Mandarin Oriental Al Faisaliah"],
+                [
+                  "13:30",
+                  isArabic ? "الاستقبال من المطار" : "Airport pickup",
+                  isArabic ? "مطار الملك خالد الدولي" : "King Khalid International Airport"
+                ],
+                [
+                  "15:00",
+                  isArabic ? "تسجيل الوصول بالفندق" : "Hotel check-in",
+                  isArabic ? "ماندارين أورينتال الفيصلية" : "Mandarin Oriental Al Faisaliah"
+                ],
                 ["17:00", event.name, event.venue],
-                ["20:30", "Diriyah cultural dinner", "Bujairi Terrace"]
+                [
+                  "20:30",
+                  isArabic ? "عشاء ثقافي في الدرعية" : "Diriyah cultural dinner",
+                  isArabic ? "مطل البجيري التاريخي" : "Bujairi Terrace"
+                ]
               ].map(([time, title, location]) => (
                 <div
                   key={`${time}-${title}`}
@@ -268,7 +284,7 @@ export function GuestApp({ data, session }: PortalProps) {
             <div className="rounded-lg bg-midyaf-pearl p-4">
               <div className="flex items-center justify-between">
                 <Badge tone={driverTask.status === "DELAYED" ? "red" : "green"}>
-                  {driverTask.status}
+                  {localizeStatus(driverTask.status, isArabic)}
                 </Badge>
                 {guest.isVIP ? (
                   <Badge tone="gold">{t("common.priority")}</Badge>
@@ -302,19 +318,24 @@ export function GuestApp({ data, session }: PortalProps) {
             {[
               {
                 icon: Landmark,
-                title: "Diriyah private heritage walk",
-                detail: "15 min from KAFD with historical audio notes."
+                title: isArabic ? "جولة تراثية خاصة في الدرعية" : "Diriyah private heritage walk",
+                detail: isArabic
+                  ? "١٥ دقيقة من مركز الملك عبد الله المالي مع دليل صوتي تاريخي."
+                  : "15 min from KAFD with historical audio notes."
               },
               {
                 icon: Sparkles,
-                title: "VIP dinner at Bujairi Terrace",
-                detail: "Quiet table, Saudi tasting menu, premium transport."
+                title: isArabic ? "عشاء VIP في مطل البجيري" : "VIP dinner at Bujairi Terrace",
+                detail: isArabic
+                  ? "طاولة هادئة، قائمة تذوق سعودية فاخرة، وتنقلات VIP."
+                  : "Quiet table, Saudi tasting menu, premium transport."
               },
               {
                 icon: MapPin,
                 title: t("guest.locationContent"),
-                detail:
-                  "Nearby content triggers automatically around KAFD and Diriyah."
+                detail: isArabic
+                  ? "محتوى يظهر تلقائياً حول مركز الملك عبد الله المالي والدرعية."
+                  : "Nearby content triggers automatically around KAFD and Diriyah."
               }
             ].map((item) => (
               <div key={item.title} className="flex gap-3 rounded-lg bg-slate-50 p-3">

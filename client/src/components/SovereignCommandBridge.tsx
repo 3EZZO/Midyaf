@@ -310,8 +310,8 @@ export function SovereignCommandBridge({
             <Thermometer size={13} className="text-amber-400" />
             <span>28°C</span>
             <Wind size={13} className="text-cyan-400 ms-1" />
-            <span>12 km/h</span>
-            <span className="text-emerald-400 font-bold ms-1">AQI 32</span>
+            <span>{isArabic ? "١٢ كم/س" : "12 km/h"}</span>
+            <span className="text-emerald-400 font-bold ms-1">{isArabic ? "جودة الهواء ٣٢" : "AQI 32"}</span>
           </div>
         </div>
 
@@ -368,7 +368,7 @@ export function SovereignCommandBridge({
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-cyan-300 font-mono">{flight.flightNo}</span>
                     <span className="text-emerald-400 font-black text-[11px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                      ETA {flight.eta}
+                      {isArabic ? "الوصول" : "ETA"} {flight.eta}
                     </span>
                   </div>
                   <p className="text-[11px] font-medium text-slate-300 mt-0.5 truncate">{flight.airline}</p>
@@ -396,7 +396,7 @@ export function SovereignCommandBridge({
                 </h3>
               </div>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                {convoys.length} Escorts
+                {convoys.length} {isArabic ? "مواكب حماية" : "Escorts"}
               </span>
             </div>
 
@@ -408,14 +408,21 @@ export function SovereignCommandBridge({
                     tacticalAudio.playBiometricAuth();
                     setSelectedVip({
                       name: convoy.vip,
-                      title: convoy.id === "alpha" ? "Governor of Public Investment Fund" : "VIP Summit Delegate",
-                      org: "PIF / Global Leadership",
-                      clearance: "Royal Protocol Level 1 - Sovereign Clearance",
+                      title: convoy.id === "alpha" 
+                        ? (isArabic ? "معالي محافظ صندوق الاستثمارات العامة" : "Governor of Public Investment Fund")
+                        : (isArabic ? "وفد قمة كبار الشخصيات" : "VIP Summit Delegate"),
+                      org: isArabic ? "صندوق الاستثمارات العامة / القيادة العالمية" : "PIF / Global Leadership",
+                      clearance: isArabic ? "بروتوكول ملكي مستوى 1 - تصريح سيادي فائق" : "Royal Protocol Level 1 - Sovereign Clearance",
                       chauffeur: convoy.driver,
                       vehicle: convoy.vehicle,
-                      plate: "2027 KSA",
+                      plate: isArabic ? "٢٠٢٧ ك س أ" : "2027 KSA",
                       location: convoy.route,
-                      rider: [
+                      rider: isArabic ? [
+                        "قهوة سعودية مختصة فاخرة",
+                        "سكري القصيم عضوي مُمتاز",
+                        "تكييف المقصورة مضبوط بدقة على 20.0°C",
+                        "مرافقة أمنية ودورية بروتوكول دبلوماسي"
+                      ] : [
                         "Saudi Artisanal Reserve Qahwa",
                         "Organic Al-Qassim Sukari Dates",
                         "Cabin Climate Fixed at 20.0°C",
@@ -471,19 +478,19 @@ export function SovereignCommandBridge({
               <span className="text-[10px] text-emerald-400 font-semibold">● {l("Optimal")}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">O₂ Saturation</p>
+              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "تشبع الأكسجين O₂" : "O₂ Saturation"}</p>
               <p className="text-sm font-black text-white mt-0.5">99.4%</p>
-              <span className="text-[10px] text-emerald-400 font-semibold">● Medical Grade</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">● {isArabic ? "مستوى طبي نقي" : "Medical Grade"}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">Privacy Glass</p>
+              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "زجاج الخصوصية العازل" : "Privacy Glass"}</p>
               <p className="text-sm font-black text-white mt-0.5">100%</p>
-              <span className="text-[10px] text-midyaf-gold font-semibold">● Polarized Active</span>
+              <span className="text-[10px] text-midyaf-gold font-semibold">● {isArabic ? "تعتيم قطبي نشط" : "Polarized Active"}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">Tire Pressure</p>
+              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "ضغط الإطارات" : "Tire Pressure"}</p>
               <p className="text-sm font-black text-white mt-0.5">36 PSI</p>
-              <span className="text-[10px] text-cyan-400 font-semibold">● All 5 Maybachs</span>
+              <span className="text-[10px] text-cyan-400 font-semibold">● {isArabic ? "كافة سيارات المايباخ الـ 5" : "All 5 Maybachs"}</span>
             </div>
           </div>
         </div>
@@ -500,7 +507,7 @@ export function SovereignCommandBridge({
                 </h3>
               </div>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                Nominal 99.8%
+                {isArabic ? "كفاءة اسمية 99.8%" : "Nominal 99.8%"}
               </span>
             </div>
 
@@ -570,7 +577,7 @@ export function SovereignCommandBridge({
                   {l("Encrypted Mission Log")}
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-400">Live Sync</span>
+              <span className="text-[10px] text-slate-400">{isArabic ? "مزامنة مباشرة" : "Live Sync"}</span>
             </div>
 
             <div className="space-y-2 overflow-y-auto flex-1 font-mono text-[11px] text-slate-300">

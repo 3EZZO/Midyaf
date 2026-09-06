@@ -6,6 +6,7 @@ import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
 import { Section } from "../components/Section";
 import { money, percent } from "../lib/format";
+import { isArabicLanguage, localizeText } from "../lib/localize";
 import type { PortalProps } from "./types";
 
 const categoryIcons: Record<SupplierCategory, typeof Building2> = {
@@ -18,7 +19,8 @@ const categoryIcons: Record<SupplierCategory, typeof Building2> = {
 };
 
 export function SupplierMarketplace({ data, session, createBooking }: PortalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isArabic = isArabicLanguage(i18n.language);
   const [category, setCategory] = useState<SupplierCategory | "ALL">("ALL");
   const [notice, setNotice] = useState("");
   const event = data.events[0];
@@ -47,11 +49,12 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
       <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
         <Badge tone="gold">{t("supplier.title")}</Badge>
         <h1 className="mt-4 text-2xl font-bold">
-          Hotels, cars, tickets, catering, and equipment
+          {isArabic ? "الفنادق، السيارات، التذاكر، الإعاشة، والمعدات" : "Hotels, cars, tickets, catering, and equipment"}
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-white/75">
-          Sponsored suppliers are ranked first, but the Supply Chain AI compares
-          value, rating, verification, and anomaly risk before booking.
+          {isArabic
+            ? "يتم تصدير الموردين المميزين أولاً، بينما يقارن ذكاء سلاسل الإمداد القيمة والتقييم والموثوقية ومخاطر الجودة قبل الحجز."
+            : "Sponsored suppliers are ranked first, but the Supply Chain AI compares value, rating, verification, and anomaly risk before booking."}
         </p>
       </section>
 
@@ -59,19 +62,19 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
         <MetricCard
           label={t("supplier.commission")}
           value="10-15%"
-          detail="Configurable by category"
+          detail={isArabic ? "قابلة للتهيئة حسب الفئة" : "Configurable by category"}
           icon={<Star size={17} />}
         />
         <MetricCard
-          label="Confirmed GMV"
+          label={isArabic ? "إجمالي العقود المؤكدة" : "Confirmed GMV"}
           value={money(confirmedRevenue)}
           detail={event.name}
           icon={<Building2 size={17} />}
         />
         <MetricCard
-          label="Sponsored placements"
+          label={isArabic ? "الموردين المميزين" : "Sponsored placements"}
           value={data.suppliers.filter((supplier) => supplier.sponsoredRank).length}
-          detail="Paid supplier ranking"
+          detail={isArabic ? "تصنيف مميز مدفوع" : "Paid supplier ranking"}
           icon={<Ticket size={17} />}
         />
       </div>
@@ -86,7 +89,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
                 : "rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
             }
           >
-            All
+            {isArabic ? "الكل" : "All"}
           </button>
           {categories.map((item) => (
             <button
@@ -98,7 +101,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
                   : "rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
               }
             >
-              {item}
+              {localizeText(item, isArabic)}
             </button>
           ))}
         </div>
@@ -179,24 +182,32 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
         ) : null}
       </Section>
 
-      <Section title="Live Task Dispatcher & AI OCR Upload">
+      <Section title={isArabic ? "توجيه المهام المباشر والتحقق الذكي من الوثائق (OCR)" : "Live Task Dispatcher & AI OCR Upload"}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="font-bold text-midyaf-ink mb-2">Live Task Alerts</h3>
+            <h3 className="font-bold text-midyaf-ink mb-2">{isArabic ? "تنبيهات المهام المباشرة" : "Live Task Alerts"}</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2 rounded bg-amber-50 p-2 border border-amber-200">
                 <span className="flex size-6 items-center justify-center rounded-full bg-amber-200 text-amber-800 text-xs font-bold shrink-0">!</span>
-                <p className="text-xs text-amber-900 font-medium">New VIP transfer request from KAFD to Diriyah at 19:00.</p>
-                <button className="ml-auto rounded bg-midyaf-purple px-2 py-1 text-[10px] font-bold text-white">Accept</button>
+                <p className="text-xs text-amber-900 font-medium">
+                  {isArabic ? "طلب نقل VIP جديد من مركز الملك عبد الله المالي إلى الدرعية الساعة 19:00." : "New VIP transfer request from KAFD to Diriyah at 19:00."}
+                </p>
+                <button className="ml-auto rounded bg-midyaf-purple px-2 py-1 text-[10px] font-bold text-white">
+                  {isArabic ? "قبول" : "Accept"}
+                </button>
               </div>
             </div>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="font-bold text-midyaf-ink mb-2">AI-Powered Document Approval</h3>
-            <p className="text-xs text-slate-500 mb-3">Upload your driver IDs, vehicle registrations, or insurance. Our OCR validates them instantly.</p>
+            <h3 className="font-bold text-midyaf-ink mb-2">{isArabic ? "اعتماد المستندات بالذكاء الاصطناعي" : "AI-Powered Document Approval"}</h3>
+            <p className="text-xs text-slate-500 mb-3">
+              {isArabic ? "ارفع هويات السائقين أو رخص السير أو وثائق التأمين. يقوم قارئ النصوص الذكي بالتحقق منها فوراً." : "Upload your driver IDs, vehicle registrations, or insurance. Our OCR validates them instantly."}
+            </p>
             <div className="flex gap-2">
               <input type="file" className="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-midyaf-purple/10 file:text-midyaf-purple hover:file:bg-midyaf-purple/20" />
-              <button onClick={() => alert("Document processed by AI OCR. All data extracted and verified successfully.")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shrink-0">Upload & Verify</button>
+              <button onClick={() => alert(isArabic ? "تمت معالجة المستند بنجاح عبر الذكاء الاصطناعي واستخراج كافة البيانات واعتمادها." : "Document processed by AI OCR. All data extracted and verified successfully.")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shrink-0">
+                {isArabic ? "رفع والتحقق" : "Upload & Verify"}
+              </button>
             </div>
           </div>
         </div>
@@ -205,10 +216,10 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
       <Section title={t("supplier.dashboard")}>
         <div className="grid gap-3 md:grid-cols-4">
           {[
-            ["Bookings", event.bookings.length],
-            ["Average commission", "12.7%"],
-            ["Payout queue", money(confirmedRevenue * 0.88)],
-            ["Anomaly flags", 1]
+            [isArabic ? "الحجوزات" : "Bookings", event.bookings.length],
+            [isArabic ? "متوسط العمولة" : "Average commission", "12.7%"],
+            [isArabic ? "مستحقات بانتظار الصرف" : "Payout queue", money(confirmedRevenue * 0.88)],
+            [isArabic ? "ملاحظات وتنبيهات" : "Anomaly flags", 1]
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg bg-slate-50 p-4">
               <p className="text-xs text-slate-500">{label}</p>
