@@ -470,13 +470,13 @@ export function resolveSmartQuery(
       toolIntent: "vendor_geofence_check",
       actions: [
         {
-          label: "⚡ Dispatch Urgent SMS to AV Team",
-          labelAr: "⚡ إرسال تنبيه SMS عاجل لفريق الصوتيات",
+          label: "Dispatch Urgent SMS to AV Team",
+          labelAr: "إرسال تنبيه SMS عاجل لفريق الصوتيات",
           actionId: "send_vendor_sms"
         },
         {
-          label: "📍 Pinpoint on Fleet Map",
-          labelAr: "📍 تتبع الموقع على الخريطة",
+          label: "Pinpoint on Fleet Map",
+          labelAr: "تتبع الموقع على الخريطة",
           actionId: "view_vendor_map"
         }
       ]
@@ -511,13 +511,13 @@ export function resolveSmartQuery(
       toolIntent: "vault_status_check",
       actions: [
         {
-          label: "🔐 Access Triple-Key Vault",
-          labelAr: "🔐 الانتقال إلى الخزنة الثلاثية",
+          label: "Access Triple-Key Vault",
+          labelAr: "الانتقال إلى الخزنة الثلاثية",
           actionId: "scroll_to_vault"
         },
         {
-          label: "📜 View Security Integrity Audit",
-          labelAr: "📜 سجل التدقيق والنزاهة",
+          label: "View Security Integrity Audit",
+          labelAr: "سجل التدقيق والنزاهة",
           actionId: "view_vault_audit"
         }
       ]
@@ -549,13 +549,13 @@ export function resolveSmartQuery(
       toolIntent: "airport_flight_surge",
       actions: [
         {
-          label: "🚐 Divert 5 Vans to Terminal 2",
-          labelAr: "🚐 تحويل 5 حافلات فوراً إلى الصالة 2",
+          label: "Divert 5 Vans to Terminal 2",
+          labelAr: "تحويل 5 حافلات فوراً إلى الصالة 2",
           actionId: "divert_fleet"
         },
         {
-          label: "✈️ View Airport Express Manifest",
-          labelAr: "✈️ عرض قائمة وصول المطار",
+          label: "View Airport Express Manifest",
+          labelAr: "عرض قائمة وصول المطار",
           actionId: "view_airport"
         }
       ]
@@ -591,13 +591,13 @@ export function resolveSmartQuery(
       toolIntent: "hospitality_rider_check",
       actions: [
         {
-          label: "📋 Inspect Hospitality Riders",
-          labelAr: "📋 استعراض مذكرات الضيافة",
+          label: "Inspect Hospitality Riders",
+          labelAr: "استعراض مذكرات الضيافة",
           actionId: "inspect_riders"
         },
         {
-          label: "🛎️ Re-confirm with Ritz Butler",
-          labelAr: "🛎️ تأكيد التجهيزات مع رئيس الخدم",
+          label: "Re-confirm with Ritz Butler",
+          labelAr: "تأكيد التجهيزات مع رئيس الخدم",
           actionId: "notify_butler"
         }
       ]
@@ -636,13 +636,13 @@ export function resolveSmartQuery(
       toolIntent: "driver_touchdown_match",
       actions: [
         {
-          label: "🗺️ Track Chauffeur Live on Radar",
-          labelAr: "🗺️ تتبع السائق مباشرة على الرادار",
+          label: "Track Chauffeur Live on Radar",
+          labelAr: "تتبع السائق مباشرة على الرادار",
           actionId: "track_driver"
         },
         {
-          label: "📞 Connect Encrypted Line",
-          labelAr: "📞 اتصال آمن مباشر بالسائق",
+          label: "Connect Encrypted Line",
+          labelAr: "اتصال آمن مباشر بالسائق",
           actionId: "call_chauffeur"
         }
       ]
@@ -669,18 +669,18 @@ export function resolveSmartQuery(
     return {
       matched: true,
       content: isArabic
-        ? `${persona}: جدول مبادرة مستقبل الاستثمار 2027 اليوم: \n• 08:30 - إفطار واستقبال كبار الشخصيات (بهو الريتز-كارلتون) \n• 10:00 - الكلمة الافتتاحية: 'الآفاق الاقتصادية القادمة' (مركز المؤتمرات KAICC قاعة 1) \n• 13:00 - غداء قادة الأعمال الدوليين \n• 20:00 - العشاء الملكي الاحتفالي (مطل البجيري - الدرعية التاريخية). \n⚠️ تنبيه مروري: يستغرق الانتقال إلى الدرعية حوالي 35 دقيقة بسبب ذروة المساء، وتنطلق حافلات الضيوف من بهو الفندق في تمام 19:15.`
-        : `${persona}: FII 2027 Schedule & Travel Advisory: \n• 08:30 - VIP Networking Breakfast (The Ritz-Carlton Lobby) \n• 10:00 - Opening Keynote: 'The Next Economic Horizon' (KAICC Plenary Hall 1) \n• 13:00 - Global Leaders Networking Luncheon \n• 20:00 - Royal Gala Dinner (Diriyah Bujairi Terrace). \n⚠️ Traffic Advisory: Transit to Diriyah will take ~35 minutes during evening peak. Executive lobby shuttles depart promptly at 19:15.`,
+        ? `${persona}: جدول مبادرة مستقبل الاستثمار 2027 اليوم: \n• 08:30 - إفطار واستقبال كبار الشخصيات (بهو الريتز-كارلتون) \n• 10:00 - الكلمة الافتتاحية: 'الآفاق الاقتصادية القادمة' (مركز المؤتمرات KAICC قاعة 1) \n• 13:00 - غداء قادة الأعمال الدوليين \n• 20:00 - العشاء الملكي الاحتفالي (مطل البجيري - الدرعية التاريخية). \n[تنبيه مروري]: يستغرق الانتقال إلى الدرعية حوالي 35 دقيقة بسبب ذروة المساء، وتنطلق حافلات الضيوف من بهو الفندق في تمام 19:15.`
+        : `${persona}: FII 2027 Schedule & Travel Advisory: \n• 08:30 - VIP Networking Breakfast (The Ritz-Carlton Lobby) \n• 10:00 - Opening Keynote: 'The Next Economic Horizon' (KAICC Plenary Hall 1) \n• 13:00 - Global Leaders Networking Luncheon \n• 20:00 - Royal Gala Dinner (Diriyah Bujairi Terrace). \n[Traffic Advisory]: Transit to Diriyah will take ~35 minutes during evening peak. Executive lobby shuttles depart promptly at 19:15.`,
       toolIntent: "fii_schedule_check",
       actions: [
         {
-          label: "🚌 View Shuttle Route & GPS",
-          labelAr: "🚌 عرض مسار الحافلة ونظام GPS",
+          label: "View Shuttle Route & GPS",
+          labelAr: "عرض مسار الحافلة ونظام GPS",
           actionId: "view_shuttle_gps"
         },
         {
-          label: "📅 Add to Calendar",
-          labelAr: "📅 إضافة للتقويم",
+          label: "Add to Calendar",
+          labelAr: "إضافة للتقويم",
           actionId: "sync_calendar"
         }
       ]
@@ -710,13 +710,13 @@ export function resolveSmartQuery(
       toolIntent: "catering_restock_dispatch",
       actions: [
         {
-          label: "☕ Dispatch 2 Baristas & Restock",
-          labelAr: "☕ إرسال 2 باريستا وإعادة التعبئة",
+          label: "Dispatch 2 Baristas & Restock",
+          labelAr: "إرسال 2 باريستا وإعادة التعبئة",
           actionId: "confirm_dispatch_staff"
         },
         {
-          label: "📢 Send Alert to Najd Catering",
-          labelAr: "📢 إرسال إشعار لتموين نجد",
+          label: "Send Alert to Najd Catering",
+          labelAr: "إرسال إشعار لتموين نجد",
           actionId: "notify_catering"
         }
       ]
@@ -747,8 +747,8 @@ export function resolveSmartQuery(
       toolIntent: "post_event_analytics",
       actions: [
         {
-          label: "📊 View Executive PDF Report",
-          labelAr: "📊 استعراض التقرير التنفيذي الكامل",
+          label: "View Executive PDF Report",
+          labelAr: "استعراض التقرير التنفيذي الكامل",
           actionId: "generate_report"
         }
       ]
@@ -778,8 +778,8 @@ export function resolveSmartQuery(
       toolIntent: "vip_lounge_wifi",
       actions: [
         {
-          label: "📋 Copy Wi-Fi Passphrase",
-          labelAr: "📋 نسخ كلمة المرور",
+          label: "Copy Wi-Fi Passphrase",
+          labelAr: "نسخ كلمة المرور",
           actionId: "copy_wifi"
         }
       ]
@@ -808,8 +808,8 @@ export function resolveSmartQuery(
       toolIntent: "diriyah_dining_reserve",
       actions: [
         {
-          label: "🍽️ Reserve Table at Bujairi",
-          labelAr: "🍽️ حجز طاولة في مطل البجيري",
+          label: "Reserve Table at Bujairi",
+          labelAr: "حجز طاولة في مطل البجيري",
           actionId: "reserve_dining"
         }
       ]
@@ -824,23 +824,23 @@ export function resolveSmartQuery(
       : `${persona}: Welcome to Midyaf AI Operations Brain. I am actively monitoring telemetry for Future Investment Initiative 2027 (FII). I can help with real-time vendor geofencing, the Triple-Key Security Vault, Terminal 2 flight surges, VIP hospitality riders, and driver tracking.`,
     actions: [
       {
-        label: "🚨 Check Missing Vendors",
-        labelAr: "🚨 فحص الموردين المتأخرين",
+        label: "Check Missing Vendors",
+        labelAr: "فحص الموردين المتأخرين",
         actionId: "send_vendor_sms"
       },
       {
-        label: "🔐 Check Security Vault",
-        labelAr: "🔐 فحص الخزنة الثلاثية",
+        label: "Check Security Vault",
+        labelAr: "فحص الخزنة الثلاثية",
         actionId: "scroll_to_vault"
       },
       {
-        label: "✈️ Flight Arrivals Surge",
-        labelAr: "✈️ تنبيه وصول المطار",
+        label: "Flight Arrivals Surge",
+        labelAr: "تنبيه وصول المطار",
         actionId: "divert_fleet"
       },
       {
-        label: "🚗 Where is my Driver?",
-        labelAr: "🚗 أين سائقي؟",
+        label: "Where is my Driver?",
+        labelAr: "أين سائقي؟",
         actionId: "track_driver"
       }
     ]

@@ -1298,7 +1298,7 @@ router.post(
           pickupLocation: "King Khalid International Airport (KKIA) - Royal Terminal",
           dropoffLocation: body.destination,
           scheduledAt: new Date(),
-          ownerName: `⚡ VIP WALK-IN: ${body.title ? body.title + ' ' : ''}${body.guestName}`
+          ownerName: `VIP WALK-IN: ${body.title ? body.title + ' ' : ''}${body.guestName}`
         },
         include: { driver: { include: { user: true } }, guest: { include: { user: true } } }
       });

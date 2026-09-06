@@ -196,7 +196,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
             <p className="text-xs text-slate-500 mb-3">Upload your driver IDs, vehicle registrations, or insurance. Our OCR validates them instantly.</p>
             <div className="flex gap-2">
               <input type="file" className="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-midyaf-purple/10 file:text-midyaf-purple hover:file:bg-midyaf-purple/20" />
-              <button onClick={() => alert("✅ Document processed by AI OCR. All data extracted & approved instantly!")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shrink-0">Upload & Verify</button>
+              <button onClick={() => alert("Document processed by AI OCR. All data extracted and verified successfully.")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition shrink-0">Upload & Verify</button>
             </div>
           </div>
         </div>

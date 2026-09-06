@@ -17,7 +17,8 @@ import {
   Layers,
   Cpu,
   Clock,
-  Eye
+  Eye,
+  Crown
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Driver, Event, Task } from "@shared/domain";
@@ -228,32 +229,32 @@ export function SovereignCommandBridge({
       setActiveScenario("sandstorm");
       setScenarioLog((prev) => [
         isArabic
-          ? `🌪️ ${timestamp} · تم رصد عاصفة ترابية خفيفة: قام الذكاء السيادي بإعادة توجيه موكب ألفا وبرافو عبر طريق الأمير محمد بن سلمان مع إضافة 12 دقيقة حاجز أمان.`
-          : `🌪️ ${timestamp} · Sandstorm detected: AI dynamically rerouted Motorcade Alpha & Bravo via Prince Mohammed bin Salman Expressway (+12m safety buffer).`,
+          ? `[تنبيه طقس / إعادة توجيه] ${timestamp} · تم رصد عاصفة ترابية خفيفة: قام الذكاء السيادي بإعادة توجيه موكب ألفا وبرافو عبر طريق الأمير محمد بن سلمان مع إضافة 12 دقيقة حاجز أمان.`
+          : `[WEATHER / REROUTE] ${timestamp} · Sandstorm detected: AI dynamically rerouted Motorcade Alpha & Bravo via Prince Mohammed bin Salman Expressway (+12m safety buffer).`,
         ...prev.slice(0, 5)
       ]);
     } else if (type === "code_alpha") {
       setActiveScenario("code_alpha");
       setScenarioLog((prev) => [
         isArabic
-          ? `🚨 ${timestamp} · تفعيل كود ألفا: فتح الممر الدبلوماسي الأخضر فائق الأولوية بالتنسيق مع دوريات أمن وحماية المواكب الملكية.`
-          : `🚨 ${timestamp} · Protocol Code Alpha Active: 100% Diplomatic Green Wave corridor synchronized with Royal Security Police.`,
+          ? `[كود ألفا] ${timestamp} · تفعيل كود ألفا: فتح الممر الدبلوماسي الأخضر فائق الأولوية بالتنسيق مع دوريات أمن وحماية المواكب الملكية.`
+          : `[CODE ALPHA] ${timestamp} · Protocol Code Alpha Active: 100% Diplomatic Green Wave corridor synchronized with Royal Security Police.`,
         ...prev.slice(0, 5)
       ]);
     } else if (type === "surge") {
       setActiveScenario("surge");
       setScenarioLog((prev) => [
         isArabic
-          ? `⚡ ${timestamp} · تدفق وصول VIP: تم توجيه 5 سيارات مرسيدس مايباخ احتياطية فوراً إلى صالة الطيران الخاص بمطار الملك خالد.`
-          : `⚡ ${timestamp} · VIP Arrival Wave: 5 standby Mercedes-Maybach S680s immediately redeployed to KKIA Royal Pavilion.`,
+          ? `[توجيه فوري VIP] ${timestamp} · تدفق وصول VIP: تم توجيه 5 سيارات مرسيدس مايباخ احتياطية فوراً إلى صالة الطيران الخاص بمطار الملك خالد.`
+          : `[VIP DISPATCH] ${timestamp} · VIP Arrival Wave: 5 standby Mercedes-Maybach S680s immediately redeployed to KKIA Royal Pavilion.`,
         ...prev.slice(0, 5)
       ]);
     } else if (type === "vault_audit") {
       setActiveScenario("vault_audit");
       setScenarioLog((prev) => [
         isArabic
-          ? `🛡️ ${timestamp} · تدقيق التشفير الثلاثي: تم فحص البصمة التشفيرية SHA-256 لكافة العقود الأربعة (2.17 مليون ر.س) - مطابقة تامة 100% وخالية من أي تلاعب.`
-          : `🛡️ ${timestamp} · Triple-Key Cryptographic Audit: SHA-256 digital seals verified across all 4 contracts (SAR 2.17M) — 100% integrity certified.`,
+          ? `[تدقيق التشفير الثلاثي] ${timestamp} · تم فحص البصمة التشفيرية SHA-256 لكافة العقود الأربعة (2.17 مليون ر.س) - مطابقة تامة 100% وخالية من أي تلاعب.`
+          : `[TRIPLE-KEY AUDIT] ${timestamp} · SHA-256 digital seals verified across all 4 contracts (SAR 2.17M) — 100% integrity certified.`,
         ...prev.slice(0, 5)
       ]);
     }
@@ -375,7 +376,10 @@ export function SovereignCommandBridge({
                     <span>{flight.origin} → {flight.gate}</span>
                   </div>
                   <div className="mt-1.5 flex items-center justify-between border-t border-white/5 pt-1 text-[10px]">
-                    <span className="text-midyaf-gold font-semibold truncate">👑 {flight.vipOnBoard}</span>
+                    <span className="text-midyaf-gold font-semibold truncate flex items-center gap-1.5">
+                      <Crown size={12} className="text-midyaf-gold shrink-0" />
+                      <span>{flight.vipOnBoard}</span>
+                    </span>
                   </div>
                 </div>
               ))}
@@ -427,7 +431,10 @@ export function SovereignCommandBridge({
                       {convoy.speed} km/h
                     </span>
                   </div>
-                  <p className="text-[11px] text-midyaf-gold font-semibold mt-0.5">👑 {convoy.vip}</p>
+                  <p className="text-[11px] text-midyaf-gold font-semibold mt-0.5 flex items-center gap-1.5">
+                    <Crown size={12} className="text-midyaf-gold shrink-0" />
+                    <span>{convoy.vip}</span>
+                  </p>
                   <p className="text-[10px] text-slate-400">{convoy.vehicle} · {convoy.driver}</p>
                   <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 border-t border-white/5 pt-1">
                     <span className="truncate">{convoy.route}</span>
@@ -603,7 +610,9 @@ export function SovereignCommandBridge({
 
             {/* Sovereign Crest Header */}
             <div className="text-center pb-4 border-b border-midyaf-gold/30">
-              <span className="inline-block text-2xl mb-1">👑</span>
+              <div className="mx-auto size-10 rounded-xl bg-midyaf-gold/20 ring-1 ring-midyaf-gold/40 flex items-center justify-center text-midyaf-gold mb-2">
+                <Crown size={20} />
+              </div>
               <p className="text-[10px] font-black uppercase tracking-widest text-midyaf-gold">
                 {l("Encrypted VIP Security Dossier")}
               </p>

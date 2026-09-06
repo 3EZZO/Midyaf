@@ -13,7 +13,9 @@ import {
   Users,
   ClipboardList,
   Crosshair,
-  X
+  X,
+  Crown,
+  MapPin
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Driver, Event, Task } from "@shared/domain";
@@ -437,7 +439,7 @@ export function RiyadhMap({
                 {!isFullscreen && (
                   <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-black text-midyaf-gold ring-1 ring-midyaf-gold/40 group-hover:bg-midyaf-gold/30">
                     <Maximize2 size={10} />
-                    <span>{isArabic ? "تكبير الشاشة ⛶" : "Enlarge ⛶"}</span>
+                    <span>{isArabic ? "تكبير الشاشة" : "Enlarge"}</span>
                   </span>
                 )}
               </p>
@@ -645,16 +647,28 @@ export function RiyadhMap({
                         className="rounded-xl glass-tactical p-3 border border-midyaf-gold/20 hover:border-midyaf-gold/60 transition-colors"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-white text-xs">👑 {vip.name}</span>
+                          <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                            <Crown size={13} className="text-midyaf-gold" />
+                            <span>{vip.name}</span>
+                          </span>
                           <span className="text-[10px] text-cyan-300 font-mono bg-cyan-950/60 px-1.5 py-0.5 rounded">
                             VIP
                           </span>
                         </div>
                         <p className="text-[11px] text-midyaf-gold mt-0.5">{vip.title}</p>
-                        <div className="mt-2 text-[10px] text-slate-400 space-y-0.5 border-t border-white/5 pt-1.5">
-                          <p>🚗 {l("Chauffeur")}: <span className="text-slate-200 font-semibold">{vip.driver}</span> ({vip.vehicle})</p>
-                          <p>📍 {l("Corridor")}: <span className="text-slate-200">{vip.location}</span></p>
-                          <p className="text-emerald-400 font-semibold">● {vip.status}</p>
+                        <div className="mt-2 text-[10px] text-slate-400 space-y-1 border-t border-white/5 pt-1.5">
+                          <p className="flex items-center gap-1.5">
+                            <Car size={11} className="text-midyaf-gold shrink-0" />
+                            <span>{l("Chauffeur")}: <span className="text-slate-200 font-semibold">{vip.driver}</span> ({vip.vehicle})</span>
+                          </p>
+                          <p className="flex items-center gap-1.5">
+                            <MapPin size={11} className="text-cyan-400 shrink-0" />
+                            <span>{l("Corridor")}: <span className="text-slate-200">{vip.location}</span></span>
+                          </p>
+                          <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                            <span>{vip.status}</span>
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -702,7 +716,7 @@ export function RiyadhMap({
               className="absolute top-3 end-3 z-[500] flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple/95 via-slate-950/95 to-midyaf-purple-dark/95 px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-2xl backdrop-blur-md border border-midyaf-gold/70 hover:scale-105 active:scale-95 transition-all ring-2 ring-midyaf-gold/30 hover:ring-midyaf-gold cursor-pointer"
             >
               <Maximize2 size={14} className="text-midyaf-gold animate-pulse" />
-              <span>{isArabic ? "⛶ تكبير الخريطة (شاشة كاملة)" : "⛶ Enlarge Map (Fullscreen)"}</span>
+              <span>{isArabic ? "تكبير الخريطة (شاشة كاملة)" : "Enlarge Map (Fullscreen)"}</span>
             </button>
 
             {/* Tactical HUD Overlay Floating Badge */}
@@ -757,7 +771,7 @@ function addCustomMarker({
       <div class="relative flex items-center justify-center cursor-pointer group">
         <span class="absolute inline-flex size-9 animate-ping rounded-full bg-emerald-400 opacity-60"></span>
         <div class="relative z-10 flex items-center justify-center size-8 rounded-full bg-slate-950 border-2 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.8)] text-xs font-black transition-transform hover:scale-110">
-          🏎️
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
         </div>
       </div>
     `;
@@ -766,7 +780,7 @@ function addCustomMarker({
       <div class="relative flex items-center justify-center">
         <span class="absolute inline-flex size-10 animate-ping rounded-full bg-amber-400 opacity-50"></span>
         <div class="relative z-10 flex items-center justify-center size-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-[0_0_20px_rgba(201,168,76,0.9)] border border-amber-300 text-sm">
-          👑
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
         </div>
       </div>
     `;

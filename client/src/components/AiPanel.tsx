@@ -10,7 +10,16 @@ import {
   FileText,
   Navigation,
   ShieldCheck,
-  Radio
+  Radio,
+  Hotel,
+  Calendar,
+  Utensils,
+  Wifi,
+  AlertTriangle,
+  Plane,
+  ClipboardList,
+  Coffee,
+  BarChart2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@shared/domain";
@@ -63,40 +72,78 @@ type ChatMessage = {
   widget?: ChatWidget;
 };
 
+function getChipIcon(iconType: string) {
+  switch (iconType) {
+    case "car":
+      return <Car size={12} className="text-midyaf-gold shrink-0" />;
+    case "building":
+      return <Hotel size={12} className="text-purple-400 shrink-0" />;
+    case "calendar":
+      return <Calendar size={12} className="text-cyan-400 shrink-0" />;
+    case "utensils":
+      return <Utensils size={12} className="text-emerald-400 shrink-0" />;
+    case "wifi":
+      return <Wifi size={12} className="text-sky-400 shrink-0" />;
+    case "alert":
+      return <AlertTriangle size={12} className="text-amber-400 shrink-0" />;
+    case "shield":
+      return <ShieldCheck size={12} className="text-emerald-400 shrink-0" />;
+    case "plane":
+      return <Plane size={12} className="text-cyan-400 shrink-0" />;
+    case "clipboard":
+      return <ClipboardList size={12} className="text-midyaf-gold shrink-0" />;
+    case "coffee":
+      return <Coffee size={12} className="text-amber-400 shrink-0" />;
+    case "chart":
+      return <BarChart2 size={12} className="text-purple-400 shrink-0" />;
+    default:
+      return <Sparkles size={12} className="text-midyaf-gold shrink-0" />;
+  }
+}
+
 export function AiPanel({
-  session,
   persona = "Noura",
+  initialMessage,
+  session,
   context
 }: {
+  persona?: "Noura" | "Saif & Munirah" | "Ops Manager";
+  initialMessage?: string;
   session?: Session;
-  persona?: "Saud" | "Noura" | "Saif & Munirah" | "Ops Manager" | "Supply Chain AI";
-  context?: unknown;
+  context?: Record<string, any>;
 }) {
   const { t, i18n } = useTranslation();
   const isArabic = isArabicLanguage(i18n.language);
-  const l = (value: string | number | null | undefined) =>
-    localizeText(value, isArabic);
-  const p = (english: string, arabic: string) =>
-    pickText(isArabic, english, arabic);
-  const [input, setInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const p = (en: string, ar: string) => pickText(isArabic, en, ar);
+  const l = (text: string) => localizeText(text, isArabic);
 
-  const assistantName = useMemo(
-    () => l(persona === "Saud" ? "Saud" : persona),
-    [persona, isArabic]
-  );
-  const welcomeMessage = useMemo<ChatMessage>(
-    () => ({
+  const assistantName =
+    persona === "Saif & Munirah"
+      ? p("Saif & Munirah (VIP Concierge)", "سيف ومنيرة (المساعد الملكي للضيوف)")
+      : persona === "Ops Manager"
+      ? p("Ops Manager AI", "مدير العمليات الذكي")
+      : p("Noura (Operations Copilot)", "نورة (الذكاء السيادي لإدارة العمليات)");
+
+  const welcomeMessage = useMemo<ChatMessage>(() => {
+    const isGuest = persona === "Saif & Munirah";
+    return {
       id: "welcome",
       author: "ai",
-      body: p(
-        `${assistantName}: Welcome to Riyadh. How can I help today?`,
-        `${assistantName}: أهلاً بك في الرياض. كيف أساعدك اليوم؟`
-      )
-    }),
-    [assistantName, isArabic]
-  );
-  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
+      body: isGuest
+        ? p(
+            `Ahlan wa Sahlan, Your Excellency. I am Saif & Munirah, your personal executive concierge for FII 2027. Your luxury transport, hospitality suite, and agenda are fully synchronized. How may I assist you today?`,
+            `أهلاً وسهلاً بمعاليكم وسعادتكم. أنا سيف ومنيرة، مساعدكم الشخصي لخدمات كبار الشخصيات لمبادرة مستقبل الاستثمار 2027. جدولكم وموكبكم وجناحكم الملكي في خدمتكم على مدار الساعة. كيف يمكنني مساندتكم الآن؟`
+          )
+        : p(
+            `Welcome to Midyaf Sovereign Operations Brain. I am Noura, actively monitoring live telemetry for Future Investment Initiative 2027 (FII) across Riyadh. Ask me about vendor geofencing, sealed vault status, flight surges, or active VIP riders.`,
+            `مرحباً بكم في العقل التشغيلي السيادي لمنصة مِضياف. أنا نورة، أراقب حالياً التغطية الحية لفعاليات مبادرة مستقبل الاستثمار 2027 (FII) في الرياض. يمكنكم سؤالي عن فحص الموردين بالقاعة أ، الخزنة الثلاثية، تنبيهات وصول المطار، أو مذكرات الضيافة الملكية.`
+          )
+    };
+  }, [persona, i18n.language]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [welcomeMessage]);
+  const [input, setInput] = useState(initialMessage ?? "");
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     setMessages((current) =>
@@ -109,20 +156,20 @@ export function AiPanel({
   const suggestedPrompts = useMemo(() => {
     if (persona === "Saif & Munirah") {
       return [
-        { en: "Where is my driver?", ar: "أين سائقي؟", icon: "🚗" },
-        { en: "My room & hospitality rider", ar: "جناحي ومذكرة الضيافة", icon: "🏨" },
-        { en: "Today's FII 2027 Schedule", ar: "جدول الفعالية اليوم", icon: "📅" },
-        { en: "Recommend dinner in Diriyah", ar: "مطعم عشاء في الدرعية", icon: "🍽️" },
-        { en: "VIP Wi-Fi & Lounge access", ar: "بيانات الواي فاي والاستراحة", icon: "📶" }
+        { en: "Where is my driver?", ar: "أين سائقي؟", icon: "car" },
+        { en: "My room & hospitality rider", ar: "جناحي ومذكرة الضيافة", icon: "building" },
+        { en: "Today's FII 2027 Schedule", ar: "جدول الفعالية اليوم", icon: "calendar" },
+        { en: "Recommend dinner in Diriyah", ar: "مطعم عشاء في الدرعية", icon: "utensils" },
+        { en: "VIP Wi-Fi & Lounge access", ar: "بيانات الواي فاي والاستراحة", icon: "wifi" }
       ];
     }
     return [
-      { en: "Which vendors are missing from Hall A right now?", ar: "الموردين المتأخرين بالقاعة أ", icon: "🚨" },
-      { en: "Triple-Key Security Vault status", ar: "حالة الخزنة الثلاثية", icon: "🛡️" },
-      { en: "Terminal 2 flight surge alert", ar: "تنبيه ازدحام الصالة 2", icon: "✈️" },
-      { en: "VIP Hospitality Riders status", ar: "مذكرات الضيافة الملكية", icon: "📋" },
-      { en: "Crowd surge at Hall B coffee station", ar: "ازدحام محطة القهوة قاعة ب", icon: "☕" },
-      { en: "Post-event analytics & savings", ar: "تقرير الوفورات والتقييم", icon: "📊" }
+      { en: "Which vendors are missing from Hall A right now?", ar: "الموردين المتأخرين بالقاعة أ", icon: "alert" },
+      { en: "Triple-Key Security Vault status", ar: "حالة الخزنة الثلاثية", icon: "shield" },
+      { en: "Terminal 2 flight surge alert", ar: "تنبيه ازدحام الصالة 2", icon: "plane" },
+      { en: "VIP Hospitality Riders status", ar: "مذكرات الضيافة الملكية", icon: "clipboard" },
+      { en: "Crowd surge at Hall B coffee station", ar: "ازدحام محطة القهوة قاعة ب", icon: "coffee" },
+      { en: "Post-event analytics & savings", ar: "تقرير الوفورات والتقييم", icon: "chart" }
     ];
   }, [persona]);
 
@@ -177,12 +224,12 @@ export function AiPanel({
           id: crypto.randomUUID(),
           author: "ai",
           body: p(
-            `${assistantName}: Live Shuttle Telemetry connected. Route: The Ritz-Carlton ➔ KAICC Plenary Hall 1.`,
-            `${assistantName}: تم ربط تتبع حافلات النقل المباشر. المسار: الريتز-كارلتون ➔ قاعة المؤتمرات KAICC.`
+            `${assistantName}: Live Shuttle Telemetry connected. Route: The Ritz-Carlton -> KAICC Plenary Hall 1.`,
+            `${assistantName}: تم ربط تتبع حافلات النقل المباشر. المسار: الريتز-كارلتون -> قاعة المؤتمرات KAICC.`
           ),
           widget: {
             type: "shuttle_tracker",
-            route: "The Ritz-Carlton ➔ KAICC Plenary Hall 1",
+            route: "The Ritz-Carlton -> KAICC Plenary Hall 1",
             eta: p("12 mins (King Khalid Rd)", "12 دقيقة (طريق الملك خالد)"),
             capacity: "14 / 20 Seats Available",
             status: p("En Route (Smooth Flow)", "في الطريق (انسيابية تامة)")
@@ -473,16 +520,19 @@ export function AiPanel({
       {/* Suggested Prompt Chips */}
       <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-slate-200/60 dark:border-white/10 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
-          <span className="text-slate-400 font-semibold shrink-0">💡 {p("Try:", "جرّب:")}</span>
+          <span className="text-slate-400 font-semibold shrink-0 flex items-center gap-1">
+            <Sparkles size={12} className="text-midyaf-gold" />
+            <span>{p("Try:", "جرّب:")}</span>
+          </span>
           {suggestedPrompts.map((chip, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => void handleSend(p(chip.en, chip.ar))}
               disabled={isSending}
-              className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-2xs"
             >
-              <span>{chip.icon}</span>
+              {getChipIcon(chip.icon)}
               <span>{p(chip.en, chip.ar)}</span>
             </button>
           ))}
@@ -541,13 +591,13 @@ export function localAiReply(
         : `${persona}: Vendor Geofence Alert: Only the AV team (Al-Faisal Lighting & AV) is missing from Hall A right now. Real-time GPS telemetry shows their equipment truck is navigating heavy traffic on King Fahd Rd (~10–12 minutes away). All other 6 registered vendors are checked in at their designated bays.`,
       actions: [
         {
-          label: "⚡ Dispatch Urgent SMS to AV Team",
-          labelAr: "⚡ إرسال تنبيه SMS عاجل لفريق الصوتيات",
+          label: "Dispatch Urgent SMS to AV Team",
+          labelAr: "إرسال تنبيه SMS عاجل لفريق الصوتيات",
           actionId: "send_vendor_sms"
         },
         {
-          label: "📍 Pinpoint on Fleet Map",
-          labelAr: "📍 تتبع الموقع على الخريطة",
+          label: "Pinpoint on Fleet Map",
+          labelAr: "تتبع الموقع على الخريطة",
           actionId: "view_vendor_map"
         }
       ]
@@ -580,8 +630,8 @@ export function localAiReply(
         : `${persona}: Midyaf Triple-Key Anti-Corruption Security Vault is ACTIVE for Future Investment Initiative 2027 (FII). Vendor bids from The Ritz-Carlton (SAR 1,250,000) and Royal Fleet VIP (SAR 450,000) remain cryptographically sealed. Viewing unsealed quotations requires simultaneous authentication from 2 Sila Organizers and 1 Midyaf Independent Auditor within a strict 5-minute window.`,
       actions: [
         {
-          label: "🔐 Access Triple-Key Vault",
-          labelAr: "🔐 الانتقال إلى الخزنة الثلاثية",
+          label: "Access Triple-Key Vault",
+          labelAr: "الانتقال إلى الخزنة الثلاثية",
           actionId: "scroll_to_vault"
         }
       ]
@@ -610,8 +660,8 @@ export function localAiReply(
         : `${persona}: Live Command Center Alert: 3 international flights (SV102 from London, EK817 from Dubai, QR1164 from Doha) touched down simultaneously at KKIA Terminal 2. 40 VIP delegates require immediate curbside pickup, but only 15 vans are staged there. Terminal 1 currently has 8 idle standby vans ready for immediate reallocation.`,
       actions: [
         {
-          label: "🚐 Divert 5 Vans to Terminal 2",
-          labelAr: "🚐 تحويل 5 حافلات فوراً إلى الصالة 2",
+          label: "Divert 5 Vans to Terminal 2",
+          labelAr: "تحويل 5 حافلات فوراً إلى الصالة 2",
           actionId: "divert_fleet"
         }
       ]
@@ -645,8 +695,8 @@ export function localAiReply(
         : `${persona}: VIP Hospitality Riders Verified at The Ritz-Carlton Riyadh: 1) H.E. Yasir Al-Rumayyan (Royal Suite 1: Taif Rose Gahwa, Sukkari Dates, Strictly Halal & Gluten-Free dietary rider); 2) Sarah Al-Tuwaijri (Executive Suite 204: Firm Feather Pillow, Royal Arabian Oud amenities); 3) Tariq Mansoor (Deluxe King 310: Decaf Saudi Gahwa, Sparkling Water). All riders pre-cleared by Midyaf Protocol.`,
       actions: [
         {
-          label: "📋 Inspect Hospitality Riders",
-          labelAr: "📋 استعراض مذكرات الضيافة",
+          label: "Inspect Hospitality Riders",
+          labelAr: "استعراض مذكرات الضيافة",
           actionId: "inspect_riders"
         }
       ]
@@ -683,8 +733,8 @@ export function localAiReply(
         : `${persona}: Assigned VIP Chauffeur: Captain Sultan Al-Otaibi is waiting at KKIA Terminal 2 VIP Curb Gate 2 in an all-black Mercedes Maybach S680 (Plate: KSA 9119). Security clearance: Executive Escort #819. In-cabin climate set to 20°C with cold Taif rose water ready. You can walk straight to the vehicle without phone calls.`,
       actions: [
         {
-          label: "🗺️ Track Chauffeur Live on Radar",
-          labelAr: "🗺️ تتبع السائق مباشرة على الرادار",
+          label: "Track Chauffeur Live on Radar",
+          labelAr: "تتبع السائق مباشرة على الرادار",
           actionId: "track_driver"
         }
       ]
@@ -710,12 +760,12 @@ export function localAiReply(
   ) {
     return {
       body: isArabic
-        ? `${persona}: جدول مبادرة مستقبل الاستثمار 2027 اليوم: \n• 08:30 - إفطار واستقبال كبار الشخصيات (بهو الريتز-كارلتون) \n• 10:00 - الكلمة الافتتاحية: 'الآفاق الاقتصادية القادمة' (مركز المؤتمرات KAICC قاعة 1) \n• 13:00 - غداء قادة الأعمال الدوليين \n• 20:00 - العشاء الملكي الاحتفالي (مطل البجيري - الدرعية التاريخية). \n⚠️ تنبيه مروري: يستغرق الانتقال إلى الدرعية حوالي 35 دقيقة، وتنطلق حافلات الضيوف في تمام 19:15.`
-        : `${persona}: FII 2027 Schedule & Travel Advisory: \n• 08:30 - VIP Networking Breakfast (The Ritz-Carlton Lobby) \n• 10:00 - Opening Keynote: 'The Next Economic Horizon' (KAICC Plenary Hall 1) \n• 13:00 - Global Leaders Networking Luncheon \n• 20:00 - Royal Gala Dinner (Diriyah Bujairi Terrace). \n⚠️ Traffic Advisory: Transit to Diriyah will take ~35 minutes during evening peak. Executive lobby shuttles depart promptly at 19:15.`,
+        ? `${persona}: جدول مبادرة مستقبل الاستثمار 2027 اليوم: \n• 08:30 - إفطار واستقبال كبار الشخصيات (بهو الريتز-كارلتون) \n• 10:00 - الكلمة الافتتاحية: 'الآفاق الاقتصادية القادمة' (مركز المؤتمرات KAICC قاعة 1) \n• 13:00 - غداء قادة الأعمال الدوليين \n• 20:00 - العشاء الملكي الاحتفالي (مطل البجيري - الدرعية التاريخية). \n[تنبيه مروري]: يستغرق الانتقال إلى الدرعية حوالي 35 دقيقة، وتنطلق حافلات الضيوف في تمام 19:15.`
+        : `${persona}: FII 2027 Schedule & Travel Advisory: \n• 08:30 - VIP Networking Breakfast (The Ritz-Carlton Lobby) \n• 10:00 - Opening Keynote: 'The Next Economic Horizon' (KAICC Plenary Hall 1) \n• 13:00 - Global Leaders Networking Luncheon \n• 20:00 - Royal Gala Dinner (Diriyah Bujairi Terrace). \n[Traffic Advisory]: Transit to Diriyah will take ~35 minutes during evening peak. Executive lobby shuttles depart promptly at 19:15.`,
       actions: [
         {
-          label: "🚌 View Shuttle Route & GPS",
-          labelAr: "🚌 عرض مسار الحافلة ونظام GPS",
+          label: "View Shuttle Route & GPS",
+          labelAr: "عرض مسار الحافلة ونظام GPS",
           actionId: "view_shuttle_gps"
         }
       ]
@@ -743,8 +793,8 @@ export function localAiReply(
         : `${persona}: Urgent Catering Alert: Footfall monitors at Hall B Executive Lounge report an 85% capacity surge following the morning panel. Artisan pastries and premium Gahwa beans have dropped to 18% inventory. Immediate dispatch of 2 standby baristas and a replenishment cart recommended.`,
       actions: [
         {
-          label: "☕ Dispatch 2 Baristas & Restock",
-          labelAr: "☕ إرسال 2 باريستا وإعادة التعبئة",
+          label: "Dispatch 2 Baristas & Restock",
+          labelAr: "إرسال 2 باريستا وإعادة التعبئة",
           actionId: "confirm_dispatch_staff"
         }
       ]
@@ -773,8 +823,8 @@ export function localAiReply(
         : `${persona}: Automated Post-Event Intelligence Summary: Overall VIP satisfaction reached 96% (NPS 88). Key operational efficiency: Intelligent flight batching at KKIA Terminal 2 eliminated 18-minute curb wait times and cut idle vehicle duration by 40%, delivering SAR 145,000 in direct fleet cost savings.`,
       actions: [
         {
-          label: "📊 View Executive PDF Report",
-          labelAr: "📊 استعراض التقرير التنفيذي الكامل",
+          label: "View Executive PDF Report",
+          labelAr: "استعراض التقرير التنفيذي الكامل",
           actionId: "generate_report"
         }
       ]
@@ -830,23 +880,23 @@ export function localAiReply(
       : `${persona}: Welcome to Midyaf AI Operations Brain. I am actively monitoring telemetry for Future Investment Initiative 2027 (FII). I can help with real-time vendor geofencing, the Triple-Key Security Vault, Terminal 2 flight surges, VIP hospitality riders, and driver tracking.`,
     actions: [
       {
-        label: "🚨 Check Missing Vendors",
-        labelAr: "🚨 فحص الموردين المتأخرين",
+        label: "Check Missing Vendors",
+        labelAr: "فحص الموردين المتأخرين",
         actionId: "send_vendor_sms"
       },
       {
-        label: "🔐 Check Security Vault",
-        labelAr: "🔐 فحص الخزنة الثلاثية",
+        label: "Check Security Vault",
+        labelAr: "فحص الخزنة الثلاثية",
         actionId: "scroll_to_vault"
       },
       {
-        label: "✈️ Flight Arrivals Surge",
-        labelAr: "✈️ تنبيه وصول المطار",
+        label: "Flight Arrivals Surge",
+        labelAr: "تنبيه وصول المطار",
         actionId: "divert_fleet"
       },
       {
-        label: "🚗 Where is my Driver?",
-        labelAr: "🚗 أين سائقي؟",
+        label: "Where is my Driver?",
+        labelAr: "أين سائقي؟",
         actionId: "track_driver"
       }
     ]

@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
-  Users
+  Users,
+  KeyRound,
+  Star
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -1074,7 +1076,7 @@ function ShellFrame({
                 <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
               </span>
               <Shield size={14} className="text-midyaf-gold" />
-              <span>{isArabic ? "🌐 غرفة العمليات" : "🌐 WAR ROOM"}</span>
+              <span>{isArabic ? "غرفة العمليات" : "WAR ROOM"}</span>
             </button>
 
             <button
@@ -1354,16 +1356,19 @@ function LoginPage({
 
           {/* Executive Fast Access */}
           <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold">
-              {isArabic ? "🏢 الدخول القيادي السريع" : "🏢 Executive Fast Access"}
+            <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold flex items-center gap-1.5">
+              <ShieldCheck size={13} className="text-midyaf-gold" />
+              <span>{isArabic ? "الدخول القيادي السريع" : "Executive Fast Access"}</span>
             </p>
             <div className="mt-2.5 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => void onLogin("admin@midyaf.local", "Midyaf@2026")}
-                className="flex items-center gap-2 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+                className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 border border-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10 cursor-pointer"
               >
-                <span className="text-base">👑</span>
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-midyaf-gold/15 text-midyaf-gold ring-1 ring-midyaf-gold/30">
+                  <Crown size={14} />
+                </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "مسؤول النظام (كافة الصلاحيات)" : "Admin (All Portals)"}</p>
                   <p className="truncate text-[10px] text-slate-400">admin@midyaf.local</p>
@@ -1373,9 +1378,11 @@ function LoginPage({
               <button
                 type="button"
                 onClick={() => void onLogin("guest.vip@midyaf.local", "Midyaf@2026")}
-                className="flex items-center gap-2 rounded-xl bg-amber-500/10 p-2.5 text-left text-xs font-bold text-amber-600 transition hover:bg-amber-500/15 dark:bg-amber-500/20 dark:text-amber-300"
+                className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 p-2.5 text-left text-xs font-bold text-amber-600 transition hover:bg-amber-500/15 border border-amber-500/15 dark:bg-amber-500/20 dark:text-amber-300 cursor-pointer"
               >
-                <span className="text-base">⭐</span>
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-500/20 text-amber-500 ring-1 ring-amber-500/30">
+                  <Star size={14} />
+                </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
                   <p className="truncate text-[10px] text-slate-400">Noura Al Harbi</p>
@@ -1385,9 +1392,11 @@ function LoginPage({
               <button
                 type="button"
                 onClick={() => void onLogin("driver@midyaf.local", "Midyaf@2026")}
-                className="flex items-center gap-2 rounded-xl bg-emerald-500/10 p-2.5 text-left text-xs font-bold text-emerald-600 transition hover:bg-emerald-500/15 dark:bg-emerald-500/20 dark:text-emerald-300"
+                className="flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-2.5 text-left text-xs font-bold text-emerald-600 transition hover:bg-emerald-500/15 border border-emerald-500/15 dark:bg-emerald-500/20 dark:text-emerald-300 cursor-pointer"
               >
-                <span className="text-base">🚗</span>
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/30">
+                  <Car size={14} />
+                </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "كابتن الأسطول" : "Fleet Captain"}</p>
                   <p className="truncate text-[10px] text-slate-400">Fahad Al Qahtani</p>
@@ -1397,9 +1406,11 @@ function LoginPage({
               <button
                 type="button"
                 onClick={() => void onLogin("khalid.ops@sila.com", "Midyaf@2026")}
-                className="flex items-center gap-2 rounded-xl bg-sky-500/10 p-2.5 text-left text-xs font-bold text-sky-600 transition hover:bg-sky-500/15 dark:bg-sky-500/20 dark:text-sky-300"
+                className="flex items-center gap-2.5 rounded-xl bg-sky-500/10 p-2.5 text-left text-xs font-bold text-sky-600 transition hover:bg-sky-500/15 border border-sky-500/15 dark:bg-sky-500/20 dark:text-sky-300 cursor-pointer"
               >
-                <span className="text-base">🔐</span>
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-sky-500/20 text-sky-500 ring-1 ring-sky-500/30">
+                  <KeyRound size={14} />
+                </div>
                 <div className="truncate">
                   <p className="truncate text-[11px] font-black">{isArabic ? "صلة (المفتاح 1)" : "Sila (Key 1)"}</p>
                   <p className="truncate text-[10px] text-slate-400">Vault Demo</p>

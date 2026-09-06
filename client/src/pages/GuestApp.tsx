@@ -9,7 +9,10 @@ import {
   MapPin,
   Phone,
   QrCode,
-  Sparkles
+  Sparkles,
+  Zap,
+  Utensils,
+  Building
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../components/Badge";
@@ -52,7 +55,7 @@ export function GuestApp({ data, session }: PortalProps) {
             </Badge>
             <div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-3.5 py-1.5 text-xs font-bold text-emerald-300 border border-emerald-400/30 shadow-glow">
               <span className="size-2.5 rounded-full bg-emerald-400 animate-ping" />
-              <span>📍 Live GPS Tracking & Concierge Sync Active</span>
+              <span>Live GPS Tracking & Concierge Sync Active</span>
             </div>
           </div>
           <h1 className="mt-4 text-3xl font-black tracking-tight">{t("guest.title")}</h1>
@@ -92,10 +95,11 @@ export function GuestApp({ data, session }: PortalProps) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40">
                     <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400 inline" />
-                    {t("guest.touchdown", "✈️ FLIGHT TOUCHDOWN CONFIRMED")}
+                    {t("guest.touchdown", "FLIGHT TOUCHDOWN CONFIRMED")}
                   </span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
-                    ⚡ VIP EXPEDITED CURB
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
+                    <Zap size={11} className="text-amber-600 dark:text-amber-400" />
+                    <span>VIP EXPEDITED CURB</span>
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary mt-1">
@@ -105,14 +109,14 @@ export function GuestApp({ data, session }: PortalProps) {
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
-                onClick={() => alert("📞 Connecting directly via encrypted royal line to Captain Sultan Al-Otaibi (+966 50 811 9119)...")}
+                onClick={() => alert("Connecting directly via encrypted royal line to Captain Sultan Al-Otaibi (+966 50 811 9119)...")}
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
               >
                 <Phone size={13} />
                 Call Captain
               </button>
               <button
-                onClick={() => alert("💬 Concierge Noura notified: 'Guest has cleared immigration and is walking to Bay 4 right now.'")}
+                onClick={() => alert("Concierge Noura notified: 'Guest has cleared immigration and is walking to Bay 4 right now.'")}
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-midyaf-purple hover:bg-midyaf-purple-dark text-white text-xs font-bold shadow-md transition-all cursor-pointer"
               >
                 <Sparkles size={13} className="text-midyaf-gold" />
@@ -154,7 +158,7 @@ export function GuestApp({ data, session }: PortalProps) {
           const rider = data.hospitalityRiders?.find((r) => r.guestId === guest?.id);
           if (!rider) return null;
           return (
-            <Section title="🌟 Your Platinum Hospitality Rider">
+            <Section title="Your Platinum Hospitality Rider">
               <RoyalCard tone="gold" elevated interactive={true}>
                 <div className="flex items-center justify-between border-b border-amber-200/60 pb-3 mb-4 dark:border-amber-900/40">
                   <div className="flex items-center gap-2.5">
@@ -164,13 +168,14 @@ export function GuestApp({ data, session }: PortalProps) {
                     </span>
                   </div>
                   <Badge tone={rider.fulfilled ? "green" : "gold"}>
-                    {rider.fulfilled ? "✓ Rider Verified & Ready" : "⏳ In Preparation by Concierge"}
+                    {rider.fulfilled ? "Rider Verified & Ready" : "In Preparation by Concierge"}
                   </Badge>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3 text-xs">
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-emerald-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-emerald-500/30">
                     <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-2 flex items-center gap-1.5 text-sm">
-                      🍽️ Dietary & Refreshments
+                      <Utensils size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Dietary & Refreshments</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.dietaryNeeds?.map((item: string, idx: number) => (
@@ -180,7 +185,8 @@ export function GuestApp({ data, session }: PortalProps) {
                   </div>
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-purple-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-purple-500/30">
                     <p className="font-bold text-purple-800 dark:text-purple-400 mb-2 flex items-center gap-1.5 text-sm">
-                      🏨 Suite & Environment
+                      <Building size={15} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                      <span>Suite & Environment</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.roomPreferences?.map((item: string, idx: number) => (
@@ -190,7 +196,8 @@ export function GuestApp({ data, session }: PortalProps) {
                   </div>
                   <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-amber-500/20 transition-all duration-300 hover:scale-[1.02] dark:bg-dark-surface dark:ring-amber-500/30">
                     <p className="font-bold text-amber-800 dark:text-amber-400 mb-2 flex items-center gap-1.5 text-sm">
-                      🚘 Chauffeur & Fleet
+                      <Car size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Chauffeur & Fleet</span>
                     </p>
                     <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300 font-medium">
                       {rider.vehicleRider?.map((item: string, idx: number) => (

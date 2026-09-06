@@ -24,7 +24,16 @@ import {
   Unlock,
   Users,
   Radio,
-  Send
+  Send,
+  Zap,
+  AlertTriangle,
+  Utensils,
+  Building,
+  Monitor,
+  ShieldAlert,
+  BarChart2,
+  Coffee,
+  X
 } from "lucide-react";
 import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
@@ -840,7 +849,7 @@ export function CaptainsApp({
         <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
-              ⚡
+              <Zap size={16} />
             </span>
             <div>
               <h3 className="text-sm font-bold text-white">
@@ -877,7 +886,7 @@ export function CaptainsApp({
                 })
               });
               if (res.ok) {
-                alert("⚡ VIP Walk-in Registered! Trip assigned to your active queue.");
+                alert("VIP Walk-in Registered! Trip assigned to your active queue.");
                 nameInput.value = "";
               } else {
                 alert("Failed to register walk-in");
@@ -914,9 +923,10 @@ export function CaptainsApp({
           </div>
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
+            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
           >
-            ⚡ Start VIP Trip
+            <Zap size={14} className="fill-current" />
+            <span>Start VIP Trip</span>
           </button>
         </form>
       </section>
@@ -1109,7 +1119,10 @@ function HospitalityRidersSection({
                   {updatingId === rider.id ? (
                     "Updating..."
                   ) : rider.fulfilled ? (
-                    `✓ Fulfilled ${rider.fulfilledBy ? `by ${rider.fulfilledBy}` : ""}`
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 size={13} />
+                      <span>Fulfilled {rider.fulfilledBy ? `by ${rider.fulfilledBy}` : ""}</span>
+                    </span>
                   ) : (
                     "Mark as Fulfilled"
                   )}
@@ -1118,8 +1131,9 @@ function HospitalityRidersSection({
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs">
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
-                  <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-1">
-                    🍽️ Dietary Needs
+                  <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
+                    <Utensils size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Dietary Needs</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.dietaryNeeds?.map((item: string, i: number) => (
@@ -1129,8 +1143,9 @@ function HospitalityRidersSection({
                 </div>
 
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
-                  <p className="font-bold text-purple-800 dark:text-purple-400 mb-1 flex items-center gap-1">
-                    🏨 Room Preferences
+                  <p className="font-bold text-purple-800 dark:text-purple-400 mb-1 flex items-center gap-1.5">
+                    <Building size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>Room Preferences</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.roomPreferences?.map((item: string, i: number) => (
@@ -1140,8 +1155,9 @@ function HospitalityRidersSection({
                 </div>
 
                 <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
-                  <p className="font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1">
-                    🚘 Vehicle & Transit
+                  <p className="font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1.5">
+                    <Car size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Vehicle & Transit</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-slate-600 dark:text-slate-300">
                     {rider.vehicleRider?.map((item: string, i: number) => (
@@ -1151,8 +1167,9 @@ function HospitalityRidersSection({
                 </div>
 
                 <div className="rounded-lg bg-red-50/80 p-3 shadow-sm border border-red-100 dark:bg-red-950/20 dark:border-red-900/30">
-                  <p className="font-bold text-red-800 dark:text-red-400 mb-1 flex items-center gap-1">
-                    🛡️ Security & Protocol
+                  <p className="font-bold text-red-800 dark:text-red-400 mb-1 flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-red-600 dark:text-red-400 shrink-0" />
+                    <span>Security & Protocol</span>
                   </p>
                   <ul className="list-disc start-4 space-y-1 text-red-700 dark:text-red-300">
                     {rider.securityNotes?.map((item: string, i: number) => (
@@ -1240,7 +1257,7 @@ function AirportExpressSection({
           onClick={() => setIsKioskMode(false)}
           className="absolute top-6 right-6 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white/80 backdrop-blur-md hover:bg-white/20 transition-all"
         >
-          ✕ {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
+          {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
         </button>
         <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-3xl border border-amber-500/30 shadow-[0_0_50px_rgba(201,168,76,0.15)] backdrop-blur-2xl">
           <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
@@ -1258,8 +1275,9 @@ function AirportExpressSection({
 
           {result ? (
             <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-left sm:text-center space-y-4 animate-scaleUp">
-              <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
-                ⚡ {ui.p("Chauffeur Dispatched Instantly", "تم توجيه السائق فورا")}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                <Zap size={13} />
+                <span>{ui.p("Chauffeur Dispatched Instantly", "تم توجيه السائق فورا")}</span>
               </div>
               <h3 className="text-xl font-bold text-amber-300">{result.guestName}</h3>
               <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center">
@@ -1268,8 +1286,9 @@ function AirportExpressSection({
                   {result.qrCode}
                 </span>
               </div>
-              <p className="text-sm text-slate-300">
-                🚘 {ui.p("Assigned Captain:", "السائق المخصص:")} <strong className="text-white">{result.driverName}</strong> ({result.driverPhone})
+              <p className="text-sm text-slate-300 flex items-center justify-center gap-1.5">
+                <Car size={15} className="text-midyaf-gold shrink-0" />
+                <span>{ui.p("Assigned Captain:", "السائق المخصص:")} <strong className="text-white">{result.driverName}</strong> ({result.driverPhone})</span>
               </p>
               <button
                 onClick={() => setResult(null)}
@@ -1308,9 +1327,10 @@ function AirportExpressSection({
               <button
                 type="submit"
                 disabled={isSubmitting || !guestName.trim()}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 font-black text-slate-950 text-lg hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 font-black text-slate-950 text-lg hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {isSubmitting ? ui.p("Dispatching...", "جارٍ التوجيه...") : ui.p("🚘 Request Royal Shuttle & Escort", "🚘 طلب سيارة ضيافة ومرافقة فورية")}
+                <Car size={20} />
+                <span>{isSubmitting ? ui.p("Dispatching...", "جارٍ التوجيه...") : ui.p("Request Royal Shuttle & Escort", "طلب سيارة ضيافة ومرافقة فورية")}</span>
               </button>
             </form>
           )}
@@ -1330,8 +1350,9 @@ function AirportExpressSection({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  ⚡ INSTANT DISPATCH
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  <Zap size={11} />
+                  <span>INSTANT DISPATCH</span>
                 </span>
                 <h3 className="text-lg font-bold text-white">
                   {ui.p("Airport Walk-in Express Intake", "تسجيل وصول المطار الفوري والتوجيه السريع")}
@@ -1350,7 +1371,8 @@ function AirportExpressSection({
               onClick={() => setIsKioskMode(true)}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition-all"
             >
-              🖥️ {ui.p("Kiosk Mode", "وضع شاشة الترحيب")}
+              <Monitor size={13} />
+              <span>{ui.p("Kiosk Mode", "وضع شاشة الترحيب")}</span>
             </button>
             <button
               onClick={() => {
@@ -1359,7 +1381,7 @@ function AirportExpressSection({
               }}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-xs font-black text-slate-950 shadow-md shadow-amber-500/20 transition-all"
             >
-              {isOpen ? ui.p("Close Form", "إغلاق النموذج") : ui.p("⚡ New Walk-in VIP", "⚡ تسجيل وصول فوري")}
+              {isOpen ? ui.p("Close Form", "إغلاق النموذج") : ui.p("New Walk-in VIP", "تسجيل وصول فوري")}
             </button>
           </div>
         </div>
@@ -1369,7 +1391,10 @@ function AirportExpressSection({
             {result ? (
               <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-amber-300">🎉 {ui.p("VIP Walk-in Registered & Dispatched!", "تم تسجيل الضيف الملكي وتوجيه السائق بنجاح!")}</span>
+                  <span className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                    <span>{ui.p("VIP Walk-in Registered & Dispatched!", "تم تسجيل الضيف الملكي وتوجيه السائق بنجاح!")}</span>
+                  </span>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     {ui.p("Task Created", "تم إنشاء المهمة")}
                   </span>
@@ -1445,7 +1470,7 @@ function AirportExpressSection({
                     onChange={(e) => setDriverId(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
                   >
-                    <option value="">⚡ {ui.p("Auto-Assign Nearest Captain", "تخصيص تلقائي لأقرب كابتن")}</option>
+                    <option value="">{ui.p("Auto-Assign Nearest Captain", "تخصيص تلقائي لأقرب كابتن")}</option>
                     {availableDrivers.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.user.name} ({d.zone})
@@ -1459,7 +1484,7 @@ function AirportExpressSection({
                     disabled={isSubmitting || !guestName.trim()}
                     className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:brightness-110 font-bold text-slate-950 text-sm shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
                   >
-                    {isSubmitting ? ui.p("Registering & Dispatching...", "جارٍ التسجيل والتوجيه...") : ui.p("⚡ Submit & Dispatch Captain", "⚡ تسجيل وتوجيه السائق فورا")}
+                    {isSubmitting ? ui.p("Registering & Dispatching...", "جارٍ التسجيل والتوجيه...") : ui.p("Submit & Dispatch Captain", "تسجيل وتوجيه السائق فورا")}
                   </button>
                 </div>
               </form>
@@ -1535,7 +1560,7 @@ export function CoordinatorsApp({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-500/20 pb-4 mb-4">
           <div className="flex items-start gap-3">
             <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black shadow-md shrink-0">
-              ⚡
+              <Zap size={20} className="text-slate-950 fill-current" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1556,7 +1581,7 @@ export function CoordinatorsApp({
           </div>
           <button
             onClick={() => {
-              alert(ui.p("✓ 5 Vans Diverted from Terminal 1 to Terminal 2. At-risk guest count reduced from 25 to 0.", "✓ تم تحويل 5 حافلات بنجاح من الصالة 1 إلى الصالة 2. تم تأمين تنقل جميع الضيوف (25 ضيفاً)."));
+              alert(ui.p("5 Vans Diverted from Terminal 1 to Terminal 2. At-risk guest count reduced from 25 to 0.", "تم تحويل 5 حافلات بنجاح من الصالة 1 إلى الصالة 2. تم تأمين تنقل جميع الضيوف (25 ضيفاً)."));
             }}
             className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark text-white font-bold px-4 py-2.5 text-xs shadow-md hover:shadow-glow hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
@@ -1778,7 +1803,10 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
       <div className="grid sm:grid-cols-3 gap-4">
         {data.flaggedTasks?.map((task: any) => (
           <div key={task.id} className="rounded border border-red-100 bg-red-50 p-3 text-sm">
-            <div className="font-bold text-red-700">🚨 {ui.l("At Risk")}: {task.ownerName}</div>
+            <div className="font-bold text-red-700 flex items-center gap-1.5">
+              <AlertTriangle size={14} className="text-red-600 shrink-0" />
+              <span>{ui.l("At Risk")}: {task.ownerName}</span>
+            </div>
             <div className="text-red-600 mt-1">{ui.l(task.reason)}</div>
             <div className="text-red-800 font-medium mt-2 text-xs">{ui.l("Recommendation")}: {ui.l(task.recommendedAction)}</div>
           </div>
@@ -1786,6 +1814,25 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
       </div>
     </div>
   );
+}
+
+function renderOpsChipIcon(iconType: string) {
+  switch (iconType) {
+    case "alert":
+      return <AlertTriangle size={12} className="text-amber-400 shrink-0" />;
+    case "shield":
+      return <ShieldCheck size={12} className="text-emerald-400 shrink-0" />;
+    case "plane":
+      return <Plane size={12} className="text-cyan-400 shrink-0" />;
+    case "clipboard":
+      return <ClipboardCheck size={12} className="text-midyaf-gold shrink-0" />;
+    case "coffee":
+      return <Coffee size={12} className="text-amber-400 shrink-0" />;
+    case "chart":
+      return <BarChart2 size={12} className="text-purple-400 shrink-0" />;
+    default:
+      return <Sparkles size={12} className="text-midyaf-gold shrink-0" />;
+  }
 }
 
 function SmartAssistantSection({
@@ -1818,18 +1865,18 @@ function SmartAssistantSection({
         : "Welcome to the Midyaf AI Operations Brain for Future Investment Initiative 2027 (FII). I monitor fleet telemetry, vendor geofencing, flight arrivals, and the Triple-Key Security Vault. How can I assist you?",
       actions: [
         {
-          label: "🚨 Check Missing Vendors",
-          labelAr: "🚨 فحص الموردين المتأخرين",
+          label: "Check Missing Vendors",
+          labelAr: "فحص الموردين المتأخرين",
           actionId: "send_vendor_sms"
         },
         {
-          label: "🔐 Check Triple-Key Vault",
-          labelAr: "🔐 فحص الخزنة الثلاثية",
+          label: "Check Triple-Key Vault",
+          labelAr: "فحص الخزنة الثلاثية",
           actionId: "scroll_to_vault"
         },
         {
-          label: "✈️ Terminal 2 Flight Surge",
-          labelAr: "✈️ تنبيه ازدحام الصالة 2",
+          label: "Terminal 2 Flight Surge",
+          labelAr: "تنبيه ازدحام الصالة 2",
           actionId: "divert_fleet"
         }
       ]
@@ -1837,12 +1884,12 @@ function SmartAssistantSection({
   ]);
 
   const quickChips = [
-    { en: "Which vendors are missing from Hall A right now?", ar: "الموردين المتأخرين بالقاعة أ", icon: "🚨" },
-    { en: "Triple-Key Security Vault status & sealed bids", ar: "حالة الخزنة الثلاثية والعروض المشفرة", icon: "🛡️" },
-    { en: "Terminal 2 flight surge & fleet capacity", ar: "تنبيه ازدحام الصالة 2 وتحويل الحافلات", icon: "✈️" },
-    { en: "VIP Hospitality Riders & room status", ar: "مذكرات الضيافة الملكية في الريتز", icon: "📋" },
-    { en: "Crowd surge at Hall B coffee station", ar: "ازدحام محطة القهوة قاعة ب", icon: "☕" },
-    { en: "Automated post-event analytics & savings", ar: "تقرير الوفورات والتحليل الذكي", icon: "📊" }
+    { en: "Which vendors are missing from Hall A right now?", ar: "الموردين المتأخرين بالقاعة أ", icon: "alert" },
+    { en: "Triple-Key Security Vault status & sealed bids", ar: "حالة الخزنة الثلاثية والعروض المشفرة", icon: "shield" },
+    { en: "Terminal 2 flight surge & fleet capacity", ar: "تنبيه ازدحام الصالة 2 وتحويل الحافلات", icon: "plane" },
+    { en: "VIP Hospitality Riders & room status", ar: "مذكرات الضيافة الملكية في الريتز", icon: "clipboard" },
+    { en: "Crowd surge at Hall B coffee station", ar: "ازدحام محطة القهوة قاعة ب", icon: "coffee" },
+    { en: "Automated post-event analytics & savings", ar: "تقرير الوفورات والتحليل الذكي", icon: "chart" }
   ];
 
   async function handleExecuteAction(messageId: string, action: any) {
@@ -1867,8 +1914,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "✅ تم بنجاح: تم تحويل 5 حافلات تنفيذية فوراً من الصالة 1 إلى الصالة 2 بمطار الملك خالد الدولي. تم تحديث غرفة العمليات وتوجيه السائقين."
-            : "✅ Action Executed: 5 executive vans successfully diverted from Terminal 1 to KKIA Terminal 2. Drivers notified via mobile telemetry and operations updated."
+            ? "تم بنجاح: تم تحويل 5 حافلات تنفيذية فوراً من الصالة 1 إلى الصالة 2 بمطار الملك خالد الدولي. تم تحديث غرفة العمليات وتوجيه السائقين."
+            : "Action Executed: 5 executive vans successfully diverted from Terminal 1 to KKIA Terminal 2. Drivers notified via mobile telemetry and operations updated."
         }
       ]);
       return;
@@ -1887,8 +1934,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "🎯 تم نقلك مباشرة إلى لوحة الخزنة الثلاثية لمكافحة الفساد وتدقيق العروض المختومة."
-            : "🎯 Navigated directly to the Triple-Key Anti-Corruption Security Vault."
+            ? "تم نقلك مباشرة إلى لوحة الخزنة الثلاثية لمكافحة الفساد وتدقيق العروض المختومة."
+            : "Navigated directly to the Triple-Key Anti-Corruption Security Vault."
         }
       ]);
       return;
@@ -1907,8 +1954,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "📋 تم نقلك إلى قسم مذكرات الضيافة الملكية (VIP Riders)."
-            : "📋 Navigated to VIP Hospitality Riders section."
+            ? "تم نقلك إلى قسم مذكرات الضيافة الملكية (VIP Riders)."
+            : "Navigated to VIP Hospitality Riders section."
         }
       ]);
       return;
@@ -1927,8 +1974,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "✈️ تم نقلك إلى قائمة رحلات الاستقبال بمطار الملك خالد."
-            : "✈️ Navigated to Airport Express flight arrivals manifest."
+            ? "تم نقلك إلى قائمة رحلات الاستقبال بمطار الملك خالد."
+            : "Navigated to Airport Express flight arrivals manifest."
         }
       ]);
       return;
@@ -1950,8 +1997,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "📊 تم توليد التقرير التنفيذي الذكي لما بعد الفعالية بنجاح:"
-            : "📊 Automated Executive Post-Event Report successfully generated:",
+            ? "تم توليد التقرير التنفيذي الذكي لما بعد الفعالية بنجاح:"
+            : "Automated Executive Post-Event Report successfully generated:",
           widget: {
             type: "report",
             title: reportData?.title || "Executive Post-Event Telemetry Analysis",
@@ -1975,8 +2022,8 @@ function SmartAssistantSection({
           id: crypto.randomUUID(),
           author: "ai",
           message: ui.isArabic
-            ? "📡 تم الاتصال بالرادار المباشر: الكابتن سلطان العتيبي (مرسيدس مايباخ S680 · لوحة أ د ن 9119) متوقف أمام رصيف كبار الشخصيات بوابة 2."
-            : "📡 Live telemetry connected: Capt. Sultan Al-Otaibi (Mercedes Maybach S680 · Plate KSA 9119) is staged at KKIA Terminal 2 VIP Curb Gate 2.",
+            ? "تم الاتصال بالرادار المباشر: الكابتن سلطان العتيبي (مرسيدس مايباخ S680 · لوحة أ د ن 9119) متوقف أمام رصيف كبار الشخصيات بوابة 2."
+            : "Live telemetry connected: Capt. Sultan Al-Otaibi (Mercedes Maybach S680 · Plate KSA 9119) is staged at KKIA Terminal 2 VIP Curb Gate 2.",
           widget: {
             type: "driver",
             driverName: "Capt. Sultan Al-Otaibi",
@@ -2003,8 +2050,8 @@ function SmartAssistantSection({
     }
 
     const defaultConfirmation = ui.isArabic
-      ? `✅ تم تنفيذ الإجراء (${action.labelAr || action.label}) بنجاح وتوثيقه في سجل النظام.`
-      : `✅ Action executed (${action.label}) and logged in Midyaf event stream.`;
+      ? `تم تنفيذ الإجراء (${action.labelAr || action.label}) بنجاح وتوثيقه في سجل النظام.`
+      : `Action executed (${action.label}) and logged in Midyaf event stream.`;
 
     setMessages((prev) => [
       ...prev,
@@ -2175,16 +2222,19 @@ function SmartAssistantSection({
       {/* Suggested Prompt Chips */}
       <div className="mb-3 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-          <span className="text-emerald-400/80 font-bold shrink-0">💡 {ui.p("Quick Prompts:", "مقترحات سريعة:")}</span>
+          <span className="text-emerald-400/80 font-bold shrink-0 flex items-center gap-1">
+            <Sparkles size={12} className="text-midyaf-gold" />
+            <span>{ui.p("Quick Prompts:", "مقترحات سريعة:")}</span>
+          </span>
           {quickChips.map((chip, idx) => (
             <button
               key={idx}
               type="button"
               disabled={loading}
               onClick={() => void handleSend(ui.p(chip.en, chip.ar))}
-              className="inline-flex items-center gap-1 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-emerald-500/30 px-3 py-1 text-emerald-200 text-xs transition cursor-pointer hover:border-amber-400 hover:text-amber-300"
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-emerald-500/30 px-3 py-1 text-emerald-200 text-xs transition cursor-pointer hover:border-amber-400 hover:text-amber-300"
             >
-              <span>{chip.icon}</span>
+              {renderOpsChipIcon(chip.icon)}
               <span>{ui.p(chip.en, chip.ar)}</span>
             </button>
           ))}
@@ -3904,7 +3954,7 @@ export function CompanyDashboard({
 
       {/* Automated Post-Event Report Generator (PDF Page 5) */}
       <Section
-        title={ui.p("⚡ Automated AI Post-Event Report Generator", "⚡ مولد التقرير التنفيذي للفعالية بالذكاء الاصطناعي")}
+        title={ui.p("Automated AI Post-Event Report Generator", "مولد التقرير التنفيذي للفعالية بالذكاء الاصطناعي")}
         action={
           <button
             onClick={() => void handleGenerateAiReport()}
@@ -3936,8 +3986,9 @@ export function CompanyDashboard({
             <div className="space-y-5 animate-fadeIn">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
                 <div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
-                    ⚡ AI EXECUTIVE REPORT
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
+                    <Sparkles size={10} className="text-amber-400" />
+                    <span>AI EXECUTIVE REPORT</span>
                   </span>
                   <h3 className="text-lg font-bold text-amber-300">
                     {ui.p(aiReport.title, aiReport.titleAr || aiReport.title)}
@@ -3946,9 +3997,10 @@ export function CompanyDashboard({
                 <div className="flex gap-2">
                   <button
                     onClick={() => alert(ui.p("PDF Export generated! Ready for executive stakeholders.", "تم تصدير التقرير بصيغة PDF بنجاح جاهز للإدارة العليا."))}
-                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition-all"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition-all"
                   >
-                    📄 {ui.p("Export Executive PDF", "تصدير بصيغة PDF")}
+                    <FileText size={13} />
+                    <span>{ui.p("Export Executive PDF", "تصدير بصيغة PDF")}</span>
                   </button>
                 </div>
               </div>
@@ -3959,8 +4011,9 @@ export function CompanyDashboard({
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-amber-400 tracking-wider uppercase mb-3">
-                  💡 {ui.p("Key Fleet & Logistics Findings", "أهم النتائج والتوصيات الميدانية")}
+                <h4 className="text-xs font-bold text-amber-400 tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-amber-400" />
+                  <span>{ui.p("Key Fleet & Logistics Findings", "أهم النتائج والتوصيات الميدانية")}</span>
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {aiReport.keyFindings?.map((item: any, i: number) => (
@@ -4231,8 +4284,9 @@ function QuotesAndContracts({
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[11px]">
                 {vaultState.key1 ? (
-                  <span className="font-semibold text-emerald-400">
-                    ✓ {ui.l("Key Turned (Khalid Al-Omar)")}
+                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={13} className="shrink-0" />
+                    <span>{ui.l("Key Turned (Khalid Al-Omar)")}</span>
                   </span>
                 ) : (
                   <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
@@ -4275,8 +4329,9 @@ function QuotesAndContracts({
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[11px]">
                 {vaultState.key2 ? (
-                  <span className="font-semibold text-emerald-400">
-                    ✓ {ui.l("Key Turned (Noura Al-Saud)")}
+                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={13} className="shrink-0" />
+                    <span>{ui.l("Key Turned (Noura Al-Saud)")}</span>
                   </span>
                 ) : (
                   <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
@@ -4319,8 +4374,9 @@ function QuotesAndContracts({
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[11px]">
                 {vaultState.key3 ? (
-                  <span className="font-semibold text-emerald-400">
-                    ✓ {ui.l("Key Turned (Audit Team)")}
+                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 size={13} className="shrink-0" />
+                    <span>{ui.l("Key Turned (Audit Team)")}</span>
                   </span>
                 ) : (
                   <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
@@ -4381,7 +4437,7 @@ function QuotesAndContracts({
         <MiniStat label={ui.l("Contracts")} value={data.contracts.length} />
         <MiniStat
           label={ui.l("Midyaf commission")}
-          value={isVaultLocked ? ui.l("🔒 Sealed until unlock") : money(totalCommission)}
+          value={isVaultLocked ? ui.l("Sealed until unlock") : money(totalCommission)}
         />
       </div>
 
@@ -4448,7 +4504,7 @@ function QuotesAndContracts({
                   }
                 >
                   {isSealed
-                    ? ui.l("🔒 Vault Sealed")
+                    ? ui.l("Vault Sealed")
                     : `${ui.l("Score")} ${quote.score} · ${ui.l(quote.status)}`}
                 </Badge>
 
@@ -4544,9 +4600,10 @@ function QuotesAndContracts({
                 <button
                   type="button"
                   onClick={() => setSelectedDemoContract(contract)}
-                  className="rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
                 >
-                  {ui.p("View Certified Contract 📜", "استعراض العقد المعتمد 📜")}
+                  <FileText size={13} />
+                  {ui.p("View Certified Contract", "استعراض العقد المعتمد")}
                 </button>
               </div>
             </div>
@@ -4577,7 +4634,7 @@ function QuotesAndContracts({
                 onClick={() => setSelectedDemoContract(null)}
                 className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 

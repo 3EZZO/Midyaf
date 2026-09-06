@@ -338,44 +338,44 @@ const DRIVER_ROUTES: Record<string, Waypoint[]> = {
 // Periodic Operational Dispatch Log Stream in bilingual format
 export const SIMULATION_TICKER_EVENTS: { en: string; ar: string }[] = [
   {
-    en: "✈️ Flight SV 102 landed at KKIA Terminal 2 with 14 Summit delegates.",
-    ar: "✈️ هبوط رحلة الخطوط السعودية SV 102 بالصالة 2 مع 14 من وفود القمة."
+    en: "[FLIGHT] Flight SV 102 landed at KKIA Terminal 2 with 14 Summit delegates.",
+    ar: "[رحلات الطيران] هبوط رحلة الخطوط السعودية SV 102 بالصالة 2 مع 14 من وفود القمة."
   },
   {
-    en: "🚗 Capt. Sultan confirmed VIP Noura Al Harbi aboard Maybach S680 (KSA 9119). Cabin: 20°C.",
-    ar: "🚗 الكابتن سلطان استقبل نورة الحربي بالمايباخ S680 (أ ق ب 9119). التكييف: 20 درجة."
+    en: "[CHAUFFEUR] Capt. Sultan confirmed VIP Noura Al Harbi aboard Maybach S680 (KSA 9119). Cabin: 20°C.",
+    ar: "[التوجيه الميداني] الكابتن سلطان استقبل نورة الحربي بالمايباخ S680 (أ ق ب 9119). التكييف: 20 درجة."
   },
   {
-    en: "📜 Contract #CT-2027-01 active: The Ritz-Carlton 100 suites certified (SAR 1.25M).",
-    ar: "📜 العقد #CT-2027-01 معتمد: الريتز-كارلتون 100 جناح موثقة (1.25 مليون ريال)."
+    en: "[CONTRACT] Contract #CT-2027-01 active: The Ritz-Carlton 100 suites certified (SAR 1.25M).",
+    ar: "[العقود المعتمدة] العقد #CT-2027-01 معتمد: الريتز-كارلتون 100 جناح موثقة (1.25 مليون ريال)."
   },
   {
-    en: "🔐 Triple-Key Security Vault: 3/3 cryptographic approvals verified. Sealed bids intact.",
-    ar: "🔐 الخزنة الثلاثية: التحقق من 3/3 موافقات مشفرة. العطاءات المختومة مكتملة ومحمية."
+    en: "[SECURITY] Triple-Key Security Vault: 3/3 cryptographic approvals verified. Sealed bids intact.",
+    ar: "[الخزنة المشفرة] الخزنة الثلاثية: التحقق من 3/3 موافقات مشفرة. العطاءات المختومة مكتملة ومحمية."
   },
   {
-    en: "☕ Najd Catering: 2 baristas & specialty coffee stations deployed to KAFD Plenary Hall A.",
-    ar: "☕ تموين نجد: نشر 2 باريستا ومحطات القهوة المختصة بقاعة كافد الكبرى أ."
+    en: "[HOSPITALITY] Najd Catering: 2 baristas & specialty coffee stations deployed to KAFD Plenary Hall A.",
+    ar: "[الضيافة والتموين] تموين نجد: نشر 2 باريستا ومحطات القهوة المختصة بقاعة كافد الكبرى أ."
   },
   {
-    en: "⭐ H.E. Yasir Al-Rumayyan arrived at KAFD Plenary. Audio & visual translation cleared.",
-    ar: "⭐ وصول معالي ياسر الرميان لقاعة كافد. اكتمال جاهزية الصوتيات وشاشات العرض."
+    en: "[PROTOCOL] H.E. Yasir Al-Rumayyan arrived at KAFD Plenary. Audio & visual translation cleared.",
+    ar: "[مراسم الوفود] وصول معالي ياسر الرميان لقاعة كافد. اكتمال جاهزية الصوتيات وشاشات العرض."
   },
   {
-    en: "🚐 Shuttle 1 (Capt. Rakan) departed Ritz-Carlton to KAFD (Capacity: 14/16 seats occupied).",
-    ar: "🚐 الحافلة الترددية 1 غادرت الريتز-كارلتون لكافد (الإشغال: 14 من 16 مقعداً)."
+    en: "[SHUTTLE] Shuttle 1 (Capt. Rakan) departed Ritz-Carlton to KAFD (Capacity: 14/16 seats occupied).",
+    ar: "[الحافلات الترددية] الحافلة الترددية 1 غادرت الريتز-كارلتون لكافد (الإشغال: 14 من 16 مقعداً)."
   },
   {
-    en: "🍽️ Bujairi Terrace: VIP table reservations locked for 85 guests at Maiz and Hakkasan.",
-    ar: "🍽️ مطل البجيري: تأكيد حجوزات 85 ضيفاً في مطعم ميز وهاكاسان الدرعية."
+    en: "[DINING] Bujairi Terrace: VIP table reservations locked for 85 guests at Maiz and Hakkasan.",
+    ar: "[الحجوزات الدبلوماسية] مطل البجيري: تأكيد حجوزات 85 ضيفاً في مطعم ميز وهاكاسان الدرعية."
   },
   {
-    en: "⚡ Al-Faisal AV telemetry: Main stage 8K LED wall performing at 100% nominal output.",
-    ar: "⚡ تقرير الفيصل للصوتيات: شاشات 8K بالمسرح الرئيسي تعمل بكفاءة 100%."
+    en: "[AV/TECH] Al-Faisal AV telemetry: Main stage 8K LED wall performing at 100% nominal output.",
+    ar: "[الأنظمة الفنية] تقرير الفيصل للصوتيات: شاشات 8K بالمسرح الرئيسي تعمل بكفاءة 100%."
   },
   {
-    en: "📊 Midyaf Cost Efficiency: Automated fleet dispatch achieved SAR 145,000 in direct fuel/idle savings.",
-    ar: "📊 وفورات مضياف الذكية: جدولة الأسطول الذكية حققت وفراً قدره 145,000 ريال سعودي."
+    en: "[EFFICIENCY] Midyaf Cost Efficiency: Automated fleet dispatch achieved SAR 145,000 in direct fuel/idle savings.",
+    ar: "[كفاءة العمليات] وفورات مضياف الذكية: جدولة الأسطول الذكية حققت وفراً قدره 145,000 ريال سعودي."
   }
 ];
 
@@ -589,8 +589,8 @@ export function useLiveDemoSimulation({
     stepRef.current = 0;
     const timestamp = new Date().toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
     const welcome = isArabic
-      ? `🟢 قمة الرياض 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
-      : `🟢 Riyadh Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
+      ? `[بث مباشر] قمة الرياض 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
+      : `[LIVE] Riyadh Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
     setRealtimeLog((prev) => [welcome, ...prev.slice(0, 4)]);
   }, [isArabic, setRealtimeLog]);
 

@@ -17,7 +17,9 @@ import {
   Filter,
   Download,
   Printer,
-  Eye
+  Eye,
+  Crown,
+  Maximize2
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { MidyafData, Event, Session, TaskStatus } from "@shared/domain";
@@ -251,7 +253,8 @@ export function LogisticsMetricModal({
                 {modal === "reports" && l("Executive Post-Event Performance & Impact Analytics")}
               </span>
               <span className="hidden sm:inline-flex items-center gap-1 rounded bg-midyaf-gold/20 px-2 py-0.5 text-[11px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40">
-                ⛶ {isArabic ? "شاشة كاملة" : "Fullscreen Deck"}
+                <Maximize2 size={11} />
+                <span>{isArabic ? "شاشة كاملة" : "Fullscreen Deck"}</span>
               </span>
             </h3>
             <p className="text-xs text-slate-400">
@@ -289,7 +292,10 @@ export function LogisticsMetricModal({
                   <span className="text-[11px] text-emerald-400 font-semibold">100% Accredited</span>
                 </div>
                 <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-[10px] text-midyaf-gold font-bold uppercase">👑 {l("VIP Dignitaries")}</span>
+                  <span className="text-[10px] text-midyaf-gold font-bold uppercase flex items-center gap-1.5">
+                    <Crown size={12} />
+                    <span>{l("VIP Dignitaries")}</span>
+                  </span>
                   <p className="text-2xl font-black text-midyaf-gold mt-1">150</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">Dedicated Escorts</span>
                 </div>
@@ -326,7 +332,10 @@ export function LogisticsMetricModal({
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-bold text-white text-sm">👑 {guest.name}</h4>
+                        <h4 className="font-bold text-white text-sm flex items-center gap-1.5">
+                          <Crown size={14} className="text-midyaf-gold shrink-0" />
+                          <span>{guest.name}</span>
+                        </h4>
                         <p className="text-xs text-midyaf-gold">{guest.title} · {guest.org}</p>
                       </div>
                       <Badge tone="purple">VIP Protocol</Badge>
@@ -341,13 +350,17 @@ export function LogisticsMetricModal({
                         <Car size={13} className="text-emerald-400" />
                         <span>{guest.driver} · <span className="font-mono text-slate-200">{guest.vehicle}</span> ({guest.plate})</span>
                       </p>
-                      <p className="text-[11px] text-slate-400 italic">
-                        ⭐ {l("Hospitality Rider")}: {guest.rider}
+                      <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                        <FileText size={12} className="text-midyaf-gold shrink-0" />
+                        <span>{l("Hospitality Rider")}: {guest.rider}</span>
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-white/5 pt-2 text-xs">
-                      <span className="text-emerald-400 font-semibold text-[11px]">● {guest.status}</span>
+                      <span className="text-emerald-400 font-semibold text-[11px] flex items-center gap-1.5">
+                        <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>{guest.status}</span>
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
@@ -541,7 +554,7 @@ export function LogisticsMetricModal({
                       {/* Scope of Work */}
                       <div className="space-y-2">
                         <h4 className="font-bold text-sm text-midyaf-gold flex items-center gap-1.5">
-                          <span>📋</span>
+                          <ClipboardCheck size={16} />
                           <span>{isArabic ? "نطاق العمل ومحددات الخدمة (SOW)" : "Certified Scope of Work & Deliverables"}</span>
                         </h4>
                         <div className="rounded-2xl bg-white/5 p-4 border border-white/10 text-slate-200 leading-relaxed">
@@ -561,7 +574,10 @@ export function LogisticsMetricModal({
                         </div>
                         <div className="rounded-2xl bg-white/5 p-3.5 border border-emerald-500/30">
                           <span className="text-[10px] text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
-                          <p className="text-sm font-black text-emerald-400 mt-1.5">✓ {inspectingContract.status}</p>
+                          <p className="text-sm font-black text-emerald-400 mt-1.5 flex items-center gap-1">
+                            <CheckCircle2 size={14} />
+                            <span>{inspectingContract.status}</span>
+                          </p>
                         </div>
                       </div>
 

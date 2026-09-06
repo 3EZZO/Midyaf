@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Banknote, CheckCircle2, Clock, Map, Navigation } from "lucide-react";
+import { Banknote, CheckCircle2, Clock, Map, Navigation, Zap, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
@@ -44,7 +44,7 @@ export function DriverApp({
             <span className={`size-3 rounded-full ${locationState.tracking ? "bg-emerald-300 animate-ping" : "bg-slate-400"}`} />
             <div>
               <p className="text-xs font-bold tracking-wide uppercase">
-                {locationState.tracking ? "📍 Live GPS Auto-Tracking Active" : "GPS Tracking Offline"}
+                {locationState.tracking ? "Live GPS Auto-Tracking Active" : "GPS Tracking Offline"}
               </p>
               <p className="text-[11px] text-white/80">
                 {locationState.tracking
@@ -61,7 +61,7 @@ export function DriverApp({
               {gpsEnabled ? "Turn Off" : "Turn On"}
             </button>
             <button
-              onClick={() => alert("📍 Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
+              onClick={() => alert("Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
               className="rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1.5 text-xs font-bold transition-colors"
             >
               Simulate &lt; 2km
@@ -105,7 +105,7 @@ export function DriverApp({
           <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
             <div className="flex items-center gap-2.5">
               <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
-                ⚡
+                <Zap size={16} />
               </span>
               <div>
                 <h3 className="text-sm font-bold text-white">
@@ -142,7 +142,7 @@ export function DriverApp({
                   })
                 });
                 if (res.ok) {
-                  alert("⚡ VIP Walk-in Registered! Trip assigned to your active queue.");
+                  alert("VIP Walk-in Registered! Trip assigned to your active queue.");
                   nameInput.value = "";
                 } else {
                   alert("Failed to register walk-in");
@@ -179,9 +179,10 @@ export function DriverApp({
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
             >
-              ⚡ Start VIP Trip
+              <Zap size={14} className="fill-current" />
+              <span>Start VIP Trip</span>
             </button>
           </form>
         </section>
@@ -241,7 +242,10 @@ export function DriverApp({
                   return (
                     <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900 shadow-sm dark:bg-amber-950/40 dark:text-amber-200">
                       <div className="flex items-center justify-between font-bold text-amber-800 dark:text-amber-300 mb-1.5">
-                        <span>⚠️ VIP Hospitality Rider (Vehicle & Protocol)</span>
+                        <span className="flex items-center gap-1.5">
+                          <ShieldAlert size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>VIP Hospitality Rider (Vehicle & Protocol)</span>
+                        </span>
                         <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[10px] uppercase text-amber-900">VIP Priority</span>
                       </div>
                       <ul className="list-disc start-4 space-y-1 text-[11px]">
@@ -249,7 +253,10 @@ export function DriverApp({
                           <li key={idx} className="font-medium">{item}</li>
                         ))}
                         {rider.securityNotes?.map((item: string, idx: number) => (
-                          <li key={`sec-${idx}`} className="font-semibold text-red-700 dark:text-red-400">🛡️ {item}</li>
+                          <li key={`sec-${idx}`} className="font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5">
+                            <ShieldCheck size={12} className="inline text-red-500 shrink-0" />
+                            <span>{item}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
