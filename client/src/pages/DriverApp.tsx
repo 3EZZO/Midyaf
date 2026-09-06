@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Banknote, CheckCircle2, Clock, Map, Navigation, Zap, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Banknote, CheckCircle2, Clock, Map, Navigation, Zap, ShieldAlert, ShieldCheck, Radar, Target, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "../components/Badge";
 import { MetricCard } from "../components/MetricCard";
@@ -8,6 +8,7 @@ import { RiyadhMap } from "../components/RiyadhMap";
 import { money, shortTime } from "../lib/format";
 import { useLiveLocation } from "../lib/useLiveLocation";
 import { isArabicLanguage, localizeStatus, localizeText } from "../lib/localize";
+import { tacticalAudio } from "../lib/tacticalAudio";
 import type { PortalProps } from "./types";
 
 export function DriverApp({
@@ -28,6 +29,10 @@ export function DriverApp({
   );
 
   const [gpsEnabled, setGpsEnabled] = useState(true);
+  const [geofenceStage, setGeofenceStage] = useState<"OUTSIDE" | "OUTER_APPROACH" | "STAGING_HOLD" | "CURBSIDE_GATE" | "DOCKED_BAY">("CURBSIDE_GATE");
+  const [geofenceAlert, setGeofenceAlert] = useState<string | null>(null);
+  const [isTriggeringHandshake, setIsTriggeringHandshake] = useState(false);
+
   const locationState = useLiveLocation({
     enabled: gpsEnabled,
     userId: driver?.user?.id,
@@ -35,6 +40,40 @@ export function DriverApp({
     driverId: driver?.id,
     eventId: event?.id
   });
+
+  const triggerCurbsideHandshake = async () => {
+    setIsTriggeringHandshake(true);
+    tacticalAudio.playChime();
+    try {
+      const stored = window.localStorage.getItem("midyaf.session");
+      const token = stored ? JSON.parse(stored).accessToken : "";
+      const res = await fetch("/api/operations/geofences/simulate-handshake", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          driverId: driver?.id ?? "driver-sultan",
+          driverName: driver?.user?.name ?? "Capt. Sultan Al-Otaibi",
+          geofenceCode: "KKIA_ROYAL_T5"
+        })
+      });
+      if (res.ok) {
+        tacticalAudio.playTacticalPing();
+        setGeofenceStage("DOCKED_BAY");
+        setGeofenceAlert(
+          isArabic
+            ? "تم التحقق من السياج الجغرافي: أنت الآن على رصيف كبار الشخصيات (الصالة الملكية بمطار الملك خالد) — تم إشعار الضيف والمراسم تلقائياً!"
+            : "Geofence Verified: You are at KKIA Royal Terminal Curbside (Bay #1) — VIP Guest & Protocol Escort automatically notified!"
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsTriggeringHandshake(false);
+    }
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
@@ -64,14 +103,87 @@ export function DriverApp({
             >
               {gpsEnabled ? (isArabic ? "إيقاف" : "Turn Off") : (isArabic ? "تشغيل" : "Turn On")}
             </button>
-            <button
-              onClick={() => alert(isArabic ? "تم تفعيل السياج الجغرافي: تم إشعار الضيف باقترابك من رصيف استقبال VIP." : "Geofence Triggered: Guest has been notified via Frictionless Matching that you are approaching the VIP Curb.")}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 px-3 py-1.5 text-xs font-bold transition-colors"
-            >
-              {isArabic ? "محاكاة قرب الوصول (< 2 كم)" : "Simulate < 2km"}
-            </button>
           </div>
         </div>
+
+        {/* Sovereign Concentric Geofence Curbside Staging Card */}
+        <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-4 text-white border border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
+                <Radar size={16} className="animate-pulse" />
+              </span>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-midyaf-gold flex items-center gap-2">
+                  <span>{isArabic ? "السياج الجغرافي الذكي لمطار الملك خالد" : "KKIA Smart Curbside Geofence"}</span>
+                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-300 font-mono">
+                    {geofenceStage === "DOCKED_BAY"
+                      ? (isArabic ? "مُرسَى بالرصيف" : "Docked")
+                      : (isArabic ? "نطاق الرصيف ٢٥٠م" : "Curbside 250m")}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  {isArabic
+                    ? "رصد تلقائي لوصول الموكب إلى الصالة الملكية بدون تدخل يدوي"
+                    : "Autonomous VIP arrival detection & zero-touch curbside handshake"}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={isTriggeringHandshake}
+              onClick={triggerCurbsideHandshake}
+              className="rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-1.5 text-xs font-black transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Target size={13} />
+              <span>
+                {isTriggeringHandshake
+                  ? (isArabic ? "جارٍ الربط..." : "Handshaking...")
+                  : (isArabic ? "تأكيد مصافحة الرصيف" : "Trigger Handshake")}
+              </span>
+            </button>
+          </div>
+
+          {/* Concentric 4-Stage Progress Pills */}
+          <div className="grid grid-cols-4 gap-1.5 text-[10px] font-mono text-center">
+            <div className={`p-1 rounded border transition-colors ${
+              ["OUTER_APPROACH", "STAGING_HOLD", "CURBSIDE_GATE", "DOCKED_BAY"].includes(geofenceStage)
+                ? "bg-sky-500/20 border-sky-400 text-sky-200 font-bold"
+                : "bg-white/5 border-white/5 text-slate-500"
+            }`}>
+              {isArabic ? "اقتراب ٥ كم" : "Appr. 5km"}
+            </div>
+            <div className={`p-1 rounded border transition-colors ${
+              ["STAGING_HOLD", "CURBSIDE_GATE", "DOCKED_BAY"].includes(geofenceStage)
+                ? "bg-amber-500/20 border-amber-400 text-amber-200 font-bold"
+                : "bg-white/5 border-white/5 text-slate-500"
+            }`}>
+              {isArabic ? "اصطفاف ١.٥ كم" : "Stage 1.5km"}
+            </div>
+            <div className={`p-1 rounded border transition-colors ${
+              ["CURBSIDE_GATE", "DOCKED_BAY"].includes(geofenceStage)
+                ? "bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold"
+                : "bg-white/5 border-white/5 text-slate-500"
+            }`}>
+              {isArabic ? "رصيف ٣٠٠ م" : "Curb 300m"}
+            </div>
+            <div className={`p-1 rounded border transition-colors ${
+              geofenceStage === "DOCKED_BAY"
+                ? "bg-midyaf-gold/30 border-midyaf-gold text-amber-200 font-bold animate-pulse"
+                : "bg-white/5 border-white/5 text-slate-500"
+            }`}>
+              {isArabic ? "إرساء ٥٠ م" : "Dock 50m"}
+            </div>
+          </div>
+
+          {geofenceAlert && (
+            <div className="mt-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 p-2 text-[11px] text-emerald-200 flex items-center gap-2 animate-fadeIn">
+              <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+              <span>{geofenceAlert}</span>
+            </div>
+          )}
+        </section>
 
         <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
           <Badge tone="gold">{t("driver.title")}</Badge>

@@ -442,3 +442,54 @@ export type Session = {
   refreshToken: string;
   user: User;
 };
+
+export type GeofenceRingType =
+  | "OUTER_APPROACH"
+  | "STAGING_HOLD"
+  | "CURBSIDE_GATE"
+  | "DOCKED_BAY";
+
+export type ConcentricRing = {
+  ring: GeofenceRingType;
+  radiusMeters: number;
+  labelEn: string;
+  labelAr: string;
+  autoAction: string;
+};
+
+export type ConcentricGeofence = {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  category: "AIRPORT" | "VENUE" | "HOTEL" | "HERITAGE";
+  centerLat: number;
+  centerLng: number;
+  rings: ConcentricRing[];
+};
+
+export type GeofenceTransitionEvent = {
+  id: string;
+  driverId: string;
+  driverName?: string;
+  geofenceId: string;
+  geofenceCode: string;
+  geofenceNameEn: string;
+  geofenceNameAr: string;
+  previousRing: GeofenceRingType | "OUTSIDE";
+  currentRing: GeofenceRingType | "OUTSIDE";
+  distanceMeters: number;
+  direction: "APPROACHING" | "DEPARTING" | "STATIONARY";
+  timestamp: string;
+  automatedActionsTaken: string[];
+};
+
+export type GeofenceDriverState = {
+  driverId: string;
+  geofenceId: string;
+  currentRing: GeofenceRingType | "OUTSIDE";
+  distanceMeters: number;
+  lastCrossedAt: string;
+  direction: "APPROACHING" | "DEPARTING" | "STATIONARY";
+};
+

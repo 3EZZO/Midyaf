@@ -15,11 +15,12 @@ import {
   Crosshair,
   X,
   Crown,
-  MapPin
+  MapPin,
+  Radar
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Driver, Event, Task } from "@shared/domain";
-import { RIYADH } from "@shared/constants";
+import { RIYADH, CONCENTRIC_GEOFENCES } from "@shared/constants";
 import { Badge } from "./Badge";
 import { isArabicLanguage, localizeText } from "../lib/localize";
 import { tacticalAudio } from "../lib/tacticalAudio";
@@ -150,6 +151,7 @@ export function RiyadhMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState<"drivers" | "guests" | "tasks">("drivers");
   const [selectedZone, setSelectedZone] = useState<"ALL" | "NORTH" | "CENTRAL" | "WEST">("ALL");
+  const [showGeofences, setShowGeofences] = useState(true);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -294,6 +296,56 @@ export function RiyadhMap({
       });
     }
 
+    // 0.5 Sovereign Concentric Geofence Radar Rings
+    if (showGeofences) {
+      for (const geo of CONCENTRIC_GEOFENCES) {
+        for (const ring of geo.rings) {
+          let ringColor = "#38BDF8";
+          let fillOpacity = 0.02;
+          let weight = 1.2;
+          let dashArray: string | undefined = "4, 6";
+
+          if (ring.ring === "STAGING_HOLD") {
+            ringColor = "#F59E0B";
+            fillOpacity = 0.04;
+            weight = 1.5;
+            dashArray = "3, 5";
+          } else if (ring.ring === "CURBSIDE_GATE") {
+            ringColor = "#10B981";
+            fillOpacity = 0.09;
+            weight = 2;
+            dashArray = "2, 4";
+          } else if (ring.ring === "DOCKED_BAY") {
+            ringColor = "#C9A84C";
+            fillOpacity = 0.25;
+            weight = 2.5;
+            dashArray = undefined;
+          }
+
+          const circle = L.circle([geo.centerLat, geo.centerLng], {
+            radius: ring.radiusMeters,
+            color: ringColor,
+            fillColor: ringColor,
+            fillOpacity,
+            weight,
+            dashArray
+          }).addTo(layer);
+
+          circle.bindTooltip(
+            isArabic
+              ? `${geo.nameAr} · ${ring.labelAr} (${ring.radiusMeters}م)`
+              : `${geo.nameEn} · ${ring.labelEn} (${ring.radiusMeters}m)`,
+            {
+              permanent: false,
+              direction: "top",
+              className:
+                "bg-slate-950 text-white border border-midyaf-gold/40 text-[11px] px-2 py-1 rounded shadow-2xl backdrop-blur-md font-sans"
+            }
+          );
+        }
+      }
+    }
+
     // 1. Venue Marker (Royal Gold)
     const venuePoint = coordinates(event?.venueLat, event?.venueLng);
     if (venuePoint) {
@@ -402,7 +454,7 @@ export function RiyadhMap({
       }
       hasInitialFitRef.current = true;
     }
-  }, [displayedDrivers, event, i18n.language, l, mapMode, onSelectDriver, tasks]);
+  }, [displayedDrivers, event, i18n.language, l, mapMode, onSelectDriver, showGeofences, tasks]);
 
   // Main Render
   return (
@@ -523,6 +575,24 @@ export function RiyadhMap({
                 <span className="hidden sm:inline">{l("Standard")}</span>
               </button>
             </div>
+
+            {/* Concentric Geofence Radar Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playTacticalPing();
+                setShowGeofences((prev) => !prev);
+              }}
+              className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                showGeofences
+                  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/50 shadow-sm"
+                  : "bg-white/5 text-slate-400 hover:text-white"
+              }`}
+              title={isArabic ? "تبديل عرض رادار السياج الجغرافي ذو الحلقات المتداخلة" : "Toggle Concentric Geofence Radar"}
+            >
+              <Radar size={13} className={showGeofences ? "animate-pulse text-emerald-400" : ""} />
+              <span className="hidden sm:inline">{isArabic ? "رادار السياج" : "Geofence Radar"}</span>
+            </button>
 
             {/* Fullscreen Expand / Minimize Button */}
             <button

@@ -18,10 +18,12 @@ import {
   Cpu,
   Clock,
   Eye,
-  Crown
+  Crown,
+  Radar,
+  Target
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Driver, Event, Task } from "@shared/domain";
+import type { Driver, Event, Task, GeofenceTransitionEvent } from "@shared/domain";
 import { isArabicLanguage, localizeText } from "../lib/localize";
 import { tacticalAudio } from "../lib/tacticalAudio";
 import { RiyadhMap } from "./RiyadhMap";
@@ -77,6 +79,10 @@ export function SovereignCommandBridge({
   // Active contingency scenario
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scenarioLog, setScenarioLog] = useState<string[]>([]);
+
+  // Geofence states
+  const [recentGeofenceEvents, setRecentGeofenceEvents] = useState<GeofenceTransitionEvent[]>([]);
+  const [simulatingHandshake, setSimulatingHandshake] = useState(false);
 
   // Selected VIP for holographic dossier
   const [selectedVip, setSelectedVip] = useState<{
@@ -260,6 +266,79 @@ export function SovereignCommandBridge({
     }
   };
 
+  // Fetch initial geofence events when command bridge opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const token = (() => {
+      try {
+        const stored = window.localStorage.getItem("midyaf.session");
+        return stored ? JSON.parse(stored).accessToken : "";
+      } catch {
+        return "";
+      }
+    })();
+
+    fetch("/api/operations/geofences/recent-events?limit=8", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.events) {
+          setRecentGeofenceEvents(data.events);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  // Handle Concentric Handshake Simulation
+  const handleSimulateGeofenceHandshake = async (geofenceCode: string = "KKIA_ROYAL_T5") => {
+    setSimulatingHandshake(true);
+    tacticalAudio.playChime();
+    const timestamp = currentTime.toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
+
+    try {
+      const token = (() => {
+        try {
+          const stored = window.localStorage.getItem("midyaf.session");
+          return stored ? JSON.parse(stored).accessToken : "";
+        } catch {
+          return "";
+        }
+      })();
+
+      const res = await fetch("/api/operations/geofences/simulate-handshake", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          driverId: "driver-sultan",
+          driverName: isArabic ? "كابتن سلطان العتيبي" : "Capt. Sultan Al-Otaibi",
+          geofenceCode
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.events) {
+          setRecentGeofenceEvents((prev) => [...data.events, ...prev].slice(0, 10));
+        }
+        tacticalAudio.playTacticalPing();
+        setScenarioLog((prev) => [
+          isArabic
+            ? `[مصافحة السياج الجغرافي] ${timestamp} · تم رصد اختراق الحلقات الأربع للصالة الملكية بمطار الملك خالد — وصول الكابتن سلطان لرصيف كبار الشخصيات (٢٥٠م) وتأكيد الإرساء الفوري.`
+            : `[GEOFENCE HANDSHAKE] ${timestamp} · Concentric rings verified at KKIA Royal Terminal — Capt. Sultan crossed 250m Curbside Gate -> Docked Bay #1 confirmed.`,
+          ...prev.slice(0, 5)
+        ]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSimulatingHandshake(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -390,6 +469,85 @@ export function SovereignCommandBridge({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Concentric Geofence & Curbside Radar Widget */}
+          <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30 shadow-xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <Radar className="size-4 text-emerald-400 animate-pulse" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-midyaf-gold">
+                  {isArabic ? "رادار السياج الجغرافي الحلقي" : "Concentric Geofence Radar"}
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                {isArabic ? "٤ حلقات نشطة" : "4 Rings Active"}
+              </span>
+            </div>
+
+            {/* Quick 4-Ring Architecture Legend */}
+            <div className="grid grid-cols-2 gap-1.5 mb-3 text-[10px] font-mono">
+              <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 px-2 py-1 flex items-center justify-between text-sky-300">
+                <span>R1 {isArabic ? "اقتراب" : "Appr."}</span>
+                <span className="font-bold">5,000m</span>
+              </div>
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1 flex items-center justify-between text-amber-300">
+                <span>R2 {isArabic ? "اصطفاف" : "Stage"}</span>
+                <span className="font-bold">1,500m</span>
+              </div>
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 flex items-center justify-between text-emerald-300">
+                <span>R3 {isArabic ? "رصيف VIP" : "Curb"}</span>
+                <span className="font-bold">300m</span>
+              </div>
+              <div className="rounded-lg bg-amber-400/15 border border-amber-400/30 px-2 py-1 flex items-center justify-between text-amber-300">
+                <span>R4 {isArabic ? "إرساء" : "Dock"}</span>
+                <span className="font-bold">50m</span>
+              </div>
+            </div>
+
+            {/* Handshake Simulator Tactical Button */}
+            <button
+              type="button"
+              disabled={simulatingHandshake}
+              onClick={() => handleSimulateGeofenceHandshake("KKIA_ROYAL_T5")}
+              className="w-full flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-600/20 p-2.5 text-left text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30 transition active:scale-98 disabled:opacity-50 cursor-pointer shadow-sm mb-3"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <Target size={14} className="text-emerald-400 shrink-0" />
+                <span className="truncate">
+                  {simulatingHandshake
+                    ? (isArabic ? "جارٍ التحقق من الحلقات..." : "Verifying Rings...")
+                    : (isArabic ? "محاكاة مصافحة رصيف VIP (مطار الملك خالد)" : "Simulate KKIA Curbside Handshake")}
+                </span>
+              </span>
+              <Sparkles size={13} className="text-emerald-400 shrink-0" />
+            </button>
+
+            {/* Recent Ring Crossings / Stage Events */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                {isArabic ? "آخر عمليات اختراق الحلقات اللحظية:" : "Live Ring Transitions:"}
+              </p>
+              {recentGeofenceEvents.length > 0 ? (
+                recentGeofenceEvents.slice(0, 3).map((ev) => (
+                  <div key={ev.id} className="rounded-lg bg-white/5 p-2 text-[10px] border border-white/5 flex items-center justify-between">
+                    <div>
+                      <span className="text-white font-bold">{ev.driverName ?? "VIP Motorcade"}</span>
+                      <p className="text-slate-400">
+                        {isArabic ? ev.geofenceNameAr : ev.geofenceNameEn} · {ev.distanceMeters}m
+                      </p>
+                    </div>
+                    <span className="font-mono text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                      {ev.currentRing.replace("_", " ")}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-lg bg-white/5 p-2 text-[10px] text-slate-400 text-center font-mono">
+                  {isArabic ? "جاهز لرصد اختراق النطاقات الجغرافية" : "Geofence Radar Armed · Monitoring"}
+                </div>
+              )}
             </div>
           </div>
 

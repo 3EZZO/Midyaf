@@ -27,6 +27,7 @@ import {
 import { generateReportPdf } from "../services/pdf.js";
 import { recordAuditLog } from "../services/auditLog.js";
 import { telemetryBuffer } from "../services/telemetryBuffer.js";
+import { geofenceEngine } from "../services/geofenceEngine.js";
 
 const router = Router();
 const logisticsRoles: Role[] = [
@@ -87,6 +88,69 @@ router.get(
     });
   })
 );
+
+router.get(
+  "/operations/geofences",
+  asyncHandler(async (_req: AuthRequest, res) => {
+    const geofences = geofenceEngine.getGeofences();
+    res.json({
+      count: geofences.length,
+      geofences,
+      timestamp: new Date().toISOString()
+    });
+  })
+);
+
+router.get(
+  "/operations/geofences/recent-events",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const events = geofenceEngine.getRecentEvents(limit);
+    res.json({
+      count: events.length,
+      events
+    });
+  })
+);
+
+router.get(
+  "/operations/geofences/driver/:driverId",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const states = geofenceEngine.getDriverState(req.params.driverId);
+    res.json({
+      driverId: req.params.driverId,
+      states
+    });
+  })
+);
+
+router.post(
+  "/operations/geofences/simulate-handshake",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const driverId = (req.body?.driverId as string) || "driver-sultan";
+    const geofenceCode = (req.body?.geofenceCode as string) || "KKIA_ROYAL_T5";
+    const driverName = (req.body?.driverName as string) || "Capt. Sultan Al-Otaibi";
+
+    const events = geofenceEngine.simulateHandshakeSequence(driverId, geofenceCode, driverName);
+
+    const io = req.app.get("io");
+    if (io) {
+      for (const ev of events) {
+        io.to("organizers").emit("geofence:transition", ev);
+        io.emit("geofence:transition", ev);
+      }
+    }
+
+    res.json({
+      success: true,
+      driverId,
+      geofenceCode,
+      eventsGenerated: events.length,
+      events
+    });
+  })
+);
+
 
 type AuthUser = NonNullable<AuthRequest["user"]>;
 

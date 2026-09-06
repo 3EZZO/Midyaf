@@ -28,6 +28,7 @@ import ridersRouter from "./routes/riders.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
+import { geofenceEngine } from "./services/geofenceEngine.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -80,14 +81,15 @@ io.on("connection", (socket) => {
     socket.join(`user:${userId}`);
   });
 
+  socket.on("driver:join", (driverId: string) => {
+    socket.join(`driver:${driverId}`);
+  });
+
   socket.on("organizer:join", () => {
     socket.join("organizers");
   });
 
-  socket.on("driver:location_update", (payload) => {
-    const res = telemetryBuffer.ingest(payload);
-    if (!res) return;
-
+  const processTelemetryIngestion = (res: NonNullable<ReturnType<typeof telemetryBuffer.ingest>>) => {
     const eventRoom = res.frame.eventId ? `event:${res.frame.eventId}` : "organizers";
 
     // Broadcast compact telemetry stream to war room & live clients
@@ -111,39 +113,38 @@ io.on("connection", (socket) => {
       io.to(eventRoom).emit("driver:location_update", formatted);
       io.to("organizers").emit("driver:location_update", formatted);
     }
+
+    // Evaluate concentric geofences in-memory (< 1ms)
+    const transitions = geofenceEngine.evaluateTelemetry({
+      driverId: res.frame.driverId,
+      lat: res.frame.lat,
+      lng: res.frame.lng,
+      speed: res.frame.speed,
+      heading: res.frame.heading,
+      eventId: res.frame.eventId
+    });
+
+    if (transitions.length > 0) {
+      for (const tr of transitions) {
+        io.to(eventRoom).emit("geofence:transition", tr);
+        io.to("organizers").emit("geofence:transition", tr);
+        io.to(`driver:${res.frame.driverId}`).emit("geofence:transition", tr);
+      }
+    }
+  };
+
+  socket.on("driver:location_update", (payload) => {
+    const res = telemetryBuffer.ingest(payload);
+    if (!res) return;
+    processTelemetryIngestion(res);
   });
 
   socket.on("driver:telemetry_stream", (packedPayload) => {
     const res = telemetryBuffer.ingest(packedPayload);
     if (!res) return;
-
-    const eventRoom = res.frame.eventId ? `event:${res.frame.eventId}` : "organizers";
-    io.to(eventRoom).emit("driver:telemetry_stream", res.packed);
-    io.to("organizers").emit("driver:telemetry_stream", res.packed);
-
-    if (res.shouldBroadcast) {
-      io.to(eventRoom).emit("driver:location_update", {
-        driverId: res.frame.driverId,
-        lat: res.frame.lat,
-        lng: res.frame.lng,
-        speed: res.frame.speed,
-        heading: res.frame.heading,
-        status: res.frame.status,
-        eventId: res.frame.eventId,
-        timestamp: new Date(res.frame.timestamp).toISOString()
-      });
-      io.to("organizers").emit("driver:location_update", {
-        driverId: res.frame.driverId,
-        lat: res.frame.lat,
-        lng: res.frame.lng,
-        speed: res.frame.speed,
-        heading: res.frame.heading,
-        status: res.frame.status,
-        eventId: res.frame.eventId,
-        timestamp: new Date(res.frame.timestamp).toISOString()
-      });
-    }
+    processTelemetryIngestion(res);
   });
+
 
   socket.on("user:location_update", (payload) => {
     io.to("organizers").emit("user:location_update", payload);
