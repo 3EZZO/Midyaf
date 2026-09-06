@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { io } from "socket.io-client";
 import {
@@ -66,6 +66,7 @@ import {
 import { useLiveDemoSimulation } from "./lib/useLiveDemoSimulation";
 import { SovereignCommandBridge } from "./components/SovereignCommandBridge";
 import { tacticalAudio } from "./lib/tacticalAudio";
+import { useTacticalToast } from "./components/TacticalToast";
 
 const portalIcons: Record<PortalKey, LucideIcon> = {
   intake: ClipboardList,
@@ -111,8 +112,11 @@ export function App() {
     localizeText(value, isArabic);
   const p = (english: string, arabic: string) =>
     pickText(isArabic, english, arabic);
+  const toast = useTacticalToast();
   const [portal, setPortal] = useState<PortalKey>("logistics");
   const [data, setData] = useState<MidyafData | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const normalDataRef = useRef<MidyafData | null>(null);
   const [session, setSession] = useState<Session | null>(() =>
     loadStoredSession()
   );
@@ -151,23 +155,64 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && isDKey) {
         e.preventDefault();
         if (!canTriggerSimulation) return;
-        if (simulation.isSimulating) {
+
+        if (isDemoMode) {
+          // Deactivate demo mode: stop simulation and restore normal database data
+          setIsDemoMode(false);
           simulation.stopSimulation();
+          setIsWarRoomOpen(false);
+          if (normalDataRef.current) {
+            setData(normalDataRef.current);
+          }
+          void refreshData();
+          tacticalAudio.playTacticalPing();
+          toast.info(
+            isArabic ? "تم إيقاف الوضع التجريبي" : "Demo Mode Disengaged",
+            isArabic
+              ? "تمت العودة للبيانات والعمليات التشغيلية المعتمدة"
+              : "Restored to normal production operations data"
+          );
         } else {
+          // Activate full demo mode with virtual event telemetry
+          if (data) {
+            normalDataRef.current = data;
+          }
+          setIsDemoMode(true);
           simulation.startSimulation();
+          tacticalAudio.playChime();
+          toast.success(
+            isArabic
+              ? "تم تفعيل وضع المحاكاة التجريبية الكامل (Ctrl + Shift + D)"
+              : "Full Demo Mode Activated (Ctrl + Shift + D)",
+            isArabic
+              ? "تم تشغيل محاكاة الفعالية الافتراضية والأسطول المباشر · اضغط الآن Ctrl + Space لفتح غرفة العمليات"
+              : "Virtual event telemetry engaged · Press Ctrl + Space for Sovereign War Room"
+          );
         }
       }
 
       // Ctrl + Space or Cmd + Space: Sovereign Command Bridge (War Room)
+      // Strictly guarded: only accessible when Full Demo Mode is active
       if ((e.ctrlKey || e.metaKey) && (e.code === "Space" || e.key === " ")) {
         e.preventDefault();
+        if (!isDemoMode) {
+          tacticalAudio.playAlert();
+          toast.alert(
+            isArabic ? "غرفة العمليات مقفلة" : "War Room Locked",
+            isArabic
+              ? "يجب تفعيل الوضع التجريبي أولاً بالضغط على Ctrl + Shift + D"
+              : "Activate Full Demo Mode first via Ctrl + Shift + D"
+          );
+          return;
+        }
+
         tacticalAudio.playChime();
         setIsWarRoomOpen((prev) => !prev);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canTriggerSimulation, simulation]);
+  }, [canTriggerSimulation, isDemoMode, data, simulation, isArabic, toast]);
 
   useEffect(() => {
     document.documentElement.lang = i18n.language;
@@ -194,12 +239,6 @@ export function App() {
     );
     void loadSessionData(session);
   }, [session?.accessToken]);
-
-  useEffect(() => {
-    if (session?.user && canTriggerSimulation && !simulation.isSimulating) {
-      simulation.startSimulation();
-    }
-  }, [session?.user, canTriggerSimulation, simulation]);
 
   useEffect(() => {
     if (!session || !data) {
@@ -326,6 +365,7 @@ export function App() {
     () => ({
       data: data as MidyafData,
       session: session ?? undefined,
+      isDemoMode,
       refreshData,
       inviteGuests,
       importGuests,
@@ -348,7 +388,7 @@ export function App() {
       createBooking,
       uploadFile
     }),
-    [data, session]
+    [data, session, isDemoMode]
   );
 
   if (!session) {
@@ -376,6 +416,7 @@ export function App() {
         allowedPortals={allowedPortals}
         portal={portal}
         setPortal={setPortal}
+        isDemoMode={isDemoMode}
         simulation={simulation}
         isWarRoomOpen={isWarRoomOpen}
         setIsWarRoomOpen={setIsWarRoomOpen}
@@ -403,6 +444,7 @@ export function App() {
       allowedPortals={allowedPortals}
       portal={portal}
       setPortal={setPortal}
+      isDemoMode={isDemoMode}
       realtimeLog={realtimeLog}
       simulation={simulation}
       event={data.events[0]}
@@ -460,6 +502,7 @@ export function App() {
     try {
       const fresh = await getBootstrap(activeSession.accessToken);
       setData(fresh);
+      normalDataRef.current = fresh;
       try {
         window.sessionStorage.setItem(
           `midyaf_data_${activeSession.user.id}`,
@@ -488,6 +531,9 @@ export function App() {
     try {
       const fresh = await getBootstrap(activeSession.accessToken);
       setData(fresh);
+      if (!isDemoMode) {
+        normalDataRef.current = fresh;
+      }
       try {
         window.sessionStorage.setItem(
           `midyaf_data_${activeSession.user.id}`,
@@ -982,6 +1028,7 @@ function ShellFrame({
   allowedPortals,
   portal,
   setPortal,
+  isDemoMode,
   realtimeLog = [],
   simulation,
   event,
@@ -1000,6 +1047,7 @@ function ShellFrame({
   allowedPortals: PortalKey[];
   portal: PortalKey;
   setPortal: (portal: PortalKey) => void;
+  isDemoMode?: boolean;
   realtimeLog?: string[];
   simulation?: ReturnType<typeof useLiveDemoSimulation>;
   event?: Event;
@@ -1061,23 +1109,34 @@ function ShellFrame({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Sovereign Command Bridge (War Room) Button */}
-            <button
-              type="button"
-              onClick={() => {
-                tacticalAudio.playChime();
-                setIsWarRoomOpen?.(true);
-              }}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-glow ring-1 ring-midyaf-gold/50 transition-all duration-300 hover:scale-105 active:scale-95 hover:ring-midyaf-gold"
-              title={isArabic ? "غرفة العمليات والقيادة السيادية (Ctrl + Space)" : "Sovereign Command Bridge (Ctrl + Space)"}
-            >
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              <Shield size={14} className="text-midyaf-gold" />
-              <span>{isArabic ? "غرفة العمليات" : "WAR ROOM"}</span>
-            </button>
+            {/* Sovereign Command Bridge (War Room) & Full Demo Mode Badge: Strictly visible ONLY in Demo Mode */}
+            {isDemoMode && (
+              <>
+                <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-[11px] font-black text-amber-500 animate-pulse">
+                  <Sparkles size={13} />
+                  <span>{isArabic ? "الوضع التجريبي نشط" : "DEMO MODE ACTIVE"}</span>
+                  <span className="text-[10px] text-amber-400/80 font-mono">[Ctrl+Shift+D]</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playChime();
+                    setIsWarRoomOpen?.(true);
+                  }}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-glow ring-1 ring-midyaf-gold/50 transition-all duration-300 hover:scale-105 active:scale-95 hover:ring-midyaf-gold"
+                  title={isArabic ? "غرفة العمليات والقيادة السيادية (Ctrl + Space)" : "Sovereign Command Bridge (Ctrl + Space)"}
+                >
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <Shield size={14} className="text-midyaf-gold" />
+                  <span>{isArabic ? "غرفة العمليات" : "WAR ROOM"}</span>
+                  <span className="text-[10px] text-midyaf-gold/70 font-mono">[Ctrl+Space]</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={onDarkModeToggle}

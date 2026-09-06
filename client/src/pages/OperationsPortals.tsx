@@ -2315,6 +2315,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
 export function LogisticsDashboard({
   data,
   session,
+  isDemoMode,
   refreshData,
   inviteGuests,
   importGuests,
@@ -2441,7 +2442,7 @@ export function LogisticsDashboard({
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
       <AirportExpressSection data={data} session={session} refreshData={refreshData} />
-      <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />
+      {isDemoMode && <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
@@ -2693,6 +2694,7 @@ export function LogisticsDashboard({
         <QuotesAndContracts
           data={data}
           canManage={canManageVendors}
+          isDemoMode={isDemoMode}
           onApproveVendorQuote={approveVendorQuote}
           onApproveContract={approveContract}
         />
@@ -2739,6 +2741,7 @@ export function LogisticsDashboard({
           data={data}
           event={event}
           session={session}
+          isDemoMode={isDemoMode}
           onApproveContract={approveContract}
           onApproveVendorQuote={approveVendorQuote}
           onUpdateTaskStatus={updateTaskStatus}
@@ -4088,10 +4091,12 @@ export function CompanyDashboard({
 function QuotesAndContracts({
   data,
   canManage = false,
+  isDemoMode = false,
   onApproveVendorQuote,
   onApproveContract
 }: Pick<PortalProps, "data"> & {
   canManage?: boolean;
+  isDemoMode?: boolean;
   onApproveVendorQuote?: PortalProps["approveVendorQuote"];
   onApproveContract?: PortalProps["approveContract"];
 }) {
@@ -4530,86 +4535,88 @@ function QuotesAndContracts({
           );
         })}
       </div>
-      {/* Certified Contracts & Procurement Hub */}
-      <div className="mt-8 space-y-4">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-midyaf-gold" />
-              <h3 className="text-base font-black text-midyaf-purple dark:text-white">
-                {ui.p("Certified Contracts & Procurement Hub", "مركز العقود المعتمدة والمشتريات الذكية")}
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {ui.p(
-                "Legally binding procurement contracts authenticated via Triple-Key Multi-Sig and sealed on-chain.",
-                "عقود توريد ملزمة قانونياً موثقة عبر بروتوكول التوقيع المتعدد ومختومة رقمياً."
-              )}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
-              {ui.p("Total: SAR 2,170,000", "الإجمالي: ٢,١٧٠,٠٠٠ ر.س")}
-            </span>
-            <span className="rounded-lg bg-midyaf-gold/15 px-2.5 py-1 text-xs font-black text-midyaf-gold">
-              {ui.p("Midyaf Take: SAR 224,600", "عمولة مضياف: ٢٢٤,٦٠٠ ر.س")}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          {DEMO_CONTRACTS.map((contract) => (
-            <div
-              key={contract.id}
-              className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-midyaf-gold">
-                      {contract.contractNumber}
-                    </span>
-                    <Badge tone="green">{ui.p("SIGNED & VERIFIED", "موقع ومعتمد")}</Badge>
-                  </div>
-                  <h4 className="mt-1 text-sm font-black text-midyaf-ink dark:text-white">
-                    {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
-                  </h4>
-                  <p className="text-[11px] font-bold text-midyaf-purple dark:text-purple-300">
-                    {ui.p(contract.categoryEn, contract.categoryAr)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-base font-black text-midyaf-purple dark:text-midyaf-gold">
-                    {money(contract.amount)}
-                  </p>
-                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    {contract.commissionPercent}% {ui.p("Take Rate", "عمولة")} ({money(contract.commissionAmount)})
-                  </p>
-                </div>
+      {/* Certified Contracts & Procurement Hub: Strictly visible in Full Demo Mode */}
+      {isDemoMode && (
+        <div className="mt-8 space-y-4">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-midyaf-gold" />
+                <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+                  {ui.p("Certified Contracts & Procurement Hub", "مركز العقود المعتمدة والمشتريات الذكية")}
+                </h3>
               </div>
-
-              <p className="mt-2.5 text-xs text-slate-600 line-clamp-2 dark:text-slate-300">
-                {ui.p(contract.scopeEn, contract.scopeAr)}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {ui.p(
+                  "Legally binding procurement contracts authenticated via Triple-Key Multi-Sig and sealed on-chain.",
+                  "عقود توريد ملزمة قانونياً موثقة عبر بروتوكول التوقيع المتعدد ومختومة رقمياً."
+                )}
               </p>
-
-              <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-                <span className="text-[10px] font-mono text-slate-400">
-                  {contract.certifiedHash}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDemoContract(contract)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
-                >
-                  <FileText size={13} />
-                  {ui.p("View Certified Contract", "استعراض العقد المعتمد")}
-                </button>
-              </div>
             </div>
-          ))}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+                {ui.p("Total: SAR 2,170,000", "الإجمالي: ٢,١٧٠,٠٠٠ ر.س")}
+              </span>
+              <span className="rounded-lg bg-midyaf-gold/15 px-2.5 py-1 text-xs font-black text-midyaf-gold">
+                {ui.p("Midyaf Take: SAR 224,600", "عمولة مضياف: ٢٢٤,٦٠٠ ر.س")}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {DEMO_CONTRACTS.map((contract) => (
+              <div
+                key={contract.id}
+                className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-midyaf-gold">
+                        {contract.contractNumber}
+                      </span>
+                      <Badge tone="green">{ui.p("SIGNED & VERIFIED", "موقع ومعتمد")}</Badge>
+                    </div>
+                    <h4 className="mt-1 text-sm font-black text-midyaf-ink dark:text-white">
+                      {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
+                    </h4>
+                    <p className="text-[11px] font-bold text-midyaf-purple dark:text-purple-300">
+                      {ui.p(contract.categoryEn, contract.categoryAr)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-black text-midyaf-purple dark:text-midyaf-gold">
+                      {money(contract.amount)}
+                    </p>
+                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {contract.commissionPercent}% {ui.p("Take Rate", "عمولة")} ({money(contract.commissionAmount)})
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-2.5 text-xs text-slate-600 line-clamp-2 dark:text-slate-300">
+                  {ui.p(contract.scopeEn, contract.scopeAr)}
+                </p>
+
+                <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {contract.certifiedHash}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDemoContract(contract)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+                  >
+                    <FileText size={13} />
+                    {ui.p("View Certified Contract", "استعراض العقد المعتمد")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Certified Contract Modal */}
       {selectedDemoContract && (

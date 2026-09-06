@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   X,
   Users,
@@ -34,6 +34,7 @@ interface LogisticsMetricModalProps {
   data: MidyafData;
   event: Event;
   session?: Session;
+  isDemoMode?: boolean;
   onApproveContract?: (contractId: string) => Promise<void>;
   onApproveVendorQuote?: (quoteId: string) => Promise<void>;
   onUpdateTaskStatus?: (taskId: string, status: TaskStatus) => Promise<void>;
@@ -160,6 +161,7 @@ export function LogisticsMetricModal({
   data,
   event,
   session,
+  isDemoMode = false,
   onApproveContract,
   onApproveVendorQuote,
   onUpdateTaskStatus,
@@ -198,7 +200,32 @@ export function LogisticsMetricModal({
     0
   );
 
-  const filteredGuests = VIP_GUESTS_DATA.filter(
+  const guestsToDisplay = useMemo(() => {
+    if (isDemoMode) {
+      return VIP_GUESTS_DATA;
+    }
+    if (event.guests && event.guests.length > 0) {
+      return event.guests.map((g) => {
+        const journey = data.guestJourneys.find((j) => j.guestId === g.id);
+        const rider = g.hospitalityRider;
+        return {
+          name: g.user.name,
+          title: g.tier ? `${g.tier} Delegate` : (g.isVIP ? "VIP Delegate" : "Delegate"),
+          org: event.name,
+          flight: journey?.departureFlight ?? "Arrival Scheduled",
+          hotel: (rider?.roomPreferences && rider.roomPreferences.length > 0) ? rider.roomPreferences.join(" · ") : event.venue,
+          driver: journey?.driverName ?? "VIP Chauffeur Assigned",
+          vehicle: journey?.carDetails ?? "Executive Escort",
+          plate: "KSA-GOV",
+          rider: (rider?.dietaryNeeds && rider.dietaryNeeds.length > 0) ? rider.dietaryNeeds.join(" · ") : "Official Protocol Suite",
+          status: g.rsvpStatus ?? "CONFIRMED"
+        };
+      });
+    }
+    return VIP_GUESTS_DATA;
+  }, [isDemoMode, event.guests, data.guestJourneys, event.name, event.venue]);
+
+  const filteredGuests = guestsToDisplay.filter(
     (g) =>
       g.name.toLowerCase().includes(guestSearch.toLowerCase()) ||
       g.org.toLowerCase().includes(guestSearch.toLowerCase()) ||
@@ -257,8 +284,13 @@ export function LogisticsMetricModal({
                 <span>{isArabic ? "شاشة كاملة" : "Fullscreen Deck"}</span>
               </span>
             </h3>
-            <p className="text-xs text-slate-400">
-              {event.name} · {l("Riyadh")} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}
+            <p className="text-xs text-slate-400 flex items-center gap-2">
+              <span>{event.name} · {l("Riyadh")} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}</span>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+                isDemoMode ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30" : "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30"
+              }`}>
+                {isDemoMode ? (isArabic ? "محاكاة تجريبية" : "DEMO SIMULATION") : (isArabic ? "بيانات حقيقية" : "LIVE PRODUCTION")}
+              </span>
             </p>
           </div>
         </div>

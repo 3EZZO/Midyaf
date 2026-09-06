@@ -20,6 +20,7 @@ export type CoordinatorRequestInput = Omit<
 export type PortalProps = {
   data: MidyafData;
   session?: Session;
+  isDemoMode?: boolean;
   refreshData: () => Promise<void>;
   inviteGuests: (eventId: string, guests: GuestInviteInput[]) => Promise<void>;
   importGuests: (
