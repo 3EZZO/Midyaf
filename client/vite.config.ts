@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: 'Midyaf',
         short_name: 'Midyaf',
-        description: 'AI-powered royal hospitality and event logistics command center for Riyadh',
+        description: 'AI-powered royal hospitality and sovereign event logistics command center',
         theme_color: '#000000',
         icons: [
           {

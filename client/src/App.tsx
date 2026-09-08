@@ -1307,7 +1307,7 @@ function LoginPage({
           <img
             src="/midyaf-logo.png"
             alt={t("brand")}
-            className="h-20 w-auto animate-float object-contain drop-shadow-lg"
+            className="h-24 w-24 rounded-2xl animate-float object-cover shadow-2xl ring-2 ring-midyaf-gold/50"
           />
           <div>
             <p className="text-sm font-bold text-shimmer animate-fadeInUp delay-200">
