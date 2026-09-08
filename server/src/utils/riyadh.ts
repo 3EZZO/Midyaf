@@ -16,7 +16,12 @@ export const RIYADH_ZONES: Record<DriverZone, Coordinates> = {
   EAST_RIYADH: { lat: 24.75, lng: 46.83 },
   WEST_RIYADH: { lat: 24.67, lng: 46.54 },
   SOUTH_RIYADH: { lat: 24.57, lng: 46.76 },
-  DIRIYAH_CORRIDOR: { lat: 24.737, lng: 46.575 }
+  DIRIYAH_CORRIDOR: { lat: 24.737, lng: 46.575 },
+  NORTH_ZONE: { lat: 24.82, lng: 46.64 },
+  CENTRAL_ZONE: { lat: 24.7136, lng: 46.6753 },
+  EAST_ZONE: { lat: 24.75, lng: 46.83 },
+  WEST_ZONE: { lat: 24.67, lng: 46.54 },
+  SUMMIT_CORRIDOR: { lat: 24.737, lng: 46.575 }
 };
 
 export function haversineDistanceKm(a: Coordinates, b: Coordinates) {

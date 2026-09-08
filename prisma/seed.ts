@@ -34,8 +34,8 @@ async function main() {
   const city = await prisma.cityConfig.create({
     data: {
       code: "riyadh",
-      nameAr: "الرياض",
-      nameEn: "Riyadh",
+      nameAr: "منطقة القمة",
+      nameEn: "Summit Region",
       centerLat: 24.7136,
       centerLng: 46.6753,
       defaultZoom: 12,
@@ -201,7 +201,7 @@ async function main() {
       }),
       prisma.user.create({
         data: {
-          name: "Riyadh Elite Hospitality",
+          name: "Sovereign Elite Hospitality",
           email: "supplier@midyaf.local",
           phone: "+966500000006",
           role: "SUPPLIER",
@@ -246,7 +246,7 @@ async function main() {
 
   const event = await prisma.event.create({
     data: {
-      name: "Riyadh Future Hospitality Summit",
+      name: "Sovereign Future Hospitality Summit",
       date: new Date("2026-09-21T17:00:00+03:00"),
       venue: "King Abdullah Financial District",
       venueLat: 24.7642,
@@ -319,7 +319,7 @@ async function main() {
         nationalIdIqama: "1029384756",
         currentLat: 24.7642,
         currentLng: 46.6406,
-        zone: "CENTRAL_RIYADH",
+        zone: "CENTRAL_ZONE",
         status: "AVAILABLE",
         shiftStart: new Date("2026-09-21T12:00:00+03:00"),
         shiftEnd: new Date("2026-09-21T23:00:00+03:00"),
@@ -333,7 +333,7 @@ async function main() {
         nationalIdIqama: "1088776655",
         currentLat: 24.9576,
         currentLng: 46.6988,
-        zone: "NORTH_RIYADH",
+        zone: "NORTH_ZONE",
         status: "EN_ROUTE",
         shiftStart: new Date("2026-09-21T10:00:00+03:00"),
         shiftEnd: new Date("2026-09-21T22:00:00+03:00"),
@@ -347,7 +347,7 @@ async function main() {
         nationalIdIqama: "1044332211",
         currentLat: 24.6661,
         currentLng: 46.6302,
-        zone: "WEST_RIYADH",
+        zone: "WEST_ZONE",
         status: "EN_ROUTE",
         shiftStart: new Date("2026-09-21T08:00:00+03:00"),
         shiftEnd: new Date("2026-09-21T20:00:00+03:00"),
@@ -361,7 +361,7 @@ async function main() {
         nationalIdIqama: "1055667788",
         currentLat: 24.8500,
         currentLng: 46.7300,
-        zone: "EAST_RIYADH",
+        zone: "EAST_ZONE",
         status: "AVAILABLE",
         shiftStart: new Date("2026-09-21T11:00:00+03:00"),
         shiftEnd: new Date("2026-09-21T23:00:00+03:00"),
@@ -405,7 +405,7 @@ async function main() {
         guestId: standardGuest.id,
         type: "VENUE_TRANSFER",
         status: "PENDING",
-        pickupLocation: "Voco Riyadh",
+        pickupLocation: "Voco Summit Hotel",
         dropoffLocation: "King Abdullah Financial District",
         pickupLat: 24.6667,
         pickupLng: 46.7001,
@@ -427,7 +427,7 @@ async function main() {
       crNumber: "1010999988",
       commissionPercent: 12,
       sponsoredRank: 1,
-      zone: "CENTRAL_RIYADH"
+      zone: "CENTRAL_ZONE"
     }
   });
 
@@ -454,7 +454,7 @@ async function main() {
       verified: true,
       crNumber: "1010777766",
       commissionPercent: 11,
-      zone: "CENTRAL_RIYADH"
+      zone: "CENTRAL_ZONE"
     }
   });
 
@@ -532,7 +532,7 @@ async function main() {
       },
       {
         userId: guestA.id,
-        title: "Welcome to Riyadh",
+        title: "Welcome to the Summit",
         body: "Noura can suggest a Diriyah dinner after check-in."
       },
       {
@@ -554,8 +554,8 @@ async function main() {
   const activityIntake = await prisma.activityIntake.create({
     data: {
       eventId: event.id,
-      activityName: "Riyadh Season International Guests Program",
-      activityPlace: "Boulevard City, Riyadh",
+      activityName: "Sovereign Summit International Guests Program",
+      activityPlace: "Plenary Summit Boulevard",
       visitorCount: 96,
       vipVisitorCount: 18,
       normalVisitorCount: 78,
@@ -573,7 +573,7 @@ async function main() {
     data: {
       intakeId: activityIntake.id,
       summary:
-        "VIP guests receive dedicated cars for the full Riyadh stay. Normal guests are grouped into 3-4 person shuttle movements.",
+        "VIP guests receive dedicated cars for the full summit stay. Normal guests are grouped into 3-4 person shuttle movements.",
       assumptions: [
         "18 VIP guests require full-stay vehicle allocation.",
         "78 normal guests grouped into shuttle movements.",
@@ -613,7 +613,7 @@ async function main() {
       data: {
         intakeId: activityIntake.id,
         category: "HOTEL_OPERATOR",
-        vendorName: "The Ritz-Carlton Riyadh",
+        vendorName: "The Ritz-Carlton Grand Hotel",
         item: "100 Royal Suites (FII 2027 Delegation)",
         quantity: 100,
         unitPrice: 12500,
@@ -645,7 +645,7 @@ async function main() {
       data: {
         intakeId: activityIntake.id,
         category: "HOTEL_OPERATOR",
-        vendorName: "Four Seasons Hotel Riyadh",
+        vendorName: "Four Seasons Hotel Kingdom Centre",
         item: "100 Luxury Executive Rooms",
         quantity: 100,
         unitPrice: 13000,
@@ -686,7 +686,7 @@ async function main() {
     data: [
       {
         quoteId: hotelQuote.id,
-        vendorName: "The Ritz-Carlton Riyadh",
+        vendorName: "The Ritz-Carlton Grand Hotel",
         category: "HOTEL_OPERATOR",
         amount: 1250000,
         commissionAmount: 125000,
@@ -730,8 +730,8 @@ async function main() {
       visaStatus: "SENT",
       ticketStatus: "SENT",
       promoVideos: [
-        "Welcome to Riyadh hospitality",
-        "Riyadh Season experience preview"
+        "Welcome to Summit hospitality",
+        "Summit experience preview"
       ],
       arrivalStatus: "LUGGAGE",
       arrivalGate: "A4",
@@ -768,7 +768,7 @@ async function main() {
       {
         guestName: "Normal group 4",
         request: "Add one passenger to shuttle group",
-        route: "Voco Riyadh to Boulevard City",
+        route: "Voco Summit Hotel to Boulevard City",
         priority: "NORMAL",
         status: "ASSIGNED",
         supervisor: "Central Shuttle Supervisor",
@@ -779,7 +779,7 @@ async function main() {
 
   await prisma.companyReport.create({
     data: {
-      title: "Riyadh Season logistics daily report",
+      title: "Sovereign Summit logistics daily report",
       status: "MANAGER_CONFIRMED",
       kpis: [
         { label: "Arrival completion", value: "72%" },
@@ -787,7 +787,7 @@ async function main() {
         { label: "Shuttle grouping", value: "20 groups" },
         { label: "Open guest requests", value: "2" }
       ],
-      pdfUrl: "/reports/riyadh-season-logistics.pdf"
+      pdfUrl: "/reports/sovereign-summit-logistics.pdf"
     }
   });
 
@@ -800,7 +800,7 @@ async function main() {
     }
   });
 
-  console.log("Seed complete: Midyaf Riyadh workspace data is ready.");
+  console.log("Seed complete: Midyaf sovereign workspace data is ready.");
   console.log("Seeded local password for all users: Midyaf@2026");
 }
 

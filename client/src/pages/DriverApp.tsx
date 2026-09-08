@@ -416,8 +416,8 @@ export function DriverApp({
                 isArabic ? "توقف التحديث لمدة 5 دقائق يطلق تنبيهاً فورياً." : "No update for 5 minutes triggers alert:delay."
               ],
               [
-                isArabic ? "توزيع المناطق في الرياض" : "Zone logic",
-                isArabic ? "يتم البحث في نفس نطاق الرياض أولاً قبل التوسع." : "Same Riyadh zone is searched before expansion."
+                isArabic ? "توزيع النطاقات التكتيكية" : "Tactical zone logic",
+                isArabic ? "يتم البحث في نفس نطاق العمليات أولاً قبل التوسع." : "Same operations zone is searched before expansion."
               ]
             ].map(([title, detail]) => (
               <div key={title} className="rounded-lg bg-slate-50 p-3">

@@ -22,7 +22,12 @@ export type DriverZone =
   | "EAST_RIYADH"
   | "WEST_RIYADH"
   | "SOUTH_RIYADH"
-  | "DIRIYAH_CORRIDOR";
+  | "DIRIYAH_CORRIDOR"
+  | "NORTH_ZONE"
+  | "CENTRAL_ZONE"
+  | "EAST_ZONE"
+  | "WEST_ZONE"
+  | "SUMMIT_CORRIDOR";
 
 export type TaskStatus =
   | "PENDING"
@@ -36,12 +41,40 @@ export type TaskStatus =
   | "CANCELLED";
 
 export type SupplierCategory =
+  | "AIRLINE"
+  | "VEHICLE_BROKERAGE"
+  | "CAR_RENTAL"
+  | "MAN_POWER"
+  | "GOLF_CARTS"
+  | "HEAVY_TRUCKS"
+  | "HEAVY_EQUIPMENT"
   | "HOTEL"
   | "CAR"
   | "TICKET"
   | "CATERING"
   | "EQUIPMENT"
   | "TOURISM";
+
+export type ManPowerSubtype = "CARGO_LOADING" | "EVENT_STAFF";
+export type PaymentTerms = "INSTALLMENTS" | "DOWNPAYMENT";
+
+export type CategoryPriceRange = {
+  category: SupplierCategory;
+  categoryNameEn: string;
+  categoryNameAr: string;
+  minPrice: number;
+  maxPrice: number;
+  avgPrice: number;
+  bestTierPrice: number;
+  quoteCount: number;
+  currency: string;
+};
+
+export type SupplierContractWorkflowStage =
+  | "PLAN_APPROVED"
+  | "SENT_TO_SUPPLIERS"
+  | "CONTRACTS_RETURNED"
+  | "VERIFIED_SIGNED";
 
 export type Money = number | string;
 
@@ -290,7 +323,7 @@ export type ActivityIntake = {
   transportationType: "VIP" | "SHUTTLE" | "MIXED";
   ticketType: "FIRST_CLASS" | "NORMAL" | "MIXED";
   hotelType: "FIVE_STAR" | "FOUR_STAR" | "MIXED";
-  carType: "LUXURY_SEDAN" | "SUV_GMC_TAHOE" | "MIXED";
+  carType: "LUXURY_SEDAN" | "SUV_GMC_TAHOE" | "BUSES" | "MIXED";
   status:
     | "DRAFT"
     | "AI_PLANNING"
@@ -302,6 +335,25 @@ export type ActivityIntake = {
   submittedAt: string;
   createdAt?: string;
   updatedAt?: string;
+
+  // Task 2: Extended fields
+  hotelName?: string;
+  hotelContact?: string;
+  hotelRoomsBooked?: number;
+  hotelRoomType?: string;
+  carRentalCompanyName?: string;
+  carRentalContact?: string;
+  providerName?: string;
+  paymentTerms?: PaymentTerms;
+
+  // Task 3: New Supplier / Resource Categories
+  golfCartsCount?: number;
+  transportationTrucksCount?: number;
+  manPowerCount?: number;
+  manPowerSubtype?: ManPowerSubtype;
+  heavyEquipmentCount?: number;
+  heavyTrucksCount?: number;
+  busesCount?: number;
 };
 
 export type AiLogisticsPlan = {
@@ -315,6 +367,15 @@ export type AiLogisticsPlan = {
   hotelRooms: number;
   firstClassTickets: number;
   normalTickets: number;
+
+  // Task 3: Resource breakdown in plan
+  golfCarts?: number;
+  transportationTrucks?: number;
+  manPower?: number;
+  manPowerSubtype?: ManPowerSubtype;
+  heavyEquipment?: number;
+  heavyTrucks?: number;
+  buses?: number;
   phases: Array<{
     name: string;
     owner: string;

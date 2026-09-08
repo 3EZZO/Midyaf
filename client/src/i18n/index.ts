@@ -6,8 +6,8 @@ const resources = {
     translation: {
       brand: "Midyaf",
       brandArabic: "مِضْيَافٌ",
-      city: "Riyadh",
-      comingSoon: "More cities coming soon",
+      city: "Summit Zone",
+      comingSoon: "Expanded coverage coming soon",
       apiMode: "API connected",
       liveSystem: "Live system",
       switchLanguage: "العربية",
@@ -20,7 +20,7 @@ const resources = {
       loginFailed: "Login failed",
       loadingWorkspace: "Loading your workspace...",
       workspaceLoadFailed: "Workspace could not be loaded.",
-      heroTitle: "Event logistics command center for Riyadh activities",
+      heroTitle: "Event logistics command center for sovereign summit activities",
       heroSubtitle:
         "From organizing-company intake to AI planning, vendor quotations, contracts, commissions, guest journeys, captains, coordinators, and confirmed reports.",
       portals: {
@@ -28,11 +28,11 @@ const resources = {
         guest: "Guest App",
         captain: "Captains App",
         coordinator: "Coordinators",
-        logistics: "Logistics Dashboard",
+        logistics: "Midyaf Management Dashboard",
         company: "Company Dashboard"
       },
       common: {
-        riyadhOnly: "Launch city: Riyadh only",
+        riyadhOnly: "Operating Region: Sovereign Summit Zone",
         live: "Live",
         status: "Status",
         send: "Send",
@@ -46,7 +46,7 @@ const resources = {
         aiPlan: "AI logistics planner"
       },
       ai: {
-        placeholder: "Ask about transport, schedule, hotels, or Riyadh"
+        placeholder: "Ask about transport, schedule, hotels, or events"
       }
     }
   },
@@ -54,8 +54,8 @@ const resources = {
     translation: {
       brand: "مِضْيَافٌ",
       brandArabic: "Midyaf",
-      city: "الرياض",
-      comingSoon: "مدن أخرى قريباً",
+      city: "نطاق القمة",
+      comingSoon: "توسيع النطاق قريباً",
       apiMode: "متصل بالواجهة البرمجية",
       liveSystem: "نظام مباشر",
       switchLanguage: "English",
@@ -68,7 +68,7 @@ const resources = {
       loginFailed: "تعذر تسجيل الدخول",
       loadingWorkspace: "جاري تحميل مساحة العمل...",
       workspaceLoadFailed: "تعذر تحميل مساحة العمل.",
-      heroTitle: "مركز إدارة لوجستيات الفعاليات في الرياض",
+      heroTitle: "مركز إدارة لوجستيات الفعاليات والقمم الكبرى",
       heroSubtitle:
         "من إدخال بيانات الشركة المنظمة إلى التخطيط بالذكاء الاصطناعي، عروض الموردين، العقود، العمولات، رحلة الضيف، الكباتن، المنسقين، والتقارير المعتمدة.",
       portals: {
@@ -76,11 +76,11 @@ const resources = {
         guest: "تطبيق الضيف",
         captain: "تطبيق الكباتن",
         coordinator: "تطبيق المنسقين",
-        logistics: "لوحة المنظم",
+        logistics: "لوحة إدارة مضياف",
         company: "لوحة الشركة المنظمة"
       },
       common: {
-        riyadhOnly: "مدينة الإطلاق: الرياض فقط",
+        riyadhOnly: "منطقة العمليات: نطاق القمة السيادية",
         live: "مباشر",
         status: "الحالة",
         send: "إرسال",
@@ -94,7 +94,7 @@ const resources = {
         aiPlan: "مخطط اللوجستيات الذكي"
       },
       ai: {
-        placeholder: "اسأل عن النقل أو الجدول أو الفنادق أو الرياض"
+        placeholder: "اسأل عن النقل أو الجدول أو الفنادق أو الفعاليات"
       }
     }
   }

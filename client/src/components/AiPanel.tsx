@@ -135,8 +135,8 @@ export function AiPanel({
             `أهلاً وسهلاً بمعاليكم وسعادتكم. أنا سيف ومنيرة، مساعدكم الشخصي لخدمات كبار الشخصيات لمبادرة مستقبل الاستثمار 2027. جدولكم وموكبكم وجناحكم الملكي في خدمتكم على مدار الساعة. كيف يمكنني مساندتكم الآن؟`
           )
         : p(
-            `Welcome to Midyaf Sovereign Operations Brain. I am Noura, actively monitoring live telemetry for Future Investment Initiative 2027 (FII) across Riyadh. Ask me about vendor geofencing, sealed vault status, flight surges, or active VIP riders.`,
-            `مرحباً بكم في العقل التشغيلي السيادي لمنصة مِضياف. أنا نورة، أراقب حالياً التغطية الحية لفعاليات مبادرة مستقبل الاستثمار 2027 (FII) في الرياض. يمكنكم سؤالي عن فحص الموردين بالقاعة أ، الخزنة الثلاثية، تنبيهات وصول المطار، أو مذكرات الضيافة الملكية.`
+            `Welcome to Midyaf Sovereign Operations Brain. I am Noura, actively monitoring live telemetry for Future Investment Initiative 2027 (FII) across the Sovereign Summit Zone. Ask me about vendor geofencing, sealed vault status, flight surges, or active VIP riders.`,
+            `مرحباً بكم في العقل التشغيلي السيادي لمنصة مِضياف. أنا نورة، أراقب حالياً التغطية الحية لفعاليات مبادرة مستقبل الاستثمار 2027 (FII) عبر منطقة العمليات السيادية. يمكنكم سؤالي عن فحص الموردين بالقاعة أ، الخزنة الثلاثية، تنبيهات وصول المطار، أو مذكرات الضيافة الملكية.`
           )
     };
   }, [persona, i18n.language]);
@@ -691,8 +691,8 @@ export function localAiReply(
   ) {
     return {
       body: isArabic
-        ? `${persona}: مذكرات الضيافة الملكية (VIP Riders) معتمدة في فندق الريتز-كارلتون الرياض: 1) معالي ياسر الرميان (الجناح الملكي 1: قهوة سعودية بورد الطائف، تمر سكري فاخر، وجبات حلال خالية من الغلوتين)؛ 2) سارة التويجري (جناح تنفيذي 204: وسائد ريش متماسكة، دهن عود ملكي معتق)؛ 3) طارق منصور (غرفة ديلوكس 310: قهوة بدون كافيين ومياه فوارة). تم تأكيد كافة التجهيزات مسبقاً.`
-        : `${persona}: VIP Hospitality Riders Verified at The Ritz-Carlton Riyadh: 1) H.E. Yasir Al-Rumayyan (Royal Suite 1: Taif Rose Gahwa, Sukkari Dates, Strictly Halal & Gluten-Free dietary rider); 2) Sarah Al-Tuwaijri (Executive Suite 204: Firm Feather Pillow, Royal Arabian Oud amenities); 3) Tariq Mansoor (Deluxe King 310: Decaf Saudi Gahwa, Sparkling Water). All riders pre-cleared by Midyaf Protocol.`,
+        ? `${persona}: مذكرات الضيافة الملكية (VIP Riders) معتمدة في فندق الريتز-كارلتون: 1) معالي ياسر الرميان (الجناح الملكي 1: قهوة سعودية بورد الطائف، تمر سكري فاخر، وجبات حلال خالية من الغلوتين)؛ 2) سارة التويجري (جناح تنفيذي 204: وسائد ريش متماسكة، دهن عود ملكي معتق)؛ 3) طارق منصور (غرفة ديلوكس 310: قهوة بدون كافيين ومياه فوارة). تم تأكيد كافة التجهيزات مسبقاً.`
+        : `${persona}: VIP Hospitality Riders Verified at The Ritz-Carlton Grand Hotel: 1) H.E. Yasir Al-Rumayyan (Royal Suite 1: Taif Rose Gahwa, Sukkari Dates, Strictly Halal & Gluten-Free dietary rider); 2) Sarah Al-Tuwaijri (Executive Suite 204: Firm Feather Pillow, Royal Arabian Oud amenities); 3) Tariq Mansoor (Deluxe King 310: Decaf Saudi Gahwa, Sparkling Water). All riders pre-cleared by Midyaf Protocol.`,
       actions: [
         {
           label: "Inspect Hospitality Riders",
@@ -869,14 +869,14 @@ export function localAiReply(
   ) {
     return {
       body: isArabic
-        ? `${persona}: توصية العشاء الفاخر في الرياض: مطل البجيري في الدرعية التاريخية يضم نخبة من أرقى المطاعم العالمية المطلة على حي الطريف التاريخي المسجل باليونسكو. المطاعم الموصى بها: مطعم ميز (المطبخ السعودي الفاخر) أو هاكاسان. أنصح بالتحرك في تمام 19:15 لتفادي الذروة المرورية.`
-        : `${persona}: VIP Riyadh Dining Recommendation: Bujairi Terrace in Historic Diriyah offers premier gastronomy overlooking the UNESCO World Heritage site of At-Turaif. Top recommendations: Maiz (refined Saudi dining) or Hakkasan. Recommended departure time is 19:15 to bypass corridor congestion.`
+        ? `${persona}: توصية العشاء الفاخر لضيوف القمة: مطل البجيري في الدرعية التاريخية يضم نخبة من أرقى المطاعم العالمية المطلة على حي الطريف التاريخي المسجل باليونسكو. المطاعم الموصى بها: مطعم ميز (المطبخ السعودي الفاخر) أو هاكاسان. أنصح بالتحرك في تمام 19:15 لتفادي الذروة المرورية.`
+        : `${persona}: VIP Summit Dining Recommendation: Bujairi Terrace in Historic Diriyah offers premier gastronomy overlooking the UNESCO World Heritage site of At-Turaif. Top recommendations: Maiz (refined Saudi dining) or Hakkasan. Recommended departure time is 19:15 to bypass corridor congestion.`
     };
   }
 
   return {
     body: isArabic
-      ? `${persona}: أهلاً بك في منصة مِضياف الذكية لإدارة العمليات والضيافة في الرياض. أتابع حالياً فعاليات مبادرة مستقبل الاستثمار 2027 (FII). يمكنني مساعدتك فوراً في: فحص الموردين بالقاعة أ، التحقق من الخزنة الثلاثية، تنبيهات وصول المطار، مذكرات الضيافة، وتتبع السائقين.`
+      ? `${persona}: أهلاً بك في منصة مِضياف الذكية لإدارة العمليات والضيافة السيادية. أتابع حالياً فعاليات مبادرة مستقبل الاستثمار 2027 (FII). يمكنني مساعدتك فوراً في: فحص الموردين بالقاعة أ، التحقق من الخزنة الثلاثية، تنبيهات وصول المطار، مذكرات الضيافة، وتتبع السائقين.`
       : `${persona}: Welcome to Midyaf AI Operations Brain. I am actively monitoring telemetry for Future Investment Initiative 2027 (FII). I can help with real-time vendor geofencing, the Triple-Key Security Vault, Terminal 2 flight surges, VIP hospitality riders, and driver tracking.`,
     actions: [
       {

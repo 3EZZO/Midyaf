@@ -26,8 +26,8 @@ export function SuperAdmin({ data }: PortalProps) {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-white/75">
           {isArabic
-            ? "إدارة الأدوار، ميزات الرياض، نطاقات عمولة الموردين، الترويج المميز، وسياسة الاستضافة المتوافقة مع نظام حماية البيانات الشخصية."
-            : "Manage roles, Riyadh feature flags, supplier commission ranges, sponsored placement, and PDPL-aligned hosting policy."}
+            ? "إدارة الأدوار، الميزات التشغيلية، نطاقات عمولة الموردين، الترويج المميز، وسياسة الاستضافة المتوافقة مع نظام حماية البيانات الشخصية."
+            : "Manage roles, operational feature flags, supplier commission ranges, sponsored placement, and PDPL-aligned hosting policy."}
         </p>
       </section>
 
@@ -53,7 +53,7 @@ export function SuperAdmin({ data }: PortalProps) {
         <MetricCard
           label={isArabic ? "الامتثال" : "Compliance"}
           value="PDPL"
-          detail={isArabic ? "استضافة محلية متوافقة (AWS الرياض)" : "AWS me-south-1 preferred"}
+          detail={isArabic ? "استضافة محلية متوافقة (سحابة سيادية معتمدة)" : "AWS me-south-1 preferred"}
           icon={<ShieldCheck size={17} />}
         />
       </div>

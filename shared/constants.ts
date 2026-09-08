@@ -1,7 +1,7 @@
-export const RIYADH = {
-  code: "riyadh",
-  nameEn: "Riyadh",
-  nameAr: "الرياض",
+export const SUMMIT_REGION = {
+  code: "summit_region",
+  nameEn: "Summit Region",
+  nameAr: "منطقة القمة",
   centerLat: 24.7136,
   centerLng: 46.6753,
   defaultZoom: 12,
@@ -9,6 +9,59 @@ export const RIYADH = {
   currency: "SAR",
   vatPercent: 15
 } as const;
+
+export const RIYADH = SUMMIT_REGION;
+
+export const OFFICIAL_SUPPLIER_CATEGORIES = [
+  {
+    key: "AIRLINE" as const,
+    nameEn: "Airline Companies",
+    nameAr: "شركات الطيران والرحلات الخاصة",
+    icon: "Plane"
+  },
+  {
+    key: "VEHICLE_BROKERAGE" as const,
+    nameEn: "Vehicle & Cart Brokerage Companies",
+    nameAr: "شركات وساطة المركبات والعربات",
+    icon: "Car"
+  },
+  {
+    key: "CAR_RENTAL" as const,
+    nameEn: "Car & Bus Rental Companies",
+    nameAr: "شركات تأجير السيارات والحافلات",
+    icon: "CarFront"
+  },
+  {
+    key: "MAN_POWER" as const,
+    nameEn: "Manpower & Workforce Companies",
+    nameAr: "شركات القوى البشرية والعمالة",
+    icon: "Users"
+  },
+  {
+    key: "GOLF_CARTS" as const,
+    nameEn: "Golf Cart & Mini-Mobility Companies",
+    nameAr: "شركات عربات الجولف والتنقل الداخلي",
+    icon: "Zap"
+  },
+  {
+    key: "HEAVY_TRUCKS" as const,
+    nameEn: "Heavy Truck Companies",
+    nameAr: "شركات الشاحنات الثقيلة والمقطورات",
+    icon: "Truck"
+  },
+  {
+    key: "HEAVY_EQUIPMENT" as const,
+    nameEn: "Cranes & Heavy Equipment Companies",
+    nameAr: "شركات الرافعات والمعدات الثقيلة",
+    icon: "Building"
+  },
+  {
+    key: "HOTEL" as const,
+    nameEn: "Hotel & Hospitality Companies",
+    nameAr: "شركات الفنادق والضيافة الفاخرة",
+    icon: "Hotel"
+  }
+] as const;
 
 export const BUSINESS_RULES = {
   freeTierGuestLimit: 50,
@@ -22,6 +75,12 @@ export const BUSINESS_RULES = {
 } as const;
 
 export const DRIVER_ZONES = [
+  "NORTH_ZONE",
+  "CENTRAL_ZONE",
+  "EAST_ZONE",
+  "WEST_ZONE",
+  "SOUTH_ZONE",
+  "SUMMIT_CORRIDOR",
   "NORTH_RIYADH",
   "CENTRAL_RIYADH",
   "EAST_RIYADH",

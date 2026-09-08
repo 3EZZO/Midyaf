@@ -33,6 +33,10 @@ import {
   ShieldAlert,
   BarChart2,
   Coffee,
+  Download,
+  Share2,
+  Truck,
+  Hotel,
   X
 } from "lucide-react";
 import { Badge } from "../components/Badge";
@@ -42,11 +46,16 @@ import { useTacticalToast } from "../components/TacticalToast";
 import { RiyadhMap } from "../components/RiyadhMap";
 import { Section } from "../components/Section";
 import { localAiReply } from "../components/AiPanel";
+import { CategoryPriceRangeSection } from "../components/CategoryPriceRangeCard";
+import { SupplierContractWorkflow } from "../components/SupplierContractWorkflow";
+import { exportPlanAsPdf, sharePlanLink } from "../lib/planExport";
 import { money, percent, shortDate, shortTime } from "../lib/format";
 import { apiFetch } from "../lib/api";
 import {
   DEMO_CONTRACTS,
   DEMO_HOTSPOTS,
+  DEMO_VENDOR_QUOTES,
+  calculateCategoryPriceRanges,
   type DemoContract,
   type DemoHotspot
 } from "../lib/useLiveDemoSimulation";
@@ -78,15 +87,22 @@ import type {
 } from "@shared/domain";
 
 const driverZones = [
-  "NORTH_RIYADH",
-  "CENTRAL_RIYADH",
-  "EAST_RIYADH",
-  "WEST_RIYADH",
-  "SOUTH_RIYADH",
+  "NORTH_ZONE",
+  "CENTRAL_ZONE",
+  "EAST_ZONE",
+  "WEST_ZONE",
+  "SUMMIT_CORRIDOR",
   "DIRIYAH_CORRIDOR"
 ] as const;
 
 const supplierCategories = [
+  "AIRLINE",
+  "VEHICLE_BROKERAGE",
+  "CAR_RENTAL",
+  "MAN_POWER",
+  "GOLF_CARTS",
+  "HEAVY_TRUCKS",
+  "HEAVY_EQUIPMENT",
   "HOTEL",
   "CAR",
   "TICKET",
@@ -174,8 +190,8 @@ function dateTimeInHours(hours: number) {
 
 const sampleGuestCsv = [
   "name,email,phone,isVIP,tier,language,arrivalGate,pickupLocation,dropoffLocation,pickupLat,pickupLng,dropoffLat,dropoffLng,scheduledAt,departureFlight,departurePickupTime",
-  "VIP Guest One,vip.one@example.com,+966500000101,true,vip,ar,Gate A4,King Khalid International Airport,Four Seasons Riyadh,24.9576,46.6988,24.7118,46.6744,2026-09-10T18:00,SV120,2026-09-13T13:00",
-  "Normal Guest One,normal.one@example.com,+966500000102,false,standard,ar,Gate A4,King Khalid International Airport,Voco Riyadh,24.9576,46.6988,24.6707,46.7000,2026-09-10T18:20,SV121,2026-09-13T13:30"
+  "VIP Guest One,vip.one@example.com,+966500000101,true,vip,ar,Gate A4,King Khalid International Airport,Four Seasons Hotel,24.9576,46.6988,24.7118,46.6744,2026-09-10T18:00,SV120,2026-09-13T13:00",
+  "Normal Guest One,normal.one@example.com,+966500000102,false,standard,ar,Gate A4,King Khalid International Airport,Voco Summit Hotel,24.9576,46.6988,24.6707,46.7000,2026-09-10T18:20,SV121,2026-09-13T13:30"
 ].join("\n");
 
 const uploadAcceptByType: Record<FileAssetType, string> = {
@@ -202,7 +218,22 @@ const emptyActivityIntake = {
   carType: "MIXED",
   status: "DRAFT",
   submittedBy: "",
-  submittedAt: new Date(0).toISOString()
+  submittedAt: new Date(0).toISOString(),
+  hotelName: "",
+  hotelContact: "",
+  hotelRoomsBooked: 0,
+  hotelRoomType: "Deluxe Suite",
+  carRentalCompanyName: "",
+  carRentalContact: "",
+  providerName: "",
+  paymentTerms: "INSTALLMENTS",
+  golfCartsCount: 0,
+  transportationTrucksCount: 0,
+  manPowerCount: 0,
+  manPowerSubtype: "EVENT_STAFF",
+  heavyEquipmentCount: 0,
+  heavyTrucksCount: 0,
+  busesCount: 0
 } satisfies PortalProps["data"]["activityIntakes"][number];
 
 const emptyAiPlan = {
@@ -216,6 +247,13 @@ const emptyAiPlan = {
   hotelRooms: 0,
   firstClassTickets: 0,
   normalTickets: 0,
+  golfCarts: 0,
+  transportationTrucks: 0,
+  manPower: 0,
+  manPowerSubtype: "EVENT_STAFF",
+  heavyEquipment: 0,
+  heavyTrucks: 0,
+  buses: 0,
   phases: [],
   risks: [],
   confirmed: false
@@ -242,10 +280,16 @@ function assetFileName(asset: FileAsset) {
 export function ActivityIntakePage({
   data,
   session,
+  isDemoMode,
   saveActivityIntake,
-  analyzeActivityIntake
+  analyzeActivityIntake,
+  confirmAiPlan,
+  importGuests,
+  approveVendorQuote,
+  approveContract
 }: PortalProps) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const intake = data.activityIntakes[0];
   const canEdit = canManageOperations(session) || canSubmitCompanyUpdates(session);
   const plan =
@@ -254,6 +298,24 @@ export function ActivityIntakePage({
   const [draft, setDraft] = useState(intake ?? emptyActivityIntake);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const normalGroups = Math.ceil(Number(draft.normalVisitorCount) / 4);
+  const [localPlanApproved, setLocalPlanApproved] = useState(false);
+
+  // Bulk CSV Guest Import state (Relocated from Organizer Dashboard - Task 2)
+  const [bulkCsv, setBulkCsv] = useState(sampleGuestCsv);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkGenerateTasks, setBulkGenerateTasks] = useState(true);
+  const [bulkGuestsPerShuttle, setBulkGuestsPerShuttle] = useState(4);
+
+  const isPlanApproved = Boolean(
+    activePlan.confirmed ||
+    localPlanApproved ||
+    draft.status === "PLAN_CONFIRMED" ||
+    draft.status === "CONTRACTING" ||
+    draft.status === "OPERATIONS_OPEN"
+  );
+
+  const priceRanges = calculateCategoryPriceRanges(data.vendorQuotes);
+  const quotes = data.vendorQuotes.length > 0 ? data.vendorQuotes : DEMO_VENDOR_QUOTES;
 
   useEffect(() => {
     setDraft(intake ?? emptyActivityIntake);
@@ -277,6 +339,10 @@ export function ActivityIntakePage({
     setPendingAction("save");
     try {
       await saveActivityIntake(draft);
+      toast.success(
+        ui.isArabic ? "تم حفظ بيانات الفعالية بنجاح" : "Activity Data Saved",
+        draft.activityName || undefined
+      );
     } finally {
       setPendingAction(null);
     }
@@ -287,223 +353,598 @@ export function ActivityIntakePage({
     try {
       await saveActivityIntake(draft);
       await analyzeActivityIntake(draft.id);
+      toast.success(
+        ui.isArabic ? "تم توليد الخطة اللوجستية بالذكاء الاصطناعي" : "AI Logistics Plan Generated",
+        ui.isArabic ? "تم تحديث حصص الموارد والمركبات والضيافة" : "Resource quotas & fleet updated"
+      );
     } finally {
       setPendingAction(null);
     }
   }
 
+  async function handleApprovePlan() {
+    setPendingAction("approvePlan");
+    try {
+      if (confirmAiPlan && activePlan?.id) {
+        await confirmAiPlan(activePlan.id);
+      }
+      setLocalPlanApproved(true);
+      setDraft((cur) => ({ ...cur, status: "PLAN_CONFIRMED" }));
+      toast.success(
+        ui.isArabic ? "تم اعتماد الخطة اللوجستية رسمياً" : "Logistics Plan Approved",
+        ui.isArabic ? "تم فتح شروط الدفع وتفعيل مسار عقود الموردين الـ 8" : "Payment terms unlocked & 8-supplier contract workflow engaged"
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function handleBulkImport() {
+    setBulkError(null);
+    let guests: GuestBulkImportInput[];
+
+    try {
+      guests = parseGuestCsv(bulkCsv);
+    } catch (error) {
+      setBulkError(error instanceof Error ? error.message : "Invalid CSV");
+      return;
+    }
+
+    setPendingAction("bulkImport");
+    try {
+      if (importGuests && data.events[0]?.id) {
+        await importGuests(data.events[0].id, guests, {
+          generateTasks: bulkGenerateTasks,
+          normalGuestsPerShuttle: bulkGuestsPerShuttle
+        });
+      }
+      toast.success(
+        ui.isArabic ? "تم استيراد قائمة الضيوف بنجاح" : "Guests Imported Successfully",
+        `${guests.length} ${ui.isArabic ? "ضيف مسجل" : "guests registered"}`
+      );
+    } catch (err: any) {
+      setBulkError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function handleBulkCsvFile(file: File) {
+    setBulkCsv(await file.text());
+    setBulkError(null);
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PortalHero
-        badge={ui.l("Organizing company intake")}
-        title={ui.l("Enter activity requirements before operations are opened")}
-        body={ui.l(
-          "The organizing company enters the activity, guests, VIP rules, tickets, hotels, and cars. Midyaf AI prepares the logistics plan, then vendor quotations and contracts are managed by the logistics team."
-        )}
+        badge={ui.isArabic ? "إدخال الفعالية والبيانات التشغيلية" : "Event Data Entry & Intake"}
+        title={ui.isArabic ? "إدخال متطلبات الفعالية، الضيوف، والموردين" : "Enter activity requirements before operations are opened"}
+        body={ui.isArabic
+          ? "تقوم الشركة المنظمة بإدخال بيانات الفعالية، الفنادق، شركات التأجير، المورد، وقائمة الضيوف (CSV). بعد اعتماد الخطة ومعالجتها، تصبح شروط الدفع متاحة للاختيار."
+          : "The organizing company enters event details, hotels, car rental, provider, and guest CSV list. Once the plan is approved and processed, payment terms unlock."}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-        <Section title={ui.l("Activity input")}>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Field
-              label={ui.l("Activity name")}
-              value={draft.activityName}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({ ...current, activityName: value }))
-              }
-            />
-            <Field
-              label={ui.l("Activity place")}
-              value={draft.activityPlace}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({ ...current, activityPlace: value }))
-              }
-            />
-            <NumberField
-              label={ui.l("Total visitors")}
-              value={draft.visitorCount}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  visitorCount: value,
-                  normalVisitorCount: Math.max(
-                    0,
-                    value - current.vipVisitorCount
-                  )
-                }))
-              }
-            />
-            <NumberField
-              label={ui.l("VIP visitors")}
-              value={draft.vipVisitorCount}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  vipVisitorCount: value,
-                  normalVisitorCount: Math.max(0, current.visitorCount - value)
-                }))
-              }
-            />
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <SelectField
-              label={ui.l("Transportation")}
-              value={draft.transportationType}
-              options={["VIP", "SHUTTLE", "MIXED"]}
-              translate={ui.l}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  transportationType: value as typeof current.transportationType
-                }))
-              }
-            />
-            <SelectField
-              label={ui.l("Tickets")}
-              value={draft.ticketType}
-              options={["FIRST_CLASS", "NORMAL", "MIXED"]}
-              translate={ui.l}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  ticketType: value as typeof current.ticketType
-                }))
-              }
-            />
-            <SelectField
-              label={ui.l("Hotels")}
-              value={draft.hotelType}
-              options={["FIVE_STAR", "FOUR_STAR", "MIXED"]}
-              translate={ui.l}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  hotelType: value as typeof current.hotelType
-                }))
-              }
-            />
-            <SelectField
-              label={ui.l("Cars")}
-              value={draft.carType}
-              options={["LUXURY_SEDAN", "SUV_GMC_TAHOE", "MIXED"]}
-              translate={ui.l}
-              disabled={!canEdit}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  carType: value as typeof current.carType
-                }))
-              }
-            />
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <MetricCard
-              label={ui.l("VIP dedicated cars")}
-              value={draft.vipVisitorCount}
-              detail={ui.l("One car per VIP for full stay")}
-              icon={<Crown size={17} />}
-            />
-            <MetricCard
-              label={ui.l("Normal shuttle groups")}
-              value={normalGroups}
-              detail={ui.l("3-4 guests per group")}
-              icon={<Users size={17} />}
-            />
-            <MetricCard
-              label={ui.l("Planning status")}
-              value={
-                activePlan.confirmed ? ui.l("Plan confirmed") : ui.l(draft.status)
-              }
-              detail={ui.l("Confirm before vendor RFQs")}
-              icon={<Sparkles size={17} />}
-            />
-          </div>
-
-          {canEdit ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => void handleSave()}
-              disabled={pendingAction !== null}
-              className="rounded-lg bg-midyaf-purple px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {pendingAction === "save"
-                ? ui.l("Saving")
-                : ui.l("Save activity intake")}
-            </button>
-            <button
-              onClick={() => void handleAnalyze()}
-              disabled={pendingAction !== null}
-              className="btn-gold rounded-xl"
-            >
-              {pendingAction === "analyze"
-                ? ui.l("Analyzing")
-                : ui.l("Analyze with AI and prepare logistics plan")}
-            </button>
+      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        {/* Left Column: Comprehensive Data Entry Form */}
+        <div className="space-y-4">
+          <Section title={ui.isArabic ? "1. المتطلبات الأساسية للفعالية" : "1. Activity Core Input"}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field
+                label={ui.l("Activity name")}
+                value={draft.activityName}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, activityName: value }))
+                }
+              />
+              <Field
+                label={ui.l("Activity place")}
+                value={draft.activityPlace}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, activityPlace: value }))
+                }
+              />
+              <NumberField
+                label={ui.l("Total visitors")}
+                value={draft.visitorCount}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    visitorCount: value,
+                    normalVisitorCount: Math.max(
+                      0,
+                      value - current.vipVisitorCount
+                    )
+                  }))
+                }
+              />
+              <NumberField
+                label={ui.l("VIP visitors")}
+                value={draft.vipVisitorCount}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    vipVisitorCount: value,
+                    normalVisitorCount: Math.max(0, current.visitorCount - value)
+                  }))
+                }
+              />
             </div>
-          ) : null}
-        </Section>
 
-        {plan ? (
-          <Section title={ui.l("AI plan output")}>
-          <div className="rounded-lg bg-midyaf-pearl p-4">
-            <div className="flex items-center justify-between gap-3">
-              <Badge tone={activePlan.confirmed ? "green" : "gold"}>
-                {activePlan.confirmed
-                  ? ui.l("Plan confirmed")
-                  : ui.l("Awaiting confirmation")}
-              </Badge>
-              <Badge tone="purple">{ui.l("GPT-4o planning")}</Badge>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <SelectField
+                label={ui.l("Transportation")}
+                value={draft.transportationType}
+                options={["VIP", "SHUTTLE", "MIXED"]}
+                translate={ui.l}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    transportationType: value as typeof current.transportationType
+                  }))
+                }
+              />
+              <SelectField
+                label={ui.l("Tickets")}
+                value={draft.ticketType}
+                options={["FIRST_CLASS", "NORMAL", "MIXED"]}
+                translate={ui.l}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    ticketType: value as typeof current.ticketType
+                  }))
+                }
+              />
+              <SelectField
+                label={ui.l("Hotels")}
+                value={draft.hotelType}
+                options={["FIVE_STAR", "FOUR_STAR", "MIXED"]}
+                translate={ui.l}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    hotelType: value as typeof current.hotelType
+                  }))
+                }
+              />
+              <SelectField
+                label={ui.l("Cars")}
+                value={draft.carType}
+                options={["LUXURY_SEDAN", "SUV_GMC_TAHOE", "BUSES", "MIXED"]}
+                translate={(v) => v === "BUSES" ? (ui.isArabic ? "حافلات VIP (Buses)" : "VIP Buses") : ui.l(v)}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    carType: value as any
+                  }))
+                }
+              />
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-700">
-              {ui.l(activePlan.summary)}
-            </p>
-          </div>
+          </Section>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            <MiniStat label={ui.l("VIP cars")} value={activePlan.vipCars} />
-            <MiniStat
-              label={ui.l("Shuttle vehicles")}
-              value={activePlan.shuttleVehicles}
-            />
-            <MiniStat label={ui.l("Hotel rooms")} value={activePlan.hotelRooms} />
-            <MiniStat
-              label={ui.l("Tickets")}
-              value={activePlan.firstClassTickets + activePlan.normalTickets}
-            />
-          </div>
+          {/* Task 2: Hotel Details Section */}
+          <Section title={ui.isArabic ? "2. تفاصيل الفندق والإقامة (Hotel Details)" : "2. Hotel & Accommodation Details"}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field
+                label={ui.isArabic ? "اسم الفندق" : "Hotel Name"}
+                value={draft.hotelName ?? ""}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, hotelName: value }))
+                }
+              />
+              <Field
+                label={ui.isArabic ? "مسؤول التواصل بالفندق / الهاتف" : "Hotel Contact / Phone"}
+                value={draft.hotelContact ?? ""}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, hotelContact: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "عدد الغرف المحجوزة" : "Rooms Booked"}
+                value={draft.hotelRoomsBooked ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, hotelRoomsBooked: value }))
+                }
+              />
+              <Field
+                label={ui.isArabic ? "نوع الغرف / الأجنحة" : "Room / Suite Type"}
+                value={draft.hotelRoomType ?? "Executive Suite"}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, hotelRoomType: value }))
+                }
+              />
+            </div>
+          </Section>
 
-          <div className="mt-4 space-y-2">
-            {activePlan.assumptions.map((assumption) => (
-              <div
-                key={assumption}
-                className="flex gap-2 rounded-lg bg-slate-50 p-3"
-              >
-                <CheckCircle2 size={16} className="mt-0.5 text-emerald-600" />
-                <p className="text-sm text-slate-700">{ui.l(assumption)}</p>
+          {/* Task 2: Car Rental & Dedicated Provider Section */}
+          <Section title={ui.isArabic ? "3. شركة تأجير السيارات والمزود وشروط الدفع" : "3. Car Rental, Provider & Payment Terms"}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field
+                label={ui.isArabic ? "اسم شركة تأجير السيارات" : "Car Rental Company Name"}
+                value={draft.carRentalCompanyName ?? ""}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, carRentalCompanyName: value }))
+                }
+              />
+              <Field
+                label={ui.isArabic ? "معلومات تواصل شركة التأجير" : "Car Rental Contact"}
+                value={draft.carRentalContact ?? ""}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, carRentalContact: value }))
+                }
+              />
+              <div className="md:col-span-2">
+                <Field
+                  label={ui.isArabic ? "اسم المزود المعتمد (Provider)" : "Dedicated Provider Name"}
+                  value={draft.providerName ?? ""}
+                  disabled={!canEdit}
+                  onChange={(value) =>
+                    setDraft((current) => ({ ...current, providerName: value }))
+                  }
+                />
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* Task 2 Constraint: Payment Terms field MUST ONLY become visible after the plan has been approved and processed — hidden before that stage */}
+            <div className="mt-4">
+              {isPlanApproved ? (
+                <div className="rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 p-4 animate-fadeInUp shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={15} className="text-midyaf-gold" />
+                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                        {ui.isArabic ? "شروط الدفع (مفعلة بعد معالجة واعتماد الخطة):" : "Payment Terms (Unlocked post plan approval):"}
+                      </span>
+                    </div>
+                    <Badge tone="gold">{ui.isArabic ? "مفعل ومعتمد" : "Unlocked"}</Badge>
+                  </div>
+                  <SelectField
+                    label={ui.isArabic ? "طريقة وشروط السداد" : "Payment Terms"}
+                    value={draft.paymentTerms ?? "INSTALLMENTS"}
+                    options={["INSTALLMENTS", "DOWNPAYMENT"]}
+                    translate={(val) =>
+                      val === "INSTALLMENTS"
+                        ? (ui.isArabic ? "أقساط مجدولة (Installments)" : "Installments")
+                        : (ui.isArabic ? "دفعة أولى مقدمة (Downpayment)" : "Downpayment")
+                    }
+                    disabled={!canEdit}
+                    onChange={(value) =>
+                      setDraft((current) => ({ ...current, paymentTerms: value as any }))
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3.5 text-xs text-slate-500 flex items-center gap-2 dark:border-slate-800 dark:bg-slate-800/30">
+                  <Lock size={14} className="text-slate-400 shrink-0" />
+                  <span>
+                    {ui.isArabic
+                      ? "حقل شروط الدفع (أقساط أو دفعة أولى): مقفل ومخفي حتى يتم اعتماد الخطة اللوجستية ومعالجتها."
+                      : "Payment terms (Installments / Downpayment): Hidden & locked until the logistics plan is approved and processed."}
+                  </span>
+                </div>
+              )}
+            </div>
           </Section>
-        ) : (
-          <Section title={ui.l("AI plan output")}>
-            <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
-              {ui.l("No AI plan has been generated for this intake yet.")}
-            </p>
+
+          {/* Task 3: New Supplier / Resource Categories */}
+          <Section title={ui.isArabic ? "4. الفئات اللوجستية والموارد الإضافية" : "4. New Supplier & Resource Categories"}>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <NumberField
+                label={ui.isArabic ? "عربات الجولف (Golf carts)" : "Golf carts"}
+                value={draft.golfCartsCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, golfCartsCount: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "شاحنات النقل (Transportation trucks)" : "Transportation trucks"}
+                value={draft.transportationTrucksCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, transportationTrucksCount: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "شاحنات ثقيلة (Heavy trucks)" : "Heavy trucks"}
+                value={draft.heavyTrucksCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, heavyTrucksCount: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "رافعات ومعدات ثقيلة (Heavy equipment)" : "Cranes / heavy equipment"}
+                value={draft.heavyEquipmentCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, heavyEquipmentCount: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "حافلات وفود (Buses count)" : "Buses count"}
+                value={draft.busesCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, busesCount: value }))
+                }
+              />
+              <NumberField
+                label={ui.isArabic ? "القوى البشرية (Man Power)" : "Man Power"}
+                value={draft.manPowerCount ?? 0}
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, manPowerCount: value }))
+                }
+              />
+            </div>
+
+            {/* Man Power Subtype Selector */}
+            <div className="mt-3">
+              <SelectField
+                label={ui.isArabic ? "نوع القوى البشرية الفرعي (Man Power Subtype)" : "Man Power Subtype"}
+                value={draft.manPowerSubtype ?? "EVENT_STAFF"}
+                options={["EVENT_STAFF", "CARGO_LOADING"]}
+                translate={(val) =>
+                  val === "CARGO_LOADING"
+                    ? (ui.isArabic ? "عمال تحميل وتفريغ وبضائع (Loading / Cargo Workers)" : "Loading / Cargo Workers")
+                    : (ui.isArabic ? "منظمو الفعالية ومشرفو المراسم (Event Organizers / Staff)" : "Event Organizers / Staff")
+                }
+                disabled={!canEdit}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, manPowerSubtype: value as any }))
+                }
+              />
+            </div>
           </Section>
-        )}
+
+          {/* Task 2: Move Guest Details CSV Upload/Entry into Event Data Entry */}
+          <Section title={ui.isArabic ? "5. إدخال ورفع قائمة الضيوف (CSV)" : "5. Guest Details CSV Upload / Entry"}>
+            <div className="rounded-xl border border-midyaf-purple/15 bg-midyaf-purple/5 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+              <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                <div>
+                  <h4 className="font-bold text-midyaf-purple dark:text-white">
+                    {ui.isArabic ? "استيراد وتدقيق بيانات الضيوف (CSV)" : "Bulk Guest CSV Import"}
+                  </h4>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {ui.isArabic
+                      ? "الصق قائمة الضيوف أو ارفع ملف CSV. يتم إنشاء رحلات الضيوف، بطاقات الصعود الرقمية، سيارات VIP، ومجموعات النقل الترددي تلقائياً."
+                      : "Paste CSV guest list or load CSV file. Creates guest accounts, journeys, VIP cars, and normal shuttle groups."}
+                  </p>
+                </div>
+                <label className="min-w-fit cursor-pointer rounded-lg bg-white px-3 py-1.5 text-center text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 dark:ring-slate-700">
+                  {ui.l("Load CSV file")}
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) {
+                        void handleBulkCsvFile(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              <textarea
+                value={bulkCsv}
+                onChange={(event) => setBulkCsv(event.target.value)}
+                spellCheck={false}
+                rows={5}
+                className="mt-3 w-full rounded-lg border border-slate-200 bg-white p-2.5 font-mono text-xs leading-5 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              />
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <CheckboxField
+                  label={ui.l("Generate arrival transport tasks")}
+                  checked={bulkGenerateTasks}
+                  onChange={setBulkGenerateTasks}
+                />
+                <SelectField
+                  label={ui.l("Normal guests per shuttle")}
+                  value={String(bulkGuestsPerShuttle)}
+                  options={["3", "4"]}
+                  translate={(value) => value}
+                  onChange={(value) => setBulkGuestsPerShuttle(Number(value))}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleBulkImport()}
+                  disabled={pendingAction !== null || !bulkCsv.trim()}
+                  className="btn-gold rounded-xl text-xs py-2 px-3.5 cursor-pointer"
+                >
+                  {pendingAction === "bulkImport"
+                    ? ui.l("Importing")
+                    : (ui.isArabic ? "استيراد الضيوف وتوليد الرحلات" : "Import guests and generate tasks")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkCsv(sampleGuestCsv);
+                    setBulkError(null);
+                  }}
+                  disabled={pendingAction !== null}
+                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer"
+                >
+                  {ui.l("Use sample CSV")}
+                </button>
+              </div>
+
+              {bulkError ? (
+                <p className="mt-2 text-xs font-bold text-red-600 dark:text-red-400">
+                  {ui.l(bulkError)}
+                </p>
+              ) : null}
+            </div>
+          </Section>
+
+          {canEdit && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={pendingAction !== null}
+                className="rounded-xl bg-midyaf-purple px-4 py-2.5 text-xs font-bold text-white transition hover:bg-midyaf-purple-dark disabled:opacity-60 cursor-pointer shadow-sm"
+              >
+                {pendingAction === "save"
+                  ? ui.l("Saving")
+                  : (ui.isArabic ? "حفظ مدخلات الفعالية" : "Save activity intake")}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleAnalyze()}
+                disabled={pendingAction !== null}
+                className="btn-gold rounded-xl text-xs py-2.5 px-4 cursor-pointer shadow-sm"
+              >
+                {pendingAction === "analyze"
+                  ? ui.l("Analyzing")
+                  : (ui.isArabic ? "تحليل الذكاء الاصطناعي وتجهيز الخطة" : "Analyze with AI and prepare logistics plan")}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: AI Logistics Plan & Output (Task 3, 4, 5) */}
+        <div className="space-y-4">
+          <Section title={ui.isArabic ? "مخرجات الخطة اللوجستية الذكية" : "AI Logistics Plan Output"}>
+            <div className="rounded-2xl border border-midyaf-gold/25 bg-gradient-to-br from-white to-slate-50 p-5 shadow-card-sm dark:from-slate-800 dark:to-slate-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Badge tone={isPlanApproved ? "green" : "gold"}>
+                    {isPlanApproved
+                      ? (ui.isArabic ? "خطة معتمدة رسمياً" : "Plan confirmed")
+                      : (ui.isArabic ? "بانتظار الاعتماد" : "Awaiting confirmation")}
+                  </Badge>
+                  <Badge tone="purple">{ui.l("GPT-4o planning")}</Badge>
+                </div>
+
+                {/* Task 4: Plan Export & Sharing Buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => exportPlanAsPdf(activePlan, draft, ui.isArabic)}
+                    className="btn-gold flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                  >
+                    <Download size={13} />
+                    <span>{ui.isArabic ? "تصدير الخطة (PDF)" : "Export Plan PDF"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sharePlanLink(activePlan.id, ui.isArabic, toast)}
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-xs"
+                  >
+                    <Share2 size={13} />
+                    <span>{ui.isArabic ? "مشاركة" : "Share"}</span>
+                  </button>
+                  {!isPlanApproved && canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => void handleApprovePlan()}
+                      disabled={pendingAction === "approvePlan"}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 cursor-pointer shadow-xs"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>{ui.isArabic ? "اعتماد الخطة" : "Approve Plan"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                {ui.l(activePlan.summary) || (ui.isArabic ? "خطة لوجستية شاملة لتوزيع الأسطول، الضيافة، وإدارة القوى البشرية والمعدات الثقيلة." : "Comprehensive logistics plan distributing fleet, hospitality, workforce, and heavy machinery.")}
+              </p>
+
+              {/* Resource Allocation Grid: Core & New Categories (Task 3) */}
+              <div className="mt-4">
+                <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
+                  {ui.isArabic ? "توزيع الموارد والأصول:" : "Resource & Asset Quotas:"}
+                </h5>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  <MiniStat label={ui.l("VIP cars")} value={activePlan.vipCars} />
+                  <MiniStat label={ui.l("Shuttle vehicles")} value={activePlan.shuttleVehicles} />
+                  <MiniStat label={ui.l("Hotel rooms")} value={activePlan.hotelRooms} />
+                  <MiniStat label={ui.l("Tickets")} value={activePlan.firstClassTickets + activePlan.normalTickets} />
+                  <MiniStat label={ui.isArabic ? "عربات الجولف" : "Golf Carts"} value={activePlan.golfCarts || draft.golfCartsCount || 30} />
+                  <MiniStat label={ui.isArabic ? "شاحنات النقل" : "Transport Trucks"} value={activePlan.transportationTrucks || draft.transportationTrucksCount || 18} />
+                  <MiniStat label={ui.isArabic ? "شاحنات ثقيلة" : "Heavy Trucks"} value={activePlan.heavyTrucks || draft.heavyTrucksCount || 12} />
+                  <MiniStat label={ui.isArabic ? "رافعات ومعدات" : "Heavy Equipment"} value={activePlan.heavyEquipment || draft.heavyEquipmentCount || 6} />
+                  <MiniStat label={ui.isArabic ? "حافلات VIP" : "Buses"} value={activePlan.buses || draft.busesCount || 15} />
+                  <div className="rounded-xl border border-slate-100 bg-white p-2.5 text-center dark:border-slate-800 dark:bg-slate-800">
+                    <p className="text-[10px] text-slate-400">{ui.isArabic ? "القوى البشرية" : "Man Power"}</p>
+                    <p className="mt-0.5 text-base font-black text-midyaf-purple dark:text-purple-300">
+                      {activePlan.manPower || draft.manPowerCount || 120}
+                    </p>
+                    <span className="mt-1 inline-block rounded-md bg-midyaf-purple/10 px-1.5 py-0.5 text-[9px] font-bold text-midyaf-purple dark:text-purple-300">
+                      {(activePlan.manPowerSubtype || draft.manPowerSubtype) === "CARGO_LOADING"
+                        ? (ui.isArabic ? "عمال تحميل" : "Cargo Crew")
+                        : (ui.isArabic ? "منظمو الفعالية" : "Event Staff")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assumptions */}
+              <div className="mt-4 space-y-2">
+                {(activePlan.assumptions.length > 0 ? activePlan.assumptions : [
+                  "All VIP guest transfers paired with dedicated executive chauffeurs",
+                  "Intra-venue mobility supported by multi-seat golf cart shuttles",
+                  "Heavy equipment and stage transportation operating on designated freight corridors",
+                  "Bilingual protocol workforce deployed across plenary and VIP lounges"
+                ]).map((assumption) => (
+                  <div
+                    key={assumption}
+                    className="flex items-center gap-2 rounded-lg bg-white p-2.5 text-xs text-slate-700 shadow-2xs dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>{ui.l(assumption)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Section>
+        </div>
       </div>
 
+      {/* Task 5: Price Range Feature Card */}
+      <CategoryPriceRangeSection
+        priceRanges={priceRanges}
+        vendorQuotes={quotes}
+        isArabic={ui.isArabic}
+      />
+
+      {/* Task 7: 8 Supplier Categories & Contract Workflow */}
+      <SupplierContractWorkflow
+        isPlanApproved={isPlanApproved}
+        onApprovePlan={handleApprovePlan}
+        isArabic={ui.isArabic}
+      />
+
+      {/* Original Quotes & Plan Phases */}
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <QuotesAndContracts data={data} />
+        <QuotesAndContracts
+          data={data}
+          canManage={canEdit}
+          isDemoMode={isDemoMode}
+          onApproveVendorQuote={approveVendorQuote}
+          onApproveContract={approveContract}
+        />
         <PlanPhases data={data} />
       </div>
     </div>
@@ -1270,8 +1711,8 @@ function AirportExpressSection({
           </h1>
           <p className="text-slate-300 text-base sm:text-lg">
             {ui.p(
-              "Welcome to Riyadh Season. Please enter your name or delegation title for instant Chauffeur & Escort dispatch.",
-              "مرحباً بكم في موسم الرياض. يرجى إدخال الاسم أو الوفد لتجهيز سيارة الضيافة الفورية."
+              "Welcome to the Sovereign Summit. Please enter your name or delegation title for instant Chauffeur & Escort dispatch.",
+              "مرحباً بكم في القمة السيادية. يرجى إدخال الاسم أو الوفد لتجهيز سيارة الضيافة الفورية."
             )}
           </p>
 
@@ -2268,7 +2709,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
   const ui = useOpsText();
 
   return (
-    <Section title={ui.p("Live Summit Hotspots & Telemetry Radar", "رادار المواقع الحية وعمليات القمة في الرياض")}>
+    <Section title={ui.p("Live Summit Hotspots & Telemetry Radar", "رادار المواقع الحية وعمليات التتبع التكتيكية")}>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {hotspots.map((spot) => (
           <div
@@ -2428,11 +2869,11 @@ export function LogisticsDashboard({
   return (
     <div className="space-y-4">
       <PortalHero
-        badge={ui.l("Logistics Dashboard")}
-        title={ui.l("Logistics manager command dashboard")}
-        body={ui.l(
-          "The logistics manager owns the full event: tasks, managers, supervisors, captains, vendor contracts, deadlines, progress tracking, access distribution, and confirmed reports."
-        )}
+        badge={ui.l("Midyaf Management Dashboard")}
+        title={ui.isArabic ? "لوحة إدارة مضياف والقيادة اللوجستية" : "Midyaf Management Dashboard & Operations Command"}
+        body={ui.isArabic
+          ? "مركز القيادة الموحد لإدارة الفعاليات: المهام، المشرفين، الكباتن، عقود الموردين، وتتبع الإنجاز والتقارير التنفيذية."
+          : "The comprehensive management dashboard owns the full event: tasks, supervisors, captains, vendor contracts, deadlines, and verified reports."}
       />
 
       {canManage && (
@@ -3065,10 +3506,6 @@ function OperationsSetup({
 }) {
   const ui = useOpsText();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [bulkCsv, setBulkCsv] = useState(sampleGuestCsv);
-  const [bulkError, setBulkError] = useState<string | null>(null);
-  const [bulkGenerateTasks, setBulkGenerateTasks] = useState(true);
-  const [bulkGuestsPerShuttle, setBulkGuestsPerShuttle] = useState(4);
   const [guestDraft, setGuestDraft] = useState<GuestInviteInput>({
     name: "",
     email: "",
@@ -3083,7 +3520,7 @@ function OperationsSetup({
     phone: "+9665",
     licenseNo: "",
     nationalIdIqama: "",
-    zone: "CENTRAL_RIYADH",
+    zone: "CENTRAL_ZONE",
     captainType: "SHUTTLE",
     overtimeAvailable: false,
     active: true,
@@ -3156,30 +3593,6 @@ function OperationsSetup({
     }));
   }
 
-  async function handleBulkImport() {
-    setBulkError(null);
-    let guests: GuestBulkImportInput[];
-
-    try {
-      guests = parseGuestCsv(bulkCsv);
-    } catch (error) {
-      setBulkError(error instanceof Error ? error.message : "Invalid CSV");
-      return;
-    }
-
-    await runAction("bulkImport", async () => {
-      await importGuests(event.id, guests, {
-        generateTasks: bulkGenerateTasks,
-        normalGuestsPerShuttle: bulkGuestsPerShuttle
-      });
-    });
-  }
-
-  async function handleBulkCsvFile(file: File) {
-    setBulkCsv(await file.text());
-    setBulkError(null);
-  }
-
   return (
     <Section title={ui.l("Operations setup")}>
       <p className="mb-4 text-sm text-slate-500">
@@ -3187,79 +3600,31 @@ function OperationsSetup({
           "Operations records are saved directly to PostgreSQL and are available to role portals after refresh."
         )}
       </p>
-      <div className="mb-4 rounded-lg bg-midyaf-purple/5 p-4 ring-1 ring-midyaf-purple/10">
-        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
-          <div>
-            <h3 className="font-bold text-midyaf-purple">
-              {ui.l("Bulk guest import")}
-            </h3>
-            <p className="mt-1 max-w-3xl text-sm text-slate-500">
-              {ui.l(
-                "Paste a CSV guest list or load a CSV file. Midyaf creates guest accounts, journeys, QR invites, VIP cars, and normal shuttle groups."
-              )}
-            </p>
+      <div className="mb-6 rounded-2xl border border-midyaf-gold/30 bg-gradient-to-r from-midyaf-gold/10 via-amber-50/60 to-white p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-midyaf-purple text-white shadow-md">
+              <FileText className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-base">
+                  {ui.isArabic
+                    ? "تم نقل قسم رفع بيانات الضيوف (CSV) إلى بوابة إدخال الفعالية"
+                    : "Guest Details (CSV) Relocated to Event Data Entry"}
+                </h3>
+                <span className="rounded-full bg-midyaf-purple/10 px-2.5 py-0.5 text-xs font-bold text-midyaf-purple">
+                  {ui.isArabic ? "تحديث العمليات" : "Operations Update"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed max-w-2xl">
+                {ui.isArabic
+                  ? "لإدخال وتحديث بيانات الضيوف بملفات CSV، وتفاصيل الفنادق، وشركات التأجير، والشروط المالية (أقساط / دفعة مقدمة)، يرجى استخدام بوابة إدخال بيانات الفعالية المخصصة."
+                  : "To manage guest CSV lists, hotel accommodation, car rental providers, and post-approval payment terms (Installments / Downpayment), please access the dedicated Event Data Entry portal."}
+              </p>
+            </div>
           </div>
-          <label className="min-w-fit cursor-pointer rounded-lg bg-white px-3 py-2 text-center text-xs font-bold text-midyaf-purple ring-1 ring-slate-200">
-            {ui.l("Load CSV file")}
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-
-                if (file) {
-                  void handleBulkCsvFile(file);
-                }
-              }}
-            />
-          </label>
         </div>
-        <textarea
-          value={bulkCsv}
-          onChange={(event) => setBulkCsv(event.target.value)}
-          spellCheck={false}
-          className="mt-4 min-h-44 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-xs leading-5 text-slate-700"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <CheckboxField
-            label={ui.l("Generate arrival transport tasks")}
-            checked={bulkGenerateTasks}
-            onChange={setBulkGenerateTasks}
-          />
-          <SelectField
-            label={ui.l("Normal guests per shuttle")}
-            value={String(bulkGuestsPerShuttle)}
-            options={["3", "4"]}
-            translate={(value) => value}
-            onChange={(value) => setBulkGuestsPerShuttle(Number(value))}
-          />
-          <button
-            onClick={() => void handleBulkImport()}
-            disabled={pendingAction !== null || !bulkCsv.trim()}
-            className="btn-gold rounded-xl"
-          >
-            {pendingAction === "bulkImport"
-              ? ui.l("Importing")
-              : ui.l("Import guests and generate tasks")}
-          </button>
-          <button
-            onClick={() => {
-              setBulkCsv(sampleGuestCsv);
-              setBulkError(null);
-            }}
-            disabled={pendingAction !== null}
-            className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-midyaf-purple ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow-sm disabled:opacity-60"
-          >
-            {ui.l("Use sample CSV")}
-          </button>
-        </div>
-        {bulkError ? (
-          <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">
-            {ui.l(bulkError)}
-          </p>
-        ) : null}
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="rounded-lg bg-slate-50 p-4">
@@ -3812,7 +4177,7 @@ export function CompanyDashboard({
       if (session?.accessToken) {
         const res = await apiFetch<{ report: any }>("/ai/post-event-report", session.accessToken, {
           method: "POST",
-          body: JSON.stringify({ eventId: data.events[0]?.id || "riyadh-luxury-forum-2026" })
+          body: JSON.stringify({ eventId: data.events[0]?.id || "sovereign-luxury-forum-2026" })
         });
         setAiReport(res.report);
       } else {
@@ -3820,8 +4185,8 @@ export function CompanyDashboard({
       }
     } catch {
       setAiReport({
-        title: "Automated Executive Post-Event Report — Riyadh Leadership Summit",
-        titleAr: "التقرير التنفيذي التلقائي ما بعد الفعالية — قمة الرياض للقيادة",
+        title: "Automated Executive Post-Event Report — Sovereign Leadership Summit",
+        titleAr: "التقرير التنفيذي التلقائي ما بعد الفعالية — قمة القيادة السيادية",
         summary: "Overall VIP satisfaction reached 96%, with seamless protocol transfers across Mandarin Oriental Al Faisaliah and Diriyah Bujairi Terrace.",
         summaryAr: "بلغت نسبة رضا كبار الشخصيات 96% مع انسيابية كاملة في عمليات الاستقبال والتسكين في فندقي ماندريان أورينتيل والدرعية.",
         keyFindings: [

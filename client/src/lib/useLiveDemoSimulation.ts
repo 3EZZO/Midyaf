@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { Driver, MidyafData } from "@shared/domain";
+import type { Driver, MidyafData, VendorQuote, CategoryPriceRange, SupplierCategory } from "@shared/domain";
+import { OFFICIAL_SUPPLIER_CATEGORIES } from "@shared/constants";
 
 export interface DemoHotspot {
   id: string;
@@ -50,12 +51,12 @@ export interface DemoVipGuest {
   stage: "TOUCHDOWN" | "IN_TRANSIT" | "CHECKED_IN" | "AT_VENUE";
 }
 
-// 6 Iconic Riyadh Summit Locations
+// 6 Iconic Sovereign Summit Locations
 export const DEMO_HOTSPOTS: DemoHotspot[] = [
   {
     id: "kkia-t2",
-    nameEn: "King Khalid Intl. Airport (Terminal 2)",
-    nameAr: "مطار الملك خالد الدولي (الصالة 2)",
+    nameEn: "International Airport (Terminal 2)",
+    nameAr: "المطار الدولي (الصالة 2)",
     category: "AIRPORT",
     lat: 24.9576,
     lng: 46.6988,
@@ -66,8 +67,8 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   },
   {
     id: "kafd-plenary",
-    nameEn: "King Abdullah Financial District (KAFD Plenary)",
-    nameAr: "مركز الملك عبدالله المالي (كافد - القاعة الكبرى)",
+    nameEn: "Financial District (Plenary Hall)",
+    nameAr: "المركز المالي (القاعة الكبرى)",
     category: "VENUE",
     lat: 24.7642,
     lng: 46.6406,
@@ -78,8 +79,8 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   },
   {
     id: "ritz-carlton",
-    nameEn: "The Ritz-Carlton Riyadh",
-    nameAr: "فندق الريتز-كارلتون الرياض",
+    nameEn: "The Ritz-Carlton",
+    nameAr: "فندق الريتز-كارلتون",
     category: "HOTEL",
     lat: 24.6661,
     lng: 46.6302,
@@ -90,8 +91,8 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   },
   {
     id: "four-seasons",
-    nameEn: "Four Seasons Hotel (Kingdom Centre)",
-    nameAr: "فندق فور سيزونز (برج المملكة)",
+    nameEn: "Four Seasons Hotel",
+    nameAr: "فندق فور سيزونز",
     category: "HOTEL",
     lat: 24.7115,
     lng: 46.6744,
@@ -102,8 +103,8 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   },
   {
     id: "diriyah-bujairi",
-    nameEn: "Historic Diriyah & Bujairi Terrace",
-    nameAr: "الدرعية التاريخية ومطل البجيري",
+    nameEn: "Historic District & Bujairi Terrace",
+    nameAr: "المنطقة التاريخية ومطل البجيري",
     category: "DINING",
     lat: 24.7335,
     lng: 46.5742,
@@ -114,8 +115,8 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   },
   {
     id: "alfaisal-av",
-    nameEn: "Al-Faisal AV Bay (King Fahd Rd)",
-    nameAr: "الفيصل للصوتيات (طريق الملك فهد)",
+    nameEn: "Logistics AV Bay",
+    nameAr: "مركز العمليات للصوتيات والأنظمة",
     category: "LOGISTICS",
     lat: 24.7214,
     lng: 46.6698,
@@ -126,33 +127,49 @@ export const DEMO_HOTSPOTS: DemoHotspot[] = [
   }
 ];
 
-// 4 Certified High-Value FII 2027 Contracts
+// 8 Certified High-Value Sovereign Summit Contracts across the 8 Official Categories
 export const DEMO_CONTRACTS: DemoContract[] = [
   {
     id: "ct-2027-01",
     contractNumber: "MIDYAF-CT-2027-01",
-    vendorNameEn: "The Ritz-Carlton Riyadh",
-    vendorNameAr: "فندق الريتز-كارلتون الرياض",
-    categoryEn: "Official VIP Hospitality Partner",
-    categoryAr: "شريك الضيافة الرسمي لكبار الشخصيات",
-    scopeEn: "100 Royal & Executive Suites for Summit Delegations, Private Lounge Access",
-    scopeAr: "١٠٠ جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
-    amount: 1250000,
+    vendorNameEn: "Saudia Private Aviation (SPA)",
+    vendorNameAr: "طيران السعودية الخاص",
+    categoryEn: "Airlines & VIP Flight Operations",
+    categoryAr: "شركات الطيران والتنقل الجوي الخاص",
+    scopeEn: "Diplomatic Private Charter & VIP Fast-Track Apron Operations",
+    scopeAr: "طيران تنفيذي خاص وخدمات مدرج سريعة للوفود الدبلوماسية",
+    amount: 580000,
     commissionPercent: 10,
-    commissionAmount: 125000,
+    commissionAmount: 58000,
     status: "SIGNED",
-    signedDate: "2026-09-14",
-    certifiedHash: "0x8f2b...c91e"
+    signedDate: "2026-09-12",
+    certifiedHash: "0x7a11...41b2"
   },
   {
     id: "ct-2027-02",
     contractNumber: "MIDYAF-CT-2027-02",
+    vendorNameEn: "Al-Wefaq Vehicle Brokerage",
+    vendorNameAr: "شركة الوفاق لوساطة المركبات",
+    categoryEn: "Vehicle & Cart Brokerage",
+    categoryAr: "وساطة المركبات والعربات اللوجستية",
+    scopeEn: "Sovereign Motorcade & Inter-Venue Cart Fleet Coordination",
+    scopeAr: "تأمين ووساطة أسطول المواكب الرسمية وتوزيع العربات بين المقرات",
+    amount: 320000,
+    commissionPercent: 10,
+    commissionAmount: 32000,
+    status: "SIGNED",
+    signedDate: "2026-09-13",
+    certifiedHash: "0x4b89...12ce"
+  },
+  {
+    id: "ct-2027-03",
+    contractNumber: "MIDYAF-CT-2027-03",
     vendorNameEn: "Royal Fleet VIP Services",
     vendorNameAr: "شركة الأسطول الملكي للتنقل الفاخر",
-    categoryEn: "Chauffeur & Mobility Provider",
-    categoryAr: "مزود النقل والتنقل الفاخر مع سائق",
-    scopeEn: "50 Mercedes-Maybach S680 & V-Class Vans with 24/7 Diplomatic Escort",
-    scopeAr: "٥٠ سيارة مايباخ وفانات مرسيدس مع مرافقة دبلوماسية على مدار الساعة",
+    categoryEn: "Car & Bus Rental Fleet",
+    categoryAr: "تأجير السيارات والحافلات الفاخرة",
+    scopeEn: "50 Mercedes-Maybach S680 & 15 Luxury VIP Buses with 24/7 Diplomatic Escort",
+    scopeAr: "٥٠ سيارة مايباخ و١٥ حافلة VIP فاخرة مع مرافقة دبلوماسية على مدار الساعة",
     amount: 450000,
     commissionPercent: 10,
     commissionAmount: 45000,
@@ -161,36 +178,84 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     certifiedHash: "0x3e1a...7d44"
   },
   {
-    id: "ct-2027-03",
-    contractNumber: "MIDYAF-CT-2027-03",
-    vendorNameEn: "Najd Royal Catering & Banqueting",
-    vendorNameAr: "تموين نجد الملكي والضيافة الفاخرة",
-    categoryEn: "Gourmet Catering & Specialty Coffee",
-    categoryAr: "التموين الفاخر والقهوة السعودية المختصة",
-    scopeEn: "VIP Plenary Barista Stations, Saudi Organic Dates & Diplomatic Banqueting",
-    scopeAr: "محطات باريستا القاعة الكبرى، تمور عضوية فاخرة، وبوفيهات دبلوماسية",
-    amount: 180000,
-    commissionPercent: 11,
-    commissionAmount: 19800,
-    status: "SIGNED",
-    signedDate: "2026-09-15",
-    certifiedHash: "0xaa94...55bf"
-  },
-  {
     id: "ct-2027-04",
     contractNumber: "MIDYAF-CT-2027-04",
-    vendorNameEn: "Al-Faisal Stage & Acoustic Engineering",
-    vendorNameAr: "الفيصل لهندسة المسارح والصوتيات",
-    categoryEn: "Plenary Audio-Visual & Translation",
-    categoryAr: "الأنظمة المرئية والصوتية والترجمة الفورية",
-    scopeEn: "Ultra-HD LED Curved Video Wall, 8-Language Simultaneous Translation Units",
-    scopeAr: "شاشات LED منحنية فائقة الدقة، ووحدات ترجمة فورية لـ ٨ لغات",
-    amount: 290000,
-    commissionPercent: 12,
-    commissionAmount: 34800,
+    vendorNameEn: "Maharah Human Resources",
+    vendorNameAr: "شركة مهارة للموارد البشرية",
+    categoryEn: "Manpower & Event Operations Staff",
+    categoryAr: "القوى البشرية والتشغيل الميداني",
+    scopeEn: "120 Protocol Ushers & 60 Cargo/Loading Ground Handlers",
+    scopeAr: "١٢٠ مشرف مراسم وبروتوكول و٦٠ عامل تحميل وبضائع على مدار الساعة",
+    amount: 195000,
+    commissionPercent: 10,
+    commissionAmount: 19500,
+    status: "SIGNED",
+    signedDate: "2026-09-14",
+    certifiedHash: "0x9c3f...aa82"
+  },
+  {
+    id: "ct-2027-05",
+    contractNumber: "MIDYAF-CT-2027-05",
+    vendorNameEn: "E-Z-GO Saudi Club Cars",
+    vendorNameAr: "شركة إي-زي-جو لعربات الجولف",
+    categoryEn: "Golf Carts & Mini-Mobility",
+    categoryAr: "عربات الجولف والتنقل الداخلي",
+    scopeEn: "35 Multi-Passenger Electric Golf Carts for Intra-Venue VIP Mobility",
+    scopeAr: "٣٥ عربة جولف كهربائية فاخرة متعددة المقاعد للتنقل الداخلي",
+    amount: 85000,
+    commissionPercent: 10,
+    commissionAmount: 8500,
     status: "SIGNED",
     signedDate: "2026-09-15",
-    certifiedHash: "0xcc21...88fa"
+    certifiedHash: "0x1d55...29ef"
+  },
+  {
+    id: "ct-2027-06",
+    contractNumber: "MIDYAF-CT-2027-06",
+    vendorNameEn: "Almajdouie Heavy Logistics",
+    vendorNameAr: "المجدوعي للوجستيات الثقيلة",
+    categoryEn: "Transportation & Heavy Trucks",
+    categoryAr: "شاحنات النقل والشاحنات الثقيلة",
+    scopeEn: "18 Flatbed & Curtain Heavy Transportation Trucks for Staging Assets",
+    scopeAr: "١٨ شاحنة ثقيلة لنقل المعدات ومستلزمات الفعالية الضخمة",
+    amount: 216000,
+    commissionPercent: 10,
+    commissionAmount: 21600,
+    status: "SIGNED",
+    signedDate: "2026-09-15",
+    certifiedHash: "0x78ab...9901"
+  },
+  {
+    id: "ct-2027-07",
+    contractNumber: "MIDYAF-CT-2027-07",
+    vendorNameEn: "Zahid Tractor & Heavy Cranes",
+    vendorNameAr: "شركة الزاهد للرافعات والمعدات الثقيلة",
+    categoryEn: "Cranes & Heavy Equipment",
+    categoryAr: "الرافعات والمعدات الثقيلة",
+    scopeEn: "6 Mobile Hydraulic Cranes & Industrial Boom Lifts with Certified Riggers",
+    scopeAr: "٦ رافعات هيدروليكية ومعدات رفع ثقيلة مع مشغلين معتمدين",
+    amount: 270000,
+    commissionPercent: 10,
+    commissionAmount: 27000,
+    status: "SIGNED",
+    signedDate: "2026-09-15",
+    certifiedHash: "0x61da...b442"
+  },
+  {
+    id: "ct-2027-08",
+    contractNumber: "MIDYAF-CT-2027-08",
+    vendorNameEn: "The Ritz-Carlton",
+    vendorNameAr: "فندق الريتز-كارلتون",
+    categoryEn: "Hotels & VIP Hospitality",
+    categoryAr: "الفنادق والضيافة الملكية",
+    scopeEn: "100 Royal & Executive Suites for Summit Delegations, Private Lounge Access",
+    scopeAr: "١٠٠ جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
+    amount: 1250000,
+    commissionPercent: 10,
+    commissionAmount: 125000,
+    status: "SIGNED",
+    signedDate: "2026-09-16",
+    certifiedHash: "0x8f2b...c91e"
   }
 ];
 
@@ -202,15 +267,15 @@ export const DEMO_VIP_GUESTS: DemoVipGuest[] = [
     nameAr: "نورة الحربي",
     titleEn: "Head of Strategic Partnerships (Ministry Delegation)",
     titleAr: "رئيسة الشراكات الاستراتيجية (وفد وزاري)",
-    hotelEn: "The Ritz-Carlton Riyadh",
-    hotelAr: "فندق الريتز-كارلتون الرياض",
+    hotelEn: "The Ritz-Carlton",
+    hotelAr: "فندق الريتز-كارلتون",
     flight: "SV 1044",
     driverNameEn: "Capt. Sultan Al-Otaibi",
     driverNameAr: "الكابتن سلطان العتيبي",
     vehicleEn: "Mercedes-Maybach S680",
     vehicleAr: "مرسيدس مايباخ S680",
     plate: "KSA 9119",
-    statusEn: "En Route to Ritz-Carlton",
+    statusEn: "En Route to The Ritz-Carlton",
     statusAr: "في الطريق إلى الريتز-كارلتون",
     stage: "IN_TRANSIT"
   },
@@ -238,15 +303,15 @@ export const DEMO_VIP_GUESTS: DemoVipGuest[] = [
     nameAr: "جيمي ديمون",
     titleEn: "Chairman & CEO, JPMorgan Chase",
     titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي، جي بي مورغان",
-    hotelEn: "Four Seasons Riyadh",
-    hotelAr: "فندق فور سيزونز الرياض",
-    flight: "SV 102 (Arrived KKIA T2)",
+    hotelEn: "Four Seasons Hotel",
+    hotelAr: "فندق فور سيزونز",
+    flight: "SV 102 (Arrived Terminal 2)",
     driverNameEn: "Capt. Fahad Al-Qahtani",
     driverNameAr: "الكابتن فهد القحطاني",
     vehicleEn: "BMW 7-Series VIP",
     vehicleAr: "بي إم دبليو الفئة السابعة",
     plate: "KSA 2030",
-    statusEn: "Landed KKIA T2 · Fast-Track Escort",
+    statusEn: "Landed Terminal 2 · Fast-Track Escort",
     statusAr: "هبط في الصالة 2 · مرافقة المسار السريع",
     stage: "TOUCHDOWN"
   },
@@ -256,16 +321,16 @@ export const DEMO_VIP_GUESTS: DemoVipGuest[] = [
     nameAr: "لاري فينك",
     titleEn: "Chairman & CEO, BlackRock",
     titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي، بلاك روك",
-    hotelEn: "The Ritz-Carlton Riyadh",
-    hotelAr: "فندق الريتز-كارلتون الرياض",
+    hotelEn: "The Ritz-Carlton",
+    hotelAr: "فندق الريتز-كارلتون",
     flight: "BA 263",
     driverNameEn: "Capt. Rakan Al-Dossary",
     driverNameAr: "الكابتن راكان الدوسري",
     vehicleEn: "Mercedes V-Class VIP Shuttle",
     vehicleAr: "مرسيدس V-Class فان VIP",
     plate: "KSA 7788",
-    statusEn: "En Route to KAFD Plenary Hall",
-    statusAr: "في الطريق إلى قاعة كافد الرئيسية",
+    statusEn: "En Route to Financial District Plenary",
+    statusAr: "في الطريق إلى قاعة المركز المالي الرئيسية",
     stage: "IN_TRANSIT"
   },
   {
@@ -274,8 +339,8 @@ export const DEMO_VIP_GUESTS: DemoVipGuest[] = [
     nameAr: "راي داليو",
     titleEn: "Founder & CIO Mentor, Bridgewater",
     titleAr: "مؤسس بريدج ووتر",
-    hotelEn: "The Ritz-Carlton Riyadh",
-    hotelAr: "فندق الريتز-كارلتون الرياض",
+    hotelEn: "The Ritz-Carlton",
+    hotelAr: "فندق الريتز-كارلتون",
     flight: "EK 2042",
     driverNameEn: "Capt. Tariq Al-Ghamdi",
     driverNameAr: "الكابتن طارق الغامدي",
@@ -288,7 +353,599 @@ export const DEMO_VIP_GUESTS: DemoVipGuest[] = [
   }
 ];
 
-// Predefined Route Waypoints for 5 Drivers across Riyadh Corridors
+// 35 Competitive Supplier Quotations across all 8 Official Supplier Categories (4-5 bids per category)
+export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
+  // 1. AIRLINE (4 bids)
+  {
+    id: "vq-air-01",
+    intakeId: "intake-sovereign-01",
+    category: "AIRLINE",
+    vendorName: "Saudia Private Aviation (SPA)",
+    item: "VIP Charter Flights & Diplomatic Apron Handling (2 Gulfstream G650ER)",
+    quantity: 2,
+    unitPrice: 140000,
+    totalPrice: 280000,
+    commissionPercent: 10,
+    commissionAmount: 28000,
+    score: 98,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-air-02",
+    intakeId: "intake-sovereign-01",
+    category: "AIRLINE",
+    vendorName: "Alpha Star Aviation Services",
+    item: "Executive Delegation Jet Charter (Airbus ACJ319)",
+    quantity: 1,
+    unitPrice: 320000,
+    totalPrice: 320000,
+    commissionPercent: 10,
+    commissionAmount: 32000,
+    score: 94,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-air-03",
+    intakeId: "intake-sovereign-01",
+    category: "AIRLINE",
+    vendorName: "Flynas Corporate Charters",
+    item: "Regional Ministerial Shuttles (3 Flights)",
+    quantity: 3,
+    unitPrice: 65000,
+    totalPrice: 195000,
+    commissionPercent: 10,
+    commissionAmount: 19500,
+    score: 91,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-air-04",
+    intakeId: "intake-sovereign-01",
+    category: "AIRLINE",
+    vendorName: "Sky Prime Aviation Services",
+    item: "Heavy Diplomatic Charter & Ground VIP Protocol",
+    quantity: 1,
+    unitPrice: 260000,
+    totalPrice: 260000,
+    commissionPercent: 10,
+    commissionAmount: 26000,
+    score: 93,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 2. VEHICLE_BROKERAGE (4 bids)
+  {
+    id: "vq-brok-01",
+    intakeId: "intake-sovereign-01",
+    category: "VEHICLE_BROKERAGE",
+    vendorName: "Al-Wefaq Vehicle Brokerage",
+    item: "Sovereign Motorcade Brokerage & 40 Armored VIP Units",
+    quantity: 40,
+    unitPrice: 6500,
+    totalPrice: 260000,
+    commissionPercent: 10,
+    commissionAmount: 26000,
+    score: 96,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-brok-02",
+    intakeId: "intake-sovereign-01",
+    category: "VEHICLE_BROKERAGE",
+    vendorName: "Hanco Fleet Brokerage",
+    item: "VIP SUV & Diplomatic Escort Brokerage (30 Units)",
+    quantity: 30,
+    unitPrice: 9000,
+    totalPrice: 270000,
+    commissionPercent: 10,
+    commissionAmount: 27000,
+    score: 93,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-brok-03",
+    intakeId: "intake-sovereign-01",
+    category: "VEHICLE_BROKERAGE",
+    vendorName: "Key Fleet Brokerage Solutions",
+    item: "Executive Sedan & Van Fleet Brokerage (35 Units)",
+    quantity: 35,
+    unitPrice: 7000,
+    totalPrice: 245000,
+    commissionPercent: 10,
+    commissionAmount: 24500,
+    score: 89,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-brok-04",
+    intakeId: "intake-sovereign-01",
+    category: "VEHICLE_BROKERAGE",
+    vendorName: "Budget Saudi Fleet Brokerage",
+    item: "Corridor Dispatch Brokerage & 25 Standby Vehicles",
+    quantity: 25,
+    unitPrice: 8500,
+    totalPrice: 212500,
+    commissionPercent: 10,
+    commissionAmount: 21250,
+    score: 88,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 3. CAR_RENTAL (5 bids - includes Luxury Fleet & Buses)
+  {
+    id: "vq-car-01",
+    intakeId: "intake-sovereign-01",
+    category: "CAR_RENTAL",
+    vendorName: "Royal Fleet VIP Services",
+    item: "50 Mercedes-Maybach S680 Chauffeur Fleet (5 Days)",
+    quantity: 50,
+    unitPrice: 9000,
+    totalPrice: 450000,
+    commissionPercent: 10,
+    commissionAmount: 45000,
+    score: 98,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-car-02",
+    intakeId: "intake-sovereign-01",
+    category: "CAR_RENTAL",
+    vendorName: "Elite Drive Co.",
+    item: "50 BMW 7-Series VIP Chauffeur Fleet",
+    quantity: 50,
+    unitPrice: 8400,
+    totalPrice: 420000,
+    commissionPercent: 10,
+    commissionAmount: 42000,
+    score: 92,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-car-03",
+    intakeId: "intake-sovereign-01",
+    category: "CAR_RENTAL",
+    vendorName: "Lumi Luxury Fleet",
+    item: "40 Audi A8 L & Lexus LS 500 Fleet",
+    quantity: 40,
+    unitPrice: 9500,
+    totalPrice: 380000,
+    commissionPercent: 10,
+    commissionAmount: 38000,
+    score: 94,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-car-04",
+    intakeId: "intake-sovereign-01",
+    category: "CAR_RENTAL",
+    vendorName: "Theeb Executive Fleet",
+    item: "60 Mercedes V-Class Executive Vans",
+    quantity: 60,
+    unitPrice: 6500,
+    totalPrice: 390000,
+    commissionPercent: 10,
+    commissionAmount: 39000,
+    score: 90,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-car-05",
+    intakeId: "intake-sovereign-01",
+    category: "CAR_RENTAL",
+    vendorName: "SAPTCO Executive Coaches",
+    item: "15 Luxury VIP Buses (50-Seater Coaches for Delegation Transfer)",
+    quantity: 15,
+    unitPrice: 22000,
+    totalPrice: 330000,
+    commissionPercent: 10,
+    commissionAmount: 33000,
+    score: 95,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+
+  // 4. MAN_POWER (5 bids - Cargo/Loading & Event Organizers/Staff)
+  {
+    id: "vq-mp-01",
+    intakeId: "intake-sovereign-01",
+    category: "MAN_POWER",
+    vendorName: "Maharah Human Resources",
+    item: "80 Event Organizers & Diplomatic Protocol Ushers (5 Days)",
+    quantity: 80,
+    unitPrice: 1800,
+    totalPrice: 144000,
+    commissionPercent: 10,
+    commissionAmount: 14400,
+    score: 97,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-mp-02",
+    intakeId: "intake-sovereign-01",
+    category: "MAN_POWER",
+    vendorName: "Tamkeen Workforce Solutions",
+    item: "60 Cargo & Loading Heavy Workers (24/7 Logistics Shifts)",
+    quantity: 60,
+    unitPrice: 1600,
+    totalPrice: 96000,
+    commissionPercent: 10,
+    commissionAmount: 9600,
+    score: 93,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-mp-03",
+    intakeId: "intake-sovereign-01",
+    category: "MAN_POWER",
+    vendorName: "SMASCO Event Staffing",
+    item: "100 Bilingual Guest Relations & Flow Organizers",
+    quantity: 100,
+    unitPrice: 1750,
+    totalPrice: 175000,
+    commissionPercent: 10,
+    commissionAmount: 17500,
+    score: 95,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-mp-04",
+    intakeId: "intake-sovereign-01",
+    category: "MAN_POWER",
+    vendorName: "ARCO Logistics Crew",
+    item: "50 Heavy Loading & Equipment Cargo Crew",
+    quantity: 50,
+    unitPrice: 1700,
+    totalPrice: 85000,
+    commissionPercent: 10,
+    commissionAmount: 8500,
+    score: 89,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-mp-05",
+    intakeId: "intake-sovereign-01",
+    category: "MAN_POWER",
+    vendorName: "Mawarid Operations Workforce",
+    item: "70 Venue Setup & Crowd Management Coordinators",
+    quantity: 70,
+    unitPrice: 1650,
+    totalPrice: 115500,
+    commissionPercent: 10,
+    commissionAmount: 11550,
+    score: 91,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 5. GOLF_CARTS (4 bids)
+  {
+    id: "vq-gc-01",
+    intakeId: "intake-sovereign-01",
+    category: "GOLF_CARTS",
+    vendorName: "E-Z-GO Saudi Club Cars",
+    item: "30 Premium 6-Seater VIP Golf Carts with Chauffeurs",
+    quantity: 30,
+    unitPrice: 2500,
+    totalPrice: 75000,
+    commissionPercent: 10,
+    commissionAmount: 7500,
+    score: 97,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-gc-02",
+    intakeId: "intake-sovereign-01",
+    category: "GOLF_CARTS",
+    vendorName: "Club Car Arabia",
+    item: "25 High-Torque 8-Seater VIP Shuttles",
+    quantity: 25,
+    unitPrice: 3200,
+    totalPrice: 80000,
+    commissionPercent: 10,
+    commissionAmount: 8000,
+    score: 94,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-gc-03",
+    intakeId: "intake-sovereign-01",
+    category: "GOLF_CARTS",
+    vendorName: "Green Mobility GCC",
+    item: "35 Solar-Assisted Executive Mini Carts",
+    quantity: 35,
+    unitPrice: 2100,
+    totalPrice: 73500,
+    commissionPercent: 10,
+    commissionAmount: 7350,
+    score: 90,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-gc-04",
+    intakeId: "intake-sovereign-01",
+    category: "GOLF_CARTS",
+    vendorName: "Yamaha Fleet Mobility",
+    item: "20 Enclosed Weatherproof VIP Carts",
+    quantity: 20,
+    unitPrice: 3400,
+    totalPrice: 68000,
+    commissionPercent: 10,
+    commissionAmount: 6800,
+    score: 92,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 6. HEAVY_TRUCKS (4 bids)
+  {
+    id: "vq-ht-01",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_TRUCKS",
+    vendorName: "Almajdouie Heavy Logistics",
+    item: "18 Flatbed & Curtain-Side Heavy Haulage Trucks (5 Days)",
+    quantity: 18,
+    unitPrice: 12000,
+    totalPrice: 216000,
+    commissionPercent: 10,
+    commissionAmount: 21600,
+    score: 97,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-ht-02",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_TRUCKS",
+    vendorName: "Bahri Inland Freight",
+    item: "15 Closed-Box Container Heavy Transportation Trucks",
+    quantity: 15,
+    unitPrice: 13500,
+    totalPrice: 202500,
+    commissionPercent: 10,
+    commissionAmount: 20250,
+    score: 94,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-ht-03",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_TRUCKS",
+    vendorName: "Al-Farhan Transport & Haulage",
+    item: "20 Multi-Axle Stage Transportation Trucks",
+    quantity: 20,
+    unitPrice: 11000,
+    totalPrice: 220000,
+    commissionPercent: 10,
+    commissionAmount: 22000,
+    score: 90,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-ht-04",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_TRUCKS",
+    vendorName: "National Heavy Haulage Co.",
+    item: "12 Lowbed Staging Asset Transportation Carriers",
+    quantity: 12,
+    unitPrice: 15000,
+    totalPrice: 180000,
+    commissionPercent: 10,
+    commissionAmount: 18000,
+    score: 91,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 7. HEAVY_EQUIPMENT (4 bids)
+  {
+    id: "vq-he-01",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_EQUIPMENT",
+    vendorName: "Zahid Tractor & Heavy Cranes",
+    item: "6 Mobile Hydraulic Cranes (50T - 100T) with Rigging Teams",
+    quantity: 6,
+    unitPrice: 45000,
+    totalPrice: 270000,
+    commissionPercent: 10,
+    commissionAmount: 27000,
+    score: 98,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-he-02",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_EQUIPMENT",
+    vendorName: "Kanoo Machinery & Cranes",
+    item: "8 Telescopic Boom Lifts & Industrial Forklifts",
+    quantity: 8,
+    unitPrice: 28000,
+    totalPrice: 224000,
+    commissionPercent: 10,
+    commissionAmount: 22400,
+    score: 93,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-he-03",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_EQUIPMENT",
+    vendorName: "Al-Mutawa Crane Services",
+    item: "5 Heavy Rough-Terrain Cranes (120T)",
+    quantity: 5,
+    unitPrice: 62000,
+    totalPrice: 310000,
+    commissionPercent: 10,
+    commissionAmount: 31000,
+    score: 92,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-he-04",
+    intakeId: "intake-sovereign-01",
+    category: "HEAVY_EQUIPMENT",
+    vendorName: "Rawabi Heavy Equipment",
+    item: "10 Electric Scissor Lifts & Generator Bays",
+    quantity: 10,
+    unitPrice: 18500,
+    totalPrice: 185000,
+    commissionPercent: 10,
+    commissionAmount: 18500,
+    score: 89,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+
+  // 8. HOTEL (5 bids)
+  {
+    id: "vq-hot-01",
+    intakeId: "intake-sovereign-01",
+    category: "HOTEL",
+    vendorName: "The Ritz-Carlton",
+    item: "100 Royal & Executive Suites (Sovereign Summit)",
+    quantity: 100,
+    unitPrice: 12500,
+    totalPrice: 1250000,
+    commissionPercent: 10,
+    commissionAmount: 125000,
+    score: 99,
+    status: "APPROVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-hot-02",
+    intakeId: "intake-sovereign-01",
+    category: "HOTEL",
+    vendorName: "Four Seasons Hotel",
+    item: "100 Luxury Executive Suites (Kingdom Tower)",
+    quantity: 100,
+    unitPrice: 13000,
+    totalPrice: 1300000,
+    commissionPercent: 10,
+    commissionAmount: 130000,
+    score: 96,
+    status: "RECOMMENDED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-hot-03",
+    intakeId: "intake-sovereign-01",
+    category: "HOTEL",
+    vendorName: "Mandarin Oriental Al Faisaliah",
+    item: "80 Diplomatic Suites & Sovereign Majlis Access",
+    quantity: 80,
+    unitPrice: 14000,
+    totalPrice: 1120000,
+    commissionPercent: 10,
+    commissionAmount: 112000,
+    score: 94,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-hot-04",
+    intakeId: "intake-sovereign-01",
+    category: "HOTEL",
+    vendorName: "Fairmont Hotel",
+    item: "90 Premium Executive Rooms & Lounge",
+    quantity: 90,
+    unitPrice: 11500,
+    totalPrice: 1035000,
+    commissionPercent: 10,
+    commissionAmount: 103500,
+    score: 92,
+    status: "RECEIVED",
+    isVaultSealed: true
+  },
+  {
+    id: "vq-hot-05",
+    intakeId: "intake-sovereign-01",
+    category: "HOTEL",
+    vendorName: "St. Regis Sovereign Suites",
+    item: "60 Butler-Serviced Sovereign Penthouses",
+    quantity: 60,
+    unitPrice: 16500,
+    totalPrice: 990000,
+    commissionPercent: 10,
+    commissionAmount: 99000,
+    score: 95,
+    status: "RECEIVED",
+    isVaultSealed: true
+  }
+];
+
+export function calculateCategoryPriceRanges(quotes: VendorQuote[] = []): CategoryPriceRange[] {
+  const sourceQuotes = quotes && quotes.length > 0 ? quotes : DEMO_VENDOR_QUOTES;
+
+  return OFFICIAL_SUPPLIER_CATEGORIES.map((catMeta) => {
+    const categoryQuotes = sourceQuotes.filter((q) => {
+      if (q.category === catMeta.key) return true;
+      if (catMeta.key === "HOTEL" && q.category === "HOTEL_OPERATOR") return true;
+      if (catMeta.key === "CAR_RENTAL" && (q.category === "CAR" || q.category === "CAR_RENTAL")) return true;
+      return false;
+    });
+
+    if (categoryQuotes.length === 0) {
+      return {
+        category: catMeta.key,
+        categoryNameEn: catMeta.nameEn,
+        categoryNameAr: catMeta.nameAr,
+        minPrice: 0,
+        maxPrice: 0,
+        avgPrice: 0,
+        bestTierPrice: 0,
+        quoteCount: 0,
+        currency: "SAR"
+      };
+    }
+
+    const prices = categoryQuotes.map((q) => Number(q.totalPrice));
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+
+    const approved = categoryQuotes.find((q) => q.status === "APPROVED");
+    const recommended = categoryQuotes.find((q) => q.status === "RECOMMENDED");
+    const bestTierPrice = approved ? Number(approved.totalPrice) : recommended ? Number(recommended.totalPrice) : minPrice;
+
+    return {
+      category: catMeta.key,
+      categoryNameEn: catMeta.nameEn,
+      categoryNameAr: catMeta.nameAr,
+      minPrice,
+      maxPrice,
+      avgPrice,
+      bestTierPrice,
+      quoteCount: categoryQuotes.length,
+      currency: "SAR"
+    };
+  });
+}
+
+// Predefined Route Waypoints for 5 Drivers across Summit Corridors
 interface Waypoint {
   lat: number;
   lng: number;
@@ -300,12 +957,12 @@ interface Waypoint {
 const DRIVER_ROUTES: Record<string, Waypoint[]> = {
   // Captain Sultan: KKIA Terminal 2 -> Airport Road -> King Salman -> Ritz-Carlton
   sultan: [
-    { lat: 24.9576, lng: 46.6988, speed: 0, locationEn: "KKIA Terminal 2 VIP Curb", locationAr: "مطار الملك خالد - رصيف VIP الصالة 2" },
+    { lat: 24.9576, lng: 46.6988, speed: 0, locationEn: "Airport Terminal 2 VIP Curb", locationAr: "المطار الدولي - رصيف VIP الصالة 2" },
     { lat: 24.9120, lng: 46.7050, speed: 85, locationEn: "Airport Road Southbound", locationAr: "طريق المطار باتجاه الجنوب" },
     { lat: 24.8540, lng: 46.6910, speed: 92, locationEn: "King Salman interchange", locationAr: "تقاطع طريق الملك سلمان" },
-    { lat: 24.7950, lng: 46.6710, speed: 78, locationEn: "Northern Ring Road corridor", locationAr: "الطريق الدائري الشمالي" },
-    { lat: 24.7310, lng: 46.6500, speed: 65, locationEn: "King Fahd Road West junction", locationAr: "مخرج طريق الملك فهد غرباً" },
-    { lat: 24.6661, lng: 46.6302, speed: 25, locationEn: "Arriving at The Ritz-Carlton Riyadh", locationAr: "الوصول إلى فندق الريتز-كارلتون" }
+    { lat: 24.7950, lng: 46.6710, speed: 78, locationEn: "Northern Corridor expressway", locationAr: "الممر الشمالي السريع" },
+    { lat: 24.7310, lng: 46.6500, speed: 65, locationEn: "King Fahd Corridor West junction", locationAr: "مخرج طريق الملك فهد غرباً" },
+    { lat: 24.6661, lng: 46.6302, speed: 25, locationEn: "Arriving at The Ritz-Carlton", locationAr: "الوصول إلى فندق الريتز-كارلتون" }
   ],
   // Captain Fahad: KAFD Loop & King Fahd Rd
   fahad: [
@@ -406,7 +1063,7 @@ export function useLiveDemoSimulation({
     const currentStep = stepRef.current;
     setSimulationStep(currentStep);
 
-    // 1. Move Drivers along their Riyadh routes
+    // 1. Move Drivers along their summit routes
     const sultanWp = DRIVER_ROUTES.sultan[currentStep % DRIVER_ROUTES.sultan.length];
     const fahadWp = DRIVER_ROUTES.fahad[currentStep % DRIVER_ROUTES.fahad.length];
     const rakanWp = DRIVER_ROUTES.rakan[currentStep % DRIVER_ROUTES.rakan.length];
@@ -429,7 +1086,7 @@ export function useLiveDemoSimulation({
             vehicleModel: "Mercedes-Maybach S680",
             plateNumber: "KSA 9119",
             status: "EN_ROUTE" as const,
-            zone: "NORTH_RIYADH" as const,
+            zone: "NORTH_ZONE" as any,
             lastLocationAt: new Date().toISOString()
           };
         } else if (name.includes("fahad") || name.includes("driver")) {
@@ -441,7 +1098,7 @@ export function useLiveDemoSimulation({
             vehicleModel: "BMW 7-Series VIP",
             plateNumber: "KSA 2030",
             status: "EN_ROUTE" as const,
-            zone: "CENTRAL_RIYADH" as const,
+            zone: "CENTRAL_ZONE" as any,
             lastLocationAt: new Date().toISOString()
           };
         } else if (name.includes("rakan")) {
@@ -453,7 +1110,7 @@ export function useLiveDemoSimulation({
             vehicleModel: "Mercedes V-Class VIP Shuttle",
             plateNumber: "KSA 7788",
             status: "EN_ROUTE" as const,
-            zone: "WEST_RIYADH" as const,
+            zone: "WEST_ZONE" as any,
             lastLocationAt: new Date().toISOString()
           };
         } else if (name.includes("tariq")) {
@@ -465,7 +1122,7 @@ export function useLiveDemoSimulation({
             vehicleModel: "Mercedes V-Class Executive",
             plateNumber: "KSA 5544",
             status: "AVAILABLE" as const,
-            zone: "EAST_RIYADH" as const,
+            zone: "EAST_ZONE" as any,
             lastLocationAt: new Date().toISOString()
           };
         } else if (name.includes("nasser")) {
@@ -477,7 +1134,7 @@ export function useLiveDemoSimulation({
             vehicleModel: "Lexus LS 500 Executive",
             plateNumber: "KSA 1122",
             status: "EN_ROUTE" as const,
-            zone: "DIRIYAH_CORRIDOR" as const,
+            zone: "SUMMIT_CORRIDOR" as any,
             lastLocationAt: new Date().toISOString()
           };
         }
@@ -589,8 +1246,8 @@ export function useLiveDemoSimulation({
     stepRef.current = 0;
     const timestamp = new Date().toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
     const welcome = isArabic
-      ? `[بث مباشر] قمة الرياض 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
-      : `[LIVE] Riyadh Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
+      ? `[بث مباشر] عمليات القمة السيادية 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
+      : `[LIVE] Sovereign Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
     setRealtimeLog((prev) => [welcome, ...prev.slice(0, 4)]);
   }, [isArabic, setRealtimeLog]);
 
@@ -620,6 +1277,8 @@ export function useLiveDemoSimulation({
     hotspots: DEMO_HOTSPOTS,
     contracts: DEMO_CONTRACTS,
     vipGuests: DEMO_VIP_GUESTS,
+    vendorQuotes: DEMO_VENDOR_QUOTES,
+    priceRanges: calculateCategoryPriceRanges(DEMO_VENDOR_QUOTES),
     startSimulation,
     pauseSimulation,
     resumeSimulation,

@@ -143,7 +143,7 @@ export function SovereignCommandBridge({
       },
       {
         flightNo: "RX-101",
-        airline: "Riyadh Air",
+        airline: "Saudia (Royal Fleet)",
         aircraft: "Boeing 787-9",
         origin: "New York (JFK)",
         status: isArabic ? "هبطت بسلام · استلام الحقائب" : "Landed · Chauffeur Ready",
@@ -355,12 +355,12 @@ export function SovereignCommandBridge({
               <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
                 <span>{l("Sovereign Command Bridge")}</span>
                 <span className="rounded-md bg-midyaf-gold/20 px-2 py-0.5 text-[10px] font-black uppercase text-midyaf-gold ring-1 ring-midyaf-gold/50">
-                  {isArabic ? "قمة الرياض 2027" : "FII 2027"}
+                  {isArabic ? "القمة السيادية 2027" : "SUMMIT 2027"}
                 </span>
               </h2>
             </div>
             <p className="text-xs text-slate-400">
-              {l("Riyadh Summit 2027 · Sovereign Operations Bridge")} · {event?.name ?? "Future Investment Initiative"}
+              {l("Sovereign Operations Command Bridge")} · {event?.name ?? "Future Investment Initiative"}
             </p>
           </div>
         </div>
@@ -384,7 +384,7 @@ export function SovereignCommandBridge({
             <span className="text-slate-400">UTC: {currentTime.toISOString().slice(11, 19)}</span>
           </div>
 
-          {/* Riyadh Weather Widget */}
+          {/* Summit Weather Widget */}
           <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-xs text-slate-300 border border-white/10">
             <Thermometer size={13} className="text-amber-400" />
             <span>28°C</span>

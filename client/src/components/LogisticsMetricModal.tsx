@@ -92,8 +92,8 @@ const VIP_GUESTS_DATA: DisplayGuest[] = [
     titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي",
     org: "JPMorgan Chase & Co.",
     orgAr: "جي بي مورغان تشيس",
-    flight: "Riyadh Air RX-101 · KKIA Gate 204",
-    flightAr: "طيران الرياض RX-101 · مطار الملك خالد بوابة 204",
+    flight: "Saudia Royal Fleet SV-101 · KKIA Gate 204",
+    flightAr: "الخطوط السعودية SV-101 · مطار الملك خالد بوابة 204",
     hotel: "Four Seasons Hotel Kingdom Centre",
     hotelAr: "فندق فور سيزونز برج المملكة",
     driver: "Capt. Fahad Al-Qahtani",
@@ -113,8 +113,8 @@ const VIP_GUESTS_DATA: DisplayGuest[] = [
     titleAr: "رئيس مجلس الإدارة والرئيس التنفيذي",
     org: "BlackRock",
     orgAr: "بلاك روك المالية",
-    flight: "Riyadh Air RX-101 · Landed KKIA T2",
-    flightAr: "طيران الرياض RX-101 · هبطت بالصالة 2",
+    flight: "Saudia Royal Fleet SV-101 · Landed KKIA T2",
+    flightAr: "الخطوط السعودية SV-101 · هبطت بالصالة 2",
     hotel: "The Ritz-Carlton Executive Wing",
     hotelAr: "فندق الريتز-كارلتون الجناح التنفيذي",
     driver: "Capt. Rakan Al-Dossary",
@@ -174,8 +174,8 @@ const VIP_GUESTS_DATA: DisplayGuest[] = [
 const CERTIFIED_CONTRACTS = [
   {
     id: "c-1",
-    vendor: "The Ritz-Carlton Riyadh",
-    vendorAr: "فندق الريتز-كارلتون الرياض",
+    vendor: "The Ritz-Carlton Grand Hotel",
+    vendorAr: "فندق الريتز-كارلتون جراند",
     category: "Royal Hospitality & Accommodation",
     categoryAr: "الضيافة الملكية والإقامة الفاخرة",
     amount: "SAR 1,250,000",
@@ -385,7 +385,7 @@ export function LogisticsMetricModal({
               </span>
             </h3>
             <p className="text-xs text-slate-400 flex items-center gap-2">
-              <span>{event.name} · {l("Riyadh")} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}</span>
+              <span>{event.name} · {isArabic ? "منطقة العمليات السيادية" : "Sovereign Operations Zone"} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}</span>
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
                 isDemoMode ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30" : "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30"
               }`}>

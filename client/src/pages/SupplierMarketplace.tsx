@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Building2, Car, Coffee, Star, Ticket, Wrench } from "lucide-react";
+import { Building2, Car, Coffee, Star, Ticket, Wrench, Plane, Truck, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SupplierCategory } from "@shared/domain";
 import { Badge } from "../components/Badge";
@@ -9,13 +9,20 @@ import { money, percent } from "../lib/format";
 import { isArabicLanguage, localizeText } from "../lib/localize";
 import type { PortalProps } from "./types";
 
-const categoryIcons: Record<SupplierCategory, typeof Building2> = {
+const categoryIcons: Record<SupplierCategory, any> = {
   HOTEL: Building2,
   CAR: Car,
   TICKET: Ticket,
   CATERING: Coffee,
   EQUIPMENT: Wrench,
-  TOURISM: Star
+  TOURISM: Star,
+  AIRLINE: Plane,
+  VEHICLE_BROKERAGE: Car,
+  CAR_RENTAL: Car,
+  MAN_POWER: Users,
+  GOLF_CARTS: Car,
+  HEAVY_TRUCKS: Truck,
+  HEAVY_EQUIPMENT: Wrench
 };
 
 export function SupplierMarketplace({ data, session, createBooking }: PortalProps) {

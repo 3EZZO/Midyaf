@@ -57,7 +57,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
             <Badge tone="green">{event.status}</Badge>
             <Badge tone="gold">{event.venue}</Badge>
             <Badge tone="purple" className="bg-white/15 text-white ring-white/20">
-              Asia/Riyadh · SAR · VAT 15%
+              AST · SAR · VAT 15%
             </Badge>
           </div>
         </div>

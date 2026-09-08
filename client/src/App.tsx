@@ -90,20 +90,6 @@ const portalsByRole: Record<Role, PortalKey[]> = {
   COMPANY_ORGANIZER: ["intake", "company"]
 };
 
-const platformLeaders = [
-  {
-    roleEn: "Founder & CEO",
-    roleAr: "المؤسس والرئيس التنفيذي",
-    nameEn: "Rashed Mohamed",
-    nameAr: "راشد محمد"
-  },
-  {
-    roleEn: "Developer & Quantitative Strategist",
-    roleAr: "المطور والاستراتيجي الكمي",
-    nameEn: "Mohamed Izeldin Al Shayghey",
-    nameAr: "محمد عزالدين الشايقي"
-  }
-];
 
 export function App() {
   const { t, i18n } = useTranslation();
@@ -1205,7 +1191,6 @@ function ShellFrame({
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 {t("heroSubtitle")}
               </p>
-              <PlatformLeadership isArabic={isArabic} />
             </div>
             <div className="rounded-xl bg-midyaf-purple/5 p-4 text-xs text-slate-600 ring-1 ring-midyaf-purple/10 dark:bg-midyaf-purple/20 dark:text-slate-300 dark:ring-midyaf-purple/30">
               <div className="flex items-center gap-2">
@@ -1341,7 +1326,7 @@ function LoginPage({
             {[
               { icon: Sparkles, label: isArabic ? 'تخطيط ذكي' : 'AI Planning' },
               { icon: Globe2, label: isArabic ? 'عمليات مباشرة' : 'Live Ops' },
-              { icon: ShieldCheck, label: isArabic ? 'إطلاق الرياض' : 'Riyadh Launch' }
+              { icon: ShieldCheck, label: isArabic ? 'إطلاق العمليات' : 'Summit Launch' }
             ].map(({ icon: Ic, label }) => (
               <div key={label} className="flex items-center gap-2 rounded-xl bg-midyaf-purple/5 px-3.5 py-2 ring-1 ring-midyaf-purple/10">
                 <Ic size={15} className="text-midyaf-purple" />
@@ -1349,8 +1334,6 @@ function LoginPage({
               </div>
             ))}
           </div>
-
-          <PlatformLeadership isArabic={isArabic} elevated />
         </section>
 
         {/* Login card */}
@@ -1483,41 +1466,6 @@ function LoginPage({
   );
 }
 
-function PlatformLeadership({
-  isArabic,
-  elevated = false
-}: {
-  isArabic: boolean;
-  elevated?: boolean;
-}) {
-  return (
-    <div
-      className={
-        elevated
-          ? "mt-5 grid gap-3 rounded-xl bg-white/75 p-4 shadow-card-sm ring-1 ring-midyaf-gold/20 sm:grid-cols-2"
-          : "mt-4 grid gap-2 sm:grid-cols-2"
-      }
-    >
-      {platformLeaders.map((leader) => (
-        <div
-          key={leader.nameEn}
-          className={
-            elevated
-              ? "rounded-lg bg-midyaf-purple/5 p-3"
-              : "rounded-lg bg-midyaf-purple/5 px-3 py-2 ring-1 ring-midyaf-purple/10"
-          }
-        >
-          <p className="text-[11px] font-bold uppercase tracking-wide text-midyaf-gold">
-            {isArabic ? leader.roleAr : leader.roleEn}
-          </p>
-          <p className="mt-1 text-sm font-black text-midyaf-purple">
-            {isArabic ? leader.nameAr : leader.nameEn}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function renderPortal(
   portal: PortalKey,

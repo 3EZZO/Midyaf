@@ -354,7 +354,7 @@ export function RiyadhMap({
         bounds,
         lat: venuePoint.lat,
         lng: venuePoint.lng,
-        label: l(event?.venue ?? "Riyadh Summit Main Venue"),
+        label: l(event?.venue ?? "Sovereign Summit Main Venue"),
         subtitle: l("VIP Delegation Base · Plenary Hall"),
         tone: "venue"
       });
@@ -486,7 +486,7 @@ export function RiyadhMap({
               <p className="text-sm font-black tracking-tight text-midyaf-gold flex items-center gap-2 group-hover:text-amber-300 transition-colors">
                 <span>{isFullscreen ? l("Fullscreen Operational Tactical Map") : l("Sovereign Dark Tactical")}</span>
                 <span className="rounded bg-midyaf-gold/20 px-1.5 py-0.2 text-[10px] text-midyaf-gold ring-1 ring-midyaf-gold/40">
-                  {l("Riyadh")}
+                  {isArabic ? "العمليات السيادية" : "Sovereign Ops"}
                 </span>
                 {!isFullscreen && (
                   <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-black text-midyaf-gold ring-1 ring-midyaf-gold/40 group-hover:bg-midyaf-gold/30">
