@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Driver, MidyafData, VendorQuote, CategoryPriceRange, SupplierCategory } from "@shared/domain";
 import { OFFICIAL_SUPPLIER_CATEGORIES } from "@shared/constants";
+export { OFFICIAL_SUPPLIER_CATEGORIES };
 
 export interface DemoHotspot {
   id: string;
@@ -900,7 +901,7 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
 export function calculateCategoryPriceRanges(quotes: VendorQuote[] = []): CategoryPriceRange[] {
   const sourceQuotes = quotes && quotes.length > 0 ? quotes : DEMO_VENDOR_QUOTES;
 
-  return OFFICIAL_SUPPLIER_CATEGORIES.map((catMeta) => {
+  return (OFFICIAL_SUPPLIER_CATEGORIES as readonly any[]).map((catMeta: any) => {
     const categoryQuotes = sourceQuotes.filter((q) => {
       if (q.category === catMeta.key) return true;
       if (catMeta.key === "HOTEL" && q.category === "HOTEL_OPERATOR") return true;

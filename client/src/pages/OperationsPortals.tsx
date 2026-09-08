@@ -37,6 +37,10 @@ import {
   Share2,
   Truck,
   Hotel,
+  Plus,
+  Trash2,
+  Building2,
+  Store,
   X
 } from "lucide-react";
 import { Badge } from "../components/Badge";
@@ -57,6 +61,7 @@ import {
   DEMO_CONTRACTS,
   DEMO_HOTSPOTS,
   DEMO_VENDOR_QUOTES,
+  OFFICIAL_SUPPLIER_CATEGORIES,
   calculateCategoryPriceRanges,
   type DemoContract,
   type DemoHotspot
@@ -83,6 +88,9 @@ import type {
   Driver,
   FileAsset,
   FileAssetType,
+  HotelDetail,
+  CarRentalDetail,
+  SupplierDetail,
   Task,
   TaskStatus,
   User
@@ -206,6 +214,83 @@ const uploadAcceptByType: Record<FileAssetType, string> = {
   OTHER: "*/*"
 };
 
+const defaultHotels: HotelDetail[] = [
+  {
+    id: "hotel-1",
+    name: "فندق الريتز-كارلتون (The Ritz-Carlton)",
+    contact: "+966 11 802 8888",
+    roomsBooked: 70,
+    roomType: "Royal & Executive Suites",
+    notes: "مقر إقامة وفود كبار الشخصيات والوزراء"
+  },
+  {
+    id: "hotel-2",
+    name: "فندق فورسيزونز برج المملكة (Four Seasons)",
+    contact: "+966 11 211 5000",
+    roomsBooked: 50,
+    roomType: "Deluxe Premium Rooms",
+    notes: "مقر إقامة المتحدثين والمستثمرين الدوليين"
+  }
+];
+
+const defaultCarRentals: CarRentalDetail[] = [
+  {
+    id: "rental-1",
+    companyName: "شركة الأسطول الملكي لتأجير السيارات الفاخرة",
+    contact: "+966 50 111 2233",
+    fleetCount: 40,
+    vehicleTypes: "مرسيدس مايباخ S680 وبي إم دبليو الفئة السابعة",
+    notes: "مواكب الشخصيات الرسمية والدبلوماسية"
+  },
+  {
+    id: "rental-2",
+    companyName: "شركة لوجستيات الحافلات والنقل الماسي",
+    contact: "+966 55 444 5566",
+    fleetCount: 15,
+    vehicleTypes: "حافلات VIP فاخرة 50 راكب",
+    notes: "نقل الوفود العامة بين الفنادق وموقع الفعالية"
+  }
+];
+
+const defaultSuppliers: SupplierDetail[] = [
+  {
+    id: "sup-1",
+    providerName: "مجموعة الضيافة والخدمات الفندقية المساندة",
+    category: "HOTEL",
+    contact: "+966 54 777 8899",
+    scopeOfWork: "خدمات الضيافة الفندقية والإعاشة والتسكين",
+    paymentTerms: "INSTALLMENTS",
+    notes: "المزود المعتمد لخدمات الضيافة الفندقية"
+  },
+  {
+    id: "sup-2",
+    providerName: "شركة تموين المؤتمرات والفعاليات الملكية",
+    category: "CATERING",
+    contact: "+966 56 333 4455",
+    scopeOfWork: "بوفيهات القاعات الكبرى والولائم الرسمية",
+    paymentTerms: "DOWNPAYMENT",
+    notes: "عقد التموين والإعاشة للقمة"
+  },
+  {
+    id: "sup-3",
+    providerName: "شركة الإمداد البشري والتنظيم الميداني",
+    category: "MAN_POWER",
+    contact: "+966 50 888 9900",
+    scopeOfWork: "120 فرد تنظيم ومشرفو استقبال ومراسم",
+    paymentTerms: "INSTALLMENTS",
+    notes: "تشغيل القاعات وتوجيه الوفود"
+  },
+  {
+    id: "sup-4",
+    providerName: "مؤسسة النقل الثقيل والمعدات اللوجستية",
+    category: "HEAVY_TRUCKS",
+    contact: "+966 53 222 1100",
+    scopeOfWork: "شاحنات نقل ثقيل ومعدات مسارح وتجهيز قاعات",
+    paymentTerms: "INSTALLMENTS",
+    notes: "التجهيزات اللوجستية والنقل الثقيل"
+  }
+];
+
 const emptyActivityIntake = {
   id: "",
   eventId: null,
@@ -221,13 +306,13 @@ const emptyActivityIntake = {
   status: "DRAFT",
   submittedBy: "",
   submittedAt: new Date(0).toISOString(),
-  hotelName: "",
-  hotelContact: "",
-  hotelRoomsBooked: 0,
-  hotelRoomType: "Deluxe Suite",
-  carRentalCompanyName: "",
-  carRentalContact: "",
-  providerName: "",
+  hotelName: defaultHotels[0].name,
+  hotelContact: defaultHotels[0].contact,
+  hotelRoomsBooked: defaultHotels[0].roomsBooked,
+  hotelRoomType: defaultHotels[0].roomType,
+  carRentalCompanyName: defaultCarRentals[0].companyName,
+  carRentalContact: defaultCarRentals[0].contact,
+  providerName: defaultSuppliers[0].providerName,
   paymentTerms: "INSTALLMENTS",
   golfCartsCount: 0,
   transportationTrucksCount: 0,
@@ -235,7 +320,10 @@ const emptyActivityIntake = {
   manPowerSubtype: "EVENT_STAFF",
   heavyEquipmentCount: 0,
   heavyTrucksCount: 0,
-  busesCount: 0
+  busesCount: 0,
+  hotels: defaultHotels,
+  carRentals: defaultCarRentals,
+  suppliers: defaultSuppliers
 } satisfies PortalProps["data"]["activityIntakes"][number];
 
 const emptyAiPlan = {
@@ -319,9 +407,237 @@ export function ActivityIntakePage({
   const priceRanges = calculateCategoryPriceRanges(data.vendorQuotes);
   const quotes = data.vendorQuotes.length > 0 ? data.vendorQuotes : DEMO_VENDOR_QUOTES;
 
+  const getCategoryNameAr = (category: string): string => {
+    const found = OFFICIAL_SUPPLIER_CATEGORIES.find((c: any) => c.key === category);
+    if (found) return found.nameAr;
+    switch (category) {
+      case "HOTEL":
+        return "الفنادق والضيافة";
+      case "CAR_RENTAL":
+      case "CAR":
+        return "تأجير السيارات والحافلات";
+      case "MAN_POWER":
+        return "القوى البشرية والتشغيل";
+      case "AIRLINE":
+        return "طيران الوفود";
+      case "VEHICLE_BROKERAGE":
+        return "وساطة المركبات الفاخرة";
+      case "GOLF_CARTS":
+        return "عربات الجولف الكهربائية";
+      case "HEAVY_EQUIPMENT":
+        return "الرافعات والمعدات الثقيلة";
+      case "HEAVY_TRUCKS":
+        return "شاحنات النقل الثقيل";
+      case "CATERING":
+        return "التموين والإعاشة";
+      default:
+        return category;
+    }
+  };
+
   useEffect(() => {
-    setDraft(intake ?? emptyActivityIntake);
+    if (intake) {
+      setDraft({
+        ...emptyActivityIntake,
+        ...intake,
+        hotels:
+          intake.hotels && intake.hotels.length > 0
+            ? intake.hotels
+            : intake.hotelName
+            ? [
+                {
+                  id: "hotel-1",
+                  name: intake.hotelName,
+                  contact: intake.hotelContact ?? "",
+                  roomsBooked: intake.hotelRoomsBooked ?? 70,
+                  roomType: intake.hotelRoomType ?? "Royal & Executive Suites",
+                  notes: ""
+                }
+              ]
+            : defaultHotels,
+        carRentals:
+          intake.carRentals && intake.carRentals.length > 0
+            ? intake.carRentals
+            : intake.carRentalCompanyName
+            ? [
+                {
+                  id: "rental-1",
+                  companyName: intake.carRentalCompanyName,
+                  contact: intake.carRentalContact ?? "",
+                  fleetCount: 20,
+                  vehicleTypes: "حافلات وسيارات فاخرة",
+                  notes: ""
+                }
+              ]
+            : defaultCarRentals,
+        suppliers:
+          intake.suppliers && intake.suppliers.length > 0
+            ? intake.suppliers
+            : intake.providerName
+            ? [
+                {
+                  id: "sup-1",
+                  providerName: intake.providerName,
+                  category: "HOTEL",
+                  contact: "",
+                  scopeOfWork: "الخدمات والتوريدات المعتمدة",
+                  paymentTerms: intake.paymentTerms ?? "INSTALLMENTS",
+                  notes: ""
+                }
+              ]
+            : defaultSuppliers
+      });
+    } else {
+      setDraft(emptyActivityIntake);
+    }
   }, [intake]);
+
+  // --- Multi-Hotel Handlers ---
+  const hotelsList = draft.hotels && draft.hotels.length > 0 ? draft.hotels : defaultHotels;
+  const totalRoomsBookedAllHotels = hotelsList.reduce((acc, h) => acc + (Number(h.roomsBooked) || 0), 0);
+
+  const handleAddHotel = () => {
+    const newHotel: HotelDetail = {
+      id: `hotel-${Date.now()}`,
+      name: "",
+      contact: "",
+      roomsBooked: 25,
+      roomType: "Executive Deluxe Suite",
+      notes: ""
+    };
+    const updated = [...hotelsList, newHotel];
+    setDraft((cur) => ({
+      ...cur,
+      hotels: updated,
+      hotelName: updated[0]?.name || "",
+      hotelContact: updated[0]?.contact || "",
+      hotelRoomsBooked: updated[0]?.roomsBooked || 0,
+      hotelRoomType: updated[0]?.roomType || ""
+    }));
+    toast.info(
+      ui.isArabic ? "تمت إضافة فندق جديد للقائمة" : "New Hotel Added",
+      ui.isArabic ? "يرجى إدخال اسم الفندق وعدد الغرف" : "Enter hotel name and rooms booked"
+    );
+  };
+
+  const handleRemoveHotel = (id: string) => {
+    if (hotelsList.length <= 1) return;
+    const updated = hotelsList.filter((h) => h.id !== id);
+    setDraft((cur) => ({
+      ...cur,
+      hotels: updated,
+      hotelName: updated[0]?.name || "",
+      hotelContact: updated[0]?.contact || "",
+      hotelRoomsBooked: updated[0]?.roomsBooked || 0,
+      hotelRoomType: updated[0]?.roomType || ""
+    }));
+  };
+
+  const handleUpdateHotel = (id: string, field: keyof HotelDetail, value: any) => {
+    const updated = hotelsList.map((h) => (h.id === id ? { ...h, [field]: value } : h));
+    setDraft((cur) => ({
+      ...cur,
+      hotels: updated,
+      hotelName: updated[0]?.name || "",
+      hotelContact: updated[0]?.contact || "",
+      hotelRoomsBooked: updated[0]?.roomsBooked || 0,
+      hotelRoomType: updated[0]?.roomType || ""
+    }));
+  };
+
+  // --- Multi-Car Rental Handlers ---
+  const carRentalsList = draft.carRentals && draft.carRentals.length > 0 ? draft.carRentals : defaultCarRentals;
+  const totalFleetUnitsAllRentals = carRentalsList.reduce((acc, r) => acc + (Number(r.fleetCount) || 0), 0);
+
+  const handleAddCarRental = () => {
+    const newRental: CarRentalDetail = {
+      id: `rental-${Date.now()}`,
+      companyName: "",
+      contact: "",
+      fleetCount: 15,
+      vehicleTypes: ui.isArabic ? "حافلات VIP وسيارات فارهة" : "VIP Coaches & Sedans",
+      notes: ""
+    };
+    const updated = [...carRentalsList, newRental];
+    setDraft((cur) => ({
+      ...cur,
+      carRentals: updated,
+      carRentalCompanyName: updated[0]?.companyName || "",
+      carRentalContact: updated[0]?.contact || ""
+    }));
+    toast.info(
+      ui.isArabic ? "تمت إضافة شركة تأجير جديدة" : "New Car Rental Company Added",
+      ui.isArabic ? "يرجى إدخال اسم الشركة وعدد الأسطول" : "Enter rental company name & fleet"
+    );
+  };
+
+  const handleRemoveCarRental = (id: string) => {
+    if (carRentalsList.length <= 1) return;
+    const updated = carRentalsList.filter((r) => r.id !== id);
+    setDraft((cur) => ({
+      ...cur,
+      carRentals: updated,
+      carRentalCompanyName: updated[0]?.companyName || "",
+      carRentalContact: updated[0]?.contact || ""
+    }));
+  };
+
+  const handleUpdateCarRental = (id: string, field: keyof CarRentalDetail, value: any) => {
+    const updated = carRentalsList.map((r) => (r.id === id ? { ...r, [field]: value } : r));
+    setDraft((cur) => ({
+      ...cur,
+      carRentals: updated,
+      carRentalCompanyName: updated[0]?.companyName || "",
+      carRentalContact: updated[0]?.contact || ""
+    }));
+  };
+
+  // --- Multi-Supplier Handlers ---
+  const suppliersList = draft.suppliers && draft.suppliers.length > 0 ? draft.suppliers : defaultSuppliers;
+
+  const handleAddSupplier = () => {
+    const newSup: SupplierDetail = {
+      id: `sup-${Date.now()}`,
+      providerName: "",
+      category: "HOTEL",
+      contact: "",
+      scopeOfWork: "",
+      paymentTerms: "INSTALLMENTS",
+      notes: ""
+    };
+    const updated = [...suppliersList, newSup];
+    setDraft((cur) => ({
+      ...cur,
+      suppliers: updated,
+      providerName: updated[0]?.providerName || "",
+      paymentTerms: updated[0]?.paymentTerms || "INSTALLMENTS"
+    }));
+    toast.info(
+      ui.isArabic ? "تمت إضافة مزود / مورد معتمد جديد" : "New Certified Supplier Added",
+      ui.isArabic ? "يرجى تحديد الفئة ونطاق العمل" : "Specify category & scope of work"
+    );
+  };
+
+  const handleRemoveSupplier = (id: string) => {
+    if (suppliersList.length <= 1) return;
+    const updated = suppliersList.filter((s) => s.id !== id);
+    setDraft((cur) => ({
+      ...cur,
+      suppliers: updated,
+      providerName: updated[0]?.providerName || "",
+      paymentTerms: updated[0]?.paymentTerms || "INSTALLMENTS"
+    }));
+  };
+
+  const handleUpdateSupplier = (id: string, field: keyof SupplierDetail, value: any) => {
+    const updated = suppliersList.map((s) => (s.id === id ? { ...s, [field]: value } : s));
+    setDraft((cur) => ({
+      ...cur,
+      suppliers: updated,
+      providerName: updated[0]?.providerName || "",
+      paymentTerms: updated[0]?.paymentTerms || "INSTALLMENTS"
+    }));
+  };
 
   if (!intake) {
     return (
@@ -541,118 +857,359 @@ export function ActivityIntakePage({
             </div>
           </Section>
 
-          {/* Task 2: Hotel Details Section */}
-          <Section id="section-intake-hotels" title={ui.isArabic ? "2. تفاصيل الفندق والإقامة (Hotel Details)" : "2. Hotel & Accommodation Details"}>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field
-                label={ui.isArabic ? "اسم الفندق" : "Hotel Name"}
-                value={draft.hotelName ?? ""}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, hotelName: value }))
-                }
-              />
-              <Field
-                label={ui.isArabic ? "مسؤول التواصل بالفندق / الهاتف" : "Hotel Contact / Phone"}
-                value={draft.hotelContact ?? ""}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, hotelContact: value }))
-                }
-              />
-              <NumberField
-                label={ui.isArabic ? "عدد الغرف المحجوزة" : "Rooms Booked"}
-                value={draft.hotelRoomsBooked ?? 0}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, hotelRoomsBooked: value }))
-                }
-              />
-              <Field
-                label={ui.isArabic ? "نوع الغرف / الأجنحة" : "Room / Suite Type"}
-                value={draft.hotelRoomType ?? "Executive Suite"}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, hotelRoomType: value }))
-                }
-              />
+          {/* Section 2: Multi-Hotel Details Section */}
+          <Section
+            id="section-intake-hotels"
+            title={
+              <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+                <div className="flex items-center gap-2">
+                  <Hotel size={18} className="text-midyaf-gold" />
+                  <span>{ui.isArabic ? "2. تفاصيل الفنادق ومقرات الإقامة (Hotels & Accommodation)" : "2. Hotels & Accommodation Details"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                    {ui.isArabic ? `إجمالي الفنادق: ${hotelsList.length}` : `Hotels: ${hotelsList.length}`}
+                  </span>
+                  <span className="rounded-md bg-midyaf-gold/15 px-2.5 py-1 font-bold text-midyaf-gold">
+                    {ui.isArabic ? `إجمالي الغرف: ${totalRoomsBookedAllHotels} غرفة` : `Total Rooms: ${totalRoomsBookedAllHotels}`}
+                  </span>
+                </div>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {hotelsList.map((hotel, index) => (
+                <div
+                  key={hotel.id}
+                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-6 place-items-center rounded-md bg-midyaf-gold/20 text-xs font-black text-midyaf-gold">
+                        {index + 1}
+                      </span>
+                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                        {hotel.name || (ui.isArabic ? `فندق #${index + 1}` : `Hotel #${index + 1}`)}
+                      </span>
+                      {hotel.roomsBooked > 0 && (
+                        <Badge tone="slate">
+                          {hotel.roomsBooked} {ui.isArabic ? "غرفة" : "rooms"}
+                        </Badge>
+                      )}
+                    </div>
+                    {hotelsList.length > 1 && canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveHotel(hotel.id)}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                        title={ui.isArabic ? "حذف هذا الفندق" : "Remove this hotel"}
+                      >
+                        <Trash2 size={13} />
+                        <span>{ui.isArabic ? "حذف" : "Remove"}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field
+                      label={ui.isArabic ? "اسم الفندق" : "Hotel Name"}
+                      value={hotel.name}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateHotel(hotel.id, "name", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "مسؤول التواصل بالفندق / الهاتف" : "Hotel Contact / Phone"}
+                      value={hotel.contact}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateHotel(hotel.id, "contact", val)}
+                    />
+                    <NumberField
+                      label={ui.isArabic ? "عدد الغرف المحجوزة" : "Rooms Booked"}
+                      value={hotel.roomsBooked}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateHotel(hotel.id, "roomsBooked", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "نوع الغرف / الأجنحة" : "Room / Suite Type"}
+                      value={hotel.roomType}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateHotel(hotel.id, "roomType", val)}
+                    />
+                    <div className="md:col-span-2">
+                      <Field
+                        label={ui.isArabic ? "ملاحظات الفندق والتوزيع اللوجستي" : "Hotel Notes & Allocation"}
+                        value={hotel.notes ?? ""}
+                        disabled={!canEdit}
+                        onChange={(val) => handleUpdateHotel(hotel.id, "notes", val)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={handleAddHotel}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-midyaf-gold/40 bg-midyaf-gold/5 py-2.5 text-xs font-bold text-midyaf-purple transition-all hover:bg-midyaf-gold/15 dark:text-midyaf-gold dark:hover:bg-midyaf-gold/20 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>{ui.isArabic ? "+ إضافة فندق آخر" : "+ Add Another Hotel"}</span>
+                </button>
+              )}
             </div>
           </Section>
 
-          {/* Task 2: Car Rental & Dedicated Provider Section */}
-          <Section id="section-intake-rentals" title={ui.isArabic ? "3. شركة تأجير السيارات والمزود وشروط الدفع" : "3. Car Rental, Provider & Payment Terms"}>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field
-                label={ui.isArabic ? "اسم شركة تأجير السيارات" : "Car Rental Company Name"}
-                value={draft.carRentalCompanyName ?? ""}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, carRentalCompanyName: value }))
-                }
-              />
-              <Field
-                label={ui.isArabic ? "معلومات تواصل شركة التأجير" : "Car Rental Contact"}
-                value={draft.carRentalContact ?? ""}
-                disabled={!canEdit}
-                onChange={(value) =>
-                  setDraft((current) => ({ ...current, carRentalContact: value }))
-                }
-              />
-              <div className="md:col-span-2">
-                <Field
-                  label={ui.isArabic ? "اسم المزود المعتمد (Provider)" : "Dedicated Provider Name"}
-                  value={draft.providerName ?? ""}
-                  disabled={!canEdit}
-                  onChange={(value) =>
-                    setDraft((current) => ({ ...current, providerName: value }))
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Task 2 Constraint: Payment Terms field MUST ONLY become visible after the plan has been approved and processed — hidden before that stage */}
-            <div className="mt-4">
-              {isPlanApproved ? (
-                <div className="rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 p-4 animate-fadeInUp shadow-xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={15} className="text-midyaf-gold" />
-                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
-                        {ui.isArabic ? "شروط الدفع (مفعلة بعد معالجة واعتماد الخطة):" : "Payment Terms (Unlocked post plan approval):"}
-                      </span>
-                    </div>
-                    <Badge tone="gold">{ui.isArabic ? "مفعل ومعتمد" : "Unlocked"}</Badge>
-                  </div>
-                  <SelectField
-                    label={ui.isArabic ? "طريقة وشروط السداد" : "Payment Terms"}
-                    value={draft.paymentTerms ?? "INSTALLMENTS"}
-                    options={["INSTALLMENTS", "DOWNPAYMENT"]}
-                    translate={(val) =>
-                      val === "INSTALLMENTS"
-                        ? (ui.isArabic ? "أقساط مجدولة (Installments)" : "Installments")
-                        : (ui.isArabic ? "دفعة أولى مقدمة (Downpayment)" : "Downpayment")
-                    }
-                    disabled={!canEdit}
-                    onChange={(value) =>
-                      setDraft((current) => ({ ...current, paymentTerms: value as any }))
-                    }
-                  />
+          {/* Section 3: Multi-Car Rental & Bus Companies Section */}
+          <Section
+            id="section-intake-rentals"
+            title={
+              <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+                <div className="flex items-center gap-2">
+                  <Car size={18} className="text-midyaf-gold" />
+                  <span>{ui.isArabic ? "3. شركات تأجير السيارات والحافلات (Car & Bus Rental Companies)" : "3. Car & Bus Rental Companies"}</span>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3.5 text-xs text-slate-500 flex items-center gap-2 dark:border-slate-800 dark:bg-slate-800/30">
-                  <Lock size={14} className="text-slate-400 shrink-0" />
-                  <span>
-                    {ui.isArabic
-                      ? "حقل شروط الدفع (أقساط أو دفعة أولى): مقفل ومخفي حتى يتم اعتماد الخطة اللوجستية ومعالجتها."
-                      : "Payment terms (Installments / Downpayment): Hidden & locked until the logistics plan is approved and processed."}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                    {ui.isArabic ? `إجمالي الشركات: ${carRentalsList.length}` : `Companies: ${carRentalsList.length}`}
+                  </span>
+                  <span className="rounded-md bg-sky-500/15 px-2.5 py-1 font-bold text-sky-600 dark:text-sky-400">
+                    {ui.isArabic ? `إجمالي المركبات: ${totalFleetUnitsAllRentals} مركبة / حافلة` : `Total Fleet: ${totalFleetUnitsAllRentals}`}
                   </span>
                 </div>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {carRentalsList.map((rental, index) => (
+                <div
+                  key={rental.id}
+                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-6 place-items-center rounded-md bg-sky-500/20 text-xs font-black text-sky-600 dark:text-sky-400">
+                        {index + 1}
+                      </span>
+                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                        {rental.companyName || (ui.isArabic ? `شركة تأجير #${index + 1}` : `Rental Company #${index + 1}`)}
+                      </span>
+                      {rental.fleetCount ? (
+                        <Badge tone="blue">
+                          {rental.fleetCount} {ui.isArabic ? "مركبة / حافلة" : "vehicles"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {carRentalsList.length > 1 && canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCarRental(rental.id)}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                        title={ui.isArabic ? "حذف هذه الشركة" : "Remove this rental company"}
+                      >
+                        <Trash2 size={13} />
+                        <span>{ui.isArabic ? "حذف" : "Remove"}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field
+                      label={ui.isArabic ? "اسم شركة تأجير السيارات / الحافلات" : "Rental Company Name"}
+                      value={rental.companyName}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateCarRental(rental.id, "companyName", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "معلومات تواصل شركة التأجير" : "Car Rental Contact"}
+                      value={rental.contact}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateCarRental(rental.id, "contact", val)}
+                    />
+                    <NumberField
+                      label={ui.isArabic ? "عدد المركبات والحافلات" : "Fleet Count"}
+                      value={rental.fleetCount ?? 0}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateCarRental(rental.id, "fleetCount", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "نوع وفئات المركبات (مايباخ، حافلات، SUV)" : "Vehicle Types & Profile"}
+                      value={rental.vehicleTypes ?? ""}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateCarRental(rental.id, "vehicleTypes", val)}
+                    />
+                    <div className="md:col-span-2">
+                      <Field
+                        label={ui.isArabic ? "ملاحظات الأسطول وجدول التواجد" : "Fleet Notes & Logistics"}
+                        value={rental.notes ?? ""}
+                        disabled={!canEdit}
+                        onChange={(val) => handleUpdateCarRental(rental.id, "notes", val)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={handleAddCarRental}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-sky-500/40 bg-sky-500/5 py-2.5 text-xs font-bold text-sky-700 transition-all hover:bg-sky-500/15 dark:text-sky-400 dark:hover:bg-sky-500/20 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>{ui.isArabic ? "+ إضافة شركة تأجير أخرى" : "+ Add Another Car Rental Company"}</span>
+                </button>
+              )}
+            </div>
+          </Section>
+
+          {/* Section 4: Multi-Supplier / Provider Section & Conditional Payment Terms */}
+          <Section
+            id="section-intake-suppliers"
+            title={
+              <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+                <div className="flex items-center gap-2">
+                  <BriefcaseBusiness size={18} className="text-midyaf-gold" />
+                  <span>{ui.isArabic ? "4. المزودون والموردون المعتمدون وشروط الدفع" : "4. Dedicated Suppliers, Providers & Payment Terms"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                    {ui.isArabic ? `المزودون المعتمدون: ${suppliersList.length}` : `Providers: ${suppliersList.length}`}
+                  </span>
+                  {isPlanApproved ? (
+                    <Badge tone="gold">{ui.isArabic ? "شروط الدفع مفعلة" : "Payment Terms Unlocked"}</Badge>
+                  ) : (
+                    <Badge tone="slate">{ui.isArabic ? "شروط الدفع مقفلة حتى اعتماد الخطة" : "Terms Locked"}</Badge>
+                  )}
+                </div>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {suppliersList.map((sup, index) => (
+                <div
+                  key={sup.id}
+                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                        {index + 1}
+                      </span>
+                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                        {sup.providerName || (ui.isArabic ? `مزود #${index + 1}` : `Provider #${index + 1}`)}
+                      </span>
+                      <Badge tone="purple">
+                        {ui.isArabic ? getCategoryNameAr(sup.category) : sup.category}
+                      </Badge>
+                    </div>
+                    {suppliersList.length > 1 && canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSupplier(sup.id)}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                        title={ui.isArabic ? "حذف هذا المزود" : "Remove this supplier"}
+                      >
+                        <Trash2 size={13} />
+                        <span>{ui.isArabic ? "حذف" : "Remove"}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field
+                      label={ui.isArabic ? "اسم المزود / المورد المعتمد (Provider)" : "Dedicated Provider Name"}
+                      value={sup.providerName}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateSupplier(sup.id, "providerName", val)}
+                    />
+                    <SelectField
+                      label={ui.isArabic ? "تصنيف المورد / الخدمة" : "Supplier Category"}
+                      value={sup.category}
+                      options={[
+                        "HOTEL",
+                        "CAR_RENTAL",
+                        "MAN_POWER",
+                        "AIRLINE",
+                        "VEHICLE_BROKERAGE",
+                        "GOLF_CARTS",
+                        "HEAVY_EQUIPMENT",
+                        "HEAVY_TRUCKS",
+                        "CATERING"
+                      ]}
+                      translate={(cat) => (ui.isArabic ? getCategoryNameAr(cat) : cat)}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateSupplier(sup.id, "category", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "معلومات التواصل / الهاتف" : "Contact Person / Phone"}
+                      value={sup.contact}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateSupplier(sup.id, "contact", val)}
+                    />
+                    <Field
+                      label={ui.isArabic ? "نطاق العمل والتوريد" : "Scope of Work / Supply"}
+                      value={sup.scopeOfWork ?? ""}
+                      disabled={!canEdit}
+                      onChange={(val) => handleUpdateSupplier(sup.id, "scopeOfWork", val)}
+                    />
+
+                    {/* Task 2 Constraint: Payment Terms field MUST ONLY become visible after the plan has been approved and processed — hidden before that stage */}
+                    <div className="md:col-span-2">
+                      {isPlanApproved ? (
+                        <div className="rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 p-3 animate-fadeInUp shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={14} className="text-midyaf-gold" />
+                              <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                                {ui.isArabic ? "شروط الدفع الخاصة بهذا المورد:" : "Payment Terms for this Supplier:"}
+                              </span>
+                            </div>
+                            <Badge tone="gold">{ui.isArabic ? "مفعل ومعتمد" : "Unlocked"}</Badge>
+                          </div>
+                          <SelectField
+                            label={ui.isArabic ? "طريقة وشروط السداد" : "Payment Terms"}
+                            value={sup.paymentTerms ?? "INSTALLMENTS"}
+                            options={["INSTALLMENTS", "DOWNPAYMENT"]}
+                            translate={(val) =>
+                              val === "INSTALLMENTS"
+                                ? (ui.isArabic ? "أقساط مجدولة (Installments)" : "Installments")
+                                : (ui.isArabic ? "دفعة أولى مقدمة (Downpayment)" : "Downpayment")
+                            }
+                            disabled={!canEdit}
+                            onChange={(val) => handleUpdateSupplier(sup.id, "paymentTerms", val as any)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3 text-xs text-slate-500 flex items-center gap-2 dark:border-slate-800 dark:bg-slate-800/30">
+                          <Lock size={14} className="text-slate-400 shrink-0" />
+                          <span>
+                            {ui.isArabic
+                              ? "شروط دفع هذا المزود (أقساط أو دفعة أولى): مقفلة ومخفية حتى يتم اعتماد الخطة اللوجستية ومعالجتها."
+                              : "Payment terms for this provider: Hidden & locked until the logistics plan is approved and processed."}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={handleAddSupplier}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/20 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>{ui.isArabic ? "+ إضافة مورد / مزود معتمد آخر" : "+ Add Another Supplier / Provider"}</span>
+                </button>
               )}
             </div>
           </Section>
 
           {/* Task 3: New Supplier / Resource Categories */}
-          <Section id="section-intake-resources" title={ui.isArabic ? "4. الفئات اللوجستية والموارد الإضافية" : "4. New Supplier & Resource Categories"}>
+          <Section id="section-intake-resources" title={ui.isArabic ? "5. الفئات اللوجستية والموارد الإضافية" : "5. New Supplier & Resource Categories"}>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               <NumberField
                 label={ui.isArabic ? "عربات الجولف (Golf carts)" : "Golf carts"}

@@ -7,7 +7,7 @@ export function Section({
   id,
   className
 }: {
-  title: string;
+  title: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   id?: string;

@@ -90,7 +90,7 @@ async function main() {
     await Promise.all([
       prisma.user.create({
         data: {
-          name: "Rashed Mohamed",
+          name: "Sovereign Operations Director",
           email: "organizer@midyaf.local",
           phone: "+966500000001",
           role: "LOGISTICS_MANAGER",
@@ -100,7 +100,7 @@ async function main() {
       }),
       prisma.user.create({
         data: {
-          name: "Mohamed Izeldin",
+          name: "Sovereign System Administrator",
           email: "admin@midyaf.local",
           phone: "+966500000002",
           role: "SUPER_ADMIN",

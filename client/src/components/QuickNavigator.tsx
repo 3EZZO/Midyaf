@@ -28,6 +28,7 @@ import {
   Sun,
   Languages,
   Shield,
+  BriefcaseBusiness,
   X
 } from "lucide-react";
 import type { PortalKey } from "@shared/domain";
@@ -180,14 +181,25 @@ export function QuickNavigator({
     },
     {
       id: "sec-intake-rentals",
-      titleEn: "Car Rental, Provider & Payment Terms",
-      titleAr: "تأجير السيارات، المزود المعتمد، وشروط الدفع",
+      titleEn: "Car & Bus Rental Companies",
+      titleAr: "شركات تأجير السيارات والحافلات",
       category: "section",
       portalTarget: "intake",
       sectionId: "section-intake-rentals",
       icon: Car,
-      keywordsEn: ["rental", "car rental", "provider", "payment", "installments", "downpayment"],
-      keywordsAr: ["تأجير", "سيارات", "مزود", "دفع", "أقساط", "دفعة مقدمة"]
+      keywordsEn: ["rental", "car rental", "buses", "coaches", "maybach", "fleet"],
+      keywordsAr: ["تأجير", "سيارات", "حافلات", "أسطول", "مايباخ"]
+    },
+    {
+      id: "sec-intake-suppliers",
+      titleEn: "Certified Suppliers & Payment Terms",
+      titleAr: "المزودون والموردون المعتمدون وشروط الدفع",
+      category: "section",
+      portalTarget: "intake",
+      sectionId: "section-intake-suppliers",
+      icon: BriefcaseBusiness,
+      keywordsEn: ["supplier", "provider", "vendors", "payment terms", "downpayment", "installments"],
+      keywordsAr: ["مزود", "مورد", "موردين", "شروط الدفع", "أقساط", "دفعة مقدمة"]
     },
     {
       id: "sec-intake-resources",

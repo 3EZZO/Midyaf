@@ -1133,12 +1133,33 @@ function ShellFrame({
   const { t } = useTranslation();
   const l = (value: string | number | null | undefined) =>
     localizeText(value, isArabic);
-  const initials = session.user.name
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const rawName = (session.user.name || "").toLowerCase();
+  const isAnonymousAdmin =
+    rawName.includes("izeldin") ||
+    rawName.includes("rashed") ||
+    session.user.role === "SUPER_ADMIN" ||
+    session.user.email === "admin@midyaf.local";
+  const isAnonymousLogistics =
+    session.user.role === "LOGISTICS_MANAGER" ||
+    session.user.email === "organizer@midyaf.local";
+
+  const sanitizedUserName = isAnonymousAdmin
+    ? (isArabic ? "المشرف العام للمنظومة" : "Sovereign System Administrator")
+    : isAnonymousLogistics
+    ? (isArabic ? "مدير العمليات اللوجستية" : "Logistics Operations Director")
+    : session.user.name;
+
+  const initials = isAnonymousAdmin
+    ? "SA"
+    : isAnonymousLogistics
+    ? "LD"
+    : session.user.name
+        .split(" ")
+        .map((w: string) => w[0])
+        .filter(Boolean)
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "OP";
 
   const ActivePortalIcon = portalIcons[portal];
   const currentMeta = portalMeta[portal];
@@ -1247,7 +1268,7 @@ function ShellFrame({
                 {initials}
               </div>
               <span className="text-sm font-bold text-midyaf-purple dark:text-white">
-                {l(session.user.name)}
+                {sanitizedUserName}
               </span>
             </div>
             <button

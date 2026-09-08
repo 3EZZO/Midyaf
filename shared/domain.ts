@@ -58,6 +58,34 @@ export type SupplierCategory =
 export type ManPowerSubtype = "CARGO_LOADING" | "EVENT_STAFF";
 export type PaymentTerms = "INSTALLMENTS" | "DOWNPAYMENT";
 
+export type HotelDetail = {
+  id: string;
+  name: string;
+  contact: string;
+  roomsBooked: number;
+  roomType: string;
+  notes?: string;
+};
+
+export type CarRentalDetail = {
+  id: string;
+  companyName: string;
+  contact: string;
+  fleetCount?: number;
+  vehicleTypes?: string;
+  notes?: string;
+};
+
+export type SupplierDetail = {
+  id: string;
+  providerName: string;
+  category: SupplierCategory | string;
+  contact: string;
+  scopeOfWork?: string;
+  paymentTerms?: PaymentTerms;
+  notes?: string;
+};
+
 export type CategoryPriceRange = {
   category: SupplierCategory;
   categoryNameEn: string;
@@ -345,6 +373,11 @@ export type ActivityIntake = {
   carRentalContact?: string;
   providerName?: string;
   paymentTerms?: PaymentTerms;
+
+  // Multiple Entities Support
+  hotels?: HotelDetail[];
+  carRentals?: CarRentalDetail[];
+  suppliers?: SupplierDetail[];
 
   // Task 3: New Supplier / Resource Categories
   golfCartsCount?: number;

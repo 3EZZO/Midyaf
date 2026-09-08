@@ -1,4 +1,4 @@
-﻿import type { ActivityIntake, AiLogisticsPlan } from "@shared/domain";
+import type { ActivityIntake, AiLogisticsPlan } from "@shared/domain";
 import { money } from "./format";
 
 export function exportPlanAsPdf(
@@ -15,6 +15,74 @@ export function exportPlanAsPdf(
     month: "long",
     day: "numeric"
   });
+
+  // Multi-entity resolutions
+  const hotelsList = intake.hotels && intake.hotels.length > 0 ? intake.hotels : [
+    {
+      id: "h-1",
+      name: intake.hotelName || (isArabic ? "فندق الريتز-كارلتون" : "The Ritz-Carlton"),
+      contact: intake.hotelContact || "+966 11 802 8888",
+      roomsBooked: intake.hotelRoomsBooked || 70,
+      roomType: intake.hotelRoomType || "Royal & Executive Suites",
+      notes: isArabic ? "مقر وفود كبار الشخصيات والوزراء" : "VIP Delegations HQ"
+    },
+    {
+      id: "h-2",
+      name: isArabic ? "فندق فورسيزونز برج المملكة" : "Four Seasons Hotel Kingdom Centre",
+      contact: "+966 11 211 5000",
+      roomsBooked: 50,
+      roomType: "Deluxe Premium Rooms",
+      notes: isArabic ? "مقر المتحدثين والمستثمرين الدوليين" : "Speakers & Global Investors"
+    }
+  ];
+  const totalRoomsAll = hotelsList.reduce((sum, h) => sum + (Number(h.roomsBooked) || 0), 0);
+
+  const rentalsList = intake.carRentals && intake.carRentals.length > 0 ? intake.carRentals : [
+    {
+      id: "r-1",
+      companyName: intake.carRentalCompanyName || (isArabic ? "شركة الأسطول الملكي لتأجير السيارات الفاخرة" : "Royal Fleet Rentals"),
+      contact: intake.carRentalContact || "+966 50 111 2233",
+      fleetCount: 40,
+      vehicleTypes: isArabic ? "مرسيدس مايباخ S680 وبي إم دبليو الفئة السابعة" : "Mercedes-Maybach & BMW 7-Series",
+      notes: isArabic ? "مواكب الشخصيات الرسمية" : "Official Motorcades"
+    },
+    {
+      id: "r-2",
+      companyName: isArabic ? "شركة لوجستيات الحافلات والنقل الماسي" : "Diamond Bus & Coach Logistics",
+      contact: "+966 55 444 5566",
+      fleetCount: 15,
+      vehicleTypes: isArabic ? "حافلات VIP فاخرة 50 راكب" : "Luxury 50-Seater Coaches",
+      notes: isArabic ? "نقل الوفود العامة بين الفنادق والمقر" : "General Delegate Shuttle"
+    }
+  ];
+  const totalFleetAll = rentalsList.reduce((sum, r) => sum + (Number(r.fleetCount) || 0), 0);
+
+  const suppliersList = intake.suppliers && intake.suppliers.length > 0 ? intake.suppliers : [
+    {
+      id: "s-1",
+      providerName: intake.providerName || (isArabic ? "مجموعة الضيافة والخدمات المساندة" : "Sovereign Mobility Group"),
+      category: "HOTEL",
+      contact: "+966 54 777 8899",
+      scopeOfWork: isArabic ? "خدمات الضيافة والإعاشة الفندقية والتسكين" : "Hospitality & Accommodation",
+      paymentTerms: intake.paymentTerms || "INSTALLMENTS"
+    },
+    {
+      id: "s-2",
+      providerName: isArabic ? "شركة تموين المؤتمرات والمعارض الملكية" : "Royal Catering Services",
+      category: "CATERING",
+      contact: "+966 56 333 4455",
+      scopeOfWork: isArabic ? "بوفيهات القاعات الكبرى والولائم الرسمية" : "Plenary Banquets & Catering",
+      paymentTerms: "DOWNPAYMENT"
+    },
+    {
+      id: "s-3",
+      providerName: isArabic ? "شركة الإمداد البشري والتنظيم الميداني" : "Event Protocol Workforce",
+      category: "MAN_POWER",
+      contact: "+966 50 888 9900",
+      scopeOfWork: isArabic ? "120 فرد تنظيم ومشرفو استقبال ومراسم" : "120 Protocol & Ushers",
+      paymentTerms: "INSTALLMENTS"
+    }
+  ];
 
   const html = `
     <!DOCTYPE html>
@@ -163,26 +231,93 @@ export function exportPlanAsPdf(
         </div>
       </div>
 
-      <div class="section-title">${isArabic ? "الفندق وتفاصيل المزود وشروط الدفع" : "Hotel, Provider & Payment Terms"}</div>
-      <div class="grid">
-        <div class="card">
-          <div class="card-label">${isArabic ? "الفندق المعتمد:" : "Hotel Name:"}</div>
-          <div class="card-value" style="font-size: 13px;">${intake.hotelName || (isArabic ? "فندق الريتز-كارلتون" : "The Ritz-Carlton")}</div>
-          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${intake.hotelRoomsBooked || 100} ${isArabic ? "غرفة / جناح" : "rooms"} (${intake.hotelRoomType || "Deluxe Suite"})</div>
-        </div>
-        <div class="card">
-          <div class="card-label">${isArabic ? "مزود الخدمة المعتمد:" : "Dedicated Provider:"}</div>
-          <div class="card-value" style="font-size: 13px;">${intake.providerName || (isArabic ? "مجموعة الضيافة والخدمات اللوجستية" : "Sovereign Mobility Group")}</div>
-          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${intake.carRentalCompanyName || (isArabic ? "شركة الأسطول الملكي" : "Royal Fleet Services")}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">${isArabic ? "شروط الدفع:" : "Payment Terms:"}</div>
-          <div class="card-value" style="font-size: 13px; color: #047857;">
-            ${intake.paymentTerms === "DOWNPAYMENT" ? (isArabic ? "دفعة أولى مقدمة" : "Downpayment") : (isArabic ? "أقساط مجدولة" : "Installments")}
-          </div>
-          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${isArabic ? "معتمدة بعد معالجة الخطة" : "Approved post-planning"}</div>
-        </div>
-      </div>
+      <div class="section-title">${isArabic ? "الفنادق المعتمدة ومقرات الإقامة" : "Approved Hotels & Accommodation"}</div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>${isArabic ? "اسم الفندق" : "Hotel Name"}</th>
+            <th>${isArabic ? "مسؤول التواصل / الهاتف" : "Contact / Phone"}</th>
+            <th>${isArabic ? "نوع الغرف / الأجنحة" : "Room Type"}</th>
+            <th>${isArabic ? "الغرف المحجوزة" : "Rooms"}</th>
+            <th>${isArabic ? "ملاحظات التوزيع" : "Allocation Notes"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${hotelsList.map((h, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td><strong>${h.name}</strong></td>
+              <td>${h.contact || "-"}</td>
+              <td>${h.roomType || "-"}</td>
+              <td><strong>${h.roomsBooked}</strong> ${isArabic ? "غرفة" : "rooms"}</td>
+              <td>${h.notes || "-"}</td>
+            </tr>
+          `).join("")}
+          <tr style="background: #f8fafc; font-weight: bold;">
+            <td colspan="4" style="text-align: ${isArabic ? "left" : "right"};">${isArabic ? "إجمالي الغرف المحجوزة عبر جميع الفنادق:" : "Total Rooms Across All Hotels:"}</td>
+            <td colspan="2" style="color: #2b1842; font-size: 13px;">${totalRoomsAll} ${isArabic ? "غرفة / جناح" : "rooms"}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-title" style="margin-top: 22px;">${isArabic ? "شركات تأجير السيارات والحافلات" : "Approved Car & Bus Rental Companies"}</div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>${isArabic ? "اسم شركة التأجير" : "Rental Company"}</th>
+            <th>${isArabic ? "معلومات التواصل" : "Contact"}</th>
+            <th>${isArabic ? "الأسطول" : "Fleet"}</th>
+            <th>${isArabic ? "فئات وأنواع المركبات" : "Vehicle Profiles"}</th>
+            <th>${isArabic ? "ملاحظات الأسطول" : "Notes"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rentalsList.map((r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td><strong>${r.companyName}</strong></td>
+              <td>${r.contact || "-"}</td>
+              <td><strong>${r.fleetCount || "-"}</strong> ${isArabic ? "مركبة" : "units"}</td>
+              <td>${r.vehicleTypes || "-"}</td>
+              <td>${r.notes || "-"}</td>
+            </tr>
+          `).join("")}
+          <tr style="background: #f8fafc; font-weight: bold;">
+            <td colspan="3" style="text-align: ${isArabic ? "left" : "right"};">${isArabic ? "إجمالي أسطول المركبات والحافلات:" : "Total Fleet Units:"}</td>
+            <td colspan="3" style="color: #2b1842; font-size: 13px;">${totalFleetAll} ${isArabic ? "مركبة / حافلة" : "units"}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-title" style="margin-top: 22px;">${isArabic ? "المزودون والموردون المعتمدون وشروط السداد" : "Dedicated Suppliers, Providers & Payment Terms"}</div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>${isArabic ? "اسم المزود / المورد" : "Provider Name"}</th>
+            <th>${isArabic ? "التصنيف" : "Category"}</th>
+            <th>${isArabic ? "معلومات التواصل" : "Contact"}</th>
+            <th>${isArabic ? "نطاق العمل والتوريد" : "Scope of Supply"}</th>
+            <th>${isArabic ? "شروط الدفع" : "Payment Terms"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${suppliersList.map((s, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td><strong>${s.providerName}</strong></td>
+              <td><span class="badge" style="padding: 2px 6px; font-size: 10px;">${s.category}</span></td>
+              <td>${s.contact || "-"}</td>
+              <td>${s.scopeOfWork || "-"}</td>
+              <td style="color: #047857; font-weight: bold;">
+                ${s.paymentTerms === "DOWNPAYMENT" ? (isArabic ? "دفعة أولى مقدمة" : "Downpayment") : (isArabic ? "أقساط مجدولة" : "Installments")}
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
 
       <div class="section-title">${isArabic ? "تخصيص الموارد عبر الفئات الـ 8 الرسمية" : "Resource Allocation across Official Categories"}</div>
       <table class="table">
