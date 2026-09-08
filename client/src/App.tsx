@@ -15,7 +15,10 @@ import {
   Sun,
   Users,
   KeyRound,
-  Star
+  Star,
+  Search,
+  Download,
+  Share2
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -65,6 +68,8 @@ import {
 } from "./lib/localize";
 import { useLiveDemoSimulation } from "./lib/useLiveDemoSimulation";
 import { SovereignCommandBridge } from "./components/SovereignCommandBridge";
+import { QuickNavigator } from "./components/QuickNavigator";
+import { exportPlanAsPdf, sharePlanLink } from "./lib/planExport";
 import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
 
@@ -116,6 +121,7 @@ export function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
+  const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
   const eventId = data?.events[0]?.id;
 
@@ -137,6 +143,15 @@ export function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Ctrl + K or Cmd + K: Quick Navigator Command Palette
+      const isKKey = e.key?.toLowerCase() === "k" || e.code === "KeyK";
+      if ((e.ctrlKey || e.metaKey) && isKKey) {
+        e.preventDefault();
+        tacticalAudio.playChime();
+        setIsQuickNavOpen((prev) => !prev);
+        return;
+      }
+
       const isDKey = e.key?.toLowerCase() === "d" || e.code === "KeyD";
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && isDKey) {
         e.preventDefault();
@@ -393,6 +408,23 @@ export function App() {
     );
   }
 
+  const handleExportPdf = () => {
+    if (data?.aiPlans[0] && data?.activityIntakes[0]) {
+      exportPlanAsPdf(data.aiPlans[0], data.activityIntakes[0], isArabic);
+    } else {
+      toast.info(
+        isArabic ? "الخطة اللوجستية قيد التجهيز" : "Plan in preparation",
+        isArabic ? "قم بحفظ وتحليل بيانات الفعالية أولاً" : "Save and analyze activity data first"
+      );
+    }
+  };
+
+  const handleSharePlan = () => {
+    if (data?.aiPlans[0]?.id) {
+      sharePlanLink(data.aiPlans[0].id, isArabic, toast);
+    }
+  };
+
   if (!data || isLoading) {
     return (
       <ShellFrame
@@ -406,6 +438,8 @@ export function App() {
         simulation={simulation}
         isWarRoomOpen={isWarRoomOpen}
         setIsWarRoomOpen={setIsWarRoomOpen}
+        isQuickNavOpen={isQuickNavOpen}
+        setIsQuickNavOpen={setIsQuickNavOpen}
         onDarkModeToggle={() => setDarkMode((v) => !v)}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -438,6 +472,10 @@ export function App() {
       tasks={data.events[0]?.tasks ?? []}
       isWarRoomOpen={isWarRoomOpen}
       setIsWarRoomOpen={setIsWarRoomOpen}
+      isQuickNavOpen={isQuickNavOpen}
+      setIsQuickNavOpen={setIsQuickNavOpen}
+      onExportPdf={handleExportPdf}
+      onSharePlan={handleSharePlan}
       onDarkModeToggle={() => setDarkMode((v) => !v)}
       onLanguageToggle={() =>
         void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
@@ -1006,6 +1044,45 @@ export function App() {
   }
 }
 
+const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
+  intake: {
+    titleEn: "Activity Intake & Logistics Setup",
+    titleAr: "إدخال الفعالية والتجهيز اللوجستي",
+    descEn: "Event core data, guest CSV import, hotel rooms, pricing bands & supplier contracts",
+    descAr: "البيانات الأساسية، استيراد الضيوف، حجز الفنادق، نطاقات الأسعار وعقود الموردين"
+  },
+  logistics: {
+    titleEn: "Midyaf Management Dashboard",
+    titleAr: "لوحة إدارة مضياف والقيادة اللوجستية",
+    descEn: "Unified operations center: live radar, tactical fleet map, task dispatch & confirmed reports",
+    descAr: "مركز القيادة الموحد: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة"
+  },
+  company: {
+    titleEn: "Organizing Company Dashboard",
+    titleAr: "لوحة الشركة المنظمة",
+    descEn: "Executive event overview, report approvals, supplier quotations & real-time milestones",
+    descAr: "المتابعة التنفيذية للشركة المنظمة، اعتماد التقارير وعروض أسعار الموردين"
+  },
+  guest: {
+    titleEn: "Guest Hospitality Journey App",
+    titleAr: "تطبيق الضيف والرحلة الشاملة",
+    descEn: "VIP boarding pass, flight schedules, chauffeur tracking, accommodation & personal requests",
+    descAr: "بطاقة الصعود الرقمية، مواعيد الرحلات، تتبع السائق، تفاصيل الإقامة والطلبات الخاصة"
+  },
+  captain: {
+    titleEn: "Captains & Fleet Mobility App",
+    titleAr: "تطبيق الكباتن وحركة الأسطول",
+    descEn: "Executive chauffeur dispatch, VIP terminal transfers, shuttle routes & live GPS updates",
+    descAr: "توزيع المشاوير، نقل كبار الشخصيات من المطار، مسارات التردد وتحديث الموقع المباشر"
+  },
+  coordinator: {
+    titleEn: "Field Coordinators App",
+    titleAr: "تطبيق المنسقين والميدان",
+    descEn: "Zone supervision, guest ground protocol, incident escalation & dispatch tasks",
+    descAr: "إدارة مناطق الفعالية، بروتوكول استقبال الضيوف، إرسال البلاغات وتنسيق الحركة"
+  }
+};
+
 function ShellFrame({
   children,
   isArabic,
@@ -1022,6 +1099,10 @@ function ShellFrame({
   tasks,
   isWarRoomOpen,
   setIsWarRoomOpen,
+  isQuickNavOpen,
+  setIsQuickNavOpen,
+  onExportPdf,
+  onSharePlan,
   onDarkModeToggle,
   onLanguageToggle,
   onLogout
@@ -1041,6 +1122,10 @@ function ShellFrame({
   tasks?: Task[];
   isWarRoomOpen?: boolean;
   setIsWarRoomOpen?: (open: boolean) => void;
+  isQuickNavOpen: boolean;
+  setIsQuickNavOpen: (open: boolean) => void;
+  onExportPdf?: () => void;
+  onSharePlan?: () => void;
   onDarkModeToggle: () => void;
   onLanguageToggle: () => void;
   onLogout: () => void;
@@ -1055,6 +1140,9 @@ function ShellFrame({
     .slice(0, 2)
     .toUpperCase();
 
+  const ActivePortalIcon = portalIcons[portal];
+  const currentMeta = portalMeta[portal];
+
   return (
     <div
       className={
@@ -1065,7 +1153,7 @@ function ShellFrame({
       style={{ background: "var(--m-pearl)" }}
     >
       <header className="sticky top-0 z-30 glass-royal shadow-sm transition-all duration-300" style={{ borderBottom: 'none' }}>
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3.5">
             <img
               src="/midyaf-icon.png"
@@ -1095,7 +1183,24 @@ function ShellFrame({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Sovereign Command Bridge (War Room) & Full Demo Mode Badge: Strictly visible ONLY in Demo Mode */}
+            {/* Quick Command Palette (Spotlight Search) Trigger Button */}
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playChime();
+                setIsQuickNavOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-2xs transition-all ring-1 ring-slate-200/80 dark:ring-slate-700 cursor-pointer hover:ring-midyaf-gold/50"
+              title={isArabic ? "البحث والانتقال السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
+            >
+              <Search size={14} className="text-midyaf-gold" />
+              <span className="hidden sm:inline font-medium">{isArabic ? "بحث سريع..." : "Quick Jump..."}</span>
+              <kbd className="rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-midyaf-gold font-bold">
+                ⌘K
+              </kbd>
+            </button>
+
+            {/* Sovereign Command Bridge (War Room) & Full Demo Mode Badge */}
             {isDemoMode && (
               <>
                 <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-[11px] font-black text-amber-500 animate-pulse">
@@ -1126,14 +1231,14 @@ function ShellFrame({
 
             <button
               onClick={onDarkModeToggle}
-              className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95"
+              className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer"
               aria-label="Toggle dark mode"
             >
               {darkMode ? <Sun size={18} className="text-midyaf-gold" /> : <Moon size={18} className="text-midyaf-purple" />}
             </button>
             <button
               onClick={onLanguageToggle}
-              className="btn-ghost rounded-xl transition-transform duration-200 hover:scale-105 active:scale-95"
+              className="btn-ghost rounded-xl transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
               {t("switchLanguage")}
             </button>
@@ -1147,30 +1252,49 @@ function ShellFrame({
             </div>
             <button
               onClick={onLogout}
-              className="btn-primary rounded-xl px-3.5 py-2 text-xs transition-transform duration-200 hover:scale-105 active:scale-95"
+              className="btn-primary rounded-xl px-3.5 py-2 text-xs transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
               {t("logout")}
             </button>
           </div>
         </div>
 
-        <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-5 pb-3">
+        {/* Enhanced Portal Navigation Bar with Category Pills & Intuitive Highlights */}
+        <nav className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-5 pb-2.5 scrollbar-none">
           {allowedPortals.map((item) => {
             const Icon = portalIcons[item];
             const active = portal === item;
+            
+            const categoryTag = 
+              item === "intake" 
+                ? (isArabic ? "التخطيط" : "Planning")
+                : item === "logistics" || item === "company"
+                ? (isArabic ? "القيادة" : "Command")
+                : (isArabic ? "الميدان" : "Ground");
 
             return (
               <button
                 key={item}
-                onClick={() => setPortal(item)}
+                onClick={() => {
+                  tacticalAudio.playTacticalPing();
+                  setPortal(item);
+                }}
                 className={
                   active
-                    ? "flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark px-4 py-2.5 text-sm font-bold text-white shadow-glow-purple transition-all duration-300 hover:scale-[1.03] active:scale-95"
-                    : "flex min-w-fit items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-all duration-300 hover:bg-midyaf-purple/5 hover:text-midyaf-purple hover:scale-[1.02] active:scale-95 dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white"
+                    ? "relative flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-midyaf-purple-light to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-white shadow-glow-purple ring-1 ring-midyaf-gold/40 transition-all duration-200 cursor-pointer"
+                    : "flex min-w-fit items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-500 transition-all duration-150 hover:bg-midyaf-purple/5 hover:text-midyaf-purple dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white cursor-pointer"
                 }
               >
-                <Icon size={16} />
-                {t(`portals.${item}`)}
+                <Icon size={15} className={active ? "text-midyaf-gold" : "text-slate-400"} />
+                <span>{t(`portals.${item}`)}</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                  active ? "bg-midyaf-gold/20 text-midyaf-gold" : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
+                }`}>
+                  {categoryTag}
+                </span>
+                {active && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-midyaf-gold shadow-glow" />
+                )}
               </button>
             );
           })}
@@ -1178,47 +1302,86 @@ function ShellFrame({
         <div className="accent-line-gold shadow-glow" />
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-6">
-        <RoyalCard tone="purple" elevated interactive={false} className="mb-6 pattern-arabesque animate-fadeInUp">
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-            <div>
-              <p className="text-sm font-bold text-shimmer">
-                {t("common.riyadhOnly")}
-              </p>
-              <h2 className="mt-1.5 text-2xl font-black tracking-tight text-midyaf-purple dark:text-white">
-                {t("heroTitle")}
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                {t("heroSubtitle")}
-              </p>
+      <main className="mx-auto max-w-7xl px-5 py-5">
+        {/* Sleek Contextual Operations Bar (Replaces bulky static 220px banner) */}
+        <div className="mb-5 flex flex-col gap-3.5 rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-card-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 lg:flex-row lg:items-center lg:justify-between animate-fadeInDown">
+          <div className="flex items-center gap-3.5">
+            <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-midyaf-gold shadow-xs ring-1 ring-midyaf-gold/30 shrink-0">
+              <ActivePortalIcon size={20} />
             </div>
-            <div className="rounded-xl bg-midyaf-purple/5 p-4 text-xs text-slate-600 ring-1 ring-midyaf-purple/10 dark:bg-midyaf-purple/20 dark:text-slate-300 dark:ring-midyaf-purple/30">
-              <div className="flex items-center gap-2">
-                <span className="live-dot" />
-                <p className="font-bold text-midyaf-purple dark:text-white">
-                  {l("Realtime operations")}
-                </p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm font-black text-midyaf-purple dark:text-white">
+                  {isArabic ? currentMeta?.titleAr : currentMeta?.titleEn}
+                </h2>
+                <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
+                  {isArabic ? "نطاق القمة السيادية" : "Sovereign Summit Zone"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="live-dot" style={{ width: 5, height: 5 }} />
+                  {isArabic ? "مباشر" : "Live"}
+                </span>
               </div>
-              <div className="mt-2 space-y-1">
-                {realtimeLog.length ? (
-                  realtimeLog.map((item, i) => (
-                    <p key={item} className="animate-fadeInUp" style={{ animationDelay: `${i * 75}ms` }}>{item}</p>
-                  ))
-                ) : (
-                  <p className="text-slate-400 dark:text-slate-400">
-                    {l(
-                      "Socket.IO waiting for driver, task, guest, and delay events"
-                    )}
-                  </p>
-                )}
-              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {isArabic ? currentMeta?.descAr : currentMeta?.descEn}
+              </p>
             </div>
           </div>
-        </RoyalCard>
+
+          <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
+            {/* Realtime Event Telemetry Ticker */}
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <span className="live-dot shrink-0" style={{ width: 6, height: 6 }} />
+              <span className="truncate max-w-[220px] font-medium text-[11px]">
+                {realtimeLog[0] ?? (isArabic ? "البث المباشر متصل" : "Live telemetry connected")}
+              </span>
+            </div>
+
+            {/* Contextual Action Shortcuts */}
+            {portal === "intake" && onExportPdf && (
+              <button
+                type="button"
+                onClick={onExportPdf}
+                className="btn-gold flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                title={isArabic ? "تصدير الخطة كملف PDF" : "Export Plan as PDF"}
+              >
+                <Download size={13} />
+                <span>{isArabic ? "تصدير الخطة" : "Export PDF"}</span>
+              </button>
+            )}
+
+            {portal === "intake" && onSharePlan && (
+              <button
+                type="button"
+                onClick={onSharePlan}
+                className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-xs"
+                title={isArabic ? "نسخ ومشاركة رابط الخطة" : "Share Plan Link"}
+              >
+                <Share2 size={13} />
+                <span>{isArabic ? "مشاركة" : "Share"}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playChime();
+                setIsQuickNavOpen(true);
+              }}
+              className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 hover:bg-midyaf-purple/20 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 px-3 py-1.5 text-xs font-black transition-all cursor-pointer"
+              title={isArabic ? "البحث والتنقل السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
+            >
+              <Search size={13} className="text-midyaf-gold" />
+              <span>{isArabic ? "بحث سريع" : "Quick Jump"}</span>
+              <kbd className="text-[10px] font-mono opacity-75">⌘K</kbd>
+            </button>
+          </div>
+        </div>
 
         {children}
       </main>
 
+      {/* Sovereign Command Bridge (War Room Modal) */}
       {isWarRoomOpen && (
         <SovereignCommandBridge
           isOpen={isWarRoomOpen}
@@ -1228,6 +1391,22 @@ function ShellFrame({
           tasks={tasks ?? []}
         />
       )}
+
+      {/* Quick Command Palette (Spotlight Search Modal) */}
+      <QuickNavigator
+        isOpen={isQuickNavOpen}
+        onClose={() => setIsQuickNavOpen(false)}
+        isArabic={isArabic}
+        activePortal={portal}
+        allowedPortals={allowedPortals}
+        onSelectPortal={setPortal}
+        onToggleDarkMode={onDarkModeToggle}
+        onToggleLanguage={onLanguageToggle}
+        isDemoMode={isDemoMode}
+        onOpenWarRoom={() => setIsWarRoomOpen?.(true)}
+        onExportPdf={onExportPdf}
+        onSharePlan={onSharePlan}
+      />
     </div>
   );
 }

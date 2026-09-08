@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { 
   Send, 
   CheckCircle2, 
@@ -64,7 +64,7 @@ export function SupplierContractWorkflow({
   };
 
   return (
-    <div className="rounded-2xl border border-midyaf-purple/15 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
+    <div id="section-supplier-contracts" className="rounded-2xl border border-midyaf-purple/15 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-midyaf-gold shadow-glow-purple">

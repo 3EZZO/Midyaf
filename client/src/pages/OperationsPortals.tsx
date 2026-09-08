@@ -48,6 +48,8 @@ import { Section } from "../components/Section";
 import { localAiReply } from "../components/AiPanel";
 import { CategoryPriceRangeSection } from "../components/CategoryPriceRangeCard";
 import { SupplierContractWorkflow } from "../components/SupplierContractWorkflow";
+import { IntakeWorkflowStepper } from "../components/IntakeWorkflowStepper";
+import { DashboardJumpDock } from "../components/DashboardJumpDock";
 import { exportPlanAsPdf, sharePlanLink } from "../lib/planExport";
 import { money, percent, shortDate, shortTime } from "../lib/format";
 import { apiFetch } from "../lib/api";
@@ -424,10 +426,19 @@ export function ActivityIntakePage({
           : "The organizing company enters event details, hotels, car rental, provider, and guest CSV list. Once the plan is approved and processed, payment terms unlock."}
       />
 
+      <IntakeWorkflowStepper
+        isArabic={ui.isArabic}
+        isPlanApproved={isPlanApproved}
+        hasCoreData={Boolean(draft.activityName && draft.visitorCount > 0)}
+        hasHotelData={Boolean(draft.hotelName || (draft.hotelRoomsBooked && draft.hotelRoomsBooked > 0))}
+        hasGuestCsv={Boolean(bulkCsv && bulkCsv.trim().length > 0)}
+        onApprovePlan={handleApprovePlan}
+      />
+
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
         {/* Left Column: Comprehensive Data Entry Form */}
         <div className="space-y-4">
-          <Section title={ui.isArabic ? "1. المتطلبات الأساسية للفعالية" : "1. Activity Core Input"}>
+          <Section id="section-intake-core" title={ui.isArabic ? "1. المتطلبات الأساسية للفعالية" : "1. Activity Core Input"}>
             <div className="grid gap-3 md:grid-cols-2">
               <Field
                 label={ui.l("Activity name")}
@@ -531,7 +542,7 @@ export function ActivityIntakePage({
           </Section>
 
           {/* Task 2: Hotel Details Section */}
-          <Section title={ui.isArabic ? "2. تفاصيل الفندق والإقامة (Hotel Details)" : "2. Hotel & Accommodation Details"}>
+          <Section id="section-intake-hotels" title={ui.isArabic ? "2. تفاصيل الفندق والإقامة (Hotel Details)" : "2. Hotel & Accommodation Details"}>
             <div className="grid gap-3 md:grid-cols-2">
               <Field
                 label={ui.isArabic ? "اسم الفندق" : "Hotel Name"}
@@ -569,7 +580,7 @@ export function ActivityIntakePage({
           </Section>
 
           {/* Task 2: Car Rental & Dedicated Provider Section */}
-          <Section title={ui.isArabic ? "3. شركة تأجير السيارات والمزود وشروط الدفع" : "3. Car Rental, Provider & Payment Terms"}>
+          <Section id="section-intake-rentals" title={ui.isArabic ? "3. شركة تأجير السيارات والمزود وشروط الدفع" : "3. Car Rental, Provider & Payment Terms"}>
             <div className="grid gap-3 md:grid-cols-2">
               <Field
                 label={ui.isArabic ? "اسم شركة تأجير السيارات" : "Car Rental Company Name"}
@@ -641,7 +652,7 @@ export function ActivityIntakePage({
           </Section>
 
           {/* Task 3: New Supplier / Resource Categories */}
-          <Section title={ui.isArabic ? "4. الفئات اللوجستية والموارد الإضافية" : "4. New Supplier & Resource Categories"}>
+          <Section id="section-intake-resources" title={ui.isArabic ? "4. الفئات اللوجستية والموارد الإضافية" : "4. New Supplier & Resource Categories"}>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               <NumberField
                 label={ui.isArabic ? "عربات الجولف (Golf carts)" : "Golf carts"}
@@ -713,7 +724,7 @@ export function ActivityIntakePage({
           </Section>
 
           {/* Task 2: Move Guest Details CSV Upload/Entry into Event Data Entry */}
-          <Section title={ui.isArabic ? "5. إدخال ورفع قائمة الضيوف (CSV)" : "5. Guest Details CSV Upload / Entry"}>
+          <Section id="section-intake-csv" title={ui.isArabic ? "5. إدخال ورفع قائمة الضيوف (CSV)" : "5. Guest Details CSV Upload / Entry"}>
             <div className="rounded-xl border border-midyaf-purple/15 bg-midyaf-purple/5 p-4 dark:border-slate-800 dark:bg-slate-800/40">
               <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                 <div>
@@ -823,7 +834,7 @@ export function ActivityIntakePage({
 
         {/* Right Column: AI Logistics Plan & Output (Task 3, 4, 5) */}
         <div className="space-y-4">
-          <Section title={ui.isArabic ? "مخرجات الخطة اللوجستية الذكية" : "AI Logistics Plan Output"}>
+          <Section id="section-ai-plan" title={ui.isArabic ? "مخرجات الخطة اللوجستية الذكية" : "AI Logistics Plan Output"}>
             <div className="rounded-2xl border border-midyaf-gold/25 bg-gradient-to-br from-white to-slate-50 p-5 shadow-card-sm dark:from-slate-800 dark:to-slate-900">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
                 <div className="flex items-center gap-2">
@@ -2876,18 +2887,26 @@ export function LogisticsDashboard({
           : "The comprehensive management dashboard owns the full event: tasks, supervisors, captains, vendor contracts, deadlines, and verified reports."}
       />
 
+      <DashboardJumpDock isArabic={ui.isArabic} isDemoMode={isDemoMode} />
+
       {canManage && (
         <>
           <LiveCommandCenterSection session={session} />
-          <SmartAssistantSection session={session} data={data} refreshData={refreshData} />
+          <div id="section-smart-assistant">
+            <SmartAssistantSection session={session} data={data} refreshData={refreshData} />
+          </div>
         </>
       )}
 
       <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
       <AirportExpressSection data={data} session={session} refreshData={refreshData} />
-      {isDemoMode && <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />}
+      {isDemoMode && (
+        <div id="section-hotspots-radar">
+          <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />
+        </div>
+      )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div id="section-metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           label={ui.l("Visitors")}
           value={data.activityIntakes[0].visitorCount}
@@ -2926,29 +2945,35 @@ export function LogisticsDashboard({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <RiyadhMap event={event} drivers={data.drivers} tasks={event.tasks} />
-        <PlanPhases
-          data={data}
-          canManage={canManage}
-          onConfirmAiPlan={confirmAiPlan}
-        />
+        <div id="section-tactical-map">
+          <RiyadhMap event={event} drivers={data.drivers} tasks={event.tasks} />
+        </div>
+        <div id="section-contracts-phases">
+          <PlanPhases
+            data={data}
+            canManage={canManage}
+            onConfirmAiPlan={confirmAiPlan}
+          />
+        </div>
       </div>
 
       {canManage ? (
-        <OperationsSetup
-          data={data}
-          event={event}
-          session={session}
-          inviteGuests={inviteGuests}
-          importGuests={importGuests}
-          createDriver={createDriver}
-          createSupplier={createSupplier}
-          createUser={createUser}
-          createTask={createTask}
-        />
+        <div id="section-operations-setup">
+          <OperationsSetup
+            data={data}
+            event={event}
+            session={session}
+            inviteGuests={inviteGuests}
+            importGuests={importGuests}
+            createDriver={createDriver}
+            createSupplier={createSupplier}
+            createUser={createUser}
+            createTask={createTask}
+          />
+        </div>
       ) : null}
 
-      <div id="tasks-assignment-board">
+      <div id="section-task-board">
         <TaskAssignmentBoard
           event={event}
           drivers={data.drivers}

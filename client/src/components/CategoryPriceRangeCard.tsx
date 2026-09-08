@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { 
   Plane, 
   Car, 
@@ -52,7 +52,7 @@ export function CategoryPriceRangeSection({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
+    <div id="section-price-ranges" className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
