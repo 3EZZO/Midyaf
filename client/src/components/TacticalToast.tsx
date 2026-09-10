@@ -38,11 +38,11 @@ export function TacticalToastProvider({ children }: { children: React.ReactNode 
 
       // Play tactical audio cue
       if (type === "success") {
-        tacticalAudio.playChime();
+        
       } else if (type === "alert" || type === "warning") {
-        tacticalAudio.playAlert();
+        
       } else {
-        tacticalAudio.playTacticalPing();
+        
       }
 
       if (duration > 0) {

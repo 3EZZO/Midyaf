@@ -5,52 +5,45 @@ module.exports = {
     extend: {
       colors: {
         midyaf: {
-          purple: "#2D0A5F",
-          "purple-light": "#4A1A8A",
-          "purple-dark": "#1A0638",
-          gold: "#C9A84C",
-          "gold-light": "#E5D4A0",
-          "gold-dark": "#A68A3A",
-          ink: "#1D1630",
-          pearl: "#F7F5F0",
-          ivory: "#FDFCF9",
-          sand: "#E8DFCF",
-          smoke: "#E8E4DD"
+          // Repurposing purple to our dark neutral/primary to avoid 400+ file rewrites
+          purple: "#111827", 
+          "purple-light": "#374151",
+          "purple-dark": "#030712",
+          // Repurposing gold to our signature accent (muted, professional)
+          gold: "#9A8C78",
+          "gold-light": "#C3B9A8",
+          "gold-dark": "#726553",
+          ink: "#111827",
+          pearl: "#F9FAFB",
+          ivory: "#FFFFFF",
+          sand: "#F3F4F6",
+          smoke: "#E5E7EB"
         }
       },
       fontFamily: {
-        arabic: ["Tajawal", "Cairo", "Inter", "sans-serif"],
-        english: ["Outfit", "Inter", "Tajawal", "sans-serif"],
-        display: ["Noto Naskh Arabic", "Tajawal", "serif"]
+        arabic: ["Tajawal", "Noto Kufi Arabic", "Inter", "sans-serif"],
+        english: ["Inter", "sans-serif"],
+        display: ["Tajawal", "Inter", "sans-serif"]
       },
       boxShadow: {
-        luxury: "0 18px 60px rgba(45, 10, 95, 0.12)",
-        "luxury-lg": "0 24px 80px rgba(45, 10, 95, 0.16)",
-        glow: "0 0 20px rgba(201, 168, 76, 0.25)",
-        "glow-purple": "0 0 20px rgba(45, 10, 95, 0.30)",
-        "card-sm": "0 2px 8px rgba(29, 22, 48, 0.05)",
-        card: "0 4px 20px rgba(29, 22, 48, 0.06)",
-        "card-hover": "0 12px 40px rgba(29, 22, 48, 0.12)"
+        // Flat elevation system replacing neon glows
+        sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
+        "card-hover": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+        dropdown: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
+        // Map old shadows to flat shadows to avoid breaking classes
+        luxury: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+        "luxury-lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+        glow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        "glow-purple": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       },
       animation: {
-        "fade-in-up": "fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in-down": "fadeInDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "fade-in": "fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "scale-in": "scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both",
-        shimmer: "shimmer 2s infinite",
-        float: "float 4s ease-in-out infinite",
-        "pulse-glow": "pulseGlow 2.5s ease-in-out infinite",
-        "gradient-shift": "gradientShift 6s ease infinite",
-        "slide-in-left": "slideInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "slide-in-right": "slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-        "spin-slow": "spinSlow 12s linear infinite"
+        "fade-in": "fadeIn 0.2s ease-out both",
+        "scale-in": "scaleIn 0.2s ease-out both",
+        shimmer: "shimmer 2s infinite"
       },
       transitionTimingFunction: {
-        premium: "cubic-bezier(0.22, 1, 0.36, 1)",
-        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)"
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))"
+        default: "ease-out"
       }
     }
   },

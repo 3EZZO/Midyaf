@@ -3446,8 +3446,8 @@ export function LogisticsDashboard({
         badge={ui.isArabic ? "لوحة العمليات والتحكم الميداني" : "Operations Dashboard"}
         title={ui.isArabic ? "لوحة العمليات والتحكم الميداني الموحد" : "Unified Operations & Field Command Dashboard"}
         body={ui.isArabic
-          ? "المركز التشغيلي الميداني لإدارة الفعاليات: رادار الوصول، الخريطة التكتيكية للأسطول، توزيع المهام، وتفويج الضيوف والخدمات الميدانية (تنفيذ تشغيلي حصراً بدون بيانات مالية)."
-          : "Operational command center for event delivery: live radar, tactical fleet map, task dispatch, and guest logistics (strictly operational execution, zero financial data)."}
+          ? "المركز التشغيلي الميداني لإدارة الفعاليات: رادار الوصول، خريطة الأسطول، توزيع المهام، وتفويج الضيوف والخدمات الميدانية (تنفيذ تشغيلي حصراً بدون بيانات مالية)."
+          : "Operational command center for event delivery: live radar, fleet map, task dispatch, and guest logistics (strictly operational execution, zero financial data)."}
       />
 
       <DashboardJumpDock isArabic={ui.isArabic} isDemoMode={isDemoMode} />
@@ -3469,7 +3469,7 @@ export function LogisticsDashboard({
         </div>
       )}
 
-      <div id="section-metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div id="section-metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label={ui.l("Visitors")}
           value={data.activityIntakes[0].visitorCount}
@@ -3490,13 +3490,6 @@ export function LogisticsDashboard({
           detail={ui.isArabic ? "جاهزون للتفويج والمواكب" : "Ready for VIP dispatch"}
           icon={<Car size={17} />}
           onClick={() => setActiveMetricModal("tasks")}
-        />
-        <MetricCard
-          label={ui.l("Contracts")}
-          value={data.contracts.length}
-          detail={ui.isArabic ? "عقود تشغيلية نشطة" : "Active operational contracts"}
-          icon={<ReceiptText size={17} />}
-          onClick={() => setActiveMetricModal("contracts")}
         />
         <MetricCard
           label={ui.l("Reports")}

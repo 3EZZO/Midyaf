@@ -204,7 +204,7 @@ export function RiyadhMap({
     document.body.style.overflow = "hidden";
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        tacticalAudio.playTacticalPing();
+        
         setIsFullscreen(false);
       }
     };
@@ -249,7 +249,7 @@ export function RiyadhMap({
 
   // Center on Driver
   const handleLocateDriver = (driver: Driver) => {
-    tacticalAudio.playChime();
+    
     const lat = driver.currentLat;
     const lng = driver.currentLng;
     if (typeof lat === "number" && typeof lng === "number" && mapRef.current) {
@@ -436,7 +436,7 @@ export function RiyadhMap({
           subtitle: `${l(vehicleName)} · ${plate} · ${speed} km/h`,
           tone: "driver",
           onClick: () => {
-            tacticalAudio.playTacticalPing();
+            
             onSelectDriver?.(driver);
           }
         });
@@ -471,7 +471,7 @@ export function RiyadhMap({
           <div
             onClick={() => {
               if (!isFullscreen) {
-                tacticalAudio.playChime();
+                
                 setIsFullscreen(true);
               }
             }}
@@ -510,7 +510,7 @@ export function RiyadhMap({
                   key={z}
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playTacticalPing();
+                    
                     setSelectedZone(z);
                   }}
                   className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
@@ -532,7 +532,7 @@ export function RiyadhMap({
               <button
                 type="button"
                 onClick={() => {
-                  tacticalAudio.playTacticalPing();
+                  
                   setMapMode("dark");
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
@@ -547,7 +547,7 @@ export function RiyadhMap({
               <button
                 type="button"
                 onClick={() => {
-                  tacticalAudio.playTacticalPing();
+                  
                   setMapMode("satellite");
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
@@ -562,7 +562,7 @@ export function RiyadhMap({
               <button
                 type="button"
                 onClick={() => {
-                  tacticalAudio.playTacticalPing();
+                  
                   setMapMode("standard");
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
@@ -580,7 +580,7 @@ export function RiyadhMap({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playTacticalPing();
+                
                 setShowGeofences((prev) => !prev);
               }}
               className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
@@ -598,7 +598,7 @@ export function RiyadhMap({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playChime();
+                
                 setIsFullscreen((prev) => !prev);
               }}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-midyaf-gold/20 to-amber-500/20 px-3 py-1.5 text-xs font-black text-midyaf-gold ring-1 ring-midyaf-gold/50 hover:bg-midyaf-gold/30 transition shadow-sm"
@@ -625,7 +625,7 @@ export function RiyadhMap({
                 <button
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playTacticalPing();
+                    
                     setFullscreenTab("drivers");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition ${
@@ -640,7 +640,7 @@ export function RiyadhMap({
                 <button
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playTacticalPing();
+                    
                     setFullscreenTab("guests");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition ${
@@ -655,7 +655,7 @@ export function RiyadhMap({
                 <button
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playTacticalPing();
+                    
                     setFullscreenTab("tasks");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition ${
@@ -780,7 +780,7 @@ export function RiyadhMap({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playChime();
+                
                 setIsFullscreen(true);
               }}
               className="absolute top-3 end-3 z-[500] flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple/95 via-slate-950/95 to-midyaf-purple-dark/95 px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-2xl backdrop-blur-md border border-midyaf-gold/70 hover:scale-105 active:scale-95 transition-all ring-2 ring-midyaf-gold/30 hover:ring-midyaf-gold cursor-pointer"

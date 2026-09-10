@@ -160,7 +160,7 @@ export function App() {
       const isKKey = e.key?.toLowerCase() === "k" || e.code === "KeyK";
       if ((e.ctrlKey || e.metaKey) && isKKey) {
         e.preventDefault();
-        tacticalAudio.playChime();
+        
         setIsQuickNavOpen((prev) => !prev);
         return;
       }
@@ -179,7 +179,7 @@ export function App() {
             setData(normalDataRef.current);
           }
           void refreshData();
-          tacticalAudio.playTacticalPing();
+          
           toast.info(
             isArabic ? "تم إيقاف الوضع التجريبي" : "Demo Mode Disengaged",
             isArabic
@@ -193,7 +193,7 @@ export function App() {
           }
           setIsDemoMode(true);
           simulation.startSimulation();
-          tacticalAudio.playChime();
+          
           toast.success(
             isArabic
               ? "تم تفعيل وضع المحاكاة التجريبية الكامل (Ctrl + Shift + D)"
@@ -210,7 +210,7 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && (e.code === "Space" || e.key === " ")) {
         e.preventDefault();
         if (!isDemoMode) {
-          tacticalAudio.playAlert();
+          
           toast.alert(
             isArabic ? "غرفة العمليات مقفلة" : "War Room Locked",
             isArabic
@@ -220,7 +220,7 @@ export function App() {
           return;
         }
 
-        tacticalAudio.playChime();
+        
         setIsWarRoomOpen((prev) => !prev);
       }
     }
@@ -1061,19 +1061,19 @@ const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: 
   admin: {
     titleEn: "Midyaf Sovereign Admin Dashboard",
     titleAr: "لوحة الملاك والإدارة التنفيذية لمضياف",
-    descEn: "Owners-only executive governance: submitter audit, plans approval, complaints registry & contract vault",
+    descEn: "Owners-only executive governance: submitter audit, plans approval, complaints registry & contracts",
     descAr: "خاصة بالملاك: سجل الجهات المدخلة، اعتماد الخطط، سجل الشكاوى، مؤشرات الفعاليات وخزنة العقود"
   },
   operations: {
     titleEn: "Operations Command Dashboard",
     titleAr: "لوحة العمليات والتحكم الميداني",
-    descEn: "Unified field operations: live radar, tactical fleet map, task dispatch & confirmed reports (pure operations)",
+    descEn: "Unified field operations: live radar, fleet map, task dispatch & confirmed reports (pure operations)",
     descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
   },
   logistics: {
     titleEn: "Operations Command Dashboard",
     titleAr: "لوحة العمليات والتحكم الميداني",
-    descEn: "Unified field operations: live radar, tactical fleet map, task dispatch & confirmed reports (pure operations)",
+    descEn: "Unified field operations: live radar, fleet map, task dispatch & confirmed reports (pure operations)",
     descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
   },
   company: {
@@ -1251,7 +1251,7 @@ function ShellFrame({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playChime();
+                
                 setIsQuickNavOpen(true);
               }}
               className="flex items-center gap-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-2xs transition-all ring-1 ring-slate-200/80 dark:ring-slate-700 cursor-pointer hover:ring-midyaf-gold/50"
@@ -1276,7 +1276,7 @@ function ShellFrame({
                 <button
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playChime();
+                    
                     setIsWarRoomOpen?.(true);
                   }}
                   className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-slate-900 to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-midyaf-gold shadow-glow ring-1 ring-midyaf-gold/50 transition-all duration-300 hover:scale-105 active:scale-95 hover:ring-midyaf-gold"
@@ -1348,7 +1348,7 @@ function ShellFrame({
               <button
                 key={item}
                 onClick={() => {
-                  tacticalAudio.playTacticalPing();
+                  
                   setPortal(item);
                 }}
                 className={
@@ -1437,7 +1437,7 @@ function ShellFrame({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playChime();
+                
                 setIsQuickNavOpen(true);
               }}
               className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 hover:bg-midyaf-purple/20 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 px-3 py-1.5 text-xs font-black transition-all cursor-pointer"

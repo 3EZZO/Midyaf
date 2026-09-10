@@ -338,7 +338,7 @@ export function LogisticsMetricModal({
   });
 
   const handleVerifySeal = (seal: string) => {
-    tacticalAudio.playBiometricAuth();
+    
     setVerifiedSeal(seal);
     toast.success(
       isArabic ? "تم التحقق من البصمة الرقمية المشفرة" : "Cryptographic Seal Verified",
@@ -348,7 +348,7 @@ export function LogisticsMetricModal({
   };
 
   const handleJumpToSection = (sectionId: string) => {
-    tacticalAudio.playTacticalPing();
+    
     onClose();
     setTimeout(() => {
       const el = document.getElementById(sectionId);
@@ -398,7 +398,7 @@ export function LogisticsMetricModal({
         <button
           type="button"
           onClick={() => {
-            tacticalAudio.playTacticalPing();
+            
             onClose();
           }}
           className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-rose-500/20 text-slate-200 hover:text-rose-300 px-4 py-2 text-xs font-black ring-1 ring-white/15 transition active:scale-95 cursor-pointer shadow-sm"
@@ -496,7 +496,7 @@ export function LogisticsMetricModal({
                       <button
                         type="button"
                         onClick={() => {
-                          tacticalAudio.playChime();
+                          
                           toast.success(
                             isArabic ? "تم إرسال المرافق الملكي" : "Chauffeur Escort Dispatched",
                             `${guest.name} · ${guest.driver}`
@@ -595,7 +595,7 @@ export function LogisticsMetricModal({
                         <button
                           type="button"
                           onClick={() => {
-                            tacticalAudio.playTacticalPing();
+                            
                             setInspectingContract(contract);
                           }}
                           className="flex items-center gap-1 rounded-lg bg-midyaf-gold/20 px-3 py-1.5 text-xs font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40 hover:bg-midyaf-gold/30 transition cursor-pointer"
@@ -614,7 +614,7 @@ export function LogisticsMetricModal({
                         <button
                           type="button"
                           onClick={() => {
-                            tacticalAudio.playChime();
+                            
                             toast.success(
                               isArabic ? "تم توقيع واعتماد العقد رسمياً" : "Contract Executed & Sealed",
                               `${contract.vendor} (${contract.amount})`
@@ -749,7 +749,7 @@ export function LogisticsMetricModal({
                       <button
                         type="button"
                         onClick={() => {
-                          tacticalAudio.playChime();
+                          
                           window.print();
                         }}
                         className="flex items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-white/20 transition cursor-pointer"
@@ -785,7 +785,7 @@ export function LogisticsMetricModal({
                       key={status}
                       type="button"
                       onClick={() => {
-                        tacticalAudio.playTacticalPing();
+                        
                         setTaskFilter(status);
                       }}
                       className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -839,7 +839,7 @@ export function LogisticsMetricModal({
                             key={st}
                             type="button"
                             onClick={() => {
-                              tacticalAudio.playTacticalPing();
+                              
                               toast.info(
                                 isArabic ? "تم تحديث حالة المهمة" : "Task Status Updated",
                                 `${l(task.type)} → ${l(st)}`
@@ -973,7 +973,7 @@ export function LogisticsMetricModal({
                 <button
                   type="button"
                   onClick={() => {
-                    tacticalAudio.playChime();
+                    
                     toast.success(
                       isArabic ? "جاري تصدير التقرير التنفيذي الرسمي" : "Exporting Executive Report",
                       isArabic ? "صيغة PDF معتمدة وموثقة" : "Official Certified PDF"

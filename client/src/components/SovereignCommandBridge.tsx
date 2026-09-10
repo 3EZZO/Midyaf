@@ -114,7 +114,7 @@ export function SovereignCommandBridge({
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        tacticalAudio.playTacticalPing();
+        
         onClose();
       }
     };
@@ -228,7 +228,7 @@ export function SovereignCommandBridge({
 
   // Contingency Triggers
   const handleTriggerScenario = (type: "sandstorm" | "code_alpha" | "surge" | "vault_audit") => {
-    tacticalAudio.playChime();
+    
     const timestamp = currentTime.toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
 
     if (type === "sandstorm") {
@@ -293,7 +293,7 @@ export function SovereignCommandBridge({
   // Handle Concentric Handshake Simulation
   const handleSimulateGeofenceHandshake = async (geofenceCode: string = "KKIA_ROYAL_T5") => {
     setSimulatingHandshake(true);
-    tacticalAudio.playChime();
+    
     const timestamp = currentTime.toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
 
     try {
@@ -324,7 +324,7 @@ export function SovereignCommandBridge({
         if (data.events) {
           setRecentGeofenceEvents((prev) => [...data.events, ...prev].slice(0, 10));
         }
-        tacticalAudio.playTacticalPing();
+        
         setScenarioLog((prev) => [
           isArabic
             ? `[مصافحة السياج الجغرافي] ${timestamp} · تم رصد اختراق الحلقات الأربع للصالة الملكية بمطار الملك خالد — وصول الكابتن سلطان لرصيف كبار الشخصيات (٢٥٠م) وتأكيد الإرساء الفوري.`
@@ -416,7 +416,7 @@ export function SovereignCommandBridge({
           <button
             type="button"
             onClick={() => {
-              tacticalAudio.playTacticalPing();
+              
               onClose();
             }}
             className="flex items-center gap-1.5 rounded-xl bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-300 ring-1 ring-red-400/40 transition hover:bg-red-500/30 active:scale-95"
@@ -570,7 +570,7 @@ export function SovereignCommandBridge({
                 <div
                   key={convoy.id}
                   onClick={() => {
-                    tacticalAudio.playBiometricAuth();
+                    
                     setSelectedVip({
                       name: convoy.vip,
                       title: convoy.id === "alpha" 
@@ -772,7 +772,7 @@ export function SovereignCommandBridge({
             <button
               type="button"
               onClick={() => {
-                tacticalAudio.playTacticalPing();
+                
                 setSelectedVip(null);
               }}
               className="absolute top-4 end-4 size-8 rounded-full bg-white/10 text-slate-300 hover:bg-white/20 flex items-center justify-center"
@@ -827,7 +827,7 @@ export function SovereignCommandBridge({
               <button
                 type="button"
                 onClick={() => {
-                  tacticalAudio.playChime();
+                  
                   setSelectedVip(null);
                 }}
                 className="w-full rounded-xl bg-gradient-to-r from-midyaf-gold to-amber-600 py-2.5 text-xs font-black text-slate-950 shadow-lg hover:brightness-110 active:scale-98 transition"

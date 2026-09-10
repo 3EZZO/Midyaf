@@ -300,8 +300,8 @@ export function QuickNavigator({
     // ── DASHBOARD IN-PAGE SECTIONS ──
     {
       id: "sec-tactical-map",
-      titleEn: "Tactical Live Map & Fleet Tracking",
-      titleAr: "الخريطة التكتيكية وتتبع الأسطول المباشر",
+      titleEn: "Live Map & Fleet Tracking",
+      titleAr: "الخريطة وتتبع الأسطول المباشر",
       category: "section",
       portalTarget: "logistics",
       sectionId: "section-tactical-map",
@@ -451,7 +451,7 @@ export function QuickNavigator({
 
   // Handle execution of selected item
   function executeItem(item: NavItem) {
-    tacticalAudio.playChime();
+    
     onClose();
 
     if (item.category === "portal" && item.portalTarget) {

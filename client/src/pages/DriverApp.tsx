@@ -43,7 +43,7 @@ export function DriverApp({
 
   const triggerCurbsideHandshake = async () => {
     setIsTriggeringHandshake(true);
-    tacticalAudio.playChime();
+    
     try {
       const stored = window.localStorage.getItem("midyaf.session");
       const token = stored ? JSON.parse(stored).accessToken : "";
@@ -60,7 +60,7 @@ export function DriverApp({
         })
       });
       if (res.ok) {
-        tacticalAudio.playTacticalPing();
+        
         setGeofenceStage("DOCKED_BAY");
         setGeofenceAlert(
           isArabic
@@ -381,13 +381,13 @@ export function DriverApp({
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => void updateTaskStatus(task.id, "PICKED_UP")}
-                    className="rounded-lg border border-midyaf-purple px-3 py-2 text-xs font-bold text-midyaf-purple"
+                    className="flex-1 min-w-[120px] rounded-xl border-2 border-midyaf-purple px-5 py-4 text-sm font-bold text-midyaf-purple active:bg-midyaf-purple/10"
                   >
                     {t("driver.pickup")}
                   </button>
                   <button
                     onClick={() => void updateTaskStatus(task.id, "COMPLETED")}
-                    className="rounded-lg bg-midyaf-purple px-3 py-2 text-xs font-bold text-white"
+                    className="flex-1 min-w-[120px] rounded-xl bg-midyaf-purple px-5 py-4 text-sm font-bold text-white active:bg-midyaf-purple/90 shadow-md"
                   >
                     {t("driver.dropoff")}
                   </button>

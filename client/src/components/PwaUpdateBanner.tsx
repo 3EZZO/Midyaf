@@ -18,7 +18,7 @@ export function PwaUpdateBanner() {
       const updateSW = registerSW({
         onNeedRefresh() {
           setNeedRefresh(true);
-          tacticalAudio.playChime();
+          
         },
         onOfflineReady() {
           // PWA ready offline
@@ -56,7 +56,7 @@ export function PwaUpdateBanner() {
         <button
           type="button"
           onClick={() => {
-            tacticalAudio.playChime();
+            
             if (updateFunction) {
               void updateFunction().then(() => window.location.reload());
             } else {
