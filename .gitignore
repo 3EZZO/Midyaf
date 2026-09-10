@@ -33,3 +33,8 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/
+
+# Scratch & temporary artifacts
+scratch/
+test_arabic.pdf
+Midyaf_Screen_Recording_Script.pdf

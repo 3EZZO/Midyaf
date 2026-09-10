@@ -117,7 +117,7 @@ export function App() {
   const p = (english: string, arabic: string) =>
     pickText(isArabic, english, arabic);
   const toast = useTacticalToast();
-  const [portal, setPortal] = useState<PortalKey>("logistics");
+  const [portal, setPortal] = useState<PortalKey>("operations");
   const [data, setData] = useState<MidyafData | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const normalDataRef = useRef<MidyafData | null>(null);
@@ -247,8 +247,8 @@ export function App() {
     setPortal((current) =>
       portalsByRole[session.user.role].includes(current)
         ? current
-        : portalsByRole[session.user.role].includes("logistics")
-        ? "logistics"
+        : portalsByRole[session.user.role].includes("operations")
+        ? "operations"
         : portalsByRole[session.user.role][0]
     );
     void loadSessionData(session);
@@ -273,7 +273,7 @@ export function App() {
         socket.emit("user:join", session.user.id);
       }
 
-      if (portal === "logistics" || portal === "coordinator") {
+      if (portal === "operations" || portal === "logistics" || portal === "coordinator") {
         socket.emit("organizer:join");
       }
     });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  BriefcaseBusiness,
+  Briefcase,
   Building2,
   FileText,
   Calendar,
@@ -20,6 +20,7 @@ import {
 import type { MidyafData, Session, TaskDelegation, ClientMessage } from "@shared/domain";
 import { DEFAULT_CLIENT_MESSAGES } from "@shared/constants";
 import { shortDate, shortTime } from "../lib/format";
+import { localizeStatus, localizePriority, localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
 import { Badge } from "./Badge";
 import { Section } from "./Section";
 import { PortalHero } from "./PortalHero";
@@ -140,7 +141,7 @@ export function LogisticsManagerDashboard({
       <PortalHero
         badge={
           <span className="inline-flex items-center gap-1.5 text-midyaf-gold">
-            <BriefcaseBusiness size={15} />
+            <Briefcase size={15} />
             {isArabic ? "لوحة مدير العمليات اللوجستية — شركة صلة" : "Logistics Manager Dashboard — Sila Operations"}
           </span>
         }
@@ -318,7 +319,7 @@ export function LogisticsManagerDashboard({
                         : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                     }`}
                   >
-                    {t.priority}
+                    {localizePriority(t.priority, isArabic)}
                   </span>
                   <span className="text-[10px] text-slate-400 font-tnum">
                     {isArabic ? `الموعد: ${t.deadline}` : `Due: ${t.deadline}`}
@@ -362,7 +363,7 @@ export function LogisticsManagerDashboard({
                   </h4>
                   <p className="text-xs text-slate-400">{act.activityPlace}</p>
                 </div>
-                <Badge tone="green">{act.status}</Badge>
+                <Badge tone="green">{localizeStatus(act.status, isArabic)}</Badge>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs my-3 bg-slate-50/80 p-2.5 rounded-xl dark:bg-slate-800/60">
@@ -410,15 +411,15 @@ export function LogisticsManagerDashboard({
             <div key={cnt.id} className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <span className="font-mono text-xs font-bold text-midyaf-purple dark:text-purple-300">{cnt.contractNumber}</span>
-                <Badge tone="green">{cnt.status}</Badge>
+                <Badge tone="green">{localizeStatus(cnt.status, isArabic)}</Badge>
               </div>
               <h5 className="font-bold text-midyaf-ink dark:text-white text-xs">{cnt.vendorName}</h5>
-              <p className="text-[11px] text-slate-500 mt-0.5">{isArabic ? "القطاع:" : "Category:"} {cnt.category}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{isArabic ? "القطاع:" : "Category:"} {localizeCategory(cnt.category, isArabic)}</p>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 p-2 rounded-lg dark:bg-slate-800 leading-relaxed">
                 {cnt.scopeOfWork || (isArabic ? "توفير الأسطول والسائقين المدربين وخدمات الاستقبال السيادية." : "Supply of executive fleets, VIP chauffeurs, and protocol escort.")}
               </p>
               <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span>{cnt.paymentTerms === "INSTALLMENTS" ? (isArabic ? "دفع بالأقساط" : "Installments") : (isArabic ? "دفعة مقدمة" : "Downpayment")}</span>
+                <span>{localizePaymentTerms(cnt.paymentTerms, isArabic)}</span>
                 <span className="font-mono text-[10px] text-midyaf-gold flex items-center gap-1">
                   <ShieldCheck size={12} />
                   {cnt.digitalSeal?.slice(0, 8)}...
@@ -453,9 +454,11 @@ export function LogisticsManagerDashboard({
           }
         >
           <div className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-3">
-            <h5 className="font-bold text-midyaf-ink dark:text-white text-xs">{report?.title || "Sovereign Executive Post-Event Briefing"}</h5>
+            <h5 className="font-bold text-midyaf-ink dark:text-white text-xs">
+              {report?.title || (isArabic ? "التقرير التنفيذي الختامي للفعالية — العمليات اللوجستية السيادية" : "Sovereign Executive Post-Event Briefing")}
+            </h5>
             <p className="text-xs text-slate-500 leading-relaxed">
-              {report?.summary || "Completed operational report ready for client sharing."}
+              {report?.summary || (isArabic ? "تقرير تشغيلي معتمد ومكتمل جاهز للمشاركة مع العميل المستفيد." : "Completed operational report ready for client sharing.")}
             </p>
             <div className="grid grid-cols-2 gap-2 text-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800 font-tnum">
@@ -487,7 +490,7 @@ export function LogisticsManagerDashboard({
                     <span className="font-bold">{m.senderName}</span>
                     <span className="font-tnum">{m.timestamp}</span>
                   </div>
-                  <p>{m.message}</p>
+                  <p>{isArabic ? (m.messageAr || m.message) : (m.messageEn || m.message)}</p>
                 </div>
               ))}
             </div>

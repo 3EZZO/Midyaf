@@ -19,6 +19,7 @@ import {
 import type { MidyafData, ClientPermissionConfig, ClientMessage, ScheduleAmendment } from "@shared/domain";
 import { DEFAULT_CLIENT_CONFIG, DEFAULT_CLIENT_MESSAGES, DEFAULT_SCHEDULE_AMENDMENTS } from "@shared/constants";
 import { shortDate, shortTime } from "../lib/format";
+import { localizeAmendmentType } from "../lib/localizeDomain";
 import { Badge } from "./Badge";
 import { Section } from "./Section";
 import { PortalHero } from "./PortalHero";
@@ -184,13 +185,15 @@ export function ClientDashboard({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-midyaf-ink dark:text-white text-xs">
-                      {isArabic ? amd.titleAr : amd.title}
+                      {isArabic ? (amd.titleAr || amd.title) : (amd.titleEn || amd.title)}
                     </span>
-                    <Badge tone="purple">{amd.type}</Badge>
+                    <Badge tone="purple">{localizeAmendmentType(amd.type, isArabic)}</Badge>
                     <span className="text-[10px] text-slate-400 font-tnum">{amd.updatedAt}</span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {isArabic ? `الأطراف المعنية: ${amd.affectedGuests}` : `Affected: ${amd.affectedGuests}`}
+                    {isArabic
+                      ? `الأطراف المعنية: ${amd.affectedGuestsAr || amd.affectedGuests}`
+                      : `Affected: ${amd.affectedGuestsEn || amd.affectedGuests}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -246,7 +249,7 @@ export function ClientDashboard({
                           : "bg-midyaf-purple text-white dark:bg-midyaf-purple/90 rounded-se-none"
                       }`}
                     >
-                      {m.message}
+                      {isArabic ? (m.messageAr || m.message) : (m.messageEn || m.message)}
                     </div>
                   </div>
                 );

@@ -28,7 +28,7 @@ import {
   Sun,
   Languages,
   Shield,
-  BriefcaseBusiness,
+  Briefcase,
   X
 } from "lucide-react";
 import type { PortalKey } from "@shared/domain";
@@ -121,7 +121,7 @@ export function QuickNavigator({
       titleAr: "لوحة العميل المستفيد المخصصة",
       category: "portal",
       portalTarget: "client",
-      icon: BriefcaseBusiness,
+      icon: Briefcase,
       keywordsEn: ["client", "sponsor", "reports", "schedule", "chat", "ministry"],
       keywordsAr: ["عميل", "وزارة", "سياحة", "تقارير", "جدول", "تواصل"]
     },
@@ -131,7 +131,7 @@ export function QuickNavigator({
       titleAr: "لوحة مدير العمليات اللوجستية (صلة)",
       category: "portal",
       portalTarget: "logistics_mgr",
-      icon: BriefcaseBusiness,
+      icon: Briefcase,
       keywordsEn: ["logistics manager", "sila", "relay", "event manager", "contracts"],
       keywordsAr: ["مدير العمليات", "صلة", "ترحيل", "عقود", "تكليف"]
     },
@@ -154,16 +154,6 @@ export function QuickNavigator({
       icon: ClipboardList,
       keywordsEn: ["intake", "data", "event", "plan", "activity", "csv", "entry"],
       keywordsAr: ["إدخال", "فعالية", "بيانات", "خطة", "استيراد"]
-    },
-    {
-      id: "portal-logistics",
-      titleEn: "Operations Command Dashboard",
-      titleAr: "لوحة العمليات والتحكم الميداني",
-      category: "portal",
-      portalTarget: "logistics",
-      icon: LayoutDashboard,
-      keywordsEn: ["logistics", "management", "dashboard", "dispatch", "tasks", "radar"],
-      keywordsAr: ["إدارة", "مضياف", "لوحة", "تحكم", "مهام", "رادار"]
     },
     {
       id: "portal-company",
@@ -247,7 +237,7 @@ export function QuickNavigator({
       category: "section",
       portalTarget: "intake",
       sectionId: "section-intake-suppliers",
-      icon: BriefcaseBusiness,
+      icon: Briefcase,
       keywordsEn: ["supplier", "provider", "vendors", "payment terms", "downpayment", "installments"],
       keywordsAr: ["مزود", "مورد", "موردين", "شروط الدفع", "أقساط", "دفعة مقدمة"]
     },

@@ -22,6 +22,7 @@ import {
 import type { MidyafData, Session, ComplaintItem, ComplaintSeverity, ComplaintStatus } from "@shared/domain";
 import { DEFAULT_COMPLAINTS } from "@shared/constants";
 import { money, shortDate, shortTime } from "../lib/format";
+import { localizeStatus, localizeSeverity, localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
 import { Badge } from "./Badge";
 import { Section } from "./Section";
 import { PortalHero } from "./PortalHero";
@@ -315,7 +316,7 @@ export function AdminExecutiveDashboard({
                   </td>
                   <td className="px-4 py-3.5">
                     <Badge tone={sub.status === "OPERATIONS_OPEN" || sub.status === "PLAN_CONFIRMED" ? "green" : "gold"}>
-                      {sub.status}
+                      {localizeStatus(sub.status, isArabic)}
                     </Badge>
                   </td>
                 </tr>
@@ -502,7 +503,7 @@ export function AdminExecutiveDashboard({
               <div className="space-y-1 max-w-2xl">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-midyaf-ink dark:text-white text-xs">
-                    {c.complainantName}
+                    {isArabic ? (c.complainantNameAr || c.complainantName) : (c.complainantNameEn || c.complainantName)}
                   </span>
                   <span className="text-[10px] text-slate-400">({c.complainantRole})</span>
                   <span
@@ -514,18 +515,18 @@ export function AdminExecutiveDashboard({
                         : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                     }`}
                   >
-                    {c.severity}
+                    {localizeSeverity(c.severity, isArabic)}
                   </span>
                   <span className="text-[10px] text-slate-400 font-tnum">
                     {shortTime(c.createdAt)}
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {c.description}
+                  {isArabic ? (c.descriptionAr || c.description) : (c.descriptionEn || c.description)}
                 </p>
                 {c.resolutionNotes && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                    ✓ {c.resolutionNotes}
+                    ✓ {isArabic ? (c.resolutionNotesAr || c.resolutionNotes) : (c.resolutionNotesEn || c.resolutionNotes)}
                   </p>
                 )}
               </div>
@@ -675,7 +676,7 @@ export function AdminExecutiveDashboard({
                   </td>
                   <td className="px-4 py-3.5 font-normal">
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-800">
-                      {cnt.category}
+                      {localizeCategory(cnt.category, isArabic)}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
@@ -685,7 +686,7 @@ export function AdminExecutiveDashboard({
                     {money(Number(cnt.amount ?? cnt.totalValue ?? 0) * 0.12)}
                   </td>
                   <td className="px-4 py-3.5 font-semibold text-slate-600 dark:text-slate-400">
-                    {cnt.paymentTerms === "INSTALLMENTS" ? (isArabic ? "أقساط مجدولة" : "Installments") : (isArabic ? "دفعة مقدمة 40%" : "Downpayment 40%")}
+                    {localizePaymentTerms(cnt.paymentTerms, isArabic)}
                   </td>
                   <td className="px-4 py-3.5">
                     <span className="inline-flex items-center gap-1 font-mono text-[10px] text-midyaf-gold">

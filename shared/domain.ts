@@ -101,14 +101,22 @@ export type ComplaintItem = {
   activityId?: string;
   activityName: string;
   complainantName: string;
+  complainantNameAr?: string;
+  complainantNameEn?: string;
   complainantRole: string;
+  complainantRoleAr?: string;
+  complainantRoleEn?: string;
   severity: ComplaintSeverity;
   category: "TRANSPORT" | "HOTEL" | "SCHEDULE" | "HOSPITALITY" | "VIP_PROTOCOL" | "OTHER";
   description: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
   status: ComplaintStatus;
   createdAt: string;
   resolvedAt?: string;
   resolutionNotes?: string;
+  resolutionNotesAr?: string;
+  resolutionNotesEn?: string;
 };
 
 export type ClientPermissionConfig = {
@@ -130,6 +138,8 @@ export type TeamMember = {
   eventId?: string;
   name: string;
   roleTitle: string;
+  roleTitleAr?: string;
+  roleTitleEn?: string;
   phone: string;
   email: string;
   zone: string;
@@ -142,12 +152,16 @@ export type TaskDelegation = {
   id: string;
   taskId: string;
   taskTitle: string;
+  taskTitleAr?: string;
+  taskTitleEn?: string;
   fromRole: "LOGISTICS_MANAGER" | "EVENT_MANAGER" | "TEAM_LEAD";
   toRole: "EVENT_MANAGER" | "TEAM_MEMBER";
   assignedBy: string;
   assignedTo: string;
   teamMemberId?: string;
   instructions: string;
+  instructionsAr?: string;
+  instructionsEn?: string;
   priority: "NORMAL" | "HIGH" | "URGENT";
   deadline: string;
   status: "ASSIGNED" | "ACKNOWLEDGED" | "IN_PROGRESS" | "COMPLETED";
@@ -159,8 +173,12 @@ export type ClientMessage = {
   id: string;
   clientId: string;
   senderName: string;
+  senderNameAr?: string;
+  senderNameEn?: string;
   senderRole: "CLIENT" | "LOGISTICS_MANAGER";
   message: string;
+  messageAr?: string;
+  messageEn?: string;
   timestamp: string;
   isRead: boolean;
 };
@@ -170,10 +188,13 @@ export type ScheduleAmendment = {
   eventId: string;
   title: string;
   titleAr: string;
+  titleEn?: string;
   type: "FLIGHT_DELAY" | "VENUE_CHANGE" | "VIP_AGENDA_SHIFT" | "CONVOY_REROUTE";
   originalTime: string;
   revisedTime: string;
   affectedGuests: string;
+  affectedGuestsAr?: string;
+  affectedGuestsEn?: string;
   status: "CONFIRMED" | "IN_PROGRESS";
   updatedAt: string;
 };

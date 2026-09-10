@@ -24,13 +24,12 @@ const resources = {
       heroSubtitle:
         "From organizing-company intake to AI planning, vendor quotations, contracts, commissions, guest journeys, captains, coordinators, and confirmed reports.",
       portals: {
-        admin: "Admin Dashboard",
-        operations: "Operations Dashboard",
-        logistics: "Operations Dashboard",
-        company: "Company Dashboard",
-        client: "Client Dashboard",
-        logistics_mgr: "Logistics Manager",
-        event_mgr: "Event Manager",
+        admin: "Admin & Owners Dashboard",
+        operations: "Operations Command Dashboard",
+        company: "Sila Organizing Company",
+        client: "Client Portal",
+        logistics_mgr: "Logistics Operations Manager",
+        event_mgr: "Event & Activity Manager",
         intake: "Activity Intake",
         guest: "Guest App",
         captain: "Captains App",
@@ -45,10 +44,10 @@ const resources = {
         reports: "Reports"
       },
       guest: {
-        guide: "Guest AI guide"
+        guide: "Smart Guest Guide"
       },
       organizer: {
-        aiPlan: "AI logistics planner"
+        aiPlan: "Smart Logistics Planner"
       },
       ai: {
         placeholder: "Ask about transport, schedule, hotels, or events"
@@ -57,7 +56,7 @@ const resources = {
   },
   ar: {
     translation: {
-      brand: "مِضْيَافٌ",
+      brand: "مضياف",
       brandArabic: "Midyaf",
       city: "نطاق القمة",
       comingSoon: "توسيع النطاق قريباً",
@@ -77,17 +76,16 @@ const resources = {
       heroSubtitle:
         "من إدخال بيانات الشركة المنظمة إلى التخطيط بالذكاء الاصطناعي، عروض الموردين، العقود، العمولات، رحلة الضيف، الكباتن، المنسقين، والتقارير المعتمدة.",
       portals: {
-        admin: "لوحة الملاك والإدارة",
-        operations: "لوحة العمليات",
-        logistics: "لوحة العمليات",
-        company: "لوحة الشركة المنظمة",
-        client: "لوحة العميل المستفيد",
-        logistics_mgr: "مدير العمليات (صلة)",
+        admin: "لوحة الملاك والإدارة التنفيذية",
+        operations: "لوحة العمليات والتحكم الميداني",
+        company: "لوحة الشركة المنظمة (صلة)",
+        client: "بوابة العميل المستفيد",
+        logistics_mgr: "مدير العمليات اللوجستية (صلة)",
         event_mgr: "مدير الفعالية الميداني",
-        intake: "إدخال الفعالية",
-        guest: "تطبيق الضيف",
-        captain: "تطبيق الكباتن",
-        coordinator: "تطبيق المنسقين"
+        intake: "إدخال وتجهيز الفعالية",
+        guest: "تطبيق الضيف والرحلة",
+        captain: "تطبيق أسطول الكباتن",
+        coordinator: "تطبيق منسقي الميدان"
       },
       common: {
         riyadhOnly: "منطقة العمليات: نطاق القمة السيادية",

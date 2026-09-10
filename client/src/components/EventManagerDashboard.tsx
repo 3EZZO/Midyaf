@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { MidyafData, Session, TeamMember, TaskDelegation } from "@shared/domain";
 import { DEFAULT_TEAM_MEMBERS } from "@shared/constants";
+import { localizePriority, localizeZone, localizeStatus } from "../lib/localizeDomain";
 import { Badge } from "./Badge";
 import { Section } from "./Section";
 import { PortalHero } from "./PortalHero";
@@ -358,7 +359,9 @@ export function EventManagerDashboard({
               </div>
 
               <h5 className="font-extrabold text-midyaf-ink dark:text-white text-xs">{mem.name}</h5>
-              <p className="text-[11px] text-midyaf-purple dark:text-purple-300 font-semibold mt-0.5">{mem.roleTitle}</p>
+              <p className="text-[11px] text-midyaf-purple dark:text-purple-300 font-semibold mt-0.5">
+                {isArabic ? (mem.roleTitleAr || mem.roleTitle) : (mem.roleTitleEn || mem.roleTitle)}
+              </p>
 
               <div className="mt-3 space-y-1 text-[10px] text-slate-400">
                 <p className="flex items-center gap-1">
@@ -367,7 +370,7 @@ export function EventManagerDashboard({
                 </p>
                 <p className="flex items-center gap-1">
                   <MapPin size={11} />
-                  <span>{mem.zone}</span>
+                  <span>{localizeZone(mem.zone, isArabic)}</span>
                 </p>
               </div>
 
@@ -416,7 +419,7 @@ export function EventManagerDashboard({
                   <option value="">{isArabic ? "-- اختر عضواً من الفريق --" : "-- Select Member --"}</option>
                   {team.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.name} — {m.roleTitle} ({m.zone})
+                      {m.name} — {isArabic ? (m.roleTitleAr || m.roleTitle) : (m.roleTitleEn || m.roleTitle)} ({localizeZone(m.zone, isArabic)})
                     </option>
                   ))}
                 </select>
@@ -466,7 +469,7 @@ export function EventManagerDashboard({
                       {t.taskTitle}
                     </span>
                     <Badge tone={t.priority === "URGENT" ? "red" : t.priority === "HIGH" ? "gold" : "purple"}>
-                      {t.priority}
+                      {localizePriority(t.priority, isArabic)}
                     </Badge>
                     <span className="text-[10px] text-slate-400 font-tnum">
                       {isArabic ? `الموعد: ${t.deadline}` : `Due: ${t.deadline}`}
