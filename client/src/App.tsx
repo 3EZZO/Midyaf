@@ -495,7 +495,7 @@ export function App() {
       }
       onLogout={handleLogout}
     >
-      {renderPortal(portal, portalProps)}
+      {renderPortal(portal, portalProps, isArabic)}
     </ShellFrame>
   );
 
@@ -1762,7 +1762,8 @@ function LoginPage({
 
 function renderPortal(
   portal: PortalKey,
-  props: PortalProps
+  props: PortalProps,
+  isArabic: boolean
 ) {
   switch (portal) {
     case "admin":
@@ -1771,7 +1772,7 @@ function renderPortal(
           data={props.data}
           session={props.session ?? null}
           isDemoMode={props.isDemoMode}
-          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          isArabic={isArabic}
           onApproveVendorQuote={props.approveVendorQuote}
           onApproveContract={props.approveContract}
           onConfirmAiPlan={props.confirmAiPlan}
@@ -1781,7 +1782,7 @@ function renderPortal(
       return (
         <ClientDashboard
           data={props.data}
-          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          isArabic={isArabic}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) {
@@ -1796,7 +1797,7 @@ function renderPortal(
           data={props.data}
           session={props.session ?? null}
           isDemoMode={props.isDemoMode}
-          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          isArabic={isArabic}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) {
@@ -1811,7 +1812,7 @@ function renderPortal(
           data={props.data}
           session={props.session ?? null}
           isDemoMode={props.isDemoMode}
-          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          isArabic={isArabic}
         />
       );
     case "guest":
