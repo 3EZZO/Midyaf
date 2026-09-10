@@ -68,30 +68,104 @@ router.post(
 
     const normEmail = body.email.trim().toLowerCase();
     const normPass = body.password.trim();
-    if (normEmail === "admin@midyaf.local" && (normPass === "adminalmas" || normPass === "Midyaf@2026")) {
-      let user = await prisma.user.findUnique({
-        where: { email: body.email }
-      });
-      
+
+    const DEMO_FALLBACK_ACCOUNTS: Record<string, { id: string; name: string; email: string; phone: string; role: any; language: "ar" | "en" }> = {
+      "admin@midyaf.local": {
+        id: "demo-admin-super",
+        name: "Midyaf Executive Admin",
+        email: "admin@midyaf.local",
+        phone: "+966500000000",
+        role: Role.SUPER_ADMIN,
+        language: "en"
+      },
+      "company@midyaf.local": {
+        id: "demo-company-sila",
+        name: "Sila Organizing Co.",
+        email: "company@midyaf.local",
+        phone: "+966500000007",
+        role: Role.COMPANY_ORGANIZER,
+        language: "en"
+      },
+      "khalid.ops@sila.com": {
+        id: "demo-sila-ops",
+        name: "Khalid (Sila Ops)",
+        email: "khalid.ops@sila.com",
+        phone: "+966501112233",
+        role: Role.COMPANY_ORGANIZER,
+        language: "en"
+      },
+      "organizer@midyaf.local": {
+        id: "demo-logistics-mgr",
+        name: "Logistics Operations Manager",
+        email: "organizer@midyaf.local",
+        phone: "+966500000001",
+        role: Role.LOGISTICS_MANAGER,
+        language: "en"
+      },
+      "event.lead@sila.com": {
+        id: "demo-event-mgr",
+        name: "Event & Activity Operations Manager",
+        email: "event.lead@sila.com",
+        phone: "+966503332211",
+        role: "EVENT_MANAGER",
+        language: "en"
+      },
+      "client.vip@tourism.gov.sa": {
+        id: "demo-client-vip",
+        name: "Ministry of Tourism VIP Client",
+        email: "client.vip@tourism.gov.sa",
+        phone: "+966509998877",
+        role: "CLIENT",
+        language: "ar"
+      },
+      "driver@midyaf.local": {
+        id: "demo-driver-fahad",
+        name: "Fahad Al Qahtani",
+        email: "driver@midyaf.local",
+        phone: "+966500000005",
+        role: Role.DRIVER,
+        language: "ar"
+      },
+      "guest.vip@midyaf.local": {
+        id: "demo-guest-noura",
+        name: "Noura Al Harbi",
+        email: "guest.vip@midyaf.local",
+        phone: "+966500000003",
+        role: Role.GUEST,
+        language: "ar"
+      }
+    };
+
+    if ((normPass === "adminalmas" || normPass === "Midyaf@2026") && DEMO_FALLBACK_ACCOUNTS[normEmail]) {
+      let user: any = null;
+      try {
+        user = await prisma.user.findUnique({
+          where: { email: body.email }
+        });
+      } catch {
+        // Fallback to memory account if database not reached
+      }
+
       if (!user) {
+        const demo = DEMO_FALLBACK_ACCOUNTS[normEmail];
         user = {
-          id: "hardcoded-super-admin",
-          name: "Super Admin",
-          email: "admin@midyaf.local",
-          phone: "+966500000000",
-          role: Role.SUPER_ADMIN,
-          language: "en",
+          id: demo.id,
+          name: demo.name,
+          email: demo.email,
+          phone: demo.phone,
+          role: demo.role,
+          language: demo.language,
           avatar: null,
           passwordHash: "",
           createdAt: new Date(),
           updatedAt: new Date()
-        } as any;
+        };
       }
 
-      const { passwordHash: _passwordHash, ...safeUser } = user!;
+      const { passwordHash: _passwordHash, ...safeUser } = user;
       return res.json({
         user: safeUser,
-        ...signTokens(user!)
+        ...signTokens(user)
       });
     }
 

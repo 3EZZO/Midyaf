@@ -41,6 +41,10 @@ import {
   Trash2,
   Building2,
   Store,
+  Copy,
+  ExternalLink,
+  Eye,
+  Shield,
   X
 } from "lucide-react";
 import { Badge } from "../components/Badge";
@@ -91,10 +95,12 @@ import type {
   HotelDetail,
   CarRentalDetail,
   SupplierDetail,
+  ClientPermissionConfig,
   Task,
   TaskStatus,
   User
 } from "@shared/domain";
+import { DEFAULT_CLIENT_CONFIG } from "@shared/constants";
 
 const driverZones = [
   "NORTH_ZONE",
@@ -3437,11 +3443,11 @@ export function LogisticsDashboard({
   return (
     <div className="space-y-4">
       <PortalHero
-        badge={ui.l("Midyaf Management Dashboard")}
-        title={ui.isArabic ? "لوحة إدارة مضياف والقيادة اللوجستية" : "Midyaf Management Dashboard & Operations Command"}
+        badge={ui.isArabic ? "لوحة العمليات والتحكم الميداني" : "Operations Dashboard"}
+        title={ui.isArabic ? "لوحة العمليات والتحكم الميداني الموحد" : "Unified Operations & Field Command Dashboard"}
         body={ui.isArabic
-          ? "مركز القيادة الموحد لإدارة الفعاليات: المهام، المشرفين، الكباتن، عقود الموردين، وتتبع الإنجاز والتقارير التنفيذية."
-          : "The comprehensive management dashboard owns the full event: tasks, supervisors, captains, vendor contracts, deadlines, and verified reports."}
+          ? "المركز التشغيلي الميداني لإدارة الفعاليات: رادار الوصول، الخريطة التكتيكية للأسطول، توزيع المهام، وتفويج الضيوف والخدمات الميدانية (تنفيذ تشغيلي حصراً بدون بيانات مالية)."
+          : "Operational command center for event delivery: live radar, tactical fleet map, task dispatch, and guest logistics (strictly operational execution, zero financial data)."}
       />
 
       <DashboardJumpDock isArabic={ui.isArabic} isDemoMode={isDemoMode} />
@@ -3479,18 +3485,18 @@ export function LogisticsDashboard({
           onClick={() => setActiveMetricModal("tasks")}
         />
         <MetricCard
-          label={ui.l("Contracts")}
-          value={data.contracts.length}
-          detail={ui.l("Signed or active")}
-          icon={<ReceiptText size={17} />}
-          onClick={() => setActiveMetricModal("contracts")}
+          label={ui.isArabic ? "الكباتن بالخدمة" : "Active Captains"}
+          value={data.drivers.length}
+          detail={ui.isArabic ? "جاهزون للتفويج والمواكب" : "Ready for VIP dispatch"}
+          icon={<Car size={17} />}
+          onClick={() => setActiveMetricModal("tasks")}
         />
         <MetricCard
-          label={ui.l("Commission")}
-          value={money(totalCommission)}
-          detail={ui.l("From approved quotations")}
-          icon={<Banknote size={17} />}
-          onClick={() => setActiveMetricModal("commission")}
+          label={ui.l("Contracts")}
+          value={data.contracts.length}
+          detail={ui.isArabic ? "عقود تشغيلية نشطة" : "Active operational contracts"}
+          icon={<ReceiptText size={17} />}
+          onClick={() => setActiveMetricModal("contracts")}
         />
         <MetricCard
           label={ui.l("Reports")}
@@ -3715,14 +3721,16 @@ export function LogisticsDashboard({
         </div>
       </Section>
 
-      <div id="procurement-contracts-section">
-        <QuotesAndContracts
-          data={data}
-          canManage={canManageVendors}
-          isDemoMode={isDemoMode}
-          onApproveVendorQuote={approveVendorQuote}
-          onApproveContract={approveContract}
-        />
+      {/* Governance Notice: Financials Isolated in Admin Dashboard */}
+      <div className="rounded-2xl border border-midyaf-gold/30 bg-midyaf-gold/10 p-4 text-xs text-[#7A5D12] dark:text-midyaf-gold flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Shield size={18} className="text-midyaf-gold shrink-0" />
+          <span className="font-semibold">
+            {ui.isArabic
+              ? "ملاحظة الحوكمة والسرية: تم عزل وحجب كافة البيانات المالية، عروض أسعار الموردين، والعمولات ونقلها حصرياً إلى لوحة الملاك والإدارة (Admin Dashboard)."
+              : "Governance & Confidentiality Notice: All financial metrics, supplier quotations, and platform commissions are strictly isolated in the Admin Dashboard."}
+          </span>
+        </div>
       </div>
 
       <Section title={ui.l("Confirmed report package")}>
@@ -4744,6 +4752,7 @@ export function CompanyDashboard({
   createCoordinatorRequest
 }: PortalProps) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const intake = data.activityIntakes[0];
   const report = data.companyReports[0];
   const canSubmitUpdate = canSubmitCompanyUpdates(session) && Boolean(intake);
@@ -4752,6 +4761,39 @@ export function CompanyDashboard({
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
   const [aiReport, setAiReport] = useState<any>(null);
   const [loadingAiReport, setLoadingAiReport] = useState(false);
+
+  // Task 2: On-Demand Client Dashboard Configuration & Permissions (Sila)
+  const [clientConfig, setClientConfig] = useState<ClientPermissionConfig>(() => {
+    const stored = window.localStorage.getItem("midyaf.client_config");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {}
+    }
+    return DEFAULT_CLIENT_CONFIG;
+  });
+
+  const handleUpdatePermission = <K extends keyof ClientPermissionConfig>(
+    key: K,
+    value: ClientPermissionConfig[K]
+  ) => {
+    const updated = { ...clientConfig, [key]: value };
+    setClientConfig(updated);
+    window.localStorage.setItem("midyaf.client_config", JSON.stringify(updated));
+    toast.success(
+      ui.isArabic ? "تم تحديث صلاحيات بوابة العميل" : "Client Permissions Updated",
+      ui.isArabic ? "تنطبق الصلاحيات فوراً في لوحة العميل" : "Live permissions synced to client portal"
+    );
+  };
+
+  const handleCopyClientLink = () => {
+    const url = `${window.location.origin}/?portal=client&token=${clientConfig.shareableToken}`;
+    navigator.clipboard?.writeText(url);
+    toast.success(
+      ui.isArabic ? "تم نسخ رابط بوابة العميل" : "Client Portal Link Copied",
+      url
+    );
+  };
 
   async function handleGenerateAiReport() {
     setLoadingAiReport(true);
@@ -4860,6 +4902,122 @@ export function CompanyDashboard({
               {ui.l("No company activity intake is assigned to this account.")}
             </p>
           )}
+        </Section>
+
+        {/* Task 2: On-Demand Client Dashboard Generator & Permission Controls (Sila) */}
+        <Section
+          id="section-client-generator"
+          title={
+            <div className="flex items-center justify-between w-full flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Building2 size={18} className="text-midyaf-gold" />
+                <span>{ui.isArabic ? "توليد لوحة العميل عند الطلب ومصفوفة الصلاحيات (Client Dashboard)" : "On-Demand Client Dashboard & Permissions Matrix"}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyClientLink}
+                className="flex items-center gap-1.5 rounded-xl bg-midyaf-gold/15 px-3 py-1.5 text-xs font-bold text-[#7A5D12] dark:text-midyaf-gold hover:bg-midyaf-gold/25 transition cursor-pointer"
+              >
+                <Copy size={13} />
+                <span>{ui.isArabic ? "نسخ الرابط" : "Copy Client Link"}</span>
+              </button>
+            </div>
+          }
+        >
+          <p className="text-xs text-slate-500 mb-4">
+            {ui.isArabic
+              ? "تتيح هذه الميزة لشركة صلة إنشاء لوحة مخصصة للعميل المستفيد (الجهة المتعاقدة مع صلة) مع التحكم الكامل بما يمكن للعميل رؤيته."
+              : "Allows Sila to generate an on-demand executive dashboard for their corporate or government client, controlling permitted modules."}
+          </p>
+
+          <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
+                  {ui.isArabic ? "اسم ممثل العميل" : "Client Representative Name"}
+                </label>
+                <input
+                  type="text"
+                  value={clientConfig.clientName}
+                  onChange={e => handleUpdatePermission("clientName", e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
+                  {ui.isArabic ? "الجهة أو الوزارة المتعاقدة" : "Client Entity / Ministry"}
+                </label>
+                <input
+                  type="text"
+                  value={clientConfig.clientEntity}
+                  onChange={e => handleUpdatePermission("clientEntity", e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-black text-midyaf-ink dark:text-white uppercase tracking-wider mb-2 block">
+                {ui.isArabic ? "مصفوفة الصلاحيات الممنوحة للعميل (تحكم شركة صلة):" : "Client Access Permissions (Controlled by Sila):"}
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                  <input
+                    type="checkbox"
+                    checked={clientConfig.canViewReports}
+                    onChange={e => handleUpdatePermission("canViewReports", e.target.checked)}
+                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                  />
+                  <span>{ui.isArabic ? "عرض التقارير المعتمدة" : "View Reports"}</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                  <input
+                    type="checkbox"
+                    checked={clientConfig.canViewScheduleAmendments}
+                    onChange={e => handleUpdatePermission("canViewScheduleAmendments", e.target.checked)}
+                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                  />
+                  <span>{ui.isArabic ? "عرض تعديلات الجداول" : "View Schedule Updates"}</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                  <input
+                    type="checkbox"
+                    checked={clientConfig.canCommunicateLogistics}
+                    onChange={e => handleUpdatePermission("canCommunicateLogistics", e.target.checked)}
+                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                  />
+                  <span>{ui.isArabic ? "التواصل مع مدير العمليات" : "Chat with Logistics Mgr"}</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                  <input
+                    type="checkbox"
+                    checked={clientConfig.canViewPerformance}
+                    onChange={e => handleUpdatePermission("canViewPerformance", e.target.checked)}
+                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                  />
+                  <span>{ui.isArabic ? "عرض مؤشرات الأداء" : "View Performance KPIs"}</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex-wrap text-xs">
+              <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
+                <span className="font-bold text-midyaf-ink dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-purple dark:text-purple-300">{clientConfig.shareableToken}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyClientLink}
+                className="btn-primary rounded-xl px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <ExternalLink size={14} />
+                <span>{ui.isArabic ? "نسخ الرابط لمشاركته مع العميل ↗" : "Copy Client Shareable Link ↗"}</span>
+              </button>
+            </div>
+          </div>
         </Section>
 
         <Section title={ui.l("Confirmed reports")}>
@@ -6433,3 +6591,6 @@ function DocumentCard({
     </div>
   );
 }
+
+export const OperationsDashboard = LogisticsDashboard;
+

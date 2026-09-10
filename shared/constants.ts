@@ -90,12 +90,17 @@ export const DRIVER_ZONES = [
 ] as const;
 
 export const PORTALS = [
+  "admin",
+  "operations",
+  "logistics",
+  "company",
+  "client",
+  "logistics_mgr",
+  "event_mgr",
   "intake",
   "guest",
   "captain",
-  "coordinator",
-  "logistics",
-  "company"
+  "coordinator"
 ] as const;
 
 export const CONCENTRIC_GEOFENCES = [
@@ -254,6 +259,161 @@ export const CONCENTRIC_GEOFENCES = [
         autoAction: "AUTO_ARRIVE_TASK"
       }
     ]
+  }
+];
+
+export const DEFAULT_COMPLAINTS = [
+  {
+    id: "cmp-001",
+    activityName: "Global Sovereign Investment Summit",
+    complainantName: "الوفد الدبلوماسي البريطاني (Lord Harrington)",
+    complainantRole: "VIP Guest",
+    severity: "HIGH" as const,
+    category: "TRANSPORT" as const,
+    description: "تأخر وصول موكب الحراسة المرافق من صالة المطار الملكية لمدة 12 دقيقة بسبب تحويل مسار أمني مؤقت.",
+    status: "IN_REVIEW" as const,
+    createdAt: "2026-09-10T08:15:00Z"
+  },
+  {
+    id: "cmp-002",
+    activityName: "Global Sovereign Investment Summit",
+    complainantName: "مساعد رئيس وفد سنغافورة (Dr. Chen Wei)",
+    complainantRole: "VIP Guest Assistant",
+    severity: "NORMAL" as const,
+    category: "HOTEL" as const,
+    description: "طلب تغيير الجناح الفندقي في فندق فورسيزونز إلى إطلالة هادئة غير مطلة على أعمال تجهيز الساحة.",
+    status: "RESOLVED" as const,
+    createdAt: "2026-09-10T07:30:00Z",
+    resolvedAt: "2026-09-10T08:00:00Z",
+    resolutionNotes: "تم التنسيق مع إدارة الفندق ونقل الضيف إلى جناح تنفيذي في الطابق 24."
+  },
+  {
+    id: "cmp-003",
+    activityName: "Heritage Diriyah VIP Gala",
+    complainantName: "مشرف البروتوكول بالفعالية (فريق صلة الميداني)",
+    complainantRole: "Field Coordinator",
+    severity: "CRITICAL" as const,
+    category: "SCHEDULE" as const,
+    description: "تداخل وصول وفدين رئيسيين في بوابة وادي حنيفة بالتزامن مع إغلاق مسار الحافلات الترددية.",
+    status: "OPEN" as const,
+    createdAt: "2026-09-10T09:10:00Z"
+  }
+];
+
+export const DEFAULT_CLIENT_CONFIG = {
+  clientId: "cli-sila-gov-2026",
+  clientName: "الأستاذ / عبد الرحمن المهيدب",
+  clientEntity: "وزارة السياحة والضيافة السيادية",
+  eventTitle: "Global Sovereign Investment Summit",
+  shareableToken: "MIDYAF-CLIENT-SECURE-8842X",
+  canViewReports: true,
+  canViewScheduleAmendments: true,
+  canCommunicateLogistics: true,
+  canViewPerformance: true,
+  createdAt: "2026-09-09T14:00:00Z",
+  isActive: true
+};
+
+export const DEFAULT_TEAM_MEMBERS = [
+  {
+    id: "tm-001",
+    name: "سلطان الغامدي",
+    roleTitle: "قائد عمليات النقل الميداني (Ground Transport Lead)",
+    phone: "+966551234001",
+    email: "sultan.lead@sila.com",
+    zone: "NORTH_ZONE",
+    activeTasksCount: 4,
+    status: "ON_MISSION" as const
+  },
+  {
+    id: "tm-002",
+    name: "ريم العتيبي",
+    roleTitle: "مشرفة بروتوكول كبار الشخصيات (VIP Protocol Officer)",
+    phone: "+966551234002",
+    email: "reem.vip@sila.com",
+    zone: "CENTRAL_ZONE",
+    activeTasksCount: 2,
+    status: "AVAILABLE" as const
+  },
+  {
+    id: "tm-003",
+    name: "عمر الحربي",
+    roleTitle: "منسق حركة صالات المطار (Airport Terminal Dispatcher)",
+    phone: "+966551234003",
+    email: "omar.air@sila.com",
+    zone: "SUMMIT_CORRIDOR",
+    activeTasksCount: 5,
+    status: "ON_MISSION" as const
+  },
+  {
+    id: "tm-004",
+    name: "فيصل الدوسري",
+    roleTitle: "مشرف التسكين وضيافة الفنادق (Hotel Liaison Lead)",
+    phone: "+966551234004",
+    email: "faisal.hotel@sila.com",
+    zone: "CENTRAL_ZONE",
+    activeTasksCount: 1,
+    status: "AVAILABLE" as const
+  }
+];
+
+export const DEFAULT_SCHEDULE_AMENDMENTS = [
+  {
+    id: "amd-101",
+    eventId: "sovereign-luxury-forum-2026",
+    title: "تأخير موعد هبوط الطائرة الخاصة للوفد الإماراتي",
+    titleAr: "تأخير موعد هبوط الطائرة الخاصة للوفد الإماراتي",
+    type: "FLIGHT_DELAY" as const,
+    originalTime: "14:30",
+    revisedTime: "15:45",
+    affectedGuests: "معالي رئيس الوفد والوفد المرافق (8 ضيوف VIP)",
+    status: "CONFIRMED" as const,
+    updatedAt: "منذ 20 دقيقة"
+  },
+  {
+    id: "amd-102",
+    eventId: "sovereign-luxury-forum-2026",
+    title: "تقديم موعد اجتماع المائدة المستديرة الوزارية المغلقة",
+    titleAr: "تقديم موعد اجتماع المائدة المستديرة الوزارية المغلقة",
+    type: "VIP_AGENDA_SHIFT" as const,
+    originalTime: "18:00",
+    revisedTime: "17:15",
+    affectedGuests: "كافة وزراء وممثلي الصناديق السيادية (18 ضيفاً)",
+    status: "IN_PROGRESS" as const,
+    updatedAt: "منذ 45 دقيقة"
+  },
+  {
+    id: "amd-103",
+    eventId: "sovereign-luxury-forum-2026",
+    title: "تعديل مسار موكب العشاء الرسمي عبر طريق الملك سلمان",
+    titleAr: "تعديل مسار موكب العشاء الرسمي عبر طريق الملك سلمان",
+    type: "CONVOY_REROUTE" as const,
+    originalTime: "20:00",
+    revisedTime: "20:10",
+    affectedGuests: "الموكب الملكي (12 مركبة كاديلك ومايباخ)",
+    status: "CONFIRMED" as const,
+    updatedAt: "منذ ساعة"
+  }
+];
+
+export const DEFAULT_CLIENT_MESSAGES = [
+  {
+    id: "msg-001",
+    clientId: "cli-sila-gov-2026",
+    senderName: "الأستاذ / عبد الرحمن المهيدب (العميل)",
+    senderRole: "CLIENT" as const,
+    message: "نرجو التأكيد على جاهزية موكب الاستقبال الإضافي لوزير التجارة فور هبوط طائرته في الصالة الملكية الساعة 15:45.",
+    timestamp: "10:14 AM",
+    isRead: true
+  },
+  {
+    id: "msg-002",
+    clientId: "cli-sila-gov-2026",
+    senderName: "مدير العمليات اللوجستية (صلة)",
+    senderRole: "LOGISTICS_MANAGER" as const,
+    message: "تم توجيه الكابتن فهد القحطاني وسيارتي مايباخ مرافقة للوقوف في الرصيف الداخلي للصالة الملكية، وجاهزون بنسبة 100%.",
+    timestamp: "10:18 AM",
+    isRead: true
   }
 ];
 

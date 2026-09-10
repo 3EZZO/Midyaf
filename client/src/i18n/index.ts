@@ -24,12 +24,17 @@ const resources = {
       heroSubtitle:
         "From organizing-company intake to AI planning, vendor quotations, contracts, commissions, guest journeys, captains, coordinators, and confirmed reports.",
       portals: {
+        admin: "Admin Dashboard",
+        operations: "Operations Dashboard",
+        logistics: "Operations Dashboard",
+        company: "Company Dashboard",
+        client: "Client Dashboard",
+        logistics_mgr: "Logistics Manager",
+        event_mgr: "Event Manager",
         intake: "Activity Intake",
         guest: "Guest App",
         captain: "Captains App",
-        coordinator: "Coordinators",
-        logistics: "Midyaf Management Dashboard",
-        company: "Company Dashboard"
+        coordinator: "Coordinators"
       },
       common: {
         riyadhOnly: "Operating Region: Sovereign Summit Zone",
@@ -72,12 +77,17 @@ const resources = {
       heroSubtitle:
         "من إدخال بيانات الشركة المنظمة إلى التخطيط بالذكاء الاصطناعي، عروض الموردين، العقود، العمولات، رحلة الضيف، الكباتن، المنسقين، والتقارير المعتمدة.",
       portals: {
+        admin: "لوحة الملاك والإدارة",
+        operations: "لوحة العمليات",
+        logistics: "لوحة العمليات",
+        company: "لوحة الشركة المنظمة",
+        client: "لوحة العميل المستفيد",
+        logistics_mgr: "مدير العمليات (صلة)",
+        event_mgr: "مدير الفعالية الميداني",
         intake: "إدخال الفعالية",
         guest: "تطبيق الضيف",
         captain: "تطبيق الكباتن",
-        coordinator: "تطبيق المنسقين",
-        logistics: "لوحة إدارة مضياف",
-        company: "لوحة الشركة المنظمة"
+        coordinator: "تطبيق المنسقين"
       },
       common: {
         riyadhOnly: "منطقة العمليات: نطاق القمة السيادية",

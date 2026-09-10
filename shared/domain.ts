@@ -6,15 +6,22 @@ export type Role =
   | "SUPER_ADMIN"
   | "COORDINATOR"
   | "LOGISTICS_MANAGER"
-  | "COMPANY_ORGANIZER";
+  | "COMPANY_ORGANIZER"
+  | "EVENT_MANAGER"
+  | "CLIENT";
 
 export type PortalKey =
+  | "admin"
+  | "operations"
+  | "logistics"
+  | "company"
+  | "client"
+  | "logistics_mgr"
+  | "event_mgr"
   | "intake"
   | "guest"
   | "captain"
-  | "coordinator"
-  | "logistics"
-  | "company";
+  | "coordinator";
 
 export type DriverZone =
   | "NORTH_RIYADH"
@@ -84,6 +91,91 @@ export type SupplierDetail = {
   scopeOfWork?: string;
   paymentTerms?: PaymentTerms;
   notes?: string;
+};
+
+export type ComplaintSeverity = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+export type ComplaintStatus = "OPEN" | "IN_REVIEW" | "RESOLVED";
+
+export type ComplaintItem = {
+  id: string;
+  activityId?: string;
+  activityName: string;
+  complainantName: string;
+  complainantRole: string;
+  severity: ComplaintSeverity;
+  category: "TRANSPORT" | "HOTEL" | "SCHEDULE" | "HOSPITALITY" | "VIP_PROTOCOL" | "OTHER";
+  description: string;
+  status: ComplaintStatus;
+  createdAt: string;
+  resolvedAt?: string;
+  resolutionNotes?: string;
+};
+
+export type ClientPermissionConfig = {
+  clientId: string;
+  clientName: string;
+  clientEntity: string;
+  eventTitle: string;
+  shareableToken: string;
+  canViewReports: boolean;
+  canViewScheduleAmendments: boolean;
+  canCommunicateLogistics: boolean;
+  canViewPerformance: boolean;
+  createdAt: string;
+  isActive: boolean;
+};
+
+export type TeamMember = {
+  id: string;
+  eventId?: string;
+  name: string;
+  roleTitle: string;
+  phone: string;
+  email: string;
+  zone: string;
+  activeTasksCount: number;
+  avatarUrl?: string;
+  status: "AVAILABLE" | "ON_MISSION" | "BREAK";
+};
+
+export type TaskDelegation = {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  fromRole: "LOGISTICS_MANAGER" | "EVENT_MANAGER" | "TEAM_LEAD";
+  toRole: "EVENT_MANAGER" | "TEAM_MEMBER";
+  assignedBy: string;
+  assignedTo: string;
+  teamMemberId?: string;
+  instructions: string;
+  priority: "NORMAL" | "HIGH" | "URGENT";
+  deadline: string;
+  status: "ASSIGNED" | "ACKNOWLEDGED" | "IN_PROGRESS" | "COMPLETED";
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type ClientMessage = {
+  id: string;
+  clientId: string;
+  senderName: string;
+  senderRole: "CLIENT" | "LOGISTICS_MANAGER";
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+};
+
+export type ScheduleAmendment = {
+  id: string;
+  eventId: string;
+  title: string;
+  titleAr: string;
+  type: "FLIGHT_DELAY" | "VENUE_CHANGE" | "VIP_AGENDA_SHIFT" | "CONVOY_REROUTE";
+  originalTime: string;
+  revisedTime: string;
+  affectedGuests: string;
+  status: "CONFIRMED" | "IN_PROGRESS";
+  updatedAt: string;
 };
 
 export type CategoryPriceRange = {
@@ -361,6 +453,7 @@ export type ActivityIntake = {
     | "OPERATIONS_OPEN";
   submittedBy: string;
   submittedAt: string;
+  organizerCompany?: string;
   createdAt?: string;
   updatedAt?: string;
 
@@ -448,10 +541,15 @@ export type Contract = {
   category: VendorQuote["category"];
   amount: Money;
   commissionAmount: Money;
-  status: "DRAFT" | "UNDER_REVIEW" | "SIGNED" | "ACTIVE";
+  status: "DRAFT" | "UNDER_REVIEW" | "SIGNED" | "ACTIVE" | "PENDING_SIGNATURE";
   signedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  contractNumber?: string;
+  totalValue?: Money;
+  scopeOfWork?: string;
+  paymentTerms?: string;
+  digitalSeal?: string;
 };
 
 export type GuestJourney = {
@@ -497,6 +595,7 @@ export type CompanyReport = {
   id: string;
   title: string;
   status: "DRAFT" | "MANAGER_CONFIRMED" | "SENT_TO_COMPANY";
+  summary?: string;
   kpis: Array<{ label: string; value: string }>;
   pdfUrl?: string;
   updatedAt: string;

@@ -96,6 +96,56 @@ export function QuickNavigator({
   const allItems: NavItem[] = useMemo(() => [
     // ── PORTALS ──
     {
+      id: "portal-admin",
+      titleEn: "Midyaf Sovereign Admin Dashboard (Owners Only)",
+      titleAr: "لوحة الملاك والإدارة التنفيذية لمضياف",
+      category: "portal",
+      portalTarget: "admin",
+      icon: Crown,
+      keywordsEn: ["admin", "owner", "financial", "commissions", "complaints", "submitters", "contracts"],
+      keywordsAr: ["ملاك", "إدارة", "مالية", "عمولات", "شكاوى", "عقود", "مضياف"]
+    },
+    {
+      id: "portal-operations",
+      titleEn: "Operations Command Dashboard (Pure Ops)",
+      titleAr: "لوحة العمليات والتحكم الميداني",
+      category: "portal",
+      portalTarget: "operations",
+      icon: LayoutDashboard,
+      keywordsEn: ["operations", "field", "dispatch", "radar", "captains", "fleet"],
+      keywordsAr: ["عمليات", "ميدان", "كباتن", "أسطول", "تحكم"]
+    },
+    {
+      id: "portal-client",
+      titleEn: "Client Executive Dashboard",
+      titleAr: "لوحة العميل المستفيد المخصصة",
+      category: "portal",
+      portalTarget: "client",
+      icon: BriefcaseBusiness,
+      keywordsEn: ["client", "sponsor", "reports", "schedule", "chat", "ministry"],
+      keywordsAr: ["عميل", "وزارة", "سياحة", "تقارير", "جدول", "تواصل"]
+    },
+    {
+      id: "portal-logistics-mgr",
+      titleEn: "Logistics Manager Dashboard (Sila)",
+      titleAr: "لوحة مدير العمليات اللوجستية (صلة)",
+      category: "portal",
+      portalTarget: "logistics_mgr",
+      icon: BriefcaseBusiness,
+      keywordsEn: ["logistics manager", "sila", "relay", "event manager", "contracts"],
+      keywordsAr: ["مدير العمليات", "صلة", "ترحيل", "عقود", "تكليف"]
+    },
+    {
+      id: "portal-event-mgr",
+      titleEn: "Event/Activity Manager Dashboard",
+      titleAr: "لوحة مدير الفعالية الميداني",
+      category: "portal",
+      portalTarget: "event_mgr",
+      icon: Users,
+      keywordsEn: ["event manager", "team", "delegation", "field lead", "saud"],
+      keywordsAr: ["مدير الفعالية", "فريق", "تفويض", "ميداني", "سعود"]
+    },
+    {
       id: "portal-intake",
       titleEn: "Activity Intake & Data Entry",
       titleAr: "إدخال الفعالية والبيانات اللوجستية",
@@ -107,8 +157,8 @@ export function QuickNavigator({
     },
     {
       id: "portal-logistics",
-      titleEn: "Midyaf Management Dashboard",
-      titleAr: "لوحة إدارة مضياف والقيادة اللوجستية",
+      titleEn: "Operations Command Dashboard",
+      titleAr: "لوحة العمليات والتحكم الميداني",
       category: "portal",
       portalTarget: "logistics",
       icon: LayoutDashboard,

@@ -18,7 +18,8 @@ import {
   Star,
   Search,
   Download,
-  Share2
+  Share2,
+  Briefcase
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -46,8 +47,13 @@ import {
   CompanyDashboard,
   CoordinatorsApp,
   GuestJourneyApp,
-  LogisticsDashboard
+  LogisticsDashboard,
+  OperationsDashboard
 } from "./pages/OperationsPortals";
+import { AdminExecutiveDashboard } from "./components/AdminExecutiveDashboard";
+import { ClientDashboard } from "./components/ClientDashboard";
+import { LogisticsManagerDashboard } from "./components/LogisticsManagerDashboard";
+import { EventManagerDashboard } from "./components/EventManagerDashboard";
 import type {
   CoordinatorRequestInput,
   DriverCreateInput,
@@ -74,12 +80,17 @@ import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
 
 const portalIcons: Record<PortalKey, LucideIcon> = {
+  admin: Crown,
+  operations: LayoutDashboard,
+  logistics: LayoutDashboard,
+  company: Building2,
+  client: Briefcase,
+  logistics_mgr: Briefcase,
+  event_mgr: Users,
   intake: ClipboardList,
   guest: Crown,
   captain: Car,
-  coordinator: Users,
-  logistics: LayoutDashboard,
-  company: Building2
+  coordinator: Users
 };
 
 const sessionStorageKey = "midyaf.session";
@@ -91,8 +102,10 @@ const portalsByRole: Record<Role, PortalKey[]> = {
   SUPPLIER: ["company"],
   SUPER_ADMIN: [...PORTALS],
   COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: [...PORTALS],
-  COMPANY_ORGANIZER: ["intake", "company"]
+  LOGISTICS_MANAGER: ["logistics_mgr", "operations", "company", "coordinator", "intake"],
+  COMPANY_ORGANIZER: ["company", "client", "intake", "logistics_mgr"],
+  EVENT_MANAGER: ["event_mgr", "operations", "coordinator"],
+  CLIENT: ["client"]
 };
 
 
@@ -1045,23 +1058,53 @@ export function App() {
 }
 
 const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
+  admin: {
+    titleEn: "Midyaf Sovereign Admin Dashboard",
+    titleAr: "لوحة الملاك والإدارة التنفيذية لمضياف",
+    descEn: "Owners-only executive governance: submitter audit, plans approval, complaints registry & contract vault",
+    descAr: "خاصة بالملاك: سجل الجهات المدخلة، اعتماد الخطط، سجل الشكاوى، مؤشرات الفعاليات وخزنة العقود"
+  },
+  operations: {
+    titleEn: "Operations Command Dashboard",
+    titleAr: "لوحة العمليات والتحكم الميداني",
+    descEn: "Unified field operations: live radar, tactical fleet map, task dispatch & confirmed reports (pure operations)",
+    descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
+  },
+  logistics: {
+    titleEn: "Operations Command Dashboard",
+    titleAr: "لوحة العمليات والتحكم الميداني",
+    descEn: "Unified field operations: live radar, tactical fleet map, task dispatch & confirmed reports (pure operations)",
+    descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
+  },
+  company: {
+    titleEn: "Organizing Company Dashboard",
+    titleAr: "لوحة الشركة المنظمة (صلة)",
+    descEn: "Executive event overview, report approvals, and on-demand client dashboard generator",
+    descAr: "المتابعة التنفيذية لشركة صلة، اعتماد التقارير، وتوليد لوحة العميل عند الطلب مع مصفوفة الصلاحيات"
+  },
+  client: {
+    titleEn: "Client Executive Dashboard",
+    titleAr: "لوحة العميل المستفيد المخصصة",
+    descEn: "Exclusive client portal: reports, schedule amendments, direct logistics communication & performance KPIs",
+    descAr: "بوابة العميل المستفيد: استعراض التقارير، تعديلات الجداول، التواصل المباشر مع مدير العمليات ومؤشرات الأداء"
+  },
+  logistics_mgr: {
+    titleEn: "Logistics Manager Dashboard",
+    titleAr: "لوحة مدير العمليات اللوجستية (صلة)",
+    descEn: "Sila logistics command: view reports, activities, contracts & relay tasks to Event Manager",
+    descAr: "قيادة العمليات لشركة صلة: مراجعة التقارير، الأنشطة، العقود التشغيلية، وترحيل المهام لمدير الفعالية"
+  },
+  event_mgr: {
+    titleEn: "Event/Activity Manager Dashboard",
+    titleAr: "لوحة مدير الفعالية الميداني",
+    descEn: "Event execution command: create custom field team, assign tasks & hierarchical delegation chain",
+    descAr: "القيادة الميدانية للفعالية: تشكيل الفريق المخصص، توزيع المهام، والتفويض الهرمي لسلسلة القيادة"
+  },
   intake: {
     titleEn: "Activity Intake & Logistics Setup",
     titleAr: "إدخال الفعالية والتجهيز اللوجستي",
     descEn: "Event core data, guest CSV import, hotel rooms, pricing bands & supplier contracts",
     descAr: "البيانات الأساسية، استيراد الضيوف، حجز الفنادق، نطاقات الأسعار وعقود الموردين"
-  },
-  logistics: {
-    titleEn: "Midyaf Management Dashboard",
-    titleAr: "لوحة إدارة مضياف والقيادة اللوجستية",
-    descEn: "Unified operations center: live radar, tactical fleet map, task dispatch & confirmed reports",
-    descAr: "مركز القيادة الموحد: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة"
-  },
-  company: {
-    titleEn: "Organizing Company Dashboard",
-    titleAr: "لوحة الشركة المنظمة",
-    descEn: "Executive event overview, report approvals, supplier quotations & real-time milestones",
-    descAr: "المتابعة التنفيذية للشركة المنظمة، اعتماد التقارير وعروض أسعار الموردين"
   },
   guest: {
     titleEn: "Guest Hospitality Journey App",
@@ -1287,10 +1330,18 @@ function ShellFrame({
             const active = portal === item;
             
             const categoryTag = 
-              item === "intake" 
-                ? (isArabic ? "التخطيط" : "Planning")
-                : item === "logistics" || item === "company"
+              item === "admin"
+                ? (isArabic ? "الملاك" : "Owners")
+                : item === "operations" || item === "logistics"
+                ? (isArabic ? "العمليات" : "Operations")
+                : item === "company"
+                ? (isArabic ? "المنظمة" : "Organizer")
+                : item === "client"
+                ? (isArabic ? "العميل" : "Client")
+                : item === "logistics_mgr" || item === "event_mgr"
                 ? (isArabic ? "القيادة" : "Command")
+                : item === "intake" 
+                ? (isArabic ? "التخطيط" : "Planning")
                 : (isArabic ? "الميدان" : "Ground");
 
             return (
@@ -1602,7 +1653,7 @@ function LoginPage({
               <ShieldCheck size={13} className="text-midyaf-gold" />
               <span>{isArabic ? "الدخول القيادي السريع" : "Executive Fast Access"}</span>
             </p>
-            <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => void onLogin("admin@midyaf.local", "Midyaf@2026")}
@@ -1612,22 +1663,64 @@ function LoginPage({
                   <Crown size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "مسؤول النظام (كافة الصلاحيات)" : "Admin (All Portals)"}</p>
+                  <p className="truncate text-[11px] font-black">{isArabic ? "مالك مضياف (الإدارة المالية)" : "Midyaf Owner (Admin)"}</p>
                   <p className="truncate text-[10px] text-slate-400">admin@midyaf.local</p>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => void onLogin("guest.vip@midyaf.local", "Midyaf@2026")}
-                className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 p-2.5 text-left text-xs font-bold text-amber-600 transition hover:bg-amber-500/15 border border-amber-500/15 dark:bg-amber-500/20 dark:text-amber-300 cursor-pointer"
+                onClick={() => void onLogin("company@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2.5 rounded-xl bg-sky-500/10 p-2.5 text-left text-xs font-bold text-sky-600 transition hover:bg-sky-500/15 border border-sky-500/15 dark:bg-sky-500/20 dark:text-sky-300 cursor-pointer"
               >
-                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-500/20 text-amber-500 ring-1 ring-amber-500/30">
-                  <Star size={14} />
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-sky-500/20 text-sky-500 ring-1 ring-sky-500/30">
+                  <Building2 size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "نورة الحربي" : "Noura Al Harbi"}</p>
+                  <p className="truncate text-[11px] font-black">{isArabic ? "شركة صلة (المنظم)" : "Sila Organizer"}</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "توليد لوحة العميل" : "Client Portal Gen"}</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("organizer@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2.5 rounded-xl bg-indigo-500/10 p-2.5 text-left text-xs font-bold text-indigo-600 transition hover:bg-indigo-500/15 border border-indigo-500/15 dark:bg-indigo-500/20 dark:text-indigo-300 cursor-pointer"
+              >
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-indigo-500/20 text-indigo-500 ring-1 ring-indigo-500/30">
+                  <Briefcase size={14} />
+                </div>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير اللوجستيات" : "Logistics Manager"}</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "تقارير وتوجيه المهام" : "Ops & Task Relay"}</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("event.lead@sila.com", "Midyaf@2026")}
+                className="flex items-center gap-2.5 rounded-xl bg-violet-500/10 p-2.5 text-left text-xs font-bold text-violet-600 transition hover:bg-violet-500/15 border border-violet-500/15 dark:bg-violet-500/20 dark:text-violet-300 cursor-pointer"
+              >
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/20 text-violet-500 ring-1 ring-violet-500/30">
+                  <Users size={14} />
+                </div>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير الفعالية / النشاط" : "Event / Activity Mgr"}</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "بناء الفريق وتوزيع المهام" : "Team & Tasks"}</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onLogin("client.vip@tourism.gov.sa", "Midyaf@2026")}
+                className="flex items-center gap-2.5 rounded-xl bg-teal-500/10 p-2.5 text-left text-xs font-bold text-teal-600 transition hover:bg-teal-500/15 border border-teal-500/15 dark:bg-teal-500/20 dark:text-teal-300 cursor-pointer"
+              >
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-teal-500/20 text-teal-500 ring-1 ring-teal-500/30">
+                  <ShieldCheck size={14} />
+                </div>
+                <div className="truncate">
+                  <p className="truncate text-[11px] font-black">{isArabic ? "بوابة العميل (السياحة)" : "Client Portal (VIP)"}</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "متابعة وتقارير وتواصل" : "Reports & Comms"}</p>
                 </div>
               </button>
 
@@ -1647,15 +1740,15 @@ function LoginPage({
 
               <button
                 type="button"
-                onClick={() => void onLogin("khalid.ops@sila.com", "Midyaf@2026")}
-                className="flex items-center gap-2.5 rounded-xl bg-sky-500/10 p-2.5 text-left text-xs font-bold text-sky-600 transition hover:bg-sky-500/15 border border-sky-500/15 dark:bg-sky-500/20 dark:text-sky-300 cursor-pointer"
+                onClick={() => void onLogin("guest.vip@midyaf.local", "Midyaf@2026")}
+                className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 p-2.5 text-left text-xs font-bold text-amber-600 transition hover:bg-amber-500/15 border border-amber-500/15 dark:bg-amber-500/20 dark:text-amber-300 cursor-pointer"
               >
-                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-sky-500/20 text-sky-500 ring-1 ring-sky-500/30">
-                  <KeyRound size={14} />
+                <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-500/20 text-amber-500 ring-1 ring-amber-500/30">
+                  <Star size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "صلة (المفتاح 1)" : "Sila (Key 1)"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "تجربة الخزنة" : "Vault Demo"}</p>
+                  <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
+                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "نورة الحربي" : "Noura Al Harbi"}</p>
                 </div>
               </button>
             </div>
@@ -1672,14 +1765,64 @@ function renderPortal(
   props: PortalProps
 ) {
   switch (portal) {
+    case "admin":
+      return (
+        <AdminExecutiveDashboard
+          data={props.data}
+          session={props.session ?? null}
+          isDemoMode={props.isDemoMode}
+          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          onApproveVendorQuote={props.approveVendorQuote}
+          onApproveContract={props.approveContract}
+          onConfirmAiPlan={props.confirmAiPlan}
+        />
+      );
+    case "client":
+      return (
+        <ClientDashboard
+          data={props.data}
+          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          onDownloadReport={() => {
+            const report = props.data.companyReports[0];
+            if (report) {
+              window.open(`/api/company-reports/${report.id}/pdf`, "_blank");
+            }
+          }}
+        />
+      );
+    case "logistics_mgr":
+      return (
+        <LogisticsManagerDashboard
+          data={props.data}
+          session={props.session ?? null}
+          isDemoMode={props.isDemoMode}
+          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+          onDownloadReport={() => {
+            const report = props.data.companyReports[0];
+            if (report) {
+              window.open(`/api/company-reports/${report.id}/pdf`, "_blank");
+            }
+          }}
+        />
+      );
+    case "event_mgr":
+      return (
+        <EventManagerDashboard
+          data={props.data}
+          session={props.session ?? null}
+          isDemoMode={props.isDemoMode}
+          isArabic={props.session ? isArabicLanguage(props.session.user.language) : true}
+        />
+      );
     case "guest":
       return <GuestJourneyApp {...props} />;
     case "captain":
       return <CaptainsApp {...props} />;
     case "coordinator":
       return <CoordinatorsApp {...props} />;
+    case "operations":
     case "logistics":
-      return <LogisticsDashboard {...props} />;
+      return <OperationsDashboard {...props} />;
     case "company":
       return <CompanyDashboard {...props} />;
     case "intake":
