@@ -50,6 +50,9 @@ export function AdminExecutiveDashboard({
   const intake = data.activityIntakes[0];
   const aiPlan = data.aiPlans[0];
 
+  const [activeTab, setActiveTab] = useState<"submitters" | "plans" | "complaints" | "activities" | "vault">("submitters");
+
+
   // Complaints State
   const [complaints, setComplaints] = useState<ComplaintItem[]>(DEFAULT_COMPLAINTS);
   const [complaintFilter, setComplaintFilter] = useState<"ALL" | ComplaintStatus>("ALL");
@@ -167,6 +170,71 @@ export function AdminExecutiveDashboard({
         badge={
           <span className="inline-flex items-center gap-1.5 text-midyaf-gold">
             <Crown size={15} />
+
+
+      {/* Icon-based Navigation Tabs (Drill-down Pattern) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <button 
+          onClick={() => setActiveTab("submitters")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "submitters" 
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <UserCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "??? ?????? ???????" : "Submitters Log"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("plans")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "plans" 
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <FileCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "????? ?????????" : "Logistics Plans"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("complaints")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "complaints" 
+              ? "bg-rose-500 text-white border-rose-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <MessageSquareWarning size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "??????? ?????????" : "Complaints"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("activities")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "activities" 
+              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <Flame size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "????????? ???????" : "Live Activities"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("vault")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "vault" 
+              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <ShieldCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "???? ?????? ????????" : "Contracts Vault"}</span>
+        </button>
+      </div>
+
             {isArabic ? "لوحة الملاك والإدارة التنفيذية لمضياف (سري للغاية)" : "Midyaf Sovereign Ownership & Executive Admin Dashboard"}
           </span>
         }
@@ -257,12 +325,12 @@ export function AdminExecutiveDashboard({
       </div>
 
       {/* Priority 1: Who Submitted/Input the Data for Each New Activity */}
-      <Section
+      {activeTab === "submitters" && (<Section
         id="section-admin-submitters"
         title={
           <div className="flex items-center gap-2">
             <UserCheck size={18} className="text-midyaf-gold" />
-            <span>{isArabic ? "1. سجل الجهات ومسؤولي إدخال بيانات الفعاليات (Submitter Audit Trail)" : "1. Activity Submitter & Intake Audit Trail"}</span>
+            <span>{isArabic ? "1. سجل الجهات ومسؤولي إدخال بيانات الفعاليات (Submitter Audit Trail)" : "Activity Submitter Audit Trail"}</span>
           </div>
         }
       >
@@ -324,16 +392,16 @@ export function AdminExecutiveDashboard({
             </tbody>
           </table>
         </div>
-      </Section>
+      </Section>)}
 
       {/* Priority 2: Approved Plans vs Non-Approved (Pending) Plans */}
-      <Section
+      {activeTab === "plans" && (<Section
         id="section-admin-plans"
         title={
           <div className="flex items-center justify-between w-full flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <FileCheck size={18} className="text-emerald-500" />
-              <span>{isArabic ? "2. مصفوفة الخطط اللوجستية: المعتمدة وقيد الانتظار (Plans Approval Matrix)" : "2. Approved vs Pending Plans Matrix"}</span>
+              <span>{isArabic ? "2. مصفوفة الخطط اللوجستية: المعتمدة وقيد الانتظار (Plans Approval Matrix)" : "Approved Plans Matrix"}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 text-xs">
               <button
@@ -417,16 +485,16 @@ export function AdminExecutiveDashboard({
             </div>
           ))}
         </div>
-      </Section>
+      </Section>)}
 
       {/* Priority 3: Any Complaints (Centralized Registry) */}
-      <Section
+      {activeTab === "complaints" && (<Section
         id="section-admin-complaints"
         title={
           <div className="flex items-center justify-between w-full flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <MessageSquareWarning size={18} className="text-rose-500" />
-              <span>{isArabic ? "3. السجل المركزي للبلاغات والشكاوى (Complaints & Escalations Registry)" : "3. Complaints & Incident Escalations Registry"}</span>
+              <span>{isArabic ? "3. السجل المركزي للبلاغات والشكاوى (Complaints & Escalations Registry)" : "Complaints Registry"}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -550,15 +618,15 @@ export function AdminExecutiveDashboard({
             </div>
           ))}
         </div>
-      </Section>
+      </Section>)}
 
       {/* Priority 4: Status of Currently Running Activities */}
-      <Section
+      {activeTab === "activities" && (<Section
         id="section-admin-activities"
         title={
           <div className="flex items-center gap-2">
             <Flame size={18} className="text-amber-500" />
-            <span>{isArabic ? "4. مؤشرات وحالة الفعاليات النشطة حالياً (Live Activities Health)" : "4. Status of Currently Running Activities"}</span>
+            <span>{isArabic ? "4. مؤشرات وحالة الفعاليات النشطة حالياً (Live Activities Health)" : "Live Activities Status"}</span>
           </div>
         }
       >
@@ -631,15 +699,15 @@ export function AdminExecutiveDashboard({
             </div>
           </div>
         </div>
-      </Section>
+      </Section>)}
 
       {/* Priority 6: Aggregate Business Overview & Contract Vault (Relocated from Operations) */}
-      <Section
+      {activeTab === "vault" && (<Section
         id="section-admin-vault"
         title={
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-midyaf-gold" />
-            <span>{isArabic ? "6. خزنة العقود السيادية وعروض أسعار الموردين (Contracts & Financial Vault)" : "6. Sovereign Contracts & Certified Supplier Bids Vault"}</span>
+            <span>{isArabic ? "6. خزنة العقود السيادية وعروض أسعار الموردين (Contracts & Financial Vault)" : "Sovereign Contracts Vault"}</span>
           </div>
         }
       >
@@ -699,7 +767,7 @@ export function AdminExecutiveDashboard({
             </tbody>
           </table>
         </div>
-      </Section>
+      </Section>)}
     </div>
   );
 }

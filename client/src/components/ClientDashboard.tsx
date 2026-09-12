@@ -37,6 +37,9 @@ export function ClientDashboard({
   onDownloadReport?: () => void;
 }) {
   const toast = useTacticalToast();
+
+  const [activeTab, setActiveTab] = useState<"amendments" | "chat" | "reports">("amendments");
+
   const event = data.events[0];
   const report = data.companyReports[0];
 
@@ -73,6 +76,52 @@ export function ClientDashboard({
         badge={
           <span className="inline-flex items-center gap-1.5 text-midyaf-gold">
             <Building2 size={15} />
+
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {config.canViewScheduleAmendments && (
+          <button 
+            onClick={() => setActiveTab("amendments")}
+            className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+              activeTab === "amendments" 
+                ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+                : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+            }`}
+          >
+            <Clock size={24} className="mb-2" />
+            <span className="text-xs font-bold">{isArabic ? "????????? ????????" : "Schedule Amendments"}</span>
+          </button>
+        )}
+
+        {config.canCommunicateLogistics && (
+          <button 
+            onClick={() => setActiveTab("chat")}
+            className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+              activeTab === "chat" 
+                ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
+                : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+            }`}
+          >
+            <MessageSquare size={24} className="mb-2" />
+            <span className="text-xs font-bold">{isArabic ? "??????? ????????" : "Logistics Chat"}</span>
+          </button>
+        )}
+
+        {config.canViewReports && (
+          <button 
+            onClick={() => setActiveTab("reports")}
+            className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+              activeTab === "reports" 
+                ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
+                : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+            }`}
+          >
+            <FileText size={24} className="mb-2" />
+            <span className="text-xs font-bold">{isArabic ? "???????? ?????????" : "Executive Reports"}</span>
+          </button>
+        )}
+      </div>
+
             {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
           </span>
         }

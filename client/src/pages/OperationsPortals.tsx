@@ -4746,6 +4746,7 @@ export function CompanyDashboard({
 }: PortalProps) {
   const ui = useOpsText();
   const toast = useTacticalToast();
+  const [activeTab, setActiveTab] = useState<"summary" | "client" | "reports" | "updates">("summary");
   const intake = data.activityIntakes[0];
   const report = data.companyReports[0];
   const canSubmitUpdate = canSubmitCompanyUpdates(session) && Boolean(intake);
@@ -4878,8 +4879,60 @@ export function CompanyDashboard({
         )}
       />
 
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button 
+          onClick={() => setActiveTab("summary")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "summary" 
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <Building2 size={24} className="mb-2" />
+          <span className="text-xs font-bold">{ui.isArabic ? "???? ????????" : "Activity Summary"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("client")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "client" 
+              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <ExternalLink size={24} className="mb-2" />
+          <span className="text-xs font-bold">{ui.isArabic ? "????? ??????" : "Client Portal"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("reports")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "reports" 
+              ? "bg-emerald-500 text-white border-emerald-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-emerald-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <FileText size={24} className="mb-2" />
+          <span className="text-xs font-bold">{ui.isArabic ? "???????? ?????????" : "Reports"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("updates")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "updates" 
+              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <Sparkles size={24} className="mb-2" />
+          <span className="text-xs font-bold">{ui.isArabic ? "??????? ????????" : "Activity Updates"}</span>
+        </button>
+      </div>
+
+
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Section title={ui.l("Activity summary")}>
+        {activeTab === "summary" && (<Section title={ui.l("Activity summary")}>
           {intake ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <MiniStat
@@ -4895,10 +4948,10 @@ export function CompanyDashboard({
               {ui.l("No company activity intake is assigned to this account.")}
             </p>
           )}
-        </Section>
+        </Section>)}
 
         {/* Task 2: On-Demand Client Dashboard Generator & Permission Controls (Sila) */}
-        <Section
+        {activeTab === "client" && (<Section
           id="section-client-generator"
           title={
             <div className="flex items-center justify-between w-full flex-wrap gap-2">
@@ -5011,9 +5064,9 @@ export function CompanyDashboard({
               </button>
             </div>
           </div>
-        </Section>
+        </Section>)}
 
-        <Section title={ui.l("Confirmed reports")}>
+        {activeTab === "reports" && (<Section title={ui.l("Confirmed reports")}>
           {report ? (
             <div className="rounded-lg bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -5052,11 +5105,11 @@ export function CompanyDashboard({
               {ui.l("No manager-confirmed report is available yet.")}
             </p>
           )}
-        </Section>
+        </Section>)}
       </div>
 
       {/* Automated Post-Event Report Generator (PDF Page 5) */}
-      <Section
+      {activeTab === "reports" && (<Section
         title={ui.p("Automated AI Post-Event Report Generator", "مولد التقرير التنفيذي للفعالية بالذكاء الاصطناعي")}
         action={
           <button
@@ -5155,10 +5208,9 @@ export function CompanyDashboard({
             </div>
           )}
         </div>
-      </Section>
+      </Section>)}
 
-      {canSubmitUpdate ? (
-        <Section title={ui.l("Submit new data to logistics manager")}>
+      {canSubmitUpdate && activeTab === "updates" ? (<Section title={ui.l("Submit new data to logistics manager")}>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <textarea
             value={newData}
@@ -5182,8 +5234,7 @@ export function CompanyDashboard({
             "Updates become tasks for the logistics manager, who confirms scope, assigns managers or supervisors, then sends back approved reporting."
           )}
         </p>
-        </Section>
-      ) : null}
+        </Section>) : null}
     </div>
   );
 }
