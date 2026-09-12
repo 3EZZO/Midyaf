@@ -127,23 +127,13 @@ export function QuickNavigator({
     },
     {
       id: "portal-logistics-mgr",
-      titleEn: "Logistics Manager Dashboard (Sila)",
-      titleAr: "لوحة مدير العمليات اللوجستية (صلة)",
+      titleEn: "Sila Operations Command",
+      titleAr: "لوحة عمليات صلة (لوجستيات وفعاليات)",
       category: "portal",
-      portalTarget: "logistics_mgr",
+      portalTarget: "sila_operations",
       icon: Briefcase,
-      keywordsEn: ["logistics manager", "sila", "relay", "event manager", "contracts"],
-      keywordsAr: ["مدير العمليات", "صلة", "ترحيل", "عقود", "تكليف"]
-    },
-    {
-      id: "portal-event-mgr",
-      titleEn: "Event/Activity Manager Dashboard",
-      titleAr: "لوحة مدير الفعالية الميداني",
-      category: "portal",
-      portalTarget: "event_mgr",
-      icon: Users,
-      keywordsEn: ["event manager", "team", "delegation", "field lead", "saud"],
-      keywordsAr: ["مدير الفعالية", "فريق", "تفويض", "ميداني", "سعود"]
+      keywordsEn: ["operations", "sila", "logistics", "events"],
+      keywordsAr: ["عمليات", "صلة", "لوجستيات", "فعاليات"]
     },
     {
       id: "portal-intake",

@@ -52,8 +52,8 @@ import {
 } from "./pages/OperationsPortals";
 import { AdminExecutiveDashboard } from "./components/AdminExecutiveDashboard";
 import { ClientDashboard } from "./components/ClientDashboard";
-import { LogisticsManagerDashboard } from "./components/LogisticsManagerDashboard";
-import { EventManagerDashboard } from "./components/EventManagerDashboard";
+import { SilaOperationsDashboard } from "./components/SilaOperationsDashboard";
+import { GuestSelfOnboarding } from "./pages/GuestSelfOnboarding";
 import type {
   CoordinatorRequestInput,
   DriverCreateInput,
@@ -85,8 +85,7 @@ const portalIcons: Record<PortalKey, LucideIcon> = {
   logistics: LayoutDashboard,
   company: Building2,
   client: Briefcase,
-  logistics_mgr: Briefcase,
-  event_mgr: Users,
+  sila_operations: Briefcase,
   intake: ClipboardList,
   guest: Crown,
   captain: Car,
@@ -102,9 +101,9 @@ const portalsByRole: Record<Role, PortalKey[]> = {
   SUPPLIER: ["company"],
   SUPER_ADMIN: [...PORTALS],
   COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: ["logistics_mgr", "operations", "company", "coordinator", "intake"],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "logistics_mgr"],
-  EVENT_MANAGER: ["event_mgr", "operations", "coordinator"],
+  LOGISTICS_MANAGER: ["sila_operations", "operations", "company", "coordinator", "intake"],
+  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations"],
+  EVENT_MANAGER: ["sila_operations", "operations", "coordinator"],
   CLIENT: ["client"]
 };
 
@@ -118,6 +117,16 @@ export function App() {
     pickText(isArabic, english, arabic);
   const toast = useTacticalToast();
   const [portal, setPortal] = useState<PortalKey>("operations");
+  const [isOnboarding, setIsOnboarding] = useState(
+    window.location.hash.startsWith("#onboarding")
+  );
+  
+  useEffect(() => {
+    const handleHash = () => setIsOnboarding(window.location.hash.startsWith("#onboarding"));
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   const [data, setData] = useState<MidyafData | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const normalDataRef = useRef<MidyafData | null>(null);
@@ -406,6 +415,18 @@ export function App() {
   );
 
   if (!session) {
+    if (isOnboarding) {
+      return (
+        <GuestSelfOnboarding 
+          isArabic={isArabic} 
+          onComplete={() => { 
+            window.location.hash = ""; 
+            setIsOnboarding(false);
+            toast.success(isArabic ? "تم التسجيل بنجاح" : "Registration Complete", isArabic ? "يمكنك الآن تسجيل الدخول" : "You can now login");
+          }} 
+        />
+      );
+    }
     return (
       <LoginPage
         isArabic={isArabic}
@@ -1088,17 +1109,11 @@ const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: 
     descEn: "Exclusive client portal: reports, schedule amendments, direct logistics communication & performance KPIs",
     descAr: "بوابة العميل المستفيد: استعراض التقارير، تعديلات الجداول، التواصل المباشر مع مدير العمليات ومؤشرات الأداء"
   },
-  logistics_mgr: {
-    titleEn: "Logistics Manager Dashboard",
-    titleAr: "لوحة مدير العمليات اللوجستية (صلة)",
-    descEn: "Sila logistics command: view reports, activities, contracts & relay tasks to Event Manager",
-    descAr: "قيادة العمليات لشركة صلة: مراجعة التقارير، الأنشطة، العقود التشغيلية، وترحيل المهام لمدير الفعالية"
-  },
-  event_mgr: {
-    titleEn: "Event/Activity Manager Dashboard",
-    titleAr: "لوحة مدير الفعالية الميداني",
-    descEn: "Event execution command: create custom field team, assign tasks & hierarchical delegation chain",
-    descAr: "القيادة الميدانية للفعالية: تشكيل الفريق المخصص، توزيع المهام، والتفويض الهرمي لسلسلة القيادة"
+  sila_operations: {
+    titleEn: "Sila Operations Command",
+    titleAr: "لوحة عمليات صلة (لوجستيات وفعاليات)",
+    descEn: "Unified operations command: view reports, activities, contracts & relay tasks",
+    descAr: "قيادة العمليات الموحدة: متابعة التقارير، الأنشطة، العقود، وتفويض المهام"
   },
   intake: {
     titleEn: "Activity Intake & Logistics Setup",
@@ -1337,9 +1352,9 @@ function ShellFrame({
                 : item === "company"
                 ? (isArabic ? "المنظمة" : "Organizer")
                 : item === "client"
-                ? (isArabic ? "العميل" : "Client")
-                : item === "logistics_mgr" || item === "event_mgr"
-                ? (isArabic ? "القيادة" : "Command")
+                  ? (isArabic ? "العميل" : "Client")
+                : item === "sila_operations"
+                  ? (isArabic ? "القيادة" : "Command")
                 : item === "intake" 
                 ? (isArabic ? "التخطيط" : "Planning")
                 : (isArabic ? "الميدان" : "Ground");
@@ -1791,12 +1806,12 @@ function renderPortal(
           }}
         />
       );
-    case "logistics_mgr":
+    case "sila_operations":
       return (
-        <LogisticsManagerDashboard
+        <SilaOperationsDashboard
           data={props.data}
           session={props.session ?? null}
-          isDemoMode={props.isDemoMode}
+          isDemoMode={props.isDemoMode ?? false}
           isArabic={isArabic}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
@@ -1804,15 +1819,6 @@ function renderPortal(
               window.open(`/api/company-reports/${report.id}/pdf`, "_blank");
             }
           }}
-        />
-      );
-    case "event_mgr":
-      return (
-        <EventManagerDashboard
-          data={props.data}
-          session={props.session ?? null}
-          isDemoMode={props.isDemoMode}
-          isArabic={isArabic}
         />
       );
     case "guest":
