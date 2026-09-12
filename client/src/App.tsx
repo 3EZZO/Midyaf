@@ -1323,7 +1323,7 @@ function ShellFrame({
         </div>
 
         {/* Enhanced Portal Navigation Bar with Category Pills & Intuitive Highlights */}
-        <nav className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-5 pb-2.5 scrollbar-none">
+        <nav className="mx-auto flex max-w-7xl items-center flex-wrap gap-2 px-5 pb-2.5">
           {allowedPortals.map((item) => {
             const Icon = portalIcons[item];
             const active = portal === item;

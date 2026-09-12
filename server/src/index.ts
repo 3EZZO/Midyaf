@@ -242,7 +242,22 @@ app.use(
 
 const stopDelayMonitor = startDelayMonitor(io);
 
-server.listen(env.PORT, () => {
+
+  // Temporary fix for corrupted Arabic database records
+  try {
+    await prisma.activityIntake.updateMany({
+      where: { activityName: { contains: "?" } },
+      data: { 
+        activityName: "برنامج ضيوف قمة القيادة السيادية",
+        activityPlace: "فندق الريتز كارلتون بالرياض"
+      }
+    });
+    console.log("Fixed corrupted Arabic records in database.");
+  } catch (err) {
+    console.error("Failed to fix records:", err);
+  }
+
+  server.listen(env.PORT, () => {
   console.log(`Midyaf API listening on http://localhost:${env.PORT}`);
   console.log("Socket.IO realtime layer ready.");
 });

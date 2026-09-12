@@ -172,68 +172,7 @@ export function AdminExecutiveDashboard({
             <Crown size={15} />
 
 
-      {/* Icon-based Navigation Tabs (Drill-down Pattern) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <button 
-          onClick={() => setActiveTab("submitters")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-            activeTab === "submitters" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <UserCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "سجل الجهات المدخلة" : "Submitters Log"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("plans")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-            activeTab === "plans" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <FileCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الخطط اللوجستية" : "Logistics Plans"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("complaints")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-            activeTab === "complaints" 
-              ? "bg-rose-500 text-white border-rose-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <MessageSquareWarning size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("activities")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-            activeTab === "activities" 
-              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <Flame size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("vault")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
-            activeTab === "vault" 
-              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <ShieldCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
-        </button>
-      </div>
+      
 
             {isArabic ? "لوحة الملاك والإدارة التنفيذية لمضياف (سري للغاية)" : "Midyaf Sovereign Ownership & Executive Admin Dashboard"}
           </span>
@@ -324,7 +263,71 @@ export function AdminExecutiveDashboard({
         </div>
       </div>
 
-      {/* Priority 1: Who Submitted/Input the Data for Each New Activity */}
+      
+{/* Icon-based Navigation Tabs (Drill-down Pattern) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <button 
+          onClick={() => setActiveTab("submitters")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "submitters" 
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <UserCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "سجل الجهات المدخلة" : "Submitters Log"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("plans")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "plans" 
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <FileCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "الخطط اللوجستية" : "Logistics Plans"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("complaints")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "complaints" 
+              ? "bg-rose-500 text-white border-rose-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <MessageSquareWarning size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("activities")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "activities" 
+              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <Flame size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("vault")}
+          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+            activeTab === "vault" 
+              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
+              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+          }`}
+        >
+          <ShieldCheck size={24} className="mb-2" />
+          <span className="text-xs font-bold">{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
+        </button>
+      </div>
+
+{/* Priority 1: Who Submitted/Input the Data for Each New Activity */}
       {activeTab === "submitters" && (<Section
         id="section-admin-submitters"
         title={

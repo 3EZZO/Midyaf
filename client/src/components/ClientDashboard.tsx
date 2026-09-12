@@ -78,7 +78,24 @@ export function ClientDashboard({
             <Building2 size={15} />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      
+
+            {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
+          </span>
+        }
+        title={
+          isArabic
+            ? `مرحباً بك: ${config.clientName} — ${config.clientEntity}`
+            : `Welcome: ${config.clientName} — ${config.clientEntity}`
+        }
+        body={
+          isArabic
+            ? `لوحة المتابعة الخاصة بفعالية (${config.eventTitle}) تحت إشراف الشركة المنظمة (صلة)، تتيح لك الاطلاع الفوري على التقارير، تعديلات الجداول، والتواصل مع العمليات.`
+            : `Executive dashboard for (${config.eventTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`
+        }
+      />
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {config.canViewScheduleAmendments && (
           <button 
             onClick={() => setActiveTab("amendments")}
@@ -122,20 +139,7 @@ export function ClientDashboard({
         )}
       </div>
 
-            {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
-          </span>
-        }
-        title={
-          isArabic
-            ? `مرحباً بك: ${config.clientName} — ${config.clientEntity}`
-            : `Welcome: ${config.clientName} — ${config.clientEntity}`
-        }
-        body={
-          isArabic
-            ? `لوحة المتابعة الخاصة بفعالية (${config.eventTitle}) تحت إشراف الشركة المنظمة (صلة)، تتيح لك الاطلاع الفوري على التقارير، تعديلات الجداول، والتواصل مع العمليات.`
-            : `Executive dashboard for (${config.eventTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`
-        }
-      />
+
 
       {/* Permissions Transparency Pill */}
       <div className="rounded-xl border border-slate-200 bg-white/70 p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 text-xs">
