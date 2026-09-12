@@ -47,8 +47,6 @@ import {
   CompanyDashboard,
   CoordinatorsApp,
   GuestJourneyApp,
-  LogisticsDashboard,
-  OperationsDashboard
 } from "./pages/OperationsPortals";
 import { AdminExecutiveDashboard } from "./components/AdminExecutiveDashboard";
 import { ClientDashboard } from "./components/ClientDashboard";
@@ -81,8 +79,6 @@ import { useTacticalToast } from "./components/TacticalToast";
 
 const portalIcons: Record<PortalKey, LucideIcon> = {
   admin: Crown,
-  operations: LayoutDashboard,
-  logistics: LayoutDashboard,
   company: Building2,
   client: Briefcase,
   sila_operations: Briefcase,
@@ -101,9 +97,9 @@ const portalsByRole: Record<Role, PortalKey[]> = {
   SUPPLIER: ["company"],
   SUPER_ADMIN: [...PORTALS],
   COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: ["sila_operations", "operations", "company", "coordinator", "intake"],
+  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake"],
   COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations"],
-  EVENT_MANAGER: ["sila_operations", "operations", "coordinator"],
+  EVENT_MANAGER: ["sila_operations", "coordinator"],
   CLIENT: ["client"]
 };
 
@@ -116,7 +112,7 @@ export function App() {
   const p = (english: string, arabic: string) =>
     pickText(isArabic, english, arabic);
   const toast = useTacticalToast();
-  const [portal, setPortal] = useState<PortalKey>("operations");
+  const [portal, setPortal] = useState<PortalKey>("sila_operations");
   const [isOnboarding, setIsOnboarding] = useState(
     window.location.hash.startsWith("#onboarding")
   );
@@ -256,8 +252,8 @@ export function App() {
     setPortal((current) =>
       portalsByRole[session.user.role].includes(current)
         ? current
-        : portalsByRole[session.user.role].includes("operations")
-        ? "operations"
+        : portalsByRole[session.user.role].includes("sila_operations")
+        ? "sila_operations"
         : portalsByRole[session.user.role][0]
     );
     void loadSessionData(session);
@@ -282,7 +278,7 @@ export function App() {
         socket.emit("user:join", session.user.id);
       }
 
-      if (portal === "operations" || portal === "logistics" || portal === "coordinator") {
+      if ( portal === "coordinator") {
         socket.emit("organizer:join");
       }
     });
@@ -1085,18 +1081,6 @@ const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: 
     descEn: "Owners-only executive governance: submitter audit, plans approval, complaints registry & contracts",
     descAr: "خاصة بالملاك: سجل الجهات المدخلة، اعتماد الخطط، سجل الشكاوى، مؤشرات الفعاليات وخزنة العقود"
   },
-  operations: {
-    titleEn: "Operations Command Dashboard",
-    titleAr: "لوحة العمليات والتحكم الميداني",
-    descEn: "Unified field operations: live radar, fleet map, task dispatch & confirmed reports (pure operations)",
-    descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
-  },
-  logistics: {
-    titleEn: "Operations Command Dashboard",
-    titleAr: "لوحة العمليات والتحكم الميداني",
-    descEn: "Unified field operations: live radar, fleet map, task dispatch & confirmed reports (pure operations)",
-    descAr: "مركز القيادة الميداني: رادار التنبؤ، الخريطة التكتيكية، ترحيل المهام والتقارير المعتمدة (بدون بيانات مالية)"
-  },
   company: {
     titleEn: "Organizing Company Dashboard",
     titleAr: "لوحة الشركة المنظمة (صلة)",
@@ -1347,14 +1331,14 @@ function ShellFrame({
             const categoryTag = 
               item === "admin"
                 ? (isArabic ? "الملاك" : "Owners")
-                : item === "operations" || item === "logistics"
+                : item === "sila_operations"
                 ? (isArabic ? "العمليات" : "Operations")
                 : item === "company"
                 ? (isArabic ? "المنظمة" : "Organizer")
                 : item === "client"
                   ? (isArabic ? "العميل" : "Client")
-                : item === "sila_operations"
-                  ? (isArabic ? "القيادة" : "Command")
+
+
                 : item === "intake" 
                 ? (isArabic ? "التخطيط" : "Planning")
                 : (isArabic ? "الميدان" : "Ground");
@@ -1827,9 +1811,6 @@ function renderPortal(
       return <CaptainsApp {...props} />;
     case "coordinator":
       return <CoordinatorsApp {...props} />;
-    case "operations":
-    case "logistics":
-      return <OperationsDashboard {...props} />;
     case "company":
       return <CompanyDashboard {...props} />;
     case "intake":

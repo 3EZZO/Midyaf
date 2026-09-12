@@ -183,7 +183,7 @@ export function AdminExecutiveDashboard({
           }`}
         >
           <UserCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "??? ?????? ???????" : "Submitters Log"}</span>
+          <span className="text-xs font-bold">{isArabic ? "سجل الجهات المدخلة" : "Submitters Log"}</span>
         </button>
 
         <button 
@@ -195,7 +195,7 @@ export function AdminExecutiveDashboard({
           }`}
         >
           <FileCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "????? ?????????" : "Logistics Plans"}</span>
+          <span className="text-xs font-bold">{isArabic ? "الخطط اللوجستية" : "Logistics Plans"}</span>
         </button>
 
         <button 
@@ -207,7 +207,7 @@ export function AdminExecutiveDashboard({
           }`}
         >
           <MessageSquareWarning size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "??????? ?????????" : "Complaints"}</span>
+          <span className="text-xs font-bold">{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
         </button>
 
         <button 
@@ -219,7 +219,7 @@ export function AdminExecutiveDashboard({
           }`}
         >
           <Flame size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "????????? ???????" : "Live Activities"}</span>
+          <span className="text-xs font-bold">{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
         </button>
 
         <button 
@@ -231,7 +231,7 @@ export function AdminExecutiveDashboard({
           }`}
         >
           <ShieldCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "???? ?????? ????????" : "Contracts Vault"}</span>
+          <span className="text-xs font-bold">{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
         </button>
       </div>
 
@@ -494,7 +494,7 @@ export function AdminExecutiveDashboard({
           <div className="flex items-center justify-between w-full flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <MessageSquareWarning size={18} className="text-rose-500" />
-              <span>{isArabic ? "3. السجل المركزي للبلاغات والشكاوى (Complaints & Escalations Registry)" : "Complaints Registry"}</span>
+              <span>{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -626,7 +626,7 @@ export function AdminExecutiveDashboard({
         title={
           <div className="flex items-center gap-2">
             <Flame size={18} className="text-amber-500" />
-            <span>{isArabic ? "4. مؤشرات وحالة الفعاليات النشطة حالياً (Live Activities Health)" : "Live Activities Status"}</span>
+            <span>{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
           </div>
         }
       >
@@ -707,7 +707,7 @@ export function AdminExecutiveDashboard({
         title={
           <div className="flex items-center gap-2">
             <ShieldCheck size={18} className="text-midyaf-gold" />
-            <span>{isArabic ? "6. خزنة العقود السيادية وعروض أسعار الموردين (Contracts & Financial Vault)" : "Sovereign Contracts Vault"}</span>
+            <span>{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
           </div>
         }
       >

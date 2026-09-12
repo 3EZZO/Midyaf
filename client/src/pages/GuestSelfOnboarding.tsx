@@ -29,8 +29,8 @@ export function GuestSelfOnboarding({
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
         <div className="bg-midyaf-purple p-6 text-white text-center">
           <UserPlus size={40} className="mx-auto mb-3 opacity-90" />
-          <h2 className="text-xl font-bold">{isArabic ? "????? ??????? ??????" : "Guest Self-Registration"}</h2>
-          <p className="text-xs opacity-80 mt-1">{isArabic ? "???? ???? ???" : "Sila Guest Portal"}</p>
+          <h2 className="text-xl font-bold">{isArabic ? "تسجيل الضيوف الذاتي" : "Guest Self-Registration"}</h2>
+          <p className="text-xs opacity-80 mt-1">{isArabic ? "بوابة ضيوف صلة" : "Sila Guest Portal"}</p>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -47,13 +47,13 @@ export function GuestSelfOnboarding({
 
           {step === 1 && (
             <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-midyaf-ink dark:text-white text-sm">{isArabic ? "????????? ????????" : "Basic Information"}</h3>
+              <h3 className="font-bold text-midyaf-ink dark:text-white text-sm">{isArabic ? "المعلومات الأساسية" : "Basic Information"}</h3>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "????? ??????" : "Full Name"}</label>
-                <input required type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "??? ?? ???? ?? ??????" : "As shown on ID"} />
+                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "الاسم الكامل" : "Full Name"}</label>
+                <input required type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "كما هو موضح في الهوية" : "As shown on ID"} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "??? ??????" : "Phone Number"}</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "رقم الجوال" : "Phone Number"}</label>
                 <input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder="+966 5X XXX XXXX" />
               </div>
             </div>
@@ -61,16 +61,16 @@ export function GuestSelfOnboarding({
 
           {step === 2 && (
             <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-midyaf-ink dark:text-white text-sm">{isArabic ? "??????? ???????" : "Hospitality Preferences"}</h3>
+              <h3 className="font-bold text-midyaf-ink dark:text-white text-sm">{isArabic ? "تفضيلات الضيافة" : "Hospitality Preferences"}</h3>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "?????? ???????? (???????)" : "Dietary Restrictions (Optional)"}</label>
-                <input type="text" value={formData.dietary} onChange={e => setFormData({...formData, dietary: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "?????? ???? ?? ????????..." : "Vegan, Gluten-free..."} />
+                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "القيود الغذائية (اختياري)" : "Dietary Restrictions (Optional)"}</label>
+                <input type="text" value={formData.dietary} onChange={e => setFormData({...formData, dietary: e.target.value})} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "نباتي، خالي من الجلوتين..." : "Vegan, Gluten-free..."} />
               </div>
               <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-600 mb-2">{isArabic ? "????? ?????? ??????? / ??????" : "Upload National ID / Passport"}</label>
+                <label className="block text-xs font-bold text-slate-600 mb-2">{isArabic ? "رفع الهوية الوطنية / الجواز" : "Upload National ID / Passport"}</label>
                 <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-midyaf-purple hover:bg-midyaf-purple/5 transition-colors cursor-pointer dark:border-slate-700">
                   <UploadCloud size={24} className="mx-auto text-slate-400 mb-2" />
-                  <span className="text-xs text-slate-500 font-medium">{isArabic ? "???? ???? ????" : "Click to upload image"}</span>
+                  <span className="text-xs text-slate-500 font-medium">{isArabic ? "انقر لرفع صورة" : "Click to upload image"}</span>
                 </div>
               </div>
             </div>
@@ -81,9 +81,9 @@ export function GuestSelfOnboarding({
               <div className="mx-auto w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="font-bold text-midyaf-ink dark:text-white text-lg">{isArabic ? "???? ???????" : "Ready to Submit"}</h3>
+              <h3 className="font-bold text-midyaf-ink dark:text-white text-lg">{isArabic ? "جاهز للإرسال" : "Ready to Submit"}</h3>
               <p className="text-xs text-slate-500">
-                {isArabic ? "???? ????? ???? ?????? ?????? ????? ?????? ??????? (QR)." : "Your profile will be created and digital boarding pass (QR) issued."}
+                {isArabic ? "سيتم إنشاء ملفك وإصدار بطاقة الصعود الرقمية (QR)." : "Your profile will be created and digital boarding pass (QR) issued."}
               </p>
             </div>
           )}

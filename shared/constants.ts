@@ -91,7 +91,6 @@ export const DRIVER_ZONES = [
 
 export const PORTALS = [
   "admin",
-  "operations",
   "company",
   "client",
   "sila_operations",

@@ -89,7 +89,7 @@ export function ClientDashboard({
             }`}
           >
             <Clock size={24} className="mb-2" />
-            <span className="text-xs font-bold">{isArabic ? "????????? ????????" : "Schedule Amendments"}</span>
+            <span className="text-xs font-bold">{isArabic ? "التعديلات المباشرة" : "Schedule Amendments"}</span>
           </button>
         )}
 
@@ -103,7 +103,7 @@ export function ClientDashboard({
             }`}
           >
             <MessageSquare size={24} className="mb-2" />
-            <span className="text-xs font-bold">{isArabic ? "??????? ????????" : "Logistics Chat"}</span>
+            <span className="text-xs font-bold">{isArabic ? "التواصل اللوجستي" : "Logistics Chat"}</span>
           </button>
         )}
 
@@ -117,7 +117,7 @@ export function ClientDashboard({
             }`}
           >
             <FileText size={24} className="mb-2" />
-            <span className="text-xs font-bold">{isArabic ? "???????? ?????????" : "Executive Reports"}</span>
+            <span className="text-xs font-bold">{isArabic ? "التقارير التنفيذية" : "Executive Reports"}</span>
           </button>
         )}
       </div>
@@ -221,7 +221,7 @@ export function ClientDashboard({
           title={
             <div className="flex items-center gap-2">
               <Clock size={18} className="text-midyaf-gold" />
-              <span>{isArabic ? "سجل تعديلات الجداول والمواعيد الحية (Live Schedule Amendments)" : "Live Schedule Amendments & Flight Updates"}</span>
+              <span>{isArabic ? "التعديلات المباشرة" : "Schedule Amendments"}</span>
             </div>
           }
         >
@@ -342,7 +342,7 @@ export function ClientDashboard({
             <div className="flex items-center justify-between w-full flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <FileText size={18} className="text-midyaf-purple" />
-                <span>{isArabic ? "حزمة التقارير التنفيذية للفعالية (Executive Reports Package)" : "Executive Event Reports Package"}</span>
+                <span>{isArabic ? "التقارير التنفيذية" : "Executive Reports"}</span>
               </div>
               {onDownloadReport && (
                 <button

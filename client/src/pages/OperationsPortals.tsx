@@ -4890,7 +4890,7 @@ export function CompanyDashboard({
           }`}
         >
           <Building2 size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "???? ????????" : "Activity Summary"}</span>
+          <span className="text-xs font-bold">{ui.isArabic ? "ملخص الفعالية" : "Activity Summary"}</span>
         </button>
 
         <button 
@@ -4902,7 +4902,7 @@ export function CompanyDashboard({
           }`}
         >
           <ExternalLink size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "????? ??????" : "Client Portal"}</span>
+          <span className="text-xs font-bold">{ui.isArabic ? "بوابة العميل" : "Client Portal"}</span>
         </button>
 
         <button 
@@ -4914,7 +4914,7 @@ export function CompanyDashboard({
           }`}
         >
           <FileText size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "???????? ?????????" : "Reports"}</span>
+          <span className="text-xs font-bold">{ui.isArabic ? "التقارير والمخرجات" : "Reports"}</span>
         </button>
 
         <button 
@@ -4926,7 +4926,7 @@ export function CompanyDashboard({
           }`}
         >
           <Sparkles size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "??????? ????????" : "Activity Updates"}</span>
+          <span className="text-xs font-bold">{ui.isArabic ? "تحديثات الفعالية" : "Activity Updates"}</span>
         </button>
       </div>
 
@@ -5014,7 +5014,7 @@ export function CompanyDashboard({
                     onChange={e => handleUpdatePermission("canViewReports", e.target.checked)}
                     className="rounded text-midyaf-purple focus:ring-midyaf-purple"
                   />
-                  <span>{ui.isArabic ? "عرض التقارير المعتمدة" : "View Reports"}</span>
+                  <span>{ui.isArabic ? "التقارير والمخرجات" : "Reports"}</span>
                 </label>
 
                 <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
@@ -6636,5 +6636,4 @@ function DocumentCard({
   );
 }
 
-export const OperationsDashboard = LogisticsDashboard;
 

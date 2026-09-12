@@ -12,8 +12,6 @@ export type Role =
 
 export type PortalKey =
   | "admin"
-  | "operations"
-  | "logistics"
   | "company"
   | "client"
   | "sila_operations"
