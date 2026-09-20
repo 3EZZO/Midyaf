@@ -18,8 +18,8 @@ import {
   ExternalLink
 } from "lucide-react";
 import { money } from "../lib/format";
-import { DEMO_CONTRACTS } from "../lib/useLiveDemoSimulation";
-import type { DemoContract } from "../lib/useLiveDemoSimulation";
+import { DEMO_CONTRACTS } from "../lib/demo/data";
+import type { DemoContract } from "../lib/demo/data";
 
 interface SupplierContractWorkflowProps {
   isPlanApproved: boolean;

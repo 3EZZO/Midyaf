@@ -1,6 +1,6 @@
 import type { Driver, Guest, GuestJourney, MidyafData, Task, TaskStatus } from "@shared/domain";
-import { CONCENTRIC_GEOFENCES } from "@shared/constants";
-import { DEMO_CONTRACTS, DEMO_VIP_GUESTS } from "./useLiveDemoSimulation";
+import { CONCENTRIC_GEOFENCES, GEOFENCE_RING_META, GEOFENCE_RING_ORDER, type GeofenceRingName } from "@shared/constants";
+import { DEMO_CONTRACTS, DEMO_VIP_GUESTS } from "./demo/data";
 
 /**
  * Pure selectors over MidyafData. Every number a dashboard shows comes from
@@ -341,6 +341,106 @@ export function ringOccupancy(drivers: Driver[]): RingOccupancy[] {
       outside
     };
   });
+}
+
+export type DriverRingPosition = {
+  siteId: string;
+  siteCode: string;
+  siteNameEn: string;
+  siteNameAr: string;
+  /** Innermost ring containing the driver, or "OUTSIDE" of every ring at this site. */
+  ring: GeofenceRingName | "OUTSIDE";
+  /** 0 = outside, 1..4 = outer → docked. */
+  depth: number;
+  distanceMeters: number;
+  bearingDeg: number;
+};
+
+/**
+ * Where a captain sits relative to the geofenced sites: the site whose
+ * innermost ring contains them, else the nearest site (as OUTSIDE). `null`
+ * without a fix.
+ */
+export function driverRingPosition(driver: Driver, preferredSiteCode?: string | null): DriverRingPosition | null {
+  if (driver.currentLat == null || driver.currentLng == null) return null;
+  const candidates = CONCENTRIC_GEOFENCES.map((site) => {
+    const distanceMeters = haversineMeters(site.centerLat, site.centerLng, driver.currentLat!, driver.currentLng!);
+    const rings = [...site.rings].sort((a, b) => a.radiusMeters - b.radiusMeters);
+    const inner = rings.find((r) => distanceMeters <= r.radiusMeters);
+    const ring: GeofenceRingName | "OUTSIDE" = inner ? inner.ring : "OUTSIDE";
+    const depth = inner ? GEOFENCE_RING_ORDER.length - GEOFENCE_RING_META[inner.ring].order : 0;
+    return {
+      siteId: site.id,
+      siteCode: site.code,
+      siteNameEn: site.nameEn,
+      siteNameAr: site.nameAr,
+      ring,
+      depth,
+      distanceMeters: Math.round(distanceMeters),
+      bearingDeg: bearingDeg(site.centerLat, site.centerLng, driver.currentLat!, driver.currentLng!)
+    };
+  });
+  const inside = candidates.filter((c) => c.depth > 0).sort((a, b) => b.depth - a.depth)[0];
+  if (inside) return inside;
+  if (preferredSiteCode) {
+    const preferred = candidates.find((c) => c.siteCode === preferredSiteCode);
+    if (preferred) return preferred;
+  }
+  return candidates.sort((a, b) => a.distanceMeters - b.distanceMeters)[0] ?? null;
+}
+
+export function bearingDeg(fromLat: number, fromLng: number, toLat: number, toLng: number): number {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const φ1 = toRad(fromLat);
+  const φ2 = toRad(toLat);
+  const Δλ = toRad(toLng - fromLng);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+export type RadarPlot = {
+  driverId: string;
+  name: string;
+  bearingDeg: number;
+  distanceMeters: number;
+  /** 0 (centre) → 1 (radar edge), log-scaled so the inner rings stay readable. */
+  radial: number;
+  ring: GeofenceRingName | "OUTSIDE";
+};
+
+/**
+ * Drivers plotted polar around one site for the radar. The sweep radius is
+ * the outer ring × `edgeFactor`; distance is log-scaled between the docked
+ * bay radius and the edge so a convoy in the 35 m bay is still visible.
+ */
+export function radarPlots(drivers: Driver[], siteCode: string, edgeFactor = 1.6): { site: (typeof CONCENTRIC_GEOFENCES)[number]; rings: Array<{ ring: GeofenceRingName; radial: number }>; plots: RadarPlot[] } | null {
+  const site = CONCENTRIC_GEOFENCES.find((s) => s.code === siteCode || s.id === siteCode);
+  if (!site) return null;
+  const sorted = [...site.rings].sort((a, b) => a.radiusMeters - b.radiusMeters);
+  const inner = sorted[0].radiusMeters;
+  const edge = sorted[sorted.length - 1].radiusMeters * edgeFactor;
+  const scale = (m: number) => {
+    if (m <= inner) return (m / inner) * 0.08;
+    return 0.08 + (0.92 * Math.log(m / inner)) / Math.log(edge / inner);
+  };
+  const rings = sorted.map((r) => ({ ring: r.ring, radial: Math.min(1, scale(r.radiusMeters)) }));
+  const plots: RadarPlot[] = [];
+  for (const d of drivers) {
+    if (d.currentLat == null || d.currentLng == null) continue;
+    const distanceMeters = haversineMeters(site.centerLat, site.centerLng, d.currentLat, d.currentLng);
+    if (distanceMeters > edge) continue;
+    const insideRing = sorted.find((r) => distanceMeters <= r.radiusMeters);
+    plots.push({
+      driverId: d.id,
+      name: d.user?.name ?? d.id,
+      bearingDeg: bearingDeg(site.centerLat, site.centerLng, d.currentLat, d.currentLng),
+      distanceMeters: Math.round(distanceMeters),
+      radial: Math.min(1, scale(distanceMeters)),
+      ring: insideRing ? insideRing.ring : "OUTSIDE"
+    });
+  }
+  return { site, rings, plots };
 }
 
 // ── Client ───────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import { cn } from "../../lib/cn";
  * `Dialog` (centred, sized) and `Sheet` (side panel, inline-end).
  */
 
-const overlayClass = "fixed inset-0 z-dialog bg-surface-0/70 backdrop-blur-sm animate-fade-in";
+const overlayClass = "fixed inset-0 bg-surface-0/70 backdrop-blur-sm animate-fade-in";
 
 const sizes = {
   sm: "max-w-md",
@@ -31,6 +31,8 @@ export type DialogProps = {
   className?: string;
   bodyClassName?: string;
   closeLabel?: string;
+  /** Render above the War Room layer (which sits above ordinary dialogs). */
+  elevated?: boolean;
 };
 
 export function Dialog({
@@ -44,15 +46,18 @@ export function Dialog({
   footer,
   className,
   bodyClassName,
-  closeLabel = "Close"
+  closeLabel = "Close",
+  elevated = false
 }: DialogProps) {
+  const layer = elevated ? "z-map-full" : "z-dialog";
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className={overlayClass} />
+        <DialogPrimitive.Overlay className={cn(overlayClass, layer)} />
         <DialogPrimitive.Content
           className={cn(
-            "fixed inset-0 z-dialog m-auto flex h-fit max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col",
+            "fixed inset-0 m-auto flex h-fit max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col",
+            layer,
             "rounded-lg border border-hairline bg-surface-2 shadow-dropdown animate-scale-in",
             "focus:outline-none",
             sizes[size],

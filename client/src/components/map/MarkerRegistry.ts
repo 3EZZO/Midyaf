@@ -24,6 +24,8 @@ export type MarkerSpec = {
   onClick?: () => void;
   /** Keep a short breadcrumb polyline behind the marker (convoys). */
   trail?: boolean;
+  /** Reported ground speed; when given it replaces the fix-derived estimate. */
+  speedKmh?: number;
 };
 
 export type MarkerTelemetry = {
@@ -112,6 +114,7 @@ export class MarkerRegistry {
         existing.trailPoints = [];
       }
       if (!samePoint(existing.to, spec.position)) this.animateTo(existing, spec.position, now);
+      if (typeof spec.speedKmh === "number") existing.speedKmh = spec.speedKmh;
     }
 
     for (const [id, entry] of this.entries) {
@@ -197,7 +200,7 @@ export class MarkerRegistry {
       targetHeading: 0,
       headingEl: null,
       lastFixAt: now,
-      speedKmh: 0,
+      speedKmh: spec.speedKmh ?? 0,
       trail: spec.trail ? this.makeTrail() : null,
       trailPoints: []
     };

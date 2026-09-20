@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Driver, Event, PortalKey, Session, Task } from "@shared/domain";
 import { QuickNavigator } from "../components/QuickNavigator";
-import { SovereignCommandBridge } from "../components/SovereignCommandBridge";
+import { SovereignCommandBridge } from "../components/warroom";
 import { cn } from "../lib/cn";
 import { portalSwitch } from "../lib/motion";
 import { BottomTabBar } from "./BottomTabBar";
@@ -88,6 +88,7 @@ export function ShellFrame({
         <SovereignCommandBridge
           isOpen={isWarRoomOpen}
           onClose={() => setIsWarRoomOpen?.(false)}
+          isDemoMode={Boolean(isDemoMode)}
           event={event}
           drivers={drivers ?? []}
           tasks={tasks ?? []}

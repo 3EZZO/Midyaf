@@ -30,12 +30,18 @@ export function ArcGauge({
       setShown(value);
       return;
     }
-    const controls = animate(shown, value, { duration: 0.9, ease: [0.22, 1, 0.36, 1], onUpdate: setShown });
+    const controls = animate(shown, value, {
+      duration: 0.9,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: setShown
+    });
     return () => controls.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, reduced]);
 
-  const stroke = 12;
+  // Below ~96px the gauge is an inline indicator: thin ring, small value, no captions.
+  const compact = size < 96;
+  const stroke = compact ? 5 : 12;
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
@@ -45,16 +51,42 @@ export function ArcGauge({
   const arcLen = (sweep / 360) * circumference;
   const pct = Math.max(0, Math.min(100, shown)) / 100;
 
-  const toneClass = { gold: "stroke-gold-500", ok: "stroke-ok", warn: "stroke-warn", danger: "stroke-danger", info: "stroke-info" }[tone];
+  const toneClass = {
+    gold: "stroke-gold-500",
+    ok: "stroke-ok",
+    warn: "stroke-warn",
+    danger: "stroke-danger",
+    info: "stroke-info"
+  }[tone];
 
   const total = segments?.reduce((s, x) => s + x.value, 0) ?? 0;
   let offset = 0;
 
   return (
-    <div className={cn("relative inline-grid place-items-center", className)} style={{ width: size, height: size }} role="img" aria-label={`${label ?? ""} ${Math.round(value)}%`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ direction: "ltr" }} aria-hidden>
+    <div
+      className={cn("relative inline-grid place-items-center", className)}
+      style={{ width: size, height: size }}
+      role="img"
+      aria-label={`${label ?? ""} ${Math.round(value)}%`}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ direction: "ltr" }}
+        aria-hidden
+      >
         <g transform={`rotate(${start} ${cx} ${cy})`}>
-          <circle cx={cx} cy={cy} r={r} fill="none" className="stroke-surface-3" strokeWidth={stroke} strokeDasharray={`${arcLen} ${circumference}`} strokeLinecap="round" />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            className="stroke-surface-3"
+            strokeWidth={stroke}
+            strokeDasharray={`${arcLen} ${circumference}`}
+            strokeLinecap="round"
+          />
           {segments && total > 0
             ? segments.map((seg, i) => {
                 const len = (seg.value / total) * arcLen;
@@ -89,9 +121,22 @@ export function ArcGauge({
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="font-tnum text-display-sm leading-none text-ink">{Math.round(shown)}%</span>
-        {label ? <span className="mt-1 text-xs font-semibold uppercase tracking-label text-ink-muted">{label}</span> : null}
-        {sublabel ? <span className="text-xs text-ink-faint">{sublabel}</span> : null}
+        <span
+          className={cn(
+            "font-tnum leading-none text-ink",
+            compact ? "text-xs font-bold" : "text-display-sm"
+          )}
+        >
+          {Math.round(shown)}%
+        </span>
+        {label && !compact ? (
+          <span className="mt-1 text-xs font-semibold uppercase tracking-label text-ink-muted">
+            {label}
+          </span>
+        ) : null}
+        {sublabel && !compact ? (
+          <span className="text-xs text-ink-faint">{sublabel}</span>
+        ) : null}
       </div>
     </div>
   );

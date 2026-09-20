@@ -1034,6 +1034,21 @@ textarea:focus-visible {
   animation: radarSpin 4s linear infinite;
 }
 
+/* One-shot ring around a radar blip when its captain crosses a geofence ring. */
+@keyframes radarBlipPulse {
+  from { r: 4; opacity: 0.9; }
+  to { r: 14; opacity: 0; }
+}
+
+.radar-blip-pulse {
+  animation: radarBlipPulse 1.4s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-radar-sweep { animation: none; }
+  .radar-blip-pulse { animation: none; opacity: 0.6; }
+}
+
 @keyframes holoGleam {
   0% { transform: translateX(-100%) rotate(25deg); }
   100% { transform: translateX(200%) rotate(25deg); }

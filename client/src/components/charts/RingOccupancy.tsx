@@ -18,6 +18,7 @@ export function RingOccupancyChart({
   isArabic,
   size = 200,
   pulse,
+  compact = false,
   className
 }: {
   occupancy: Occupancy;
@@ -25,25 +26,49 @@ export function RingOccupancyChart({
   size?: number;
   /** Ring type to pulse once (on a geofence transition). */
   pulse?: string | null;
+  /** Small-tile mode: no per-ring numbers or legend, one total in the centre. */
+  compact?: boolean;
   className?: string;
 }) {
   const cx = size / 2;
   const cy = size / 2;
   // Outer ring first (largest radius) → draw outside-in.
-  const rings = [...occupancy.rings].sort((a, b) => b.radiusMeters - a.radiusMeters);
+  const rings = [...occupancy.rings].sort(
+    (a, b) => b.radiusMeters - a.radiusMeters
+  );
   const step = (size / 2 - 12) / rings.length;
   const maxCount = Math.max(1, ...rings.map((r) => r.count));
 
   return (
-    <figure className={cn("inline-flex flex-col items-center gap-2", className)}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ direction: "ltr" }} role="img" aria-label={isArabic ? occupancy.siteNameAr : occupancy.siteNameEn}>
+    <figure
+      className={cn("inline-flex flex-col items-center gap-2", className)}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ direction: "ltr" }}
+        role="img"
+        aria-label={isArabic ? occupancy.siteNameAr : occupancy.siteNameEn}
+      >
         {rings.map((r, i) => {
           const radius = size / 2 - 12 - i * step;
-          const meta = ringLabels[r.type] ?? { en: r.type, ar: r.type, tone: "stroke-neutral" };
+          const meta = ringLabels[r.type] ?? {
+            en: r.type,
+            ar: r.type,
+            tone: "stroke-neutral"
+          };
           const intensity = 0.25 + (r.count / maxCount) * 0.75;
           return (
             <g key={r.type}>
-              <circle cx={cx} cy={cy} r={radius} fill="none" className="stroke-surface-3" strokeWidth={1} />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={radius}
+                fill="none"
+                className="stroke-surface-3"
+                strokeWidth={1}
+              />
               <circle
                 cx={cx}
                 cy={cy}
@@ -53,29 +78,60 @@ export function RingOccupancyChart({
                 strokeWidth={r.count ? 3 : 1}
                 opacity={r.count ? intensity : 0.35}
               />
-              <text x={cx + radius - 4} y={cy - 4} textAnchor="end" className="fill-ink" fontSize={12} fontWeight={700} style={{ fontVariantNumeric: "tabular-nums" }}>
-                {r.count}
-              </text>
+              {!compact ? (
+                <text
+                  x={cx + radius - 4}
+                  y={cy - 4}
+                  textAnchor="end"
+                  className="fill-ink"
+                  fontSize={12}
+                  fontWeight={700}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {r.count}
+                </text>
+              ) : null}
             </g>
           );
         })}
-        <circle cx={cx} cy={cy} r={3} className="fill-gold-500" />
+        {compact ? (
+          <text
+            x={cx}
+            y={cy + 5}
+            textAnchor="middle"
+            className="fill-ink"
+            fontSize={14}
+            fontWeight={700}
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {rings.reduce((sum, r) => sum + r.count, 0)}
+          </text>
+        ) : (
+          <circle cx={cx} cy={cy} r={3} className="fill-gold-500" />
+        )}
       </svg>
-      <figcaption className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-        {rings.map((r) => {
-          const meta = ringLabels[r.type];
-          return (
-            <span key={r.type} className="flex items-center justify-between gap-2 text-ink-muted">
-              <span>{isArabic ? meta?.ar : meta?.en}</span>
-              <span className="font-tnum font-semibold text-ink">{r.count}</span>
-            </span>
-          );
-        })}
-        <span className="col-span-2 flex items-center justify-between text-ink-faint">
-          <span>{isArabic ? statusMeta("OFFLINE").ar : "Outside"}</span>
-          <span className="font-tnum">{occupancy.outside}</span>
-        </span>
-      </figcaption>
+      {compact ? null : (
+        <figcaption className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+          {rings.map((r) => {
+            const meta = ringLabels[r.type];
+            return (
+              <span
+                key={r.type}
+                className="flex items-center justify-between gap-2 text-ink-muted"
+              >
+                <span>{isArabic ? meta?.ar : meta?.en}</span>
+                <span className="font-tnum font-semibold text-ink">
+                  {r.count}
+                </span>
+              </span>
+            );
+          })}
+          <span className="col-span-2 flex items-center justify-between text-ink-faint">
+            <span>{isArabic ? statusMeta("OFFLINE").ar : "Outside"}</span>
+            <span className="font-tnum">{occupancy.outside}</span>
+          </span>
+        </figcaption>
+      )}
     </figure>
   );
 }

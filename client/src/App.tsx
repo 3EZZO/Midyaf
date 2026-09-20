@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { PORTALS } from "@shared/constants";
@@ -59,7 +59,7 @@ import {
   localizeText,
   pickText
 } from "./lib/localize";
-import { useLiveDemoSimulation } from "./lib/useLiveDemoSimulation";
+import { useDemoDirector } from "./lib/demo/useDemoDirector";
 import { exportPlanAsPdf, sharePlanLink } from "./lib/planExport";
 import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
@@ -121,11 +121,21 @@ export function App() {
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
   const eventId = data?.events[0]?.id;
 
-  const simulation = useLiveDemoSimulation({
+  const pushLog = useCallback(
+    (line: string) => setRealtimeLog((current) => [line, ...current.slice(0, 4)]),
+    []
+  );
+
+  // The scripted demo director drives the same event bus as the socket; it
+  // runs whenever demo mode is on (not only while the War Room is open) so
+  // closing and reopening the War Room mid-script keeps its place.
+  const director = useDemoDirector({
+    enabled: isDemoMode,
     data,
     setData,
-    setRealtimeLog,
-    isArabic
+    isArabic,
+    toast,
+    pushLog
   });
 
   const canTriggerSimulation = Boolean(
@@ -141,9 +151,8 @@ export function App() {
   function toggleDemoMode() {
     if (!canTriggerSimulation) return;
     if (isDemoMode) {
-      // Deactivate demo mode: stop simulation and restore normal database data
+      // Deactivate demo mode: the director pauses itself; restore normal database data
       setIsDemoMode(false);
-      simulation.stopSimulation();
       setIsWarRoomOpen(false);
       if (normalDataRef.current) {
         setData(normalDataRef.current);
@@ -162,8 +171,7 @@ export function App() {
         normalDataRef.current = data;
       }
       setIsDemoMode(true);
-      simulation.startSimulation();
-      
+
       toast.success(
         isArabic
           ? "تم تفعيل وضع المحاكاة التجريبية الكامل (Ctrl + Shift + D)"
@@ -215,7 +223,7 @@ export function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canTriggerSimulation, isDemoMode, data, simulation, isArabic, toast]);
+  }, [canTriggerSimulation, isDemoMode, data, isArabic, toast]);
 
   // lang/dir are applied by i18n's languageChanged listener and the inline
   // boot script in index.html. The theme is always dark.
@@ -268,8 +276,18 @@ export function App() {
 
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
-  const pushLog = (line: string) =>
-    setRealtimeLog((current) => [line, ...current.slice(0, 4)]);
+  // Explicit gate: while the director controls the demo captains, real
+  // telemetry for those same ids is dropped so the two sources never fight.
+  // Every other event still flows, so a live venue and the script coexist.
+  const socketFilter = useCallback(
+    (name: string, payload: unknown) => {
+      if (!isDemoMode) return true;
+      if (name !== "driver:location_update" && name !== "user:location_update") return true;
+      const driverId = (payload as { driverId?: string | null }).driverId;
+      return !driverId || !director.controlledDriverIds().has(driverId);
+    },
+    [director, isDemoMode]
+  );
 
   const { socket, status: socketStatus } = useSocket({
     enabled: Boolean(session && data),
@@ -277,6 +295,7 @@ export function App() {
     eventId,
     userId: session?.user.id,
     joinOrganizers: portal === "coordinator",
+    filter: socketFilter,
     handlers: {
       "driver:location_update": (payload) => {
         pushLog(`${p("Driver location updated", "تم تحديث موقع السائق")} · ${stamp()}`);

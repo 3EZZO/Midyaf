@@ -6,8 +6,8 @@ import { Badge } from "../../components/Badge";
 import { useTacticalToast } from "../../components/TacticalToast";
 import { Section } from "../../components/Section";
 import { money, percent } from "../../lib/format";
-import { DEMO_CONTRACTS } from "../../lib/useLiveDemoSimulation";
-import type { DemoContract } from "../../lib/useLiveDemoSimulation";
+import { DEMO_CONTRACTS } from "../../lib/demo/data";
+import type { DemoContract } from "../../lib/demo/data";
 import type { PortalProps } from "../types";
 import { MiniStat, useOpsText } from "./shared";
 

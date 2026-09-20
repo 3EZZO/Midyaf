@@ -12,9 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../client/src");
 
 const DASHBOARD_FILES = /(Dashboard|MetricModal|CommandBridge|warroom)/;
-// SovereignCommandBridge is fully mocked today and is rebuilt in Phase 5
-// (War Room); it is exempt until then.
-const ALLOW = /DesignSystemPreview\.tsx$|\.test\.tsx?$|SovereignCommandBridge\.tsx$/;
+const ALLOW = /DesignSystemPreview\.tsx$|\.test\.tsx?$/;
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

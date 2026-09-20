@@ -259,12 +259,15 @@ export function RiyadhMap({
       if (!position) continue;
       const telemetry = markers.telemetry(`driver:${driver.id}`);
       const vehicle = describeVehicle(driver, l);
-      const speed = telemetry && telemetry.speedKmh > 0 ? `${telemetry.speedKmh} ${isArabic ? "كم/س" : "km/h"}` : null;
+      const reported = typeof driver.speedKmh === "number" ? driver.speedKmh : undefined;
+      const kmh = reported ?? telemetry?.speedKmh ?? 0;
+      const speed = kmh > 0 ? `${kmh} ${isArabic ? "كم/س" : "km/h"}` : null;
       specs.push({
         id: `driver:${driver.id}`,
         tone: "driver",
         position,
         trail: true,
+        speedKmh: reported,
         label: l(driver.user.name),
         subtitle: [vehicle, speed].filter(Boolean).join(" · ") || l(driver.status),
         onClick: () => onSelectDriverRef.current?.(driver)
@@ -310,6 +313,14 @@ export function RiyadhMap({
       else map.setView([RIYADH.centerLat, RIYADH.centerLng], RIYADH.defaultZoom, { animate: false });
     }
   }, [map, layers, displayedDrivers, tasks, event, l, isArabic]);
+
+  // Corridor state is a bus event (director today, server tomorrow), never a prop.
+  useLiveEvent(
+    "corridor:state",
+    useCallback((payload) => {
+      layersRef.current?.corridors.setState(payload.code, payload.state);
+    }, [])
+  );
 
   // Live acknowledgements: the ring a convoy just entered pulses, so does the convoy.
   useLiveEvent(
@@ -492,7 +503,8 @@ export function RiyadhMap({
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-xs font-bold text-ink">{l(driver.user.name)}</span>
                         <span className="font-tnum rounded border border-ok/30 bg-ok/10 px-2 py-0.5 text-xs font-bold text-ok">
-                          {telemetry && telemetry.speedKmh > 0 ? telemetry.speedKmh : "—"} {isArabic ? "كم/س" : "km/h"}
+                          {(driver.speedKmh ?? telemetry?.speedKmh ?? 0) > 0 ? (driver.speedKmh ?? telemetry?.speedKmh) : "—"}{" "}
+                          {isArabic ? "كم/س" : "km/h"}
                         </span>
                       </div>
                       {vehicle && <p className="mt-1 text-xs text-ink-muted">{vehicle}</p>}

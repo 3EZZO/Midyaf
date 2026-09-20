@@ -357,6 +357,8 @@ export type Driver = {
   shiftEnd?: string | null;
   earnings?: Money;
   lastLocationAt?: string | null;
+  /** Last reported ground speed (client-side telemetry; not persisted). */
+  speedKmh?: number | null;
   captainType?: "VIP_CAPTAIN" | "SHUTTLE" | "EMERGENCY";
   visitsCompleted?: number;
   overtimeAvailable?: boolean;

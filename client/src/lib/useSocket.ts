@@ -20,6 +20,8 @@ export type ServerEvents = {
     lng: number;
     zone?: DriverZone;
     updatedAt: string;
+    /** Optional; the director sends the scripted speed, real captains may not. */
+    speedKmh?: number;
   };
   "user:location_update": {
     userId: string;
@@ -66,6 +68,12 @@ type UseSocketOptions = {
   userId?: string;
   joinOrganizers?: boolean;
   handlers: SocketHandlers;
+  /**
+   * Explicit gate: return false to drop a server event before it reaches the
+   * bus or a handler. Demo mode uses it so real telemetry for the
+   * name-matched demo captains cannot fight the director.
+   */
+  filter?: <K extends ServerEventName>(name: K, payload: ServerEvents[K]) => boolean;
 };
 
 export function useSocket({
@@ -74,12 +82,15 @@ export function useSocket({
   eventId,
   userId,
   joinOrganizers = false,
-  handlers
+  handlers,
+  filter
 }: UseSocketOptions) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<SocketStatus>("idle");
   const handlersRef = useRef<SocketHandlers>(handlers);
   handlersRef.current = handlers;
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
 
   // Rooms are read from refs inside `connect` so a room change never
   // recreates the socket.
@@ -120,6 +131,7 @@ export function useSocket({
 
     for (const name of EVENT_NAMES) {
       instance.on(name, (payload: unknown) => {
+        if (filterRef.current && !filterRef.current(name, payload as ServerEvents[typeof name])) return;
         // Every server event is republished on the bus so panels can
         // subscribe without touching the socket.
         liveEvents.emit(name, payload as ServerEvents[typeof name], "socket");

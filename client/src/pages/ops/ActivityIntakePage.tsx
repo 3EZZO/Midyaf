@@ -9,7 +9,7 @@ import { CategoryPriceRangeSection } from "../../components/CategoryPriceRangeCa
 import { SupplierContractWorkflow } from "../../components/SupplierContractWorkflow";
 import { IntakeWorkflowStepper } from "../../components/IntakeWorkflowStepper";
 import { exportPlanAsPdf, sharePlanLink } from "../../lib/planExport";
-import { DEMO_VENDOR_QUOTES, OFFICIAL_SUPPLIER_CATEGORIES, calculateCategoryPriceRanges } from "../../lib/useLiveDemoSimulation";
+import { DEMO_VENDOR_QUOTES, OFFICIAL_SUPPLIER_CATEGORIES, calculateCategoryPriceRanges } from "../../lib/demo/data";
 import type { GuestBulkImportInput, PortalProps } from "../types";
 import type { HotelDetail, CarRentalDetail, SupplierDetail, Task } from "@shared/domain";
 import { CheckboxField, Field, MiniStat, NumberField, PortalHero, SelectField, canManageOperations, canSubmitCompanyUpdates, defaultCarRentals, defaultHotels, defaultSuppliers, emptyActivityIntake, emptyAiPlan, parseGuestCsv, sampleGuestCsv, useOpsText } from "./shared";

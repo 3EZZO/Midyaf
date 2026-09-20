@@ -1,17 +1,63 @@
 // Midyaf Sovereign Tactical Audio Synthesizer
 // Pure Web Audio API synthesis — 0 external sound files, 100% reliable, zero network latency
 
+/**
+ * Named cues the director and live events use. Each maps onto one of the
+ * synthesized sounds below so a script never names an oscillator.
+ *   ring      — convoy crossed into a geofence ring (approaching)
+ *   handshake — docked at the bay / curbside handshake confirmed
+ *   alert     — corridor closed, delay, diversion
+ *   chime     — guest arrived / act completed
+ *   ping      — generic acknowledgement (navigation, mute toggle)
+ */
+export type AudioCue = "ring" | "handshake" | "alert" | "chime" | "ping";
+
 class TacticalAudioEngine {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private listeners = new Set<() => void>();
 
   constructor() {
     try {
-      const stored = localStorage.getItem("midyaf_audio_muted");
-      this.muted = stored === "true";
+      this.muted = typeof localStorage !== "undefined" && localStorage.getItem("midyaf_audio_muted") === "true";
     } catch {
       this.muted = false;
     }
+  }
+
+  /** Subscribe to mute changes (for `useSyncExternalStore`). */
+  public subscribe = (fn: () => void) => {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  };
+
+  public cue(name: AudioCue) {
+    switch (name) {
+      case "ring":
+        return this.playTacticalPing();
+      case "handshake":
+        return this.playBiometricAuth();
+      case "alert":
+        return this.playAlert();
+      case "chime":
+        return this.playChime();
+      case "ping":
+        return this.playTacticalPing();
+    }
+  }
+
+  public setMuted(muted: boolean) {
+    if (this.muted === muted) return;
+    this.muted = muted;
+    try {
+      localStorage.setItem("midyaf_audio_muted", String(muted));
+    } catch {
+      // Ignore localStorage errors
+    }
+    this.listeners.forEach((fn) => fn());
+    if (!muted) this.playTacticalPing();
   }
 
   private initContext() {
@@ -33,15 +79,7 @@ class TacticalAudioEngine {
   }
 
   public toggleMute(): boolean {
-    this.muted = !this.muted;
-    try {
-      localStorage.setItem("midyaf_audio_muted", String(this.muted));
-    } catch {
-      // Ignore localStorage errors
-    }
-    if (!this.muted) {
-      this.playTacticalPing();
-    }
+    this.setMuted(!this.muted);
     return this.muted;
   }
 

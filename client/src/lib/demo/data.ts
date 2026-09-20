@@ -1,7 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { Driver, MidyafData, VendorQuote, CategoryPriceRange, SupplierCategory } from "@shared/domain";
+import type {
+  VendorQuote,
+  CategoryPriceRange,
+  SupplierCategory
+} from "@shared/domain";
 import { OFFICIAL_SUPPLIER_CATEGORIES } from "@shared/constants";
 export { OFFICIAL_SUPPLIER_CATEGORIES };
+
+/**
+ * Demo datasets. Data, not code: the director script (scripts/sovereignArrival.ts)
+ * references these by key, and rehearsals tune timings here without touching
+ * the player. The five convoy routes and the ticker copy moved here verbatim
+ * from the retired useLiveDemoSimulation hook.
+ */
+
+/** Name-matched demo captains (seeded users). The director resolves each key to a Driver at play time. */
+export const DEMO_DRIVER_KEYS = [
+  "sultan",
+  "fahad",
+  "rakan",
+  "tariq",
+  "nasser"
+] as const;
+export type DemoDriverKey = (typeof DEMO_DRIVER_KEYS)[number];
 
 export interface DemoHotspot {
   id: string;
@@ -169,8 +189,10 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "شركة الأسطول الملكي للتنقل الفاخر",
     categoryEn: "Car & Bus Rental Fleet",
     categoryAr: "تأجير السيارات والحافلات الفاخرة",
-    scopeEn: "50 Mercedes-Maybach S680 & 15 Luxury VIP Buses with 24/7 Diplomatic Escort",
-    scopeAr: "50 سيارة مايباخ و15 حافلة VIP فاخرة مع مرافقة دبلوماسية على مدار الساعة",
+    scopeEn:
+      "50 Mercedes-Maybach S680 & 15 Luxury VIP Buses with 24/7 Diplomatic Escort",
+    scopeAr:
+      "50 سيارة مايباخ و15 حافلة VIP فاخرة مع مرافقة دبلوماسية على مدار الساعة",
     amount: 450000,
     commissionPercent: 10,
     commissionAmount: 45000,
@@ -201,7 +223,8 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "شركة إي-زي-جو لعربات الجولف",
     categoryEn: "Golf Carts & Mini-Mobility",
     categoryAr: "عربات الجولف والتنقل الداخلي",
-    scopeEn: "35 Multi-Passenger Electric Golf Carts for Intra-Venue VIP Mobility",
+    scopeEn:
+      "35 Multi-Passenger Electric Golf Carts for Intra-Venue VIP Mobility",
     scopeAr: "35 عربة جولف كهربائية فاخرة متعددة المقاعد للتنقل الداخلي",
     amount: 85000,
     commissionPercent: 10,
@@ -217,7 +240,8 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "المجدوعي للوجستيات الثقيلة",
     categoryEn: "Transportation & Heavy Trucks",
     categoryAr: "شاحنات النقل والشاحنات الثقيلة",
-    scopeEn: "18 Flatbed & Curtain Heavy Transportation Trucks for Staging Assets",
+    scopeEn:
+      "18 Flatbed & Curtain Heavy Transportation Trucks for Staging Assets",
     scopeAr: "18 شاحنة ثقيلة لنقل المعدات ومستلزمات الفعالية الضخمة",
     amount: 216000,
     commissionPercent: 10,
@@ -233,7 +257,8 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "شركة الزاهد للرافعات والمعدات الثقيلة",
     categoryEn: "Cranes & Heavy Equipment",
     categoryAr: "الرافعات والمعدات الثقيلة",
-    scopeEn: "6 Mobile Hydraulic Cranes & Industrial Boom Lifts with Certified Riggers",
+    scopeEn:
+      "6 Mobile Hydraulic Cranes & Industrial Boom Lifts with Certified Riggers",
     scopeAr: "6 رافعات هيدروليكية ومعدات رفع ثقيلة مع مشغلين معتمدين",
     amount: 270000,
     commissionPercent: 10,
@@ -249,8 +274,10 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "فندق الريتز-كارلتون",
     categoryEn: "Hotels & VIP Hospitality",
     categoryAr: "الفنادق والضيافة الملكية",
-    scopeEn: "100 Royal & Executive Suites for Summit Delegations, Private Lounge Access",
-    scopeAr: "100 جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
+    scopeEn:
+      "100 Royal & Executive Suites for Summit Delegations, Private Lounge Access",
+    scopeAr:
+      "100 جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
     amount: 1250000,
     commissionPercent: 10,
     commissionAmount: 125000,
@@ -898,56 +925,74 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
   }
 ];
 
-export function calculateCategoryPriceRanges(quotes: VendorQuote[] = []): CategoryPriceRange[] {
-  const sourceQuotes = quotes && quotes.length > 0 ? quotes : DEMO_VENDOR_QUOTES;
+export function calculateCategoryPriceRanges(
+  quotes: VendorQuote[] = []
+): CategoryPriceRange[] {
+  const sourceQuotes =
+    quotes && quotes.length > 0 ? quotes : DEMO_VENDOR_QUOTES;
 
-  return (OFFICIAL_SUPPLIER_CATEGORIES as readonly any[]).map((catMeta: any) => {
-    const categoryQuotes = sourceQuotes.filter((q) => {
-      if (q.category === catMeta.key) return true;
-      if (catMeta.key === "HOTEL" && q.category === "HOTEL_OPERATOR") return true;
-      if (catMeta.key === "CAR_RENTAL" && (q.category === "CAR" || q.category === "CAR_RENTAL")) return true;
-      return false;
-    });
+  return (OFFICIAL_SUPPLIER_CATEGORIES as readonly any[]).map(
+    (catMeta: any) => {
+      const categoryQuotes = sourceQuotes.filter((q) => {
+        if (q.category === catMeta.key) return true;
+        if (catMeta.key === "HOTEL" && q.category === "HOTEL_OPERATOR")
+          return true;
+        if (
+          catMeta.key === "CAR_RENTAL" &&
+          (q.category === "CAR" || q.category === "CAR_RENTAL")
+        )
+          return true;
+        return false;
+      });
 
-    if (categoryQuotes.length === 0) {
+      if (categoryQuotes.length === 0) {
+        return {
+          category: catMeta.key,
+          categoryNameEn: catMeta.nameEn,
+          categoryNameAr: catMeta.nameAr,
+          minPrice: 0,
+          maxPrice: 0,
+          avgPrice: 0,
+          bestTierPrice: 0,
+          quoteCount: 0,
+          currency: "SAR"
+        };
+      }
+
+      const prices = categoryQuotes.map((q) => Number(q.totalPrice));
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const avgPrice = Math.round(
+        prices.reduce((a, b) => a + b, 0) / prices.length
+      );
+
+      const approved = categoryQuotes.find((q) => q.status === "APPROVED");
+      const recommended = categoryQuotes.find(
+        (q) => q.status === "RECOMMENDED"
+      );
+      const bestTierPrice = approved
+        ? Number(approved.totalPrice)
+        : recommended
+          ? Number(recommended.totalPrice)
+          : minPrice;
+
       return {
         category: catMeta.key,
         categoryNameEn: catMeta.nameEn,
         categoryNameAr: catMeta.nameAr,
-        minPrice: 0,
-        maxPrice: 0,
-        avgPrice: 0,
-        bestTierPrice: 0,
-        quoteCount: 0,
+        minPrice,
+        maxPrice,
+        avgPrice,
+        bestTierPrice,
+        quoteCount: categoryQuotes.length,
         currency: "SAR"
       };
     }
-
-    const prices = categoryQuotes.map((q) => Number(q.totalPrice));
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-
-    const approved = categoryQuotes.find((q) => q.status === "APPROVED");
-    const recommended = categoryQuotes.find((q) => q.status === "RECOMMENDED");
-    const bestTierPrice = approved ? Number(approved.totalPrice) : recommended ? Number(recommended.totalPrice) : minPrice;
-
-    return {
-      category: catMeta.key,
-      categoryNameEn: catMeta.nameEn,
-      categoryNameAr: catMeta.nameAr,
-      minPrice,
-      maxPrice,
-      avgPrice,
-      bestTierPrice,
-      quoteCount: categoryQuotes.length,
-      currency: "SAR"
-    };
-  });
+  );
 }
 
 // Predefined Route Waypoints for 5 Drivers across Summit Corridors
-interface Waypoint {
+export interface Waypoint {
   lat: number;
   lng: number;
   speed: number;
@@ -955,41 +1000,161 @@ interface Waypoint {
   locationAr: string;
 }
 
-const DRIVER_ROUTES: Record<string, Waypoint[]> = {
+export const DEMO_DRIVER_ROUTES: Record<DemoDriverKey, Waypoint[]> = {
   // Captain Sultan: KKIA Terminal 2 -> Airport Road -> King Salman -> Ritz-Carlton
   sultan: [
-    { lat: 24.9576, lng: 46.6988, speed: 0, locationEn: "Airport Terminal 2 VIP Curb", locationAr: "المطار الدولي - رصيف VIP الصالة 2" },
-    { lat: 24.9120, lng: 46.7050, speed: 85, locationEn: "Airport Road Southbound", locationAr: "طريق المطار باتجاه الجنوب" },
-    { lat: 24.8540, lng: 46.6910, speed: 92, locationEn: "King Salman interchange", locationAr: "تقاطع طريق الملك سلمان" },
-    { lat: 24.7950, lng: 46.6710, speed: 78, locationEn: "Northern Corridor expressway", locationAr: "الممر الشمالي السريع" },
-    { lat: 24.7310, lng: 46.6500, speed: 65, locationEn: "King Fahd Corridor West junction", locationAr: "مخرج طريق الملك فهد غرباً" },
-    { lat: 24.6661, lng: 46.6302, speed: 25, locationEn: "Arriving at The Ritz-Carlton", locationAr: "الوصول إلى فندق الريتز-كارلتون" }
+    {
+      lat: 24.9576,
+      lng: 46.6988,
+      speed: 0,
+      locationEn: "Airport Terminal 2 VIP Curb",
+      locationAr: "المطار الدولي - رصيف VIP الصالة 2"
+    },
+    {
+      lat: 24.912,
+      lng: 46.705,
+      speed: 85,
+      locationEn: "Airport Road Southbound",
+      locationAr: "طريق المطار باتجاه الجنوب"
+    },
+    {
+      lat: 24.854,
+      lng: 46.691,
+      speed: 92,
+      locationEn: "King Salman interchange",
+      locationAr: "تقاطع طريق الملك سلمان"
+    },
+    {
+      lat: 24.795,
+      lng: 46.671,
+      speed: 78,
+      locationEn: "Northern Corridor expressway",
+      locationAr: "الممر الشمالي السريع"
+    },
+    {
+      lat: 24.731,
+      lng: 46.65,
+      speed: 65,
+      locationEn: "King Fahd Corridor West junction",
+      locationAr: "مخرج طريق الملك فهد غرباً"
+    },
+    {
+      lat: 24.6661,
+      lng: 46.6302,
+      speed: 25,
+      locationEn: "Arriving at The Ritz-Carlton",
+      locationAr: "الوصول إلى فندق الريتز-كارلتون"
+    }
   ],
   // Captain Fahad: KAFD Loop & King Fahd Rd
   fahad: [
-    { lat: 24.7642, lng: 46.6406, speed: 30, locationEn: "KAFD Conference Center VIP Gate 4", locationAr: "مركز مؤتمرات كافد - بوابة 4" },
-    { lat: 24.7720, lng: 46.6480, speed: 55, locationEn: "KAFD Financial Hub Loop", locationAr: "حلقة مركز الملك عبدالله المالي" },
-    { lat: 24.7810, lng: 46.6550, speed: 65, locationEn: "Northern Ring Service Corridor", locationAr: "طريق الخدمة بالدائري الشمالي" },
-    { lat: 24.7690, lng: 46.6380, speed: 45, locationEn: "King Fahd Road KAFD approach", locationAr: "مدخل كافد من طريق الملك فهد" }
+    {
+      lat: 24.7642,
+      lng: 46.6406,
+      speed: 30,
+      locationEn: "KAFD Conference Center VIP Gate 4",
+      locationAr: "مركز مؤتمرات كافد - بوابة 4"
+    },
+    {
+      lat: 24.772,
+      lng: 46.648,
+      speed: 55,
+      locationEn: "KAFD Financial Hub Loop",
+      locationAr: "حلقة مركز الملك عبدالله المالي"
+    },
+    {
+      lat: 24.781,
+      lng: 46.655,
+      speed: 65,
+      locationEn: "Northern Ring Service Corridor",
+      locationAr: "طريق الخدمة بالدائري الشمالي"
+    },
+    {
+      lat: 24.769,
+      lng: 46.638,
+      speed: 45,
+      locationEn: "King Fahd Road KAFD approach",
+      locationAr: "مدخل كافد من طريق الملك فهد"
+    }
   ],
   // Captain Rakan: Ritz-Carlton <-> KAFD Plenary Shuttle
   rakan: [
-    { lat: 24.6661, lng: 46.6302, speed: 0, locationEn: "The Ritz-Carlton Shuttle Station", locationAr: "محطة حافلات الريتز-كارلتون" },
-    { lat: 24.7000, lng: 46.6350, speed: 70, locationEn: "Makkah Road expressway", locationAr: "طريق مكة السريع" },
-    { lat: 24.7400, lng: 46.6420, speed: 65, locationEn: "King Fahd Road flyover", locationAr: "جسر طريق الملك فهد" },
-    { lat: 24.7642, lng: 46.6406, speed: 30, locationEn: "KAFD VIP Plenary Drop-off", locationAr: "نقطة إنزال كبار الشخصيات بكافد" }
+    {
+      lat: 24.6661,
+      lng: 46.6302,
+      speed: 0,
+      locationEn: "The Ritz-Carlton Shuttle Station",
+      locationAr: "محطة حافلات الريتز-كارلتون"
+    },
+    {
+      lat: 24.7,
+      lng: 46.635,
+      speed: 70,
+      locationEn: "Makkah Road expressway",
+      locationAr: "طريق مكة السريع"
+    },
+    {
+      lat: 24.74,
+      lng: 46.642,
+      speed: 65,
+      locationEn: "King Fahd Road flyover",
+      locationAr: "جسر طريق الملك فهد"
+    },
+    {
+      lat: 24.7642,
+      lng: 46.6406,
+      speed: 30,
+      locationEn: "KAFD VIP Plenary Drop-off",
+      locationAr: "نقطة إنزال كبار الشخصيات بكافد"
+    }
   ],
   // Captain Tariq: Eastern Ring <-> KKIA Airport Express
   tariq: [
-    { lat: 24.8500, lng: 46.7300, speed: 85, locationEn: "Eastern Ring Road Northbound", locationAr: "الدائري الشرقي باتجاه الشمال" },
-    { lat: 24.9100, lng: 46.7150, speed: 95, locationEn: "Approaching Airport Terminal 1 & 2", locationAr: "الاقتراب من صالات المطار 1 و 2" },
-    { lat: 24.9576, lng: 46.6988, speed: 20, locationEn: "Terminal 2 Ground Operations Bay", locationAr: "ساحة العمليات الأرضية بالصالة 2" }
+    {
+      lat: 24.85,
+      lng: 46.73,
+      speed: 85,
+      locationEn: "Eastern Ring Road Northbound",
+      locationAr: "الدائري الشرقي باتجاه الشمال"
+    },
+    {
+      lat: 24.91,
+      lng: 46.715,
+      speed: 95,
+      locationEn: "Approaching Airport Terminal 1 & 2",
+      locationAr: "الاقتراب من صالات المطار 1 و 2"
+    },
+    {
+      lat: 24.9576,
+      lng: 46.6988,
+      speed: 20,
+      locationEn: "Terminal 2 Ground Operations Bay",
+      locationAr: "ساحة العمليات الأرضية بالصالة 2"
+    }
   ],
   // Captain Nasser: Diplomatic Escort to Historic Diriyah (At-Turaif)
   nasser: [
-    { lat: 24.7642, lng: 46.6406, speed: 40, locationEn: "Departing KAFD with Escort Convoy", locationAr: "مغادرة كافد ضمن موكب المرافقة" },
-    { lat: 24.7500, lng: 46.6100, speed: 75, locationEn: "King Salman Diriyah Branch Road", locationAr: "فرع طريق الملك سلمان باتجاه الدرعية" },
-    { lat: 24.7335, lng: 46.5742, speed: 30, locationEn: "Arrived at Historic Diriyah (Bujairi)", locationAr: "الوصول إلى الدرعية التاريخية (مطل البجيري)" }
+    {
+      lat: 24.7642,
+      lng: 46.6406,
+      speed: 40,
+      locationEn: "Departing KAFD with Escort Convoy",
+      locationAr: "مغادرة كافد ضمن موكب المرافقة"
+    },
+    {
+      lat: 24.75,
+      lng: 46.61,
+      speed: 75,
+      locationEn: "King Salman Diriyah Branch Road",
+      locationAr: "فرع طريق الملك سلمان باتجاه الدرعية"
+    },
+    {
+      lat: 24.7335,
+      lng: 46.5742,
+      speed: 30,
+      locationEn: "Arrived at Historic Diriyah (Bujairi)",
+      locationAr: "الوصول إلى الدرعية التاريخية (مطل البجيري)"
+    }
   ]
 };
 
@@ -1037,253 +1202,233 @@ export const SIMULATION_TICKER_EVENTS: { en: string; ar: string }[] = [
   }
 ];
 
-export function useLiveDemoSimulation({
-  data,
-  setData,
-  setRealtimeLog,
-  isArabic
-}: {
-  data: MidyafData | null;
-  setData: React.Dispatch<React.SetStateAction<MidyafData | null>>;
-  setRealtimeLog: React.Dispatch<React.SetStateAction<string[]>>;
-  isArabic: boolean;
-}) {
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [simulationStep, setSimulationStep] = useState(0);
+// ── War Room roster metadata ─────────────────────────────────────────────
 
-  const stepRef = useRef(0);
-  const tickerIndexRef = useRef(0);
-  const isPausedRef = useRef(false);
-  isPausedRef.current = isPaused;
+export type Bilingual = { en: string; ar: string };
 
-  const tick = useCallback(() => {
-    if (isPausedRef.current) return;
-
-    stepRef.current += 1;
-    const currentStep = stepRef.current;
-    setSimulationStep(currentStep);
-
-    // 1. Move Drivers along their summit routes
-    const sultanWp = DRIVER_ROUTES.sultan[currentStep % DRIVER_ROUTES.sultan.length];
-    const fahadWp = DRIVER_ROUTES.fahad[currentStep % DRIVER_ROUTES.fahad.length];
-    const rakanWp = DRIVER_ROUTES.rakan[currentStep % DRIVER_ROUTES.rakan.length];
-    const tariqWp = DRIVER_ROUTES.tariq[currentStep % DRIVER_ROUTES.tariq.length];
-    const nasserWp = DRIVER_ROUTES.nasser[currentStep % DRIVER_ROUTES.nasser.length];
-
-    setData((current) => {
-      if (!current) return current;
-
-      // Map or update drivers
-      const updatedDrivers = current.drivers.map((driver) => {
-        const name = (driver.user?.name ?? "").toLowerCase();
-
-        if (name.includes("sultan")) {
-          return {
-            ...driver,
-            currentLat: sultanWp.lat,
-            currentLng: sultanWp.lng,
-            speed: sultanWp.speed,
-            vehicleModel: "Mercedes-Maybach S680",
-            plateNumber: "KSA 9119",
-            status: "EN_ROUTE" as const,
-            zone: "NORTH_ZONE" as any,
-            lastLocationAt: new Date().toISOString()
-          };
-        } else if (name.includes("fahad") || name.includes("driver")) {
-          return {
-            ...driver,
-            currentLat: fahadWp.lat,
-            currentLng: fahadWp.lng,
-            speed: fahadWp.speed,
-            vehicleModel: "BMW 7-Series VIP",
-            plateNumber: "KSA 2030",
-            status: "EN_ROUTE" as const,
-            zone: "CENTRAL_ZONE" as any,
-            lastLocationAt: new Date().toISOString()
-          };
-        } else if (name.includes("rakan")) {
-          return {
-            ...driver,
-            currentLat: rakanWp.lat,
-            currentLng: rakanWp.lng,
-            speed: rakanWp.speed,
-            vehicleModel: "Mercedes V-Class VIP Shuttle",
-            plateNumber: "KSA 7788",
-            status: "EN_ROUTE" as const,
-            zone: "WEST_ZONE" as any,
-            lastLocationAt: new Date().toISOString()
-          };
-        } else if (name.includes("tariq")) {
-          return {
-            ...driver,
-            currentLat: tariqWp.lat,
-            currentLng: tariqWp.lng,
-            speed: tariqWp.speed,
-            vehicleModel: "Mercedes V-Class Executive",
-            plateNumber: "KSA 5544",
-            status: "AVAILABLE" as const,
-            zone: "EAST_ZONE" as any,
-            lastLocationAt: new Date().toISOString()
-          };
-        } else if (name.includes("nasser")) {
-          return {
-            ...driver,
-            currentLat: nasserWp.lat,
-            currentLng: nasserWp.lng,
-            speed: nasserWp.speed,
-            vehicleModel: "Lexus LS 500 Executive",
-            plateNumber: "KSA 1122",
-            status: "EN_ROUTE" as const,
-            zone: "SUMMIT_CORRIDOR" as any,
-            lastLocationAt: new Date().toISOString()
-          };
-        }
-
-        // If generic, move towards KAFD
-        return {
-          ...driver,
-          currentLat: sultanWp.lat,
-          currentLng: sultanWp.lng,
-          speed: 65,
-          lastLocationAt: new Date().toISOString()
-        };
-      });
-
-      // 2. Synchronize event tasks dynamically
-      const updatedEvents = current.events.map((evt, evtIdx) => {
-        if (evtIdx !== 0) return evt;
-
-        const updatedTasks = evt.tasks.map((task, tIdx) => {
-          // Task 0 or Airport Chauffeur
-          if (tIdx === 0 || (task.type as string).includes("CHAUFFEUR") || (task.type as string).includes("AIRPORT")) {
-            const sultanCycle = currentStep % DRIVER_ROUTES.sultan.length;
-            const nextStatus = sultanCycle < 2 ? "ASSIGNED" : sultanCycle < 5 ? "EN_ROUTE" : "COMPLETED";
-            return {
-              ...task,
-              status: nextStatus as any,
-              pickupLat: sultanWp.lat,
-              pickupLng: sultanWp.lng
-            };
-          }
-          // Task 1 or Plenary Shuttle
-          if (tIdx === 1 || (task.type as string).includes("SHUTTLE") || (task.type as string).includes("PLENARY")) {
-            const fahadCycle = currentStep % DRIVER_ROUTES.fahad.length;
-            const nextStatus = fahadCycle < 1 ? "ASSIGNED" : "EN_ROUTE";
-            return {
-              ...task,
-              status: nextStatus as any,
-              pickupLat: fahadWp.lat,
-              pickupLng: fahadWp.lng
-            };
-          }
-          // Task 2 or Diriyah Gala
-          if (tIdx === 2 || (task.type as string).includes("DIRIYAH") || (task.type as string).includes("GALA")) {
-            const nasserCycle = currentStep % DRIVER_ROUTES.nasser.length;
-            const nextStatus = nasserCycle === 0 ? "ASSIGNED" : nasserCycle === 1 ? "EN_ROUTE" : "COMPLETED";
-            return {
-              ...task,
-              status: nextStatus as any
-            };
-          }
-          return task;
-        });
-
-        return {
-          ...evt,
-          tasks: updatedTasks
-        };
-      });
-
-      // 3. Synchronize VIP Guest Journey App
-      const updatedJourneys = current.guestJourneys.map((journey, jIdx) => {
-        if (jIdx === 0) {
-          const sultanCycle = currentStep % DRIVER_ROUTES.sultan.length;
-          const arrivalStatus = sultanCycle < 2 ? "LANDED" : sultanCycle < 5 ? "IN_TRANSIT" : "AT_HOTEL";
-          return {
-            ...journey,
-            arrivalStatus: arrivalStatus as any
-          };
-        }
-        return journey;
-      });
-
-      return {
-        ...current,
-        drivers: updatedDrivers,
-        events: updatedEvents,
-        guestJourneys: updatedJourneys
-      };
-    });
-
-    // 2. Push realistic event ticker into realtimeLog every 2 steps
-    if (currentStep % 2 === 0) {
-      const eventObj = SIMULATION_TICKER_EVENTS[tickerIndexRef.current % SIMULATION_TICKER_EVENTS.length];
-      tickerIndexRef.current += 1;
-      const message = isArabic ? eventObj.ar : eventObj.en;
-      const timestamp = new Date().toLocaleTimeString(isArabic ? "ar-SA" : "en-SA", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
-
-      setRealtimeLog((prev) => [`${message} · ${timestamp}`, ...prev.slice(0, 5)]);
-    }
-  }, [isArabic, setData, setRealtimeLog]);
-
-  useEffect(() => {
-    if (!isSimulating) return;
-
-    // Run initial tick immediately
-    tick();
-
-    const interval = setInterval(tick, 2500);
-    return () => clearInterval(interval);
-  }, [isSimulating, tick]);
-
-  const startSimulation = useCallback(() => {
-    setIsSimulating(true);
-    setIsPaused(false);
-    stepRef.current = 0;
-    const timestamp = new Date().toLocaleTimeString(isArabic ? "ar-SA" : "en-SA");
-    const welcome = isArabic
-      ? `[بث مباشر] عمليات القمة السيادية 2027: بث العمليات اللوجستية المباشر نشط · ${timestamp}`
-      : `[LIVE] Sovereign Summit 2027: Live Logistics Operations Synchronized · ${timestamp}`;
-    setRealtimeLog((prev) => [welcome, ...prev.slice(0, 4)]);
-  }, [isArabic, setRealtimeLog]);
-
-  const pauseSimulation = useCallback(() => {
-    setIsPaused(true);
-  }, []);
-
-  const resumeSimulation = useCallback(() => {
-    setIsPaused(false);
-  }, []);
-
-  const resetSimulation = useCallback(() => {
-    stepRef.current = 0;
-    tickerIndexRef.current = 0;
-    tick();
-  }, [tick]);
-
-  const stopSimulation = useCallback(() => {
-    setIsSimulating(false);
-    setIsPaused(false);
-  }, []);
-
-  return {
-    isSimulating,
-    isPaused,
-    simulationStep,
-    hotspots: DEMO_HOTSPOTS,
-    contracts: DEMO_CONTRACTS,
-    vipGuests: DEMO_VIP_GUESTS,
-    vendorQuotes: DEMO_VENDOR_QUOTES,
-    priceRanges: calculateCategoryPriceRanges(DEMO_VENDOR_QUOTES),
-    startSimulation,
-    pauseSimulation,
-    resumeSimulation,
-    resetSimulation,
-    stopSimulation
-  };
+export interface DemoConvoy {
+  driver: DemoDriverKey;
+  callsign: Bilingual;
+  /** DEMO_VIP_GUESTS id riding in this convoy. */
+  vipId: string;
+  vehicle: Bilingual;
+  plate: string;
+  escort: Bilingual;
+  /** Geofenced site the convoy is heading to (CONCENTRIC_GEOFENCES code). */
+  destination: string;
 }
+
+export const DEMO_CONVOYS: DemoConvoy[] = [
+  {
+    driver: "sultan",
+    callsign: { en: "Motorcade Alpha", ar: "موكب ألفا" },
+    vipId: "vip-1",
+    vehicle: { en: "Mercedes-Maybach S680", ar: "مرسيدس مايباخ S680" },
+    plate: "KSA 9119",
+    escort: { en: "Diplomatic Escort 01", ar: "دورية بروتوكول 01" },
+    destination: "RITZ_CARLTON_RIYADH"
+  },
+  {
+    driver: "fahad",
+    callsign: { en: "Motorcade Bravo", ar: "موكب برافو" },
+    vipId: "vip-3",
+    vehicle: { en: "BMW 7-Series VIP", ar: "بي إم دبليو الفئة السابعة" },
+    plate: "KSA 2030",
+    escort: { en: "VIP Private Escort", ar: "مرافقة VIP خاصة" },
+    destination: "KAFD_PLENARY_HALL"
+  },
+  {
+    driver: "rakan",
+    callsign: { en: "Shuttle Charlie", ar: "الحافلة تشارلي" },
+    vipId: "vip-4",
+    vehicle: {
+      en: "Mercedes V-Class VIP Shuttle",
+      ar: "مرسيدس V-Class ترددية"
+    },
+    plate: "KSA 7788",
+    escort: { en: "Fast-Track Escort", ar: "مرافقة سريعة" },
+    destination: "KAFD_PLENARY_HALL"
+  },
+  {
+    driver: "tariq",
+    callsign: { en: "Motorcade Delta", ar: "موكب دلتا" },
+    vipId: "vip-5",
+    vehicle: { en: "Mercedes V-Class Executive", ar: "مرسيدس V-Class تنفيذية" },
+    plate: "KSA 5544",
+    escort: { en: "Airport Express Escort", ar: "مرافقة المطار السريعة" },
+    destination: "KKIA_ROYAL_T5"
+  },
+  {
+    driver: "nasser",
+    callsign: { en: "Motorcade Echo", ar: "موكب إيكو" },
+    vipId: "vip-2",
+    vehicle: { en: "Lexus LS 500 Executive", ar: "لكزس LS 500 تنفيذية" },
+    plate: "KSA 1122",
+    escort: { en: "Heritage Corridor Escort", ar: "مرافقة الممر التراثي" },
+    destination: "DIRIYAH_BUJAIRI"
+  }
+];
+
+export type FlightPhase =
+  | "INBOUND"
+  | "FINAL_APPROACH"
+  | "LANDED"
+  | "CHAUFFEUR_READY"
+  | "DEPARTED_AIRPORT";
+
+export const FLIGHT_PHASE_LABEL: Record<FlightPhase, Bilingual> = {
+  INBOUND: { en: "Inbound airspace", ar: "في المجال الجوي" },
+  FINAL_APPROACH: { en: "Final approach", ar: "المسار النهائي للهبوط" },
+  LANDED: { en: "Landed", ar: "هبطت بسلام" },
+  CHAUFFEUR_READY: {
+    en: "Landed · Captain at curb",
+    ar: "هبطت · الكابتن على الرصيف"
+  },
+  DEPARTED_AIRPORT: { en: "Departed airport", ar: "غادرت المطار" }
+};
+
+export interface DemoFlight {
+  flightNo: string;
+  airline: Bilingual;
+  aircraft: string;
+  origin: Bilingual;
+  gate: Bilingual;
+  /** DEMO_VIP_GUESTS id on board. */
+  vipId: string;
+  /** Minutes to touchdown at script start; the director drives the phase. */
+  etaMinutes: number;
+  phase: FlightPhase;
+}
+
+export const DEMO_FLIGHTS: DemoFlight[] = [
+  {
+    flightNo: "SV 1044",
+    airline: { en: "Saudia Royal Flight", ar: "السعودية - الطيران الملكي" },
+    aircraft: "Airbus A340 VIP",
+    origin: { en: "Jeddah (JED)", ar: "جدة" },
+    gate: { en: "Royal Terminal", ar: "الصالة الملكية" },
+    vipId: "vip-1",
+    etaMinutes: 4,
+    phase: "FINAL_APPROACH"
+  },
+  {
+    flightNo: "SV 102",
+    airline: { en: "Saudia (Royal Fleet)", ar: "السعودية - الأسطول الملكي" },
+    aircraft: "Boeing 787-9",
+    origin: { en: "New York (JFK)", ar: "نيويورك" },
+    gate: { en: "KKIA T2 · Gate 204", ar: "الصالة 2 · بوابة 204" },
+    vipId: "vip-3",
+    etaMinutes: 0,
+    phase: "CHAUFFEUR_READY"
+  },
+  {
+    flightNo: "BA 263",
+    airline: { en: "British Airways", ar: "الخطوط البريطانية" },
+    aircraft: "Boeing 787-10",
+    origin: { en: "London (LHR)", ar: "لندن" },
+    gate: { en: "KKIA T2 · Gate 210", ar: "الصالة 2 · بوابة 210" },
+    vipId: "vip-4",
+    etaMinutes: 0,
+    phase: "LANDED"
+  },
+  {
+    flightNo: "EK 2042",
+    airline: { en: "Emirates VIP", ar: "طيران الإمارات VIP" },
+    aircraft: "Airbus A380",
+    origin: { en: "Dubai (DXB)", ar: "دبي" },
+    gate: { en: "KKIA T2", ar: "الصالة 2" },
+    vipId: "vip-5",
+    etaMinutes: 14,
+    phase: "INBOUND"
+  }
+];
+
+export interface DemoVipDossier {
+  vipId: string;
+  clearance: Bilingual;
+  protocol: Bilingual;
+  rider: Bilingual[];
+}
+
+export const DEMO_VIP_DOSSIERS: DemoVipDossier[] = [
+  {
+    vipId: "vip-1",
+    clearance: { en: "Tier 1 · Ministerial", ar: "الفئة 1 · وزاري" },
+    protocol: {
+      en: "Curbside handshake at Royal Gate; direct to Ritz-Carlton delegation base.",
+      ar: "استقبال على رصيف البوابة الملكية؛ التوجه مباشرة إلى مقر الوفود بالريتز-كارلتون."
+    },
+    rider: [
+      {
+        en: "Cabin 20°C, Arabic coffee service",
+        ar: "المقصورة 20°، ضيافة قهوة عربية"
+      },
+      {
+        en: "Female protocol officer on arrival",
+        ar: "ضابطة مراسم عند الوصول"
+      },
+      { en: "No press at curb", ar: "بدون إعلام على الرصيف" }
+    ]
+  },
+  {
+    vipId: "vip-2",
+    clearance: { en: "Tier 0 · Sovereign", ar: "الفئة 0 · سيادي" },
+    protocol: {
+      en: "Private apron reception; heritage corridor to Diriyah under full escort.",
+      ar: "استقبال بالمهبط الخاص؛ الممر التراثي إلى الدرعية بمرافقة كاملة."
+    },
+    rider: [
+      {
+        en: "Secure briefing pack in vehicle",
+        ar: "حقيبة إحاطة أمنية داخل المركبة"
+      },
+      { en: "Interpreter on standby", ar: "مترجم في وضع الاستعداد" }
+    ]
+  },
+  {
+    vipId: "vip-3",
+    clearance: { en: "Tier 1 · Executive", ar: "الفئة 1 · تنفيذي" },
+    protocol: {
+      en: "Fast-track T2 exit; Sovereign Financial corridor to KAFD.",
+      ar: "خروج سريع من الصالة 2؛ الممر المالي السيادي إلى كافد."
+    },
+    rider: [
+      { en: "Wi-Fi hotspot + charging", ar: "نقطة اتصال وشحن" },
+      { en: "Still water, no ice", ar: "ماء بدون ثلج" }
+    ]
+  },
+  {
+    vipId: "vip-4",
+    clearance: { en: "Tier 1 · Executive", ar: "الفئة 1 · تنفيذي" },
+    protocol: {
+      en: "Shuttle Charlie to plenary; seat 1A reserved.",
+      ar: "الحافلة تشارلي إلى القاعة الكبرى؛ المقعد 1A محجوز."
+    },
+    rider: [
+      { en: "Printed agenda in English", ar: "جدول أعمال مطبوع بالإنجليزية" }
+    ]
+  },
+  {
+    vipId: "vip-5",
+    clearance: { en: "Tier 2 · Delegate", ar: "الفئة 2 · مندوب" },
+    protocol: {
+      en: "Airport express; meet at Terminal 2 ground operations bay.",
+      ar: "مسار المطار السريع؛ الاستقبال بساحة العمليات الأرضية بالصالة 2."
+    },
+    rider: [{ en: "Luggage assist ×3", ar: "مساعدة أمتعة ×3" }]
+  }
+];
+
+/**
+ * Act timings (ms). Beats inside each act reference these offsets so a
+ * rehearsal can stretch or compress an act without re-authoring the script.
+ * Five acts ≈ 7 minutes hands-off.
+ */
+export const ACT_TIMING = {
+  titleCardMs: 2800,
+  act1: { durationMs: 72_000 },
+  act2: { durationMs: 78_000 },
+  act3: { durationMs: 66_000 },
+  act4: { durationMs: 96_000 },
+  act5: { durationMs: 84_000 }
+} as const;
