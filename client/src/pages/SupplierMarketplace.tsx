@@ -53,7 +53,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
+      <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-sm">
         <Badge tone="gold">{t("supplier.title")}</Badge>
         <h1 className="mt-4 text-2xl font-bold">
           {isArabic ? "الفنادق، السيارات، التذاكر، الإعاشة، والمعدات" : "Hotels, cars, tickets, catering, and equipment"}
@@ -93,7 +93,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
             className={
               category === "ALL"
                 ? "rounded-lg bg-midyaf-purple px-3 py-2 text-xs font-bold text-white"
-                : "rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
+                : "rounded-lg border border-white/5 px-3 py-2 text-xs font-bold text-slate-600"
             }
           >
             {isArabic ? "الكل" : "All"}
@@ -105,7 +105,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
               className={
                 category === item
                   ? "rounded-lg bg-midyaf-purple px-3 py-2 text-xs font-bold text-white"
-                  : "rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
+                  : "rounded-lg border border-white/5 px-3 py-2 text-xs font-bold text-slate-600"
               }
             >
               {localizeText(item, isArabic)}
@@ -119,7 +119,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
             return (
               <article
                 key={supplier.id}
-                className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="grid size-11 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-purple">
@@ -134,7 +134,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
                     ) : null}
                   </div>
                 </div>
-                <h2 className="mt-4 text-lg font-bold text-midyaf-ink">
+                <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
                   {supplier.name}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -150,7 +150,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
                     <div key={service.id} className="rounded-lg bg-slate-50 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-midyaf-ink">
+                          <p className="font-semibold text-slate-900 dark:text-white">
                             {service.name}
                           </p>
                           <p className="text-xs text-slate-500">
@@ -162,7 +162,7 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
                         </p>
                       </div>
                       <div className="mt-3 flex gap-2">
-                        <button className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">
+                        <button className="flex-1 rounded-lg border border-white/5 px-3 py-2 text-xs font-bold text-slate-700">
                           {t("common.compare")}
                         </button>
                         {canBook ? (
@@ -191,8 +191,8 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
 
       <Section title={isArabic ? "توجيه المهام المباشر والتحقق الذكي من الوثائق (OCR)" : "Live Task Dispatcher & AI OCR Upload"}>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="font-bold text-midyaf-ink mb-2">{isArabic ? "تنبيهات المهام المباشرة" : "Live Task Alerts"}</h3>
+          <div className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2">{isArabic ? "تنبيهات المهام المباشرة" : "Live Task Alerts"}</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2 rounded bg-amber-50 p-2 border border-amber-200">
                 <span className="flex size-6 items-center justify-center rounded-full bg-amber-200 text-amber-800 text-xs font-bold shrink-0">!</span>
@@ -205,8 +205,8 @@ export function SupplierMarketplace({ data, session, createBooking }: PortalProp
               </div>
             </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="font-bold text-midyaf-ink mb-2">{isArabic ? "اعتماد المستندات بالذكاء الاصطناعي" : "AI-Powered Document Approval"}</h3>
+          <div className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2">{isArabic ? "اعتماد المستندات بالذكاء الاصطناعي" : "AI-Powered Document Approval"}</h3>
             <p className="text-xs text-slate-500 mb-3">
               {isArabic ? "ارفع هويات السائقين أو رخص السير أو وثائق التأمين. يقوم قارئ النصوص الذكي بالتحقق منها فوراً." : "Upload your driver IDs, vehicle registrations, or insurance. Our OCR validates them instantly."}
             </p>

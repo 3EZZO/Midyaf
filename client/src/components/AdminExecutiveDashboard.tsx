@@ -191,7 +191,7 @@ export function AdminExecutiveDashboard({
 
       {/* Priority 5: Financial Status Overview (Top KPIs) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-midyaf-gold/30 bg-gradient-to-br from-midyaf-purple/95 to-[#1c0b38] p-5 text-white shadow-xl">
+        <div className="rounded-lg border border-midyaf-gold/30 bg-gradient-to-br from-midyaf-purple/95 to-[#1c0b38] p-5 text-white shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-midyaf-gold uppercase tracking-wider">
               {isArabic ? "إجمالي العمولات المحققة لمضياف" : "Platform Commissions"}
@@ -211,7 +211,7 @@ export function AdminExecutiveDashboard({
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {isArabic ? "إجمالي قيمة العقود المعتمدة" : "Total Contracted Spend"}
@@ -220,7 +220,7 @@ export function AdminExecutiveDashboard({
               <ReceiptText size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-midyaf-ink dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
             {money(totalContractedSpend || 1950000)}
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -228,7 +228,7 @@ export function AdminExecutiveDashboard({
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
@@ -237,7 +237,7 @@ export function AdminExecutiveDashboard({
               <TrendingUp size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-midyaf-ink dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
             14.6%
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -245,7 +245,7 @@ export function AdminExecutiveDashboard({
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {isArabic ? "الدفعات المستحقة والمقدمة" : "Pending Receivables"}
@@ -254,7 +254,7 @@ export function AdminExecutiveDashboard({
               <Clock size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-midyaf-ink dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
             {money(pendingDownpayments || 340000)}
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -268,10 +268,10 @@ export function AdminExecutiveDashboard({
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button 
           onClick={() => setActiveTab("submitters")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "submitters" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <UserCheck size={24} className="mb-2" />
@@ -280,10 +280,10 @@ export function AdminExecutiveDashboard({
 
         <button 
           onClick={() => setActiveTab("plans")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "plans" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <FileCheck size={24} className="mb-2" />
@@ -292,10 +292,10 @@ export function AdminExecutiveDashboard({
 
         <button 
           onClick={() => setActiveTab("complaints")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "complaints" 
-              ? "bg-rose-500 text-white border-rose-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-rose-500 text-white border-rose-500 shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <MessageSquareWarning size={24} className="mb-2" />
@@ -304,10 +304,10 @@ export function AdminExecutiveDashboard({
 
         <button 
           onClick={() => setActiveTab("activities")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "activities" 
-              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-amber-500 text-white border-amber-500 shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <Flame size={24} className="mb-2" />
@@ -316,10 +316,10 @@ export function AdminExecutiveDashboard({
 
         <button 
           onClick={() => setActiveTab("vault")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "vault" 
-              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <ShieldCheck size={24} className="mb-2" />
@@ -342,32 +342,32 @@ export function AdminExecutiveDashboard({
             ? "التتبع الصارم للجهة والموظف المسؤول عن تعبئة متطلبات الفعالية، استيراد بيانات الضيوف، وحجز الفنادق والأسطول."
             : "Audit trail identifying the specific organizer entity and individual who inputted the event specifications, guest lists, and resource requirements."}
         </p>
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white/70 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="border-b border-white/5 bg-[#090C15] text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               <tr>
-                <th className="px-4 py-3">{isArabic ? "اسم الفعالية" : "Activity Name"}</th>
-                <th className="px-4 py-3">{isArabic ? "الجهة المنظمة" : "Organizing Company"}</th>
-                <th className="px-4 py-3">{isArabic ? "المسؤول عن الإدخال" : "Submitted By"}</th>
-                <th className="px-4 py-3">{isArabic ? "تاريخ ووقت الإدخال" : "Submission Time"}</th>
-                <th className="px-4 py-3">{isArabic ? "إجمالي الحضور" : "Total Guests"}</th>
-                <th className="px-4 py-3">{isArabic ? "حالة الإدخال" : "Intake Status"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "اسم الفعالية" : "Activity Name"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "الجهة المنظمة" : "Organizing Company"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "المسؤول عن الإدخال" : "Submitted By"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "تاريخ ووقت الإدخال" : "Submission Time"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "إجمالي الحضور" : "Total Guests"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "حالة الإدخال" : "Intake Status"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {submitterList.map((sub) => (
                 <tr key={sub.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3.5 font-bold text-midyaf-ink dark:text-white">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white dark:text-white">
                     {sub.activityName}
                     <span className="block text-[10px] text-slate-400 font-normal">{sub.activityPlace}</span>
                   </td>
-                  <td className="px-4 py-3.5 font-semibold text-midyaf-purple dark:text-purple-300">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-midyaf-purple dark:text-purple-300">
                     <span className="inline-flex items-center gap-1.5">
                       <Building2 size={13} className="text-midyaf-gold" />
                       {sub.organization}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
                     <div className="flex items-center gap-2">
                       <div className="grid size-6 place-items-center rounded-full bg-midyaf-gold/20 text-[10px] font-black text-midyaf-gold">
                         {sub.submittedBy.slice(0, 2).toUpperCase()}
@@ -378,14 +378,14 @@ export function AdminExecutiveDashboard({
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 font-tnum text-slate-500">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-tnum text-slate-500">
                     {shortDate(sub.submittedAt)} · {shortTime(sub.submittedAt)}
                   </td>
-                  <td className="px-4 py-3.5 font-tnum">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-tnum">
                     <span className="font-bold text-slate-800 dark:text-slate-100">{sub.visitors}</span>
                     <span className="text-[10px] text-midyaf-gold font-bold ms-1">({sub.vipCount} VIP)</span>
                   </td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
                     <Badge tone={sub.status === "OPERATIONS_OPEN" || sub.status === "PLAN_CONFIRMED" ? "green" : "gold"}>
                       {localizeStatus(sub.status, isArabic)}
                     </Badge>
@@ -433,7 +433,7 @@ export function AdminExecutiveDashboard({
           {filteredPlans.map((plan) => (
             <div
               key={plan.id}
-              className={`rounded-2xl border p-5 transition-all shadow-xs ${
+              className={`rounded-lg border p-5 transition-all shadow-xs ${
                 plan.status === "APPROVED"
                   ? "border-emerald-500/30 bg-emerald-50/20 dark:border-emerald-500/20 dark:bg-emerald-950/10"
                   : "border-amber-500/40 bg-amber-50/20 dark:border-amber-500/20 dark:bg-amber-950/10"
@@ -441,7 +441,7 @@ export function AdminExecutiveDashboard({
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <h3 className="font-extrabold text-midyaf-ink dark:text-white text-base">
+                  <h3 className="font-extrabold text-slate-900 dark:text-white dark:text-white text-base">
                     {plan.title}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">{plan.place} · {isArabic ? `إدخال: ${plan.submittedBy}` : `Submitted by: ${plan.submittedBy}`}</p>
@@ -451,26 +451,26 @@ export function AdminExecutiveDashboard({
                 </Badge>
               </div>
 
-              <p className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 leading-relaxed mb-4">
+              <p className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-white/5 dark:border-slate-800 leading-relaxed mb-4">
                 {plan.aiPlanSummary}
               </p>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الضيوف" : "Guests"}</span>
-                  <span className="font-bold text-midyaf-ink dark:text-white font-tnum">{plan.visitorCount}</span>
+                  <span className="font-bold text-slate-900 dark:text-white dark:text-white font-tnum">{plan.visitorCount}</span>
                 </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الغرف المحجوزة" : "Hotel Rooms"}</span>
                   <span className="font-bold text-midyaf-purple dark:text-purple-300 font-tnum">{plan.hotelRooms}</span>
                 </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الأسطول والحافلات" : "Fleet Units"}</span>
                   <span className="font-bold text-midyaf-gold font-tnum">{plan.fleetCount}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between pt-2 border-t border-white/5 dark:border-slate-800">
                 <span className="text-[11px] text-slate-400">
                   {plan.status === "APPROVED"
                     ? (isArabic ? "تم قفل شروط الدفع وتوليد العقود" : "Payment terms locked & active")
@@ -528,12 +528,12 @@ export function AdminExecutiveDashboard({
                 value={newComplaintGuest}
                 onChange={e => setNewComplaintGuest(e.target.value)}
                 placeholder={isArabic ? "الجهة الشاكية أو اسم الضيف" : "Complainant or VIP Guest Name"}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-lg border border-white/5 bg-[#121626] px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
               />
               <select
                 value={newComplaintSeverity}
                 onChange={e => setNewComplaintSeverity(e.target.value as ComplaintSeverity)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-lg border border-white/5 bg-[#121626] px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
               >
                 <option value="NORMAL">{isArabic ? "درجة عادية (Normal)" : "Normal Severity"}</option>
                 <option value="HIGH">{isArabic ? "درجة عالية (High)" : "High Severity"}</option>
@@ -545,7 +545,7 @@ export function AdminExecutiveDashboard({
               value={newComplaintText}
               onChange={e => setNewComplaintText(e.target.value)}
               placeholder={isArabic ? "تفاصيل الشكوى أو الملاحظة الميدانية..." : "Describe the incident or complaint..."}
-              className="w-full rounded-lg border border-slate-200 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900 mb-3"
+              className="w-full rounded-lg border border-white/5 bg-[#121626] p-3 text-xs dark:border-slate-700 dark:bg-slate-900 mb-3"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -569,11 +569,11 @@ export function AdminExecutiveDashboard({
           {filteredComplaints.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/80 p-4 transition-all shadow-xs dark:border-slate-800 dark:bg-slate-900/60"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#121626]/80 p-4 transition-all shadow-xs dark:border-slate-800 dark:bg-slate-900/60"
             >
               <div className="space-y-1 max-w-2xl">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-midyaf-ink dark:text-white text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white dark:text-white text-xs">
                     {isArabic ? (c.complainantNameAr || c.complainantName) : (c.complainantNameEn || c.complainantName)}
                   </span>
                   <span className="text-[10px] text-slate-400">({c.complainantRole})</span>
@@ -634,14 +634,14 @@ export function AdminExecutiveDashboard({
         }
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-midyaf-gold/30 bg-gradient-to-b from-white to-slate-50/60 p-5 shadow-xs dark:from-slate-900 dark:to-slate-950">
+          <div className="rounded-lg border border-midyaf-gold/30 bg-[#121626] p-5 shadow-xs bg-[#121626]">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-midyaf-gold">
                   <span className="size-2 rounded-full bg-emerald-500 animate-ping"></span>
                   {isArabic ? "فعالية قيد التنفيذ المباشر (LIVE)" : "Live In-Execution"}
                 </span>
-                <h3 className="font-black text-midyaf-ink dark:text-white text-base mt-1">
+                <h3 className="font-black text-slate-900 dark:text-white dark:text-white text-base mt-1">
                   {event.name}
                 </h3>
               </div>
@@ -653,7 +653,7 @@ export function AdminExecutiveDashboard({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs mt-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">{isArabic ? "كبار الشخصيات" : "VIP Guests"}</span>
-                <span className="font-extrabold text-midyaf-ink dark:text-white font-tnum">{intake.vipVisitorCount}</span>
+                <span className="font-extrabold text-slate-900 dark:text-white dark:text-white font-tnum">{intake.vipVisitorCount}</span>
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">{isArabic ? "الكباتن بالخدمة" : "Active Captains"}</span>
@@ -674,14 +674,14 @@ export function AdminExecutiveDashboard({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="rounded-lg border border-white/5 bg-[#121626] p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
                   <Clock size={13} />
                   {isArabic ? "فعالية قادمة — التجهيز اللوجستي" : "Upcoming Pipeline Event"}
                 </span>
-                <h3 className="font-black text-midyaf-ink dark:text-white text-base mt-1">
+                <h3 className="font-black text-slate-900 dark:text-white dark:text-white text-base mt-1">
                   {isArabic ? "ملتقى الدرعية للتراث والضيافة الرفيعة" : "Diriyah Heritage & High Hospitality Forum"}
                 </h3>
               </div>
@@ -696,7 +696,7 @@ export function AdminExecutiveDashboard({
                 : "Requirements received and heritage rooms reserved at At-Turaif. Pending digital vault sealing and contract approvals."}
             </p>
 
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5 dark:border-slate-800">
               <span className="text-slate-400 font-tnum">{isArabic ? "الجدول: 18 - 20 أكتوبر 2026" : "Schedule: Oct 18 - 20, 2026"}</span>
               <span className="font-bold text-midyaf-purple dark:text-purple-300 font-tnum">{money(450000)} (تقديري)</span>
             </div>
@@ -723,43 +723,43 @@ export function AdminExecutiveDashboard({
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white/70 shadow-xs dark:border-slate-800 dark:bg-slate-900/60">
-          <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
+          <table className="w-full text-left text-xs text-slate-300">
+            <thead className="border-b border-white/5 bg-[#090C15] text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               <tr>
-                <th className="px-4 py-3">{isArabic ? "رقم العقد" : "Contract #"}</th>
-                <th className="px-4 py-3">{isArabic ? "المورد المعتمد" : "Certified Vendor"}</th>
-                <th className="px-4 py-3">{isArabic ? "التصنيف" : "Category"}</th>
-                <th className="px-4 py-3">{isArabic ? "القيمة الإجمالية" : "Total Value"}</th>
-                <th className="px-4 py-3">{isArabic ? "عمولة مضياف" : "Midyaf Commission"}</th>
-                <th className="px-4 py-3">{isArabic ? "شروط الدفع" : "Payment Terms"}</th>
-                <th className="px-4 py-3">{isArabic ? "الختم الرقمي" : "Digital Seal"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "رقم العقد" : "Contract #"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "المورد المعتمد" : "Certified Vendor"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "التصنيف" : "Category"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "القيمة الإجمالية" : "Total Value"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "عمولة مضياف" : "Midyaf Commission"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "شروط الدفع" : "Payment Terms"}</th>
+                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "الختم الرقمي" : "Digital Seal"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-tnum">
               {data.contracts.map((cnt) => (
                 <tr key={cnt.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3.5 font-mono font-bold text-midyaf-purple dark:text-purple-300">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-mono font-bold text-midyaf-purple dark:text-purple-300">
                     {cnt.contractNumber}
                   </td>
-                  <td className="px-4 py-3.5 font-bold text-slate-800 dark:text-slate-100">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-800 dark:text-slate-100">
                     {cnt.vendorName}
                   </td>
-                  <td className="px-4 py-3.5 font-normal">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-normal">
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-800">
                       {localizeCategory(cnt.category, isArabic)}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white">
                     {money(Number(cnt.amount ?? cnt.totalValue ?? 0))}
                   </td>
-                  <td className="px-4 py-3.5 font-bold text-emerald-600 dark:text-emerald-400">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-emerald-600 dark:text-emerald-400">
                     {money(Number(cnt.amount ?? cnt.totalValue ?? 0) * 0.12)}
                   </td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-600 dark:text-slate-400">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-slate-600 dark:text-slate-400">
                     {localizePaymentTerms(cnt.paymentTerms, isArabic)}
                   </td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
                     <span className="inline-flex items-center gap-1 font-mono text-[10px] text-midyaf-gold">
                       <ShieldCheck size={12} />
                       {cnt.digitalSeal ? cnt.digitalSeal.slice(0, 10) + "..." : "SHA-256 Verified"}

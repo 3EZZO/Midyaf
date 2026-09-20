@@ -10,20 +10,20 @@
 
 :root {
   /* ── Primary Palette (Flat) ── */
-  --m-purple: #111827;
-  --m-purple-light: #374151;
-  --m-purple-dark: #030712;
+  --m-purple: #090C15;
+  --m-purple-light: #121626;
+  --m-purple-dark: #05070D;
   --m-purple-glow: rgba(17, 24, 39, 0.1);
-  --m-gold: #9A8C78;
-  --m-gold-light: #C3B9A8;
-  --m-gold-dark: #726553;
+  --m-gold: #D4AF37;
+  --m-gold-light: #F2D575;
+  --m-gold-dark: #A88820;
   --m-gold-glow: rgba(154, 140, 120, 0.1);
 
   /* ── Surface Palette ── */
-  --m-pearl: #F9FAFB;
+  --m-pearl: #F8FAFC;
   --m-ivory: #FFFFFF;
-  --m-smoke: #E5E7EB;
-  --m-ink: #111827;
+  --m-smoke: #94A3B8;
+  --m-ink: #090C15;
   --m-sand: #F3F4F6;
 
   /* ── Semantic Colors ── */
@@ -527,7 +527,7 @@ textarea:focus-visible {
   color: var(--m-ink);
   background: var(--m-ivory);
   border: 1.5px solid var(--m-smoke);
-  border-radius: 10px;
+  border-radius: 4px;
   transition:
     border-color var(--m-duration) var(--m-ease-out),
     box-shadow var(--m-duration) var(--m-ease-out),
@@ -542,7 +542,7 @@ textarea:focus-visible {
   outline: none;
   border-color: var(--m-gold);
   background: #fff;
-  box-shadow: 0 0 0 3px var(--m-gold-glow), 0 0 20px rgba(201, 168, 76, 0.08);
+  box-shadow: none;
 }
 
 .m-input:disabled {
@@ -552,13 +552,13 @@ textarea:focus-visible {
 }
 
 [data-theme="dark"] .m-input {
-  background: rgba(26, 23, 38, 0.60);
-  border-color: rgba(74, 26, 138, 0.25);
+  background: rgba(9, 12, 21, 0.80);
+  border-color: rgba(255, 255, 255, 0.1);
   color: #F0EDE6;
 }
 
 [data-theme="dark"] .m-input:focus {
-  background: rgba(26, 23, 38, 0.80);
+  background: #090C15;
   border-color: var(--m-gold);
 }
 
@@ -627,10 +627,10 @@ textarea:focus-visible {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background: var(--m-gradient-purple);
+  background: #121626; border: 1px solid rgba(255,255,255,0.1);
   background-size: 200% 200%;
   border: none;
-  border-radius: 10px;
+  border-radius: 4px;
   cursor: pointer;
   overflow: hidden;
   transition:
@@ -639,7 +639,7 @@ textarea:focus-visible {
 }
 
 .btn-primary:hover {
-  box-shadow: 0 8px 24px var(--m-purple-glow);
+  box-shadow: none; border-color: rgba(255,255,255,0.2);
   transform: translateY(-1px);
 }
 
@@ -664,10 +664,10 @@ textarea:focus-visible {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background: var(--m-gradient-gold);
+  background: var(--m-gold); color: #090C15;
   background-size: 200% 200%;
   border: none;
-  border-radius: 10px;
+  border-radius: 4px;
   cursor: pointer;
   overflow: hidden;
   transition:
@@ -676,7 +676,7 @@ textarea:focus-visible {
 }
 
 .btn-gold:hover {
-  box-shadow: 0 8px 24px var(--m-gold-glow);
+  box-shadow: none; background: #E6C553;
   transform: translateY(-1px);
 }
 
@@ -702,7 +702,7 @@ textarea:focus-visible {
   color: var(--m-purple);
   background: transparent;
   border: 1.5px solid var(--m-smoke);
-  border-radius: 10px;
+  border-radius: 4px;
   cursor: pointer;
   transition:
     background-color var(--m-duration) var(--m-ease-out),

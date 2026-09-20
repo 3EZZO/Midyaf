@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 type Tone = "purple" | "gold" | "green" | "red" | "slate" | "blue";
 
 const tones: Record<Tone, string> = {
-  purple: "bg-midyaf-purple/10 text-midyaf-purple ring-midyaf-purple/15 shadow-[0_2px_8px_rgba(45,10,95,0.10)]",
-  gold: "bg-midyaf-gold/15 text-[#7A5D12] ring-midyaf-gold/30 shadow-[0_2px_8px_rgba(201,168,76,0.12)]",
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-100 shadow-[0_2px_8px_rgba(5,150,105,0.10)]",
-  red: "bg-rose-50 text-rose-700 ring-rose-100 shadow-[0_2px_8px_rgba(220,38,38,0.10)]",
-  slate: "bg-slate-100 text-slate-700 ring-slate-200",
-  blue: "bg-sky-50 text-sky-700 ring-sky-100 shadow-[0_2px_8px_rgba(2,132,199,0.10)]"
+  purple: "bg-midyaf-purple-light/30 text-white ring-white/10",
+  gold: "bg-midyaf-gold/10 text-midyaf-gold ring-midyaf-gold/20",
+  green: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
+  red: "bg-rose-500/10 text-rose-400 ring-rose-500/20",
+  slate: "bg-white/5 text-slate-300 ring-white/10",
+  blue: "bg-sky-500/10 text-sky-400 ring-sky-500/20"
 };
 
 export function Badge({
@@ -24,7 +24,7 @@ export function Badge({
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold tracking-wide ring-1 animate-scaleIn",
+        "inline-flex items-center gap-1 rounded px-2.5 py-1 text-[10px] uppercase tracking-widest font-bold tracking-wide ring-1 animate-scaleIn",
         tones[tone],
         className
       )}

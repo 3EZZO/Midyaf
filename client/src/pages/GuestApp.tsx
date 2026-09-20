@@ -68,13 +68,13 @@ export function GuestApp({ data, session }: PortalProps) {
         </RoyalCard>
 
         {scheduleShifted && (
-          <div className="glass-royal rounded-2xl p-5 border border-purple-400/50 shadow-luxury transition-all animate-fadeIn mb-4">
+          <div className="glass-royal rounded-lg p-5 border border-purple-400/50 shadow-sm transition-all animate-fadeIn mb-4">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white font-black shadow-md shrink-0">
                 <Sparkles size={22} className="text-midyaf-gold animate-pulse" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white dark:text-dark-primary">
                   Saif & Munirah (Digital Concierge)
                 </h3>
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-1">
@@ -87,7 +87,7 @@ export function GuestApp({ data, session }: PortalProps) {
 
         {/* Touchdown Driver Banner & Proactive Concierge (PDF Page 4) */}
         {driverArrived && (
-        <div className="glass-royal rounded-2xl p-5 border border-amber-400/50 shadow-luxury transition-all animate-fadeIn">
+        <div className="glass-royal rounded-lg p-5 border border-amber-400/50 shadow-sm transition-all animate-fadeIn">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-950 font-black shadow-md shrink-0">
@@ -104,7 +104,7 @@ export function GuestApp({ data, session }: PortalProps) {
                     <span>{isArabic ? "المسار السريع لكبار الشخصيات" : "VIP EXPEDITED CURB"}</span>
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary mt-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white dark:text-dark-primary mt-1">
                   {isArabic ? "سائقك والمرافق الملكي في انتظارك عند رصيف VIP بوابة 2" : "Your Royal Escort & Chauffeur is waiting at Gate 2 VIP Curb"}
                 </h3>
               </div>
@@ -134,14 +134,14 @@ export function GuestApp({ data, session }: PortalProps) {
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px]">{isArabic ? "السائق المخصص" : "ASSIGNED CHAUFFEUR"}</span>
-                <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm">{isArabic ? "كابتن سلطان العتيبي" : "Capt. Sultan Al-Otaibi"}</strong>
+                <strong className="text-slate-900 dark:text-white dark:text-dark-text font-bold text-sm">{isArabic ? "كابتن سلطان العتيبي" : "Capt. Sultan Al-Otaibi"}</strong>
                 <span className="text-slate-500 block text-[11px]">{isArabic ? "تصريح أمني VIP رقم #819" : "VIP Security Cleared #819"}</span>
               </div>
             </div>
 
             <div className="rounded-xl bg-white/70 dark:bg-dark-surface p-3.5 ring-1 ring-slate-200 dark:ring-white/10">
               <span className="text-slate-400 block text-[10px]">{isArabic ? "المركبة ورقم اللوحة" : "VEHICLE & PLATE"}</span>
-              <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm block">{isArabic ? "مرسيدس مايباخ S680" : "Mercedes Maybach S680"}</strong>
+              <strong className="text-slate-900 dark:text-white dark:text-dark-text font-bold text-sm block">{isArabic ? "مرسيدس مايباخ S680" : "Mercedes Maybach S680"}</strong>
               <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded font-mono font-black bg-amber-400 text-slate-950 text-[11px]">
                 {isArabic ? "السعودية · ٩١١٩" : "KSA · 9119"}
               </span>
@@ -232,7 +232,7 @@ export function GuestApp({ data, session }: PortalProps) {
               </div>
               <div className="mt-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-mono text-sm font-black tracking-wider text-midyaf-ink dark:text-white">
+                  <p className="font-mono text-sm font-black tracking-wider text-slate-900 dark:text-white dark:text-white">
                     {guest.qrCode}
                   </p>
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{event.venue}</p>
@@ -266,11 +266,11 @@ export function GuestApp({ data, session }: PortalProps) {
                   key={`${time}-${title}`}
                   className="flex gap-3 rounded-xl bg-slate-50/90 p-3.5 shadow-card-sm ring-1 ring-slate-200/60 transition-all duration-200 hover:scale-[1.01] dark:bg-dark-surface dark:ring-slate-800"
                 >
-                  <div className="grid place-items-center rounded-lg bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark px-3 py-2 text-xs font-black text-white shadow-sm">
+                  <div className="grid place-items-center rounded-lg bg-[#121626] px-3 py-2 text-xs font-black text-white shadow-sm">
                     {time}
                   </div>
                   <div>
-                    <p className="font-bold text-midyaf-ink dark:text-white">{title}</p>
+                    <p className="font-bold text-slate-900 dark:text-white dark:text-white">{title}</p>
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{location}</p>
                   </div>
                 </div>
@@ -343,7 +343,7 @@ export function GuestApp({ data, session }: PortalProps) {
                   <item.icon size={18} />
                 </div>
                 <div>
-                  <p className="font-semibold text-midyaf-ink">{item.title}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">{item.title}</p>
                   <p className="text-xs text-slate-500">{item.detail}</p>
                 </div>
               </div>
@@ -359,7 +359,7 @@ export function GuestApp({ data, session }: PortalProps) {
                 className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"
               >
                 <div>
-                  <p className="font-semibold text-midyaf-ink">
+                  <p className="font-semibold text-slate-900 dark:text-white">
                     {booking.service.name}
                   </p>
                   <p className="text-xs text-slate-500">

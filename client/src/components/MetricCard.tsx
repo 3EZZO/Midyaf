@@ -53,7 +53,7 @@ export function MetricCard({
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
             <span>{label}</span>
             {isClickable && (
               <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-1.5 py-0.5 text-[10px] font-black text-midyaf-gold ring-1 ring-midyaf-gold/30">
@@ -63,12 +63,12 @@ export function MetricCard({
             )}
           </p>
           {icon ? (
-            <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple/20 to-midyaf-purple/5 text-midyaf-purple shadow-sm ring-1 ring-midyaf-gold/30 dark:from-midyaf-purple/40 dark:text-midyaf-gold-light group-hover:ring-midyaf-gold">
+            <div className="grid size-8 place-items-center rounded bg-white/5 text-midyaf-gold border border-white/5 group-hover:border-midyaf-gold transition-colors">
               {icon}
             </div>
           ) : null}
         </div>
-        <div className="mt-3 text-3xl font-black tabular-nums tracking-tight text-midyaf-ink dark:text-white transition-colors group-hover:text-midyaf-gold">
+        <div className="mt-3 text-3xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white dark:text-white transition-colors group-hover:text-midyaf-gold">
           {value}
         </div>
         {detail ? (

@@ -78,7 +78,7 @@ export function DriverApp({
   return (
     <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
       <div className="space-y-4">
-        <div className={`flex items-center justify-between rounded-xl px-4 py-3 text-white shadow-md transition-all ${
+        <div className={`flex items-center justify-between rounded-xl px-4 py-3 border-r border-white/5 last:border-r-0 text-white shadow-md transition-all ${
           locationState.tracking ? "bg-gradient-to-r from-emerald-600 to-teal-700" : "bg-gradient-to-r from-slate-700 to-slate-800"
         }`}>
           <div className="flex items-center gap-2.5">
@@ -185,7 +185,7 @@ export function DriverApp({
           )}
         </section>
 
-        <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
+        <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-sm">
           <Badge tone="gold">{t("driver.title")}</Badge>
           <h1 className="mt-4 text-2xl font-bold">{driver.user.name}</h1>
           <p className="mt-2 text-sm text-white/70">
@@ -318,14 +318,14 @@ export function DriverApp({
             {tasks.map((task) => (
               <article
                 key={task.id}
-                className="rounded-lg border border-slate-200 bg-white p-4"
+                className="rounded-lg border border-white/5 bg-[#121626] p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <Badge tone={task.status === "DELAYED" ? "red" : "purple"}>
                       {localizeStatus(task.status, isArabic)}
                     </Badge>
-                    <h3 className="mt-3 font-bold text-midyaf-ink">
+                    <h3 className="mt-3 font-bold text-slate-900 dark:text-white">
                       {localizeText(task.type, isArabic)}
                     </h3>
                     <p className="text-sm text-slate-500">
@@ -422,7 +422,7 @@ export function DriverApp({
             ].map(([title, detail]) => (
               <div key={title} className="rounded-lg bg-slate-50 p-3">
                 <Map className="mb-2 text-midyaf-purple" size={18} />
-                <p className="font-semibold text-midyaf-ink">{title}</p>
+                <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
                 <p className="text-xs text-slate-500">{detail}</p>
               </div>
             ))}

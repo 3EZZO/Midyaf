@@ -5,33 +5,29 @@ module.exports = {
     extend: {
       colors: {
         midyaf: {
-          // Repurposing purple to our dark neutral/primary to avoid 400+ file rewrites
-          purple: "#111827", 
-          "purple-light": "#374151",
-          "purple-dark": "#030712",
-          // Repurposing gold to our signature accent (muted, professional)
-          gold: "#9A8C78",
-          "gold-light": "#C3B9A8",
-          "gold-dark": "#726553",
-          ink: "#111827",
-          pearl: "#F9FAFB",
+          purple: "#090C15",
+          "purple-light": "#121626",
+          "purple-dark": "#05070D",
+          gold: "#D4AF37",
+          "gold-light": "#F2D575",
+          "gold-dark": "#A88820",
+          ink: "#090C15",
+          pearl: "#F8FAFC",
           ivory: "#FFFFFF",
-          sand: "#F3F4F6",
-          smoke: "#E5E7EB"
+          sand: "#F1F5F9",
+          smoke: "#94A3B8"
         }
       },
       fontFamily: {
-        arabic: ["Tajawal", "Noto Kufi Arabic", "Inter", "sans-serif"],
+        arabic: ["IBM Plex Sans Arabic", "Tajawal", "Inter", "sans-serif"],
         english: ["Inter", "sans-serif"],
-        display: ["Tajawal", "Inter", "sans-serif"]
+        display: ["IBM Plex Sans Arabic", "Inter", "sans-serif"]
       },
       boxShadow: {
-        // Flat elevation system replacing neon glows
         sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
         card: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
         "card-hover": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
         dropdown: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
-        // Map old shadows to flat shadows to avoid breaking classes
         luxury: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
         "luxury-lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
         glow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",

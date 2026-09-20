@@ -19,7 +19,7 @@ export function SuperAdmin({ data }: PortalProps) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
+      <section className="rounded-lg bg-midyaf-purple p-5 text-white shadow-sm">
         <Badge tone="gold">{t("admin.title")}</Badge>
         <h1 className="mt-4 text-2xl font-bold">
           {isArabic ? "إدارة المنصة، التحليلات، والامتثال النظامي" : "Platform controls, analytics, and compliance"}
@@ -72,8 +72,8 @@ export function SuperAdmin({ data }: PortalProps) {
               </thead>
               <tbody>
                 {data.users.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-100">
-                    <td className="py-3 pe-4 font-medium text-midyaf-ink">
+                  <tr key={user.id} className="border-b border-white/5">
+                    <td className="py-3 pe-4 font-medium text-slate-900 dark:text-white">
                       {user.name}
                     </td>
                     <td className="py-3 pe-4">
@@ -95,7 +95,7 @@ export function SuperAdmin({ data }: PortalProps) {
             <div className="rounded-lg bg-emerald-50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-midyaf-ink">{isArabic ? data.city.nameAr : data.city.nameEn}</p>
+                  <p className="font-bold text-slate-900 dark:text-white">{isArabic ? data.city.nameAr : data.city.nameEn}</p>
                   <p className="text-xs text-slate-500">
                     {data.city.timezone} · {data.city.currency} · {isArabic ? "الضريبة" : "VAT"}{" "}
                     {percent(data.city.vatPercent)}
@@ -129,7 +129,7 @@ export function SuperAdmin({ data }: PortalProps) {
                 className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
               >
                 <div>
-                  <p className="font-semibold text-midyaf-ink">
+                  <p className="font-semibold text-slate-900 dark:text-white">
                     {config.category ? localizeText(config.category, isArabic) : (isArabic ? "افتراضي" : "Default")}
                   </p>
                   <p className="text-xs text-slate-500">

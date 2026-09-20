@@ -49,7 +49,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
   return (
     <div className="space-y-4">
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-lg bg-midyaf-purple p-5 text-white shadow-luxury">
+        <div className="rounded-lg bg-midyaf-purple p-5 text-white shadow-sm">
           <Badge tone="gold">{t("organizer.title")}</Badge>
           <h1 className="mt-4 text-2xl font-bold">{event.name}</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/75">{event.brief}</p>
@@ -120,7 +120,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
                 className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"
               >
                 <div>
-                  <p className="font-semibold text-midyaf-ink">
+                  <p className="font-semibold text-slate-900 dark:text-white">
                     {guest.user.name}
                   </p>
                   <p className="text-xs text-slate-500">
@@ -156,7 +156,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
                   <div key={task.id} className="rounded-lg bg-white p-3 shadow-sm">
                     <div className="flex items-center gap-2">
                       <ClipboardList size={14} className="text-midyaf-purple" />
-                      <p className="text-sm font-semibold text-midyaf-ink">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {task.type.replaceAll("_", " ")}
                       </p>
                     </div>
@@ -181,7 +181,7 @@ export function OrganizerDashboard({ data, session }: PortalProps) {
                 className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"
               >
                 <div>
-                  <p className="font-semibold text-midyaf-ink">{supplier.name}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">{supplier.name}</p>
                   <p className="text-xs text-slate-500">
                     {supplier.category} · {percent(supplier.commissionPercent)}
                   </p>

@@ -460,14 +460,14 @@ export function RiyadhMap({
   return (
     <>
       <div
-        className={`overflow-hidden rounded-2xl glass-tactical shadow-2xl transition-all ${
+        className={`overflow-hidden rounded-lg glass-tactical shadow-2xl transition-all ${
           isFullscreen
             ? "fixed inset-0 z-[99999] w-screen h-screen command-deck-bg flex flex-col p-4 m-0 rounded-none animate-fadeIn"
             : className
         }`}
       >
         {/* Top Map Control Bar */}
-        <div className="flex flex-wrap items-center justify-between border-b border-midyaf-gold/20 bg-slate-950/90 px-4 py-3 text-white backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between border-b border-midyaf-gold/20 bg-slate-950/90 px-4 py-3 border-r border-white/5 last:border-r-0 text-white backdrop-blur-md">
           <div
             onClick={() => {
               if (!isFullscreen) {
@@ -537,7 +537,7 @@ export function RiyadhMap({
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                   mapMode === "dark"
-                    ? "bg-gradient-to-r from-midyaf-purple to-slate-900 text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
+                    ? "bg-[#121626] text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -552,7 +552,7 @@ export function RiyadhMap({
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                   mapMode === "satellite"
-                    ? "bg-gradient-to-r from-midyaf-purple to-slate-900 text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
+                    ? "bg-[#121626] text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -567,7 +567,7 @@ export function RiyadhMap({
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                   mapMode === "standard"
-                    ? "bg-gradient-to-r from-midyaf-purple to-slate-900 text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
+                    ? "bg-[#121626] text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/50"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -614,7 +614,7 @@ export function RiyadhMap({
         {isFullscreen ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 overflow-hidden p-3">
             {/* Fullscreen Map Canvas (8 cols) */}
-            <div className="lg:col-span-8 relative h-full rounded-2xl overflow-hidden border border-midyaf-gold/30 shadow-2xl bg-slate-950">
+            <div className="lg:col-span-8 relative h-full rounded-lg overflow-hidden border border-midyaf-gold/30 shadow-2xl bg-slate-950">
               <div ref={containerRef} className="h-full w-full" />
             </div>
 

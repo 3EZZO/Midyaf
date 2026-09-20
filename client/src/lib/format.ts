@@ -9,7 +9,7 @@ export function money(value: Money, currency = "SAR") {
 }
 
 export function shortTime(value: string, locale = "en") {
-  return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : currentLocale(), {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-nu-latn" : currentLocale(), {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "Asia/Riyadh"
@@ -17,7 +17,7 @@ export function shortTime(value: string, locale = "en") {
 }
 
 export function shortDate(value: string, locale = "en") {
-  return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : currentLocale(), {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-nu-latn" : currentLocale(), {
     month: "short",
     day: "numeric",
     timeZone: "Asia/Riyadh"
@@ -33,7 +33,7 @@ function currentLocale() {
     typeof document !== "undefined" &&
     document.documentElement.lang.startsWith("ar")
   ) {
-    return "ar-SA";
+    return "ar-SA-u-nu-latn";
   }
 
   return "en-SA";

@@ -887,9 +887,9 @@ export function ActivityIntakePage({
               {hotelsList.map((hotel, index) => (
                 <div
                   key={hotel.id}
-                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-midyaf-gold/20 text-xs font-black text-midyaf-gold">
                         {index + 1}
@@ -990,9 +990,9 @@ export function ActivityIntakePage({
               {carRentalsList.map((rental, index) => (
                 <div
                   key={rental.id}
-                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-sky-500/20 text-xs font-black text-sky-600 dark:text-sky-400">
                         {index + 1}
@@ -1095,9 +1095,9 @@ export function ActivityIntakePage({
               {suppliersList.map((sup, index) => (
                 <div
                   key={sup.id}
-                  className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 dark:border-slate-800">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-xs font-black text-emerald-600 dark:text-emerald-400">
                         {index + 1}
@@ -1258,7 +1258,7 @@ export function ActivityIntakePage({
                 }
               />
               <NumberField
-                label={ui.isArabic ? "القوى البشرية (Man Power)" : "Man Power"}
+                label={ui.isArabic ? "القوى البشرية" : "Man Power"}
                 value={draft.manPowerCount ?? 0}
                 disabled={!canEdit}
                 onChange={(value) =>
@@ -1322,7 +1322,7 @@ export function ActivityIntakePage({
                 onChange={(event) => setBulkCsv(event.target.value)}
                 spellCheck={false}
                 rows={5}
-                className="mt-3 w-full rounded-lg border border-slate-200 bg-white p-2.5 font-mono text-xs leading-5 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="mt-3 w-full rounded-lg border border-white/5 bg-[#121626] p-2.5 font-mono text-xs leading-5 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               />
 
               <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -1398,8 +1398,8 @@ export function ActivityIntakePage({
         {/* Right Column: AI Logistics Plan & Output (Task 3, 4, 5) */}
         <div className="space-y-4">
           <Section id="section-ai-plan" title={ui.isArabic ? "مخرجات الخطة اللوجستية الذكية" : "AI Logistics Plan Output"}>
-            <div className="rounded-2xl border border-midyaf-gold/25 bg-gradient-to-br from-white to-slate-50 p-5 shadow-card-sm dark:from-slate-800 dark:to-slate-900">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div className="rounded-lg border border-midyaf-gold/25 bg-gradient-to-br from-white to-slate-50 p-5 shadow-card-sm dark:from-slate-800 dark:to-slate-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <Badge tone={isPlanApproved ? "green" : "gold"}>
                     {isPlanApproved
@@ -1460,7 +1460,7 @@ export function ActivityIntakePage({
                   <MiniStat label={ui.isArabic ? "شاحنات ثقيلة" : "Heavy Trucks"} value={activePlan.heavyTrucks || draft.heavyTrucksCount || 12} />
                   <MiniStat label={ui.isArabic ? "رافعات ومعدات" : "Heavy Equipment"} value={activePlan.heavyEquipment || draft.heavyEquipmentCount || 6} />
                   <MiniStat label={ui.isArabic ? "حافلات VIP" : "Buses"} value={activePlan.buses || draft.busesCount || 15} />
-                  <div className="rounded-xl border border-slate-100 bg-white p-2.5 text-center dark:border-slate-800 dark:bg-slate-800">
+                  <div className="rounded-xl border border-white/5 bg-[#121626] p-2.5 text-center dark:border-slate-800 dark:bg-slate-800">
                     <p className="text-[10px] text-slate-400">{ui.isArabic ? "القوى البشرية" : "Man Power"}</p>
                     <p className="mt-0.5 text-base font-black text-midyaf-purple dark:text-purple-300">
                       {activePlan.manPower || draft.manPowerCount || 120}
@@ -1658,7 +1658,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
                     <Play size={17} />
                   </div>
                   <div>
-                    <p className="font-semibold text-midyaf-ink">
+                    <p className="font-semibold text-slate-900 dark:text-white">
                       {assetFileName(asset)}
                     </p>
                     <p className="text-xs text-slate-500">
@@ -1674,7 +1674,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
                   <Play size={17} />
                 </div>
                 <div>
-                  <p className="font-semibold text-midyaf-ink">{ui.l(video)}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white">{ui.l(video)}</p>
                   <p className="text-xs text-slate-500">
                     {ui.l("Country and hospitality preview video")}
                   </p>
@@ -1714,7 +1714,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
             )}
           </div>
           <div className="mt-4 rounded-lg bg-midyaf-gold/10 p-4">
-            <p className="text-sm font-bold text-midyaf-ink">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">
               {ui.l("Car arrives in")} {journey.etaMinutes} {ui.l("minutes")}
             </p>
             <p className="mt-1 text-sm text-slate-600">
@@ -1735,7 +1735,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
               className="size-16 rounded-lg object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-midyaf-ink">
+              <p className="font-bold text-slate-900 dark:text-white">
                 {ui.l(journey.driverName)}
               </p>
               <p className="text-sm text-slate-500">{journey.driverPhone}</p>
@@ -1771,7 +1771,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
               value={guestNote}
               onChange={(event) => setGuestNote(event.target.value)}
               placeholder={ui.l("Add request, note, or complaint")}
-              className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              className="min-w-0 flex-1 rounded-lg border border-white/5 px-3 py-2 text-sm"
             />
             <button
               onClick={() => void handleGuestNote()}
@@ -1986,7 +1986,7 @@ export function CaptainsApp({
                 className="size-16 rounded-lg object-cover"
               />
               <div>
-                <p className="font-semibold text-midyaf-ink">
+                <p className="font-semibold text-slate-900 dark:text-white">
                   {ui.l(captain.user.name)}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
@@ -2027,7 +2027,7 @@ function CaptainTaskCard({
   onComplete: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-4">
+    <div className="rounded-lg border border-white/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 gap-3">
           <img
@@ -2039,7 +2039,7 @@ function CaptainTaskCard({
             <Badge tone={task.status === "DELAYED" ? "red" : "purple"}>
               {translate(task.status)}
             </Badge>
-            <h3 className="mt-3 font-bold text-midyaf-ink">
+            <h3 className="mt-3 font-bold text-slate-900 dark:text-white">
               {translate(task.pickupLocation)} {translate("to")}{" "}
               {translate(task.dropoffLocation)}
             </h3>
@@ -2107,17 +2107,17 @@ function HospitalityRidersSection({
   }
 
   return (
-    <div id="hospitality-riders" className="scroll-mt-6 transition-all duration-500 rounded-2xl">
+    <div id="hospitality-riders" className="scroll-mt-6 transition-all duration-500 rounded-lg">
       <Section title="VIP Hospitality Riders & Protocols">
         <div className="grid gap-4 md:grid-cols-2">
         {riders.map((rider) => {
           const guest = data.events[0]?.guests.find((g) => g.id === rider.guestId);
           return (
-            <div key={rider.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 shadow-card transition-all hover:shadow-luxury dark:border-amber-900/50 dark:bg-dark-card">
+            <div key={rider.id} className="rounded-xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 shadow-card transition-all hover:shadow-sm dark:border-amber-900/50 dark:bg-dark-card">
               <div className="flex items-start justify-between gap-3 border-b border-amber-100 pb-3 dark:border-amber-900/30">
                 <div>
                   <Badge tone="gold">{ui.p("VIP Platinum Protocol", "بروتوكول VIP البلاتيني")}</Badge>
-                  <h3 className="mt-2 text-lg font-bold text-midyaf-ink dark:text-dark-primary">
+                  <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-white dark:text-dark-primary">
                     {guest?.user.name ?? (ui.isArabic ? "ضيف VIP" : "VIP Guest")}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-dark-secondary">
@@ -2147,7 +2147,7 @@ function HospitalityRidersSection({
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs">
-                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-white/5 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-emerald-800 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
                     <Utensils size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{ui.p("Dietary Needs", "اشتراطات التغذية")}</span>
@@ -2159,7 +2159,7 @@ function HospitalityRidersSection({
                   </ul>
                 </div>
 
-                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-white/5 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-purple-800 dark:text-purple-400 mb-1 flex items-center gap-1.5">
                     <Building size={14} className="text-purple-600 dark:text-purple-400 shrink-0" />
                     <span>{ui.p("Room Preferences", "تفضيلات الجناح")}</span>
@@ -2171,7 +2171,7 @@ function HospitalityRidersSection({
                   </ul>
                 </div>
 
-                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-slate-100 dark:bg-dark-surface dark:border-dark">
+                <div className="rounded-lg bg-white/80 p-3 shadow-sm border border-white/5 dark:bg-dark-surface dark:border-dark">
                   <p className="font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1.5">
                     <Car size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
                     <span>{ui.p("Vehicle & Transit", "المركبة والتنقل")}</span>
@@ -2276,7 +2276,7 @@ function AirportExpressSection({
         >
           {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
         </button>
-        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-3xl border border-amber-500/30 shadow-[0_0_50px_rgba(201,168,76,0.15)] backdrop-blur-2xl">
+        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-xl border border-amber-500/30 shadow-[0_0_50px_rgba(201,168,76,0.15)] backdrop-blur-2xl">
           <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
             <Crown size={48} className="animate-pulse" />
           </div>
@@ -2291,7 +2291,7 @@ function AirportExpressSection({
           </p>
 
           {result ? (
-            <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-left sm:text-center space-y-4 animate-scaleUp">
+            <div className="p-6 rounded-lg bg-amber-500/10 border border-amber-500/40 text-left sm:text-center space-y-4 animate-scaleUp">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
                 <Zap size={13} />
                 <span>{ui.p("Chauffeur Dispatched Instantly", "تم توجيه السائق فورا")}</span>
@@ -2326,7 +2326,7 @@ function AirportExpressSection({
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   placeholder={ui.p("e.g. H.E. French Delegation Aide", "مثال: مساعد معالي الوزير")}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  className="w-full px-4 py-3 border-r border-white/5 last:border-r-0 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
                 />
               </div>
               <div>
@@ -2338,7 +2338,7 @@ function AirportExpressSection({
                   required
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  className="w-full px-4 py-3 border-r border-white/5 last:border-r-0 rounded-xl bg-slate-950/80 border border-amber-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
                 />
               </div>
               <button
@@ -2358,7 +2358,7 @@ function AirportExpressSection({
 
   return (
     <Section title="">
-      <div id="airport-express" className="relative scroll-mt-6 transition-all duration-500 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-6 text-white border border-amber-400/30 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+      <div id="airport-express" className="relative scroll-mt-6 transition-all duration-500 overflow-hidden rounded-lg bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-6 text-white border border-amber-400/30 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-4">
           <div className="flex items-center gap-3">
@@ -2573,7 +2573,7 @@ export function CoordinatorsApp({
       />
 
       {/* Live Command Center AI Widget (PDF Page 3) */}
-      <div className="glass-royal rounded-2xl p-5 border border-amber-400/50 shadow-luxury transition-all animate-fadeIn">
+      <div className="glass-royal rounded-lg p-5 border border-amber-400/50 shadow-sm transition-all animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-amber-500/20 pb-4 mb-4">
           <div className="flex items-start gap-3">
             <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black shadow-md shrink-0">
@@ -2584,7 +2584,7 @@ export function CoordinatorsApp({
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
                   {ui.p("AMBER SURGE ALERT", "تنبيه ازدحام عاجل")}
                 </span>
-                <h3 className="text-base font-bold text-midyaf-ink dark:text-dark-primary">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white dark:text-dark-primary">
                   {ui.p("Terminal 2 Arrival Surge — Live AI Command Center", "تنبيه ازدحام القادمين في الصالة 2 — مركز القيادة بالذكاء الاصطناعي")}
                 </h3>
               </div>
@@ -2617,7 +2617,7 @@ export function CoordinatorsApp({
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-dark-surface p-3 ring-1 ring-slate-200 dark:ring-white/10">
             <span className="text-slate-500 dark:text-slate-400 block">{ui.p("Estimated Transfer ETA", "وقت وصول الدعم")}</span>
-            <strong className="text-midyaf-ink dark:text-dark-text font-bold text-sm">6 {ui.p("Mins", "دقائق")}</strong>
+            <strong className="text-slate-900 dark:text-white dark:text-dark-text font-bold text-sm">6 {ui.p("Mins", "دقائق")}</strong>
           </div>
           <div className="rounded-xl bg-white/70 dark:bg-dark-surface p-3 ring-1 ring-slate-200 dark:ring-white/10">
             <span className="text-slate-500 dark:text-slate-400 block">{ui.p("Transit Confidence", "مؤشر الثقة بالذكاء الاصطناعي")}</span>
@@ -2650,13 +2650,13 @@ export function CoordinatorsApp({
         <Section title={ui.l("Requests to supervisors")}>
           <div className="space-y-3">
             {data.coordinatorRequests.map((request) => (
-              <div key={request.id} className="rounded-lg border border-slate-200 p-4">
+              <div key={request.id} className="rounded-lg border border-white/5 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <Badge tone={request.priority === "VIP" ? "gold" : "slate"}>
                       {ui.l(request.priority)}
                     </Badge>
-                    <h3 className="mt-3 font-bold text-midyaf-ink">
+                    <h3 className="mt-3 font-bold text-slate-900 dark:text-white">
                       {ui.l(request.guestName)}
                     </h3>
                     <p className="text-sm text-slate-600">{ui.l(request.request)}</p>
@@ -2801,7 +2801,7 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
   if (!data) return null;
 
   return (
-    <div className="border-l-4 border-amber-500 bg-slate-50 shadow-luxury rounded-lg p-6">
+    <div className="border-l-4 border-amber-500 bg-slate-50 shadow-sm rounded-lg p-6">
       <h2 className="text-xl font-bold mb-4">{ui.l("Live Command Center")}</h2>
       {data.activeAlert && (
         <div className="mb-4 rounded bg-amber-50 p-4 border border-amber-200">
@@ -3127,7 +3127,7 @@ function SmartAssistantSection({
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 text-white shadow-luxury rounded-2xl p-5 sm:p-6 border border-emerald-500/30">
+    <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 text-white shadow-sm rounded-lg p-5 sm:p-6 border border-emerald-500/30">
       <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4 mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-emerald-500/20 text-emerald-400 p-3 rounded-xl ring-1 ring-emerald-500/40 shadow-inner">
@@ -3288,21 +3288,21 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
         {hotspots.map((spot) => (
           <div
             key={spot.id}
-            className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+            className="rounded-xl border border-white/5 bg-[#121626] p-3.5 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-midyaf-gold">
                   {spot.category}
                 </span>
-                <h4 className="mt-0.5 text-sm font-black text-midyaf-ink dark:text-white">
+                <h4 className="mt-0.5 text-sm font-black text-slate-900 dark:text-white dark:text-white">
                   {ui.p(spot.nameEn, spot.nameAr)}
                 </h4>
               </div>
               <span className="live-dot" />
             </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-100 pt-2.5 dark:border-slate-800">
+            <div className="mt-3 flex items-center justify-between text-xs border-t border-white/5 pt-2.5 dark:border-slate-800">
               <div>
                 <span className="text-slate-400">{ui.p("Fleet:", "الأسطول:")} </span>
                 <span className="font-bold text-midyaf-purple dark:text-midyaf-gold">
@@ -3569,7 +3569,7 @@ export function LogisticsDashboard({
                   className="mb-3 text-midyaf-purple"
                   size={18}
                 />
-                <p className="font-semibold text-midyaf-ink">{ui.l(role)}</p>
+                <p className="font-semibold text-slate-900 dark:text-white">{ui.l(role)}</p>
                 <p className="mt-1 text-xs text-slate-500">{ui.l(scope)}</p>
               </div>
             ))}
@@ -3601,7 +3601,7 @@ export function LogisticsDashboard({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-midyaf-ink">
+                      <p className="font-semibold text-slate-900 dark:text-white">
                         {ui.l(guest.user.name)}
                       </p>
                       <Badge tone={guest.isVIP ? "gold" : "purple"}>
@@ -3674,7 +3674,7 @@ export function LogisticsDashboard({
                       className="size-14 rounded-lg object-cover"
                     />
                     <div>
-                      <p className="font-semibold text-midyaf-ink">
+                      <p className="font-semibold text-slate-900 dark:text-white">
                         {ui.l(driver.user.name)}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
@@ -3715,7 +3715,7 @@ export function LogisticsDashboard({
       </Section>
 
       {/* Governance Notice: Financials Isolated in Admin Dashboard */}
-      <div className="rounded-2xl border border-midyaf-gold/30 bg-midyaf-gold/10 p-4 text-xs text-[#7A5D12] dark:text-midyaf-gold flex items-center justify-between gap-3 flex-wrap">
+      <div className="rounded-lg border border-midyaf-gold/30 bg-midyaf-gold/10 p-4 text-xs text-[#7A5D12] dark:text-midyaf-gold flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Shield size={18} className="text-midyaf-gold shrink-0" />
           <span className="font-semibold">
@@ -3915,10 +3915,10 @@ function TaskBoardCard({
   const isDriverPending = pendingAction === `${task.id}:driver`;
 
   return (
-    <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100 card-hover-lift transition-all duration-200">
+    <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100 hover:-translate-y-0.5 transition-transform transition-all duration-200">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-midyaf-ink">
+          <p className="text-sm font-bold text-slate-900 dark:text-white">
             {translate(task.type)}
           </p>
           <p className="mt-1 text-xs text-slate-500">
@@ -3960,7 +3960,7 @@ function TaskBoardCard({
             value={task.driverId ?? ""}
             disabled={pendingAction !== null}
             onChange={(event) => void onDriverChange(task, event.target.value)}
-            className="w-full rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60 m-input m-select"
+            className="w-full rounded-xl border border-white/5 px-2 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60 m-input m-select"
           >
             <option value="">{translate("No assigned captain")}</option>
             {drivers
@@ -4183,7 +4183,7 @@ function OperationsSetup({
           "Operations records are saved directly to PostgreSQL and are available to role portals after refresh."
         )}
       </p>
-      <div className="mb-6 rounded-2xl border border-midyaf-gold/30 bg-gradient-to-r from-midyaf-gold/10 via-amber-50/60 to-white p-5 shadow-sm">
+      <div className="mb-6 rounded-lg border border-midyaf-gold/30 bg-gradient-to-r from-midyaf-gold/10 via-amber-50/60 to-white p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-midyaf-purple text-white shadow-md">
@@ -4883,10 +4883,10 @@ export function CompanyDashboard({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button 
           onClick={() => setActiveTab("summary")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "summary" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <Building2 size={24} className="mb-2" />
@@ -4895,10 +4895,10 @@ export function CompanyDashboard({
 
         <button 
           onClick={() => setActiveTab("client")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "client" 
-              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <ExternalLink size={24} className="mb-2" />
@@ -4907,10 +4907,10 @@ export function CompanyDashboard({
 
         <button 
           onClick={() => setActiveTab("reports")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "reports" 
-              ? "bg-emerald-500 text-white border-emerald-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-emerald-500 dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-emerald-500 text-white border-emerald-500 shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-emerald-500 dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <FileText size={24} className="mb-2" />
@@ -4919,10 +4919,10 @@ export function CompanyDashboard({
 
         <button 
           onClick={() => setActiveTab("updates")}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "updates" 
-              ? "bg-amber-500 text-white border-amber-500 shadow-glow-purple" 
-              : "bg-white/80 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
+              ? "bg-amber-500 text-white border-amber-500 shadow-none" 
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <Sparkles size={24} className="mb-2" />
@@ -4976,7 +4976,7 @@ export function CompanyDashboard({
               : "Allows Sila to generate an on-demand executive dashboard for their corporate or government client, controlling permitted modules."}
           </p>
 
-          <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
+          <div className="rounded-lg border border-white/5 bg-[#121626]/80 p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
@@ -4986,7 +4986,7 @@ export function CompanyDashboard({
                   type="text"
                   value={clientConfig.clientName}
                   onChange={e => handleUpdatePermission("clientName", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
+                  className="w-full rounded-xl border border-white/5 bg-[#121626] px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
                 />
               </div>
               <div>
@@ -4997,17 +4997,17 @@ export function CompanyDashboard({
                   type="text"
                   value={clientConfig.clientEntity}
                   onChange={e => handleUpdatePermission("clientEntity", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
+                  className="w-full rounded-xl border border-white/5 bg-[#121626] px-3.5 py-2 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-black text-midyaf-ink dark:text-white uppercase tracking-wider mb-2 block">
+              <label className="text-[11px] font-black text-slate-900 dark:text-white dark:text-white uppercase tracking-wider mb-2 block">
                 {ui.isArabic ? "مصفوفة الصلاحيات الممنوحة للعميل (تحكم شركة صلة):" : "Client Access Permissions (Controlled by Sila):"}
               </label>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
                   <input
                     type="checkbox"
                     checked={clientConfig.canViewReports}
@@ -5017,7 +5017,7 @@ export function CompanyDashboard({
                   <span>{ui.isArabic ? "التقارير والمخرجات" : "Reports"}</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
                   <input
                     type="checkbox"
                     checked={clientConfig.canViewScheduleAmendments}
@@ -5027,7 +5027,7 @@ export function CompanyDashboard({
                   <span>{ui.isArabic ? "عرض تعديلات الجداول" : "View Schedule Updates"}</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
                   <input
                     type="checkbox"
                     checked={clientConfig.canCommunicateLogistics}
@@ -5037,7 +5037,7 @@ export function CompanyDashboard({
                   <span>{ui.isArabic ? "التواصل مع مدير العمليات" : "Chat with Logistics Mgr"}</span>
                 </label>
 
-                <label className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
+                <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-slate-50/60 p-3 text-xs font-bold cursor-pointer hover:bg-slate-100 transition dark:border-slate-800 dark:bg-slate-800/40">
                   <input
                     type="checkbox"
                     checked={clientConfig.canViewPerformance}
@@ -5049,9 +5049,9 @@ export function CompanyDashboard({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex-wrap text-xs">
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5 dark:border-slate-800 flex-wrap text-xs">
               <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
-                <span className="font-bold text-midyaf-ink dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
+                <span className="font-bold text-slate-900 dark:text-white dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
                 <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-purple dark:text-purple-300">{clientConfig.shareableToken}</span>
               </div>
               <button
@@ -5071,7 +5071,7 @@ export function CompanyDashboard({
             <div className="rounded-lg bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-midyaf-ink">
+                  <p className="font-bold text-slate-900 dark:text-white">
                     {ui.l(report.title)}
                   </p>
                   <p className="text-xs text-slate-500">
@@ -5122,7 +5122,7 @@ export function CompanyDashboard({
           </button>
         }
       >
-        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-6 text-white border border-amber-400/30 shadow-luxury space-y-4">
+        <div className="rounded-lg bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-6 text-white border border-amber-400/30 shadow-sm space-y-4">
           {!aiReport ? (
             <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
               <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 animate-pulse">
@@ -5219,7 +5219,7 @@ export function CompanyDashboard({
               "Example: 4 additional VIP guests arriving on SV102 at 18:20, need SUV and hotel rooms.",
               "مثال: وصول ٤ ضيوف VIP إضافيين على رحلة SV102 الساعة 18:20 ويحتاجون سيارة SUV وغرف فندقية."
             )}
-            className="min-h-28 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="min-h-28 rounded-lg border border-white/5 px-3 py-2 text-sm"
           />
           <button
             onClick={() => void handleSendUpdate()}
@@ -5374,7 +5374,7 @@ function QuotesAndContracts({
   return (
     <Section title={ui.l("Vendor quotations, contracts, and commissions")}>
       {/* Triple-Key Anti-Corruption Security Vault Banner */}
-      <div id="triple-key-vault" className="mb-6 scroll-mt-6 overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl transition-all duration-500">
+      <div id="triple-key-vault" className="mb-6 scroll-mt-6 overflow-hidden rounded-lg border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl transition-all duration-500">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40">
@@ -5607,12 +5607,12 @@ function QuotesAndContracts({
               className={`grid gap-3 rounded-xl border p-4 transition-all md:grid-cols-[1fr_auto_auto] ${
                 isSealed
                   ? "border-amber-200 bg-amber-50/50"
-                  : "border-slate-200 bg-slate-50"
+                  : "border-white/5 bg-slate-50"
               }`}
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-midyaf-ink">
+                  <p className="font-semibold text-slate-900 dark:text-white">
                     {ui.l(quote.vendorName)}
                   </p>
                   {isSealed && (
@@ -5719,7 +5719,7 @@ function QuotesAndContracts({
             {DEMO_CONTRACTS.map((contract) => (
               <div
                 key={contract.id}
-                className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+                className="relative overflow-hidden rounded-xl border border-white/5 bg-[#121626] p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -5729,7 +5729,7 @@ function QuotesAndContracts({
                       </span>
                       <Badge tone="green">{ui.p("SIGNED & VERIFIED", "موقع ومعتمد")}</Badge>
                     </div>
-                    <h4 className="mt-1 text-sm font-black text-midyaf-ink dark:text-white">
+                    <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white dark:text-white">
                       {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
                     </h4>
                     <p className="text-[11px] font-bold text-midyaf-purple dark:text-purple-300">
@@ -5750,7 +5750,7 @@ function QuotesAndContracts({
                   {ui.p(contract.scopeEn, contract.scopeAr)}
                 </p>
 
-                <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                <div className="mt-3.5 flex items-center justify-between border-t border-white/5 pt-3 dark:border-slate-800">
                   <span className="text-[10px] font-mono text-slate-400">
                     {contract.certifiedHash}
                   </span>
@@ -5772,8 +5772,8 @@ function QuotesAndContracts({
       {/* Certified Contract Modal */}
       {selectedDemoContract && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="relative w-full max-w-2xl rounded-2xl border-2 border-midyaf-gold bg-white p-6 shadow-2xl dark:bg-slate-900 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div className="relative w-full max-w-2xl rounded-lg border-2 border-midyaf-gold bg-white p-6 shadow-2xl dark:bg-slate-900 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-gold to-amber-600 text-white shadow-glow">
                   <Crown size={22} />
@@ -5797,7 +5797,7 @@ function QuotesAndContracts({
             </div>
 
             <div className="mt-4 space-y-4 text-xs">
-              <div className="rounded-xl bg-amber-500/10 p-3.5 border border-amber-500/20 text-midyaf-ink dark:text-amber-200">
+              <div className="rounded-xl bg-amber-500/10 p-3.5 border border-amber-500/20 text-slate-900 dark:text-white dark:text-amber-200">
                 <p className="font-black text-amber-800 dark:text-amber-300">
                   {ui.p("CERTIFIED EXECUTION ORDER", "أمر تنفيذ وتوريد معتمد")}
                 </p>
@@ -5812,13 +5812,13 @@ function QuotesAndContracts({
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Vendor Name", "اسم المورد")}</p>
-                  <p className="mt-0.5 font-bold text-sm text-midyaf-ink dark:text-white">
+                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white dark:text-white">
                     {ui.p(selectedDemoContract.vendorNameEn, selectedDemoContract.vendorNameAr)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Category", "التصنيف")}</p>
-                  <p className="mt-0.5 font-bold text-sm text-midyaf-ink dark:text-white">
+                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white dark:text-white">
                     {ui.p(selectedDemoContract.categoryEn, selectedDemoContract.categoryAr)}
                   </p>
                 </div>
@@ -5856,7 +5856,7 @@ function QuotesAndContracts({
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-white/5 pt-4 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setSelectedDemoContract(null)}
@@ -5920,7 +5920,7 @@ function PlanPhases({
         {safePlan.phases.map((phase) => (
           <div key={phase.name} className="rounded-lg bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold text-midyaf-ink">{ui.l(phase.name)}</p>
+              <p className="font-semibold text-slate-900 dark:text-white">{ui.l(phase.name)}</p>
               <Badge tone={phase.status === "CONFIRMED" ? "green" : "purple"}>
                 {ui.l(phase.status)}
               </Badge>
@@ -5946,7 +5946,7 @@ function PortalHero({
   body: string;
 }) {
   return (
-    <section className="hero-gradient rounded-xl p-6 text-white shadow-luxury-lg overflow-hidden animate-fadeInUp">
+    <section className="hero-gradient rounded-xl p-6 text-white shadow-sm overflow-hidden animate-fadeInUp">
       <Badge tone="gold">{badge}</Badge>
       <h1 className="mt-4 text-2xl font-black tracking-tight animate-fadeInUp delay-200">{title}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/70 animate-fadeInUp delay-300">{body}</p>
@@ -5970,7 +5970,7 @@ function RouteLine({
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-white/60 p-3.5 ring-1 ring-slate-100 transition-all duration-200 hover:translate-x-1 hover:bg-white hover:shadow-sm">
       <div>
-        <p className="font-semibold text-midyaf-ink">{title}</p>
+        <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
         <p className="text-xs text-slate-500">{route}</p>
       </div>
       <div className="text-end">
@@ -6224,7 +6224,7 @@ function MiniStat({
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl bg-white/80 p-3.5 shadow-sm ring-1 ring-slate-100 card-gradient-border card-hover-lift ${
+      className={`rounded-xl bg-white/80 p-3.5 shadow-sm ring-1 ring-slate-100 card-gradient-border hover:-translate-y-0.5 transition-transform ${
         onClick ? "cursor-pointer transition hover:scale-[1.02] hover:ring-midyaf-gold/60" : ""
       }`}
     >
@@ -6288,7 +6288,7 @@ function DeliveryLog({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-midyaf-ink">
+                    <p className="font-semibold text-slate-900 dark:text-white">
                       {ui.l(notification.title)}
                     </p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -6341,7 +6341,7 @@ function AuditLogPanel({ auditLogs }: { auditLogs: AuditLog[] }) {
                     <Badge tone="purple">
                       {auditEntityLabel(log.entityType, ui.isArabic)}
                     </Badge>
-                    <p className="font-semibold text-midyaf-ink">
+                    <p className="font-semibold text-slate-900 dark:text-white">
                       {auditActionLabel(log.action, ui.isArabic)}
                     </p>
                   </div>
@@ -6368,7 +6368,7 @@ function AuditLogPanel({ auditLogs }: { auditLogs: AuditLog[] }) {
         </div>
       ) : (
         <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
-          <div className="mb-2 flex items-center gap-2 font-semibold text-midyaf-ink">
+          <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
             <ShieldCheck size={16} />
             {ui.p("No operational changes recorded yet", "لا توجد تغييرات تشغيلية مسجلة بعد")}
           </div>
@@ -6586,8 +6586,8 @@ function JourneyCard({
     <div
       className={
         active
-          ? "rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark p-4 text-white shadow-glow-purple animate-fadeInUp"
-          : "rounded-xl glass-card p-4 text-midyaf-ink card-hover-lift animate-fadeInUp"
+          ? "rounded-xl bg-[#121626] p-4 text-white shadow-none animate-fadeInUp"
+          : "rounded-lg bg-[#121626] border border-white/5 shadow-sm p-4 text-slate-900 dark:text-white hover:-translate-y-0.5 transition-transform animate-fadeInUp"
       }
     >
       <Icon className={active ? "text-midyaf-gold" : "text-midyaf-purple"} />
@@ -6615,12 +6615,12 @@ function DocumentCard({
   translate: (value: string) => string;
 }) {
   return (
-    <div className="rounded-xl bg-white/60 p-4 ring-1 ring-slate-100 card-hover-lift">
+    <div className="rounded-xl bg-white/60 p-4 ring-1 ring-slate-100 hover:-translate-y-0.5 transition-transform">
       <div className="flex items-center justify-between gap-3">
         <Icon className="text-midyaf-purple" size={20} />
         <Badge tone="green">{status}</Badge>
       </div>
-      <p className="mt-3 font-bold text-midyaf-ink">{title}</p>
+      <p className="mt-3 font-bold text-slate-900 dark:text-white">{title}</p>
       <p className="mt-1 text-sm text-slate-500">{detail}</p>
       {asset ? (
         <a

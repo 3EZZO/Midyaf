@@ -52,8 +52,8 @@ export function CategoryPriceRangeSection({
   };
 
   return (
-    <div id="section-price-ranges" className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+    <div id="section-price-ranges" className="rounded-lg border border-white/5/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300">
@@ -91,7 +91,7 @@ export function CategoryPriceRangeSection({
           return (
             <div
               key={range.category}
-              className="flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-4 transition-all hover:border-midyaf-gold/40 hover:bg-white hover:shadow-card-sm dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800"
+              className="flex flex-col justify-between rounded-xl border border-white/5 bg-slate-50/60 p-4 transition-all hover:border-midyaf-gold/40 hover:bg-white hover:shadow-card-sm dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
@@ -146,7 +146,7 @@ export function CategoryPriceRangeSection({
                 </div>
               </div>
 
-              <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+              <div className="mt-4 border-t border-white/5 pt-3 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => toggleCategory(range.category)}
@@ -166,7 +166,7 @@ export function CategoryPriceRangeSection({
                             ? "border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/30"
                             : q.status === "RECOMMENDED"
                             ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20"
-                            : "border-slate-200/70 bg-white dark:border-slate-700 dark:bg-slate-800"
+                            : "border-white/5/70 bg-white dark:border-slate-700 dark:bg-slate-800"
                         }`}
                       >
                         <div className="flex items-center justify-between">

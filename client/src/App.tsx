@@ -476,7 +476,7 @@ export function App() {
         }
         onLogout={handleLogout}
       >
-        <div className="glass-card rounded-xl p-8 text-center animate-fadeInUp">
+        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg p-8 text-center animate-fadeInUp">
           <div className="skeleton mx-auto h-4 w-48 rounded-lg" />
           <p className="mt-4 text-sm font-semibold text-slate-500">
             {loadError ?? t("loadingWorkspace")}
@@ -1210,8 +1210,8 @@ function ShellFrame({
     <div
       className={
         isArabic
-          ? "min-h-screen font-arabic text-midyaf-ink"
-          : "min-h-screen font-english text-midyaf-ink"
+          ? "min-h-screen font-arabic text-slate-900 dark:text-white"
+          : "min-h-screen font-english text-slate-900 dark:text-white"
       }
       style={{ background: "var(--m-pearl)" }}
     >
@@ -1254,11 +1254,11 @@ function ShellFrame({
                 setIsQuickNavOpen(true);
               }}
               className="flex items-center gap-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-2xs transition-all ring-1 ring-slate-200/80 dark:ring-slate-700 cursor-pointer hover:ring-midyaf-gold/50"
-              title={isArabic ? "البحث والانتقال السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
+              title={isArabic ? "البحث والتنقل السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
             >
               <Search size={14} className="text-midyaf-gold" />
               <span className="hidden sm:inline font-medium">{isArabic ? "بحث سريع..." : "Quick Jump..."}</span>
-              <kbd className="rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-midyaf-gold font-bold">
+              <kbd className="rounded bg-white dark:bg-slate-900 border border-white/5 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-midyaf-gold font-bold">
                 ⌘K
               </kbd>
             </button>
@@ -1306,7 +1306,7 @@ function ShellFrame({
               {t("switchLanguage")}
             </button>
             <div className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 px-3 py-2 ring-1 ring-midyaf-purple/10 dark:bg-midyaf-purple/20">
-              <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-xs font-black text-white shadow-sm ring-1 ring-midyaf-gold/30">
+              <div className="grid size-8 place-items-center rounded-lg bg-[#121626] text-xs font-black text-white shadow-sm ring-1 ring-midyaf-gold/30">
                 {initials}
               </div>
               <span className="text-sm font-bold text-midyaf-purple dark:text-white">
@@ -1352,7 +1352,7 @@ function ShellFrame({
                 }}
                 className={
                   active
-                    ? "relative flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-midyaf-purple-light to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-white shadow-glow-purple ring-1 ring-midyaf-gold/40 transition-all duration-200 cursor-pointer"
+                    ? "relative flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-midyaf-purple-light to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-white shadow-none ring-1 ring-midyaf-gold/40 transition-all duration-200 cursor-pointer"
                     : "flex min-w-fit items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-500 transition-all duration-150 hover:bg-midyaf-purple/5 hover:text-midyaf-purple dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white cursor-pointer"
                 }
               >
@@ -1375,9 +1375,9 @@ function ShellFrame({
 
       <main className="mx-auto max-w-7xl px-5 py-5">
         {/* Sleek Contextual Operations Bar (Replaces bulky static 220px banner) */}
-        <div className="mb-5 flex flex-col gap-3.5 rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-card-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 lg:flex-row lg:items-center lg:justify-between animate-fadeInDown">
+        <div className="mb-5 flex flex-col gap-3.5 rounded-lg border border-white/5/80 bg-white/90 p-3.5 shadow-card-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 lg:flex-row lg:items-center lg:justify-between animate-fadeInDown">
           <div className="flex items-center gap-3.5">
-            <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-midyaf-gold shadow-xs ring-1 ring-midyaf-gold/30 shrink-0">
+            <div className="grid size-11 place-items-center rounded-xl bg-[#121626] text-midyaf-gold shadow-xs ring-1 ring-midyaf-gold/30 shrink-0">
               <ActivePortalIcon size={20} />
             </div>
             <div>
@@ -1401,7 +1401,7 @@ function ShellFrame({
 
           <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
             {/* Realtime Event Telemetry Ticker */}
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-white/5/60 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
               <span className="live-dot shrink-0" style={{ width: 6, height: 6 }} />
               <span className="truncate max-w-[220px] font-medium text-[11px]">
                 {realtimeLog[0] ?? (isArabic ? "البث المباشر متصل" : "Live telemetry connected")}
@@ -1512,8 +1512,8 @@ function LoginPage({
     <div
       className={
         isArabic
-          ? "min-h-screen login-bg font-arabic text-midyaf-ink"
-          : "min-h-screen login-bg font-english text-midyaf-ink"
+          ? "min-h-screen login-bg font-arabic text-slate-900 dark:text-white"
+          : "min-h-screen login-bg font-english text-slate-900 dark:text-white"
       }
     >
       {/* Floating decorative particles */}
@@ -1557,7 +1557,7 @@ function LoginPage({
           <img
             src="/midyaf-logo.png"
             alt={t("brand")}
-            className="h-24 w-24 rounded-2xl animate-float object-cover shadow-2xl ring-2 ring-midyaf-gold/50"
+            className="h-24 w-24 rounded-lg animate-float object-cover shadow-2xl ring-2 ring-midyaf-gold/50"
           />
           <div>
             <p className="text-sm font-bold text-shimmer animate-fadeInUp delay-200">
@@ -1592,7 +1592,7 @@ function LoginPage({
           className="login-card p-7 animate-fadeInUp delay-300"
         >
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark shadow-glow-purple">
+            <div className="grid size-10 place-items-center rounded-xl bg-[#121626] shadow-none">
               <ShieldCheck size={20} className="text-white" />
             </div>
             <div>
@@ -1647,7 +1647,7 @@ function LoginPage({
           </button>
 
           {/* Executive Fast Access */}
-          <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
+          <div className="mt-6 border-t border-white/5 pt-5 dark:border-slate-800">
             <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold flex items-center gap-1.5">
               <ShieldCheck size={13} className="text-midyaf-gold" />
               <span>{isArabic ? "الدخول القيادي السريع" : "Executive Fast Access"}</span>

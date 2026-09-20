@@ -346,7 +346,7 @@ export function SovereignCommandBridge({
       {/* ── Top Sovereign Command Header ── */}
       <header className="flex flex-wrap items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/90 px-6 py-3.5 backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="relative flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-midyaf-purple to-slate-900 ring-2 ring-midyaf-gold/60 shadow-[0_0_20px_rgba(201,168,76,0.4)]">
+          <div className="relative flex size-10 items-center justify-center rounded-xl bg-[#121626] ring-2 ring-midyaf-gold/60 shadow-[0_0_20px_rgba(201,168,76,0.4)]">
             <Shield className="size-6 text-midyaf-gold animate-pulse" />
           </div>
 
@@ -432,7 +432,7 @@ export function SovereignCommandBridge({
         {/* ══ Column 1: Airspace Radar & Convoy Formations (3 cols) ══ */}
         <div className="lg:col-span-3 flex flex-col gap-3 overflow-y-auto pr-1">
           {/* KKIA Inbound Airspace Widget */}
-          <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/20 shadow-xl">
+          <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/20 shadow-xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
                 <Plane className="size-4 text-cyan-400 animate-pulse" />
@@ -473,7 +473,7 @@ export function SovereignCommandBridge({
           </div>
 
           {/* Concentric Geofence & Curbside Radar Widget */}
-          <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30 shadow-xl">
+          <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30 shadow-xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
                 <Radar className="size-4 text-emerald-400 animate-pulse" />
@@ -552,7 +552,7 @@ export function SovereignCommandBridge({
           </div>
 
           {/* Active Convoy Formations */}
-          <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/20 shadow-xl flex-1">
+          <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/20 shadow-xl flex-1">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
                 <Car className="size-4 text-emerald-400 animate-pulse" />
@@ -621,7 +621,7 @@ export function SovereignCommandBridge({
         {/* ══ Column 2: Center Tactical Map Deck (6 cols) ══ */}
         <div className="lg:col-span-6 flex flex-col gap-3">
           {/* Tactical Map Container */}
-          <div className="flex-1 rounded-2xl glass-tactical overflow-hidden border border-midyaf-gold/30 shadow-2xl relative flex flex-col">
+          <div className="flex-1 rounded-lg glass-tactical overflow-hidden border border-midyaf-gold/30 shadow-2xl relative flex flex-col">
             <RiyadhMap
               event={event}
               drivers={drivers}
@@ -663,7 +663,7 @@ export function SovereignCommandBridge({
         {/* ══ Column 3: AI Sovereign Contingency Engine & Log (3 cols) ══ */}
         <div className="lg:col-span-3 flex flex-col gap-3 overflow-y-auto pl-1">
           {/* AI Sovereign Contingency Matrix */}
-          <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30 shadow-xl">
+          <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30 shadow-xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
               <div className="flex items-center gap-2">
                 <Cpu className="size-4 text-midyaf-gold animate-spin" style={{ animationDuration: "12s" }} />
@@ -734,7 +734,7 @@ export function SovereignCommandBridge({
           </div>
 
           {/* Tactical Chrono Stream / Audit Log */}
-          <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/20 shadow-xl flex-1 flex flex-col">
+          <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/20 shadow-xl flex-1 flex flex-col">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-2.5">
               <div className="flex items-center gap-2">
                 <Radio className="size-4 text-emerald-400 animate-pulse" />
@@ -767,7 +767,7 @@ export function SovereignCommandBridge({
       {/* ── Modal: VIP Encrypted Biometric Identity Card ── */}
       {selectedVip && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-3xl hologram-card p-6 text-white shadow-2xl border border-midyaf-gold/50">
+          <div className="relative w-full max-w-md rounded-xl hologram-card p-6 text-white shadow-2xl border border-midyaf-gold/50">
             {/* Close Button */}
             <button
               type="button"

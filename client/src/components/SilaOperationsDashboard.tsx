@@ -125,7 +125,7 @@ export function SilaOperationsDashboard({
             });
             window.dispatchEvent(event);
           }}
-          className={`flex items-center gap-2 rounded-2xl px-5 py-3 font-bold shadow-lg transition-all cursor-pointer border ${
+          className={`flex items-center gap-2 rounded-lg px-5 py-3 font-bold shadow-lg transition-all cursor-pointer border ${
             isDemoMode 
               ? "bg-red-500 text-white border-red-600 hover:bg-red-600" 
               : "bg-gradient-to-r from-midyaf-gold to-amber-500 text-white border-amber-600 hover:brightness-110"
@@ -145,10 +145,10 @@ export function SilaOperationsDashboard({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
                 isActive 
-                  ? "bg-midyaf-purple text-white border-midyaf-purple shadow-md scale-[1.02]" 
-                  : "bg-white/80 border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                  ? "bg-[#121626] text-midyaf-gold border-white/5 shadow-none" 
+                  : "bg-white/80 border-white/5 text-slate-600 hover:bg-slate-50 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
               }`}
             >
               <Icon size={28} className={isActive ? "text-white" : "text-midyaf-purple dark:text-purple-400"} />
@@ -161,7 +161,7 @@ export function SilaOperationsDashboard({
       </div>
 
       {/* DRILL-DOWN CONTENT */}
-      <div className="mt-6 bg-white/40 dark:bg-slate-900/40 rounded-3xl p-1 shadow-sm border border-slate-200/50 dark:border-slate-800/50">
+      <div className="mt-6 bg-white/40 dark:bg-slate-900/40 rounded-xl p-1 shadow-sm border border-white/5/50 dark:border-slate-800/50">
         
         {/* TAB: INTAKE */}
         {activeTab === "intake" && (
@@ -189,15 +189,15 @@ export function SilaOperationsDashboard({
           >
             <div className="grid gap-3 lg:grid-cols-2">
               {intakes.map((act) => (
-                <div key={act.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 transition hover:shadow-md">
+                <div key={act.id} className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm transition hover:shadow-md">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className="font-bold text-midyaf-ink dark:text-white text-sm leading-tight">{act.activityName}</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-white dark:text-white text-sm leading-tight">{act.activityName}</h4>
                     <Badge tone={act.status === "PLAN_CONFIRMED" ? "green" : act.status === "DRAFT" ? "red" : "purple"}>
                       {act.status}
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 mb-3">{act.activityPlace}</p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-3 border-t border-white/5 dark:border-slate-800/60">
                     <span>{isArabic ? "الزوار:" : "Visitors:"} {act.visitorCount}</span>
                   </div>
                 </div>
@@ -241,10 +241,10 @@ export function SilaOperationsDashboard({
           >
             <div className="space-y-4">
               {delegationTasks.map((t) => (
-                <div key={t.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <div key={t.id} className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                     <div>
-                      <h5 className="font-bold text-midyaf-ink dark:text-white text-xs">{t.taskTitle}</h5>
+                      <h5 className="font-bold text-slate-900 dark:text-white dark:text-white text-xs">{t.taskTitle}</h5>
                       <p className="text-[11px] text-slate-500 mt-1">{t.instructions}</p>
                     </div>
                     {t.teamMemberId ? (
@@ -255,7 +255,7 @@ export function SilaOperationsDashboard({
                       </button>
                     )}
                   </div>
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2.5 border-t border-white/5 dark:border-slate-800 flex items-center gap-2 text-[10px] text-slate-400">
                     <span className="font-bold">{isArabic ? "سلسلة الأوامر:" : "Command Chain:"}</span>
                     <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-purple">
                       {t.fromRole}
@@ -284,7 +284,7 @@ export function SilaOperationsDashboard({
           >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.contracts.map((cnt) => (
-                <div key={cnt.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <div key={cnt.id} className="rounded-xl border border-white/5 bg-[#121626] p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-mono text-[10px] font-bold text-midyaf-purple">{cnt.contractNumber}</span>
                     <Badge tone="green">{cnt.status}</Badge>
@@ -309,7 +309,7 @@ export function SilaOperationsDashboard({
             }
           >
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <div className="rounded-xl border border-white/5 bg-[#121626] p-4 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-center justify-between mb-3">
                   <h5 className="font-bold text-xs">
                     {report?.title || (isArabic ? "تقرير تنفيذي" : "Executive Briefing")}
@@ -327,7 +327,7 @@ export function SilaOperationsDashboard({
                 </div>
               </div>
               
-              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 flex flex-col h-[250px]">
+              <div className="rounded-xl border border-white/5 bg-[#121626] p-4 dark:border-slate-800 dark:bg-slate-900 flex flex-col h-[250px]">
                 <div className="flex-1 space-y-3 overflow-y-auto mb-3 pr-2">
                   {clientMessages.map((m) => (
                     <div key={m.id} className={`text-[11px] p-2.5 rounded-xl ${m.senderRole === "CLIENT" ? "bg-slate-100 dark:bg-slate-800" : "bg-midyaf-purple/10 text-midyaf-purple dark:bg-midyaf-purple/20"}`}>
@@ -337,7 +337,7 @@ export function SilaOperationsDashboard({
                   ))}
                 </div>
                 <form onSubmit={handleSendClientReply} className="flex gap-2 shrink-0">
-                  <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={isArabic ? "رد..." : "Reply..."} className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900" />
+                  <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={isArabic ? "رد..." : "Reply..."} className="flex-1 rounded-lg border border-white/5 px-3 py-1.5 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900" />
                   <button type="submit" className="btn-primary rounded-lg px-3 py-1.5 text-xs font-bold flex items-center gap-1 cursor-pointer"><Send size={12} /></button>
                 </form>
               </div>

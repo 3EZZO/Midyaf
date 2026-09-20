@@ -35,7 +35,7 @@ export function PwaUpdateBanner() {
   return (
     <aside
       aria-label="PWA Update Available"
-      className="fixed bottom-5 end-5 z-[999999] flex max-w-md items-center gap-3 rounded-2xl bg-gradient-to-r from-midyaf-purple/95 via-slate-950/95 to-midyaf-purple-dark/95 p-3.5 text-white shadow-2xl backdrop-blur-xl border border-midyaf-gold/60 ring-2 ring-midyaf-gold/30 animate-fadeInUp"
+      className="fixed bottom-5 end-5 z-[999999] flex max-w-md items-center gap-3 rounded-lg bg-gradient-to-r from-midyaf-purple/95 via-slate-950/95 to-midyaf-purple-dark/95 p-3.5 text-white shadow-2xl backdrop-blur-xl border border-midyaf-gold/60 ring-2 ring-midyaf-gold/30 animate-fadeInUp"
     >
       <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-midyaf-gold/20 text-midyaf-gold ring-1 ring-midyaf-gold/40">
         <Sparkles size={17} className="animate-spin" style={{ animationDuration: "6s" }} />

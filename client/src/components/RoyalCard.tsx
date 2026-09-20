@@ -41,8 +41,8 @@ export const RoyalCard = memo<RoyalCardProps>(({
           "transform 250ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 300ms ease, border-color 300ms ease"
       }}
       className={`
-        glass-royal group relative overflow-hidden rounded-2xl p-6
-        ${elevated ? "shadow-luxury-lg ring-1 ring-midyaf-gold/40" : "shadow-card hover:shadow-card-hover"}
+        glass-royal group relative overflow-hidden rounded-lg p-6
+        ${elevated ? "shadow-sm ring-1 ring-midyaf-gold/40" : "shadow-card hover:shadow-card-hover"}
         ${interactive ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-midyaf-gold" : ""}
         ${className}
       `}
@@ -51,7 +51,7 @@ export const RoyalCard = memo<RoyalCardProps>(({
       {/* Dynamic Specular Corner Glow */}
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br ${toneGlows[tone]} blur-2xl transition-opacity duration-500 group-hover:opacity-100`}
+        className={`pointer-events-none absolute left-0 top-0 h-full w-1 bg-gradient-to-b ${tone === "emerald" ? "from-emerald-500" : tone === "gold" ? "from-midyaf-gold" : tone === "purple" ? "from-purple-500" : "from-transparent"} opacity-70`}
       />
 
       <div className="relative z-10">{children}</div>

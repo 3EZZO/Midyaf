@@ -83,7 +83,7 @@ export function DashboardJumpDock({ isArabic, isDemoMode }: DashboardJumpDockPro
               key={chip.id}
               type="button"
               onClick={() => smoothScrollToSection(chip.id)}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-midyaf-gold hover:bg-midyaf-gold/10 hover:text-midyaf-purple hover:scale-105 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-midyaf-gold cursor-pointer"
+              className="flex items-center gap-1.5 rounded-xl border border-white/5/80 bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-midyaf-gold hover:bg-midyaf-gold/10 hover:text-midyaf-purple hover:scale-105 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-midyaf-gold cursor-pointer"
             >
               <Icon size={13} className="text-midyaf-gold shrink-0" />
               <span>{isArabic ? chip.labelAr : chip.labelEn}</span>

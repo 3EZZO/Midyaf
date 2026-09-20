@@ -347,8 +347,8 @@ export function AiPanel({
   }
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden animate-fadeInUp shadow-luxury border border-purple-500/20">
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark text-white">
+    <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg overflow-hidden animate-fadeInUp shadow-sm border border-purple-500/20">
+      <div className="flex items-center justify-between px-4 py-3 border-r border-white/5 last:border-r-0 bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark text-white">
         <div className="flex items-center gap-2">
           <div className="grid size-9 place-items-center rounded-xl bg-white/15 text-white backdrop-blur-sm shadow-inner">
             <Bot size={18} />
@@ -376,8 +376,8 @@ export function AiPanel({
             <div
               className={
                 message.author === "user"
-                  ? "ms-auto max-w-[86%] rounded-2xl rounded-se-sm bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark px-4 py-2.5 text-sm text-white shadow-sm animate-slideInRight"
-                  : "max-w-[90%] rounded-2xl rounded-ss-sm bg-white dark:bg-dark-surface px-4 py-2.5 text-sm text-midyaf-ink dark:text-dark-text shadow-sm ring-1 ring-slate-100 dark:ring-white/10 animate-slideInLeft"
+                  ? "ms-auto max-w-[86%] rounded-lg rounded-se-sm bg-[#121626] px-4 py-2.5 text-sm text-white shadow-sm animate-slideInRight"
+                  : "max-w-[90%] rounded-lg rounded-ss-sm bg-white dark:bg-dark-surface px-4 py-2.5 text-sm text-slate-900 dark:text-white dark:text-dark-text shadow-sm ring-1 ring-slate-100 dark:ring-white/10 animate-slideInLeft"
               }
             >
               <div className="whitespace-pre-line leading-relaxed">{message.body}</div>
@@ -452,7 +452,7 @@ export function AiPanel({
               )}
 
               {message.widget && message.widget.type === "executive_scorecard" && (
-                <div className="mt-3 rounded-xl border border-amber-500/30 bg-gradient-to-br from-slate-900 to-slate-950 p-3.5 text-white shadow-md">
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-[#121626] p-3.5 text-white shadow-md">
                   <div className="flex items-center gap-2 border-b border-amber-500/20 pb-2 mb-2.5">
                     <Sparkles size={16} className="text-amber-400" />
                     <span className="text-xs font-bold tracking-wide uppercase text-amber-300">
@@ -494,7 +494,7 @@ export function AiPanel({
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shadow-xs ${
                         isExecuted
                           ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 cursor-default"
-                          : "bg-gradient-to-r from-midyaf-gold to-midyaf-gold-dark text-white hover:shadow-glow hover:scale-105 active:scale-95 cursor-pointer"
+                          : "bg-midyaf-gold text-white hover:shadow-glow hover:scale-105 active:scale-95 cursor-pointer"
                       }`}
                     >
                       {isExecuted ? <CheckCircle2 size={13} /> : <Sparkles size={13} />}
@@ -507,7 +507,7 @@ export function AiPanel({
           </div>
         ))}
         {isSending ? (
-          <div className="max-w-[88%] rounded-2xl rounded-ss-sm bg-white dark:bg-dark-surface px-4 py-3 shadow-sm ring-1 ring-slate-100 dark:ring-white/10 animate-slideInLeft">
+          <div className="max-w-[88%] rounded-lg rounded-ss-sm bg-white dark:bg-dark-surface px-4 py-3 border-r border-white/5 last:border-r-0 shadow-sm ring-1 ring-slate-100 dark:ring-white/10 animate-slideInLeft">
             <div className="flex gap-1.5">
               <span className="typing-dot" />
               <span className="typing-dot" />
@@ -518,7 +518,7 @@ export function AiPanel({
       </div>
 
       {/* Suggested Prompt Chips */}
-      <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-slate-200/60 dark:border-white/10 overflow-x-auto no-scrollbar">
+      <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-white/5/60 dark:border-white/10 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
           <span className="text-slate-400 font-semibold shrink-0 flex items-center gap-1">
             <Sparkles size={12} className="text-midyaf-gold" />
@@ -530,7 +530,7 @@ export function AiPanel({
               type="button"
               onClick={() => void handleSend(p(chip.en, chip.ar))}
               disabled={isSending}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-white/5 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-2xs"
             >
               {getChipIcon(chip.icon)}
               <span>{p(chip.en, chip.ar)}</span>
@@ -539,7 +539,7 @@ export function AiPanel({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-slate-100/80 dark:border-white/10 p-3 bg-white/50 dark:bg-dark-surface/50">
+      <div className="flex gap-2 border-t border-white/5/80 dark:border-white/10 p-3 bg-white/50 dark:bg-dark-surface/50">
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -553,7 +553,7 @@ export function AiPanel({
         />
         <button
           onClick={() => void handleSend()}
-          className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-gold to-midyaf-gold-dark text-white shadow-sm hover:shadow-glow hover:-translate-y-0.5 active:scale-95"
+          className="grid size-10 place-items-center rounded-xl bg-midyaf-gold text-white shadow-sm hover:shadow-glow hover:-translate-y-0.5 active:scale-95"
           aria-label={t("common.send", "Send")}
         >
           <Send size={17} />

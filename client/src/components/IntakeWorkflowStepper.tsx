@@ -81,8 +81,8 @@ export function IntakeWorkflowStepper({
   ];
 
   return (
-    <div className="rounded-2xl border border-midyaf-gold/25 bg-gradient-to-r from-white via-slate-50 to-white p-4 shadow-luxury dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900 animate-fadeInDown">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+    <div className="rounded-lg border border-midyaf-gold/25 bg-[#121626] p-4 shadow-sm bg-[#121626] animate-fadeInDown">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span className="grid size-6 place-items-center rounded-lg bg-midyaf-gold/20 text-midyaf-gold font-black text-xs">
             <Sparkles size={13} />
@@ -112,10 +112,10 @@ export function IntakeWorkflowStepper({
                 isCompleted
                   ? "bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15"
                   : isActive
-                  ? "bg-midyaf-purple/10 border border-midyaf-purple/30 shadow-glow-purple/20 hover:bg-midyaf-purple/15"
+                  ? "bg-midyaf-purple/10 border border-midyaf-purple/30 shadow-none/20 hover:bg-midyaf-purple/15"
                   : isLocked
-                  ? "bg-slate-100/70 border border-dashed border-slate-200 opacity-70 hover:opacity-100 dark:bg-slate-800/40 dark:border-slate-700"
-                  : "bg-white border border-slate-200/80 hover:border-midyaf-gold/50 hover:bg-midyaf-gold/5 dark:bg-slate-800 dark:border-slate-700"
+                  ? "bg-slate-100/70 border border-dashed border-white/5 opacity-70 hover:opacity-100 dark:bg-slate-800/40 dark:border-slate-700"
+                  : "bg-white border border-white/5/80 hover:border-midyaf-gold/50 hover:bg-midyaf-gold/5 dark:bg-slate-800 dark:border-slate-700"
               }`}
             >
               <div
@@ -143,7 +143,7 @@ export function IntakeWorkflowStepper({
                   <span className="text-[10px] font-black text-slate-400">
                     {step.num}.
                   </span>
-                  <p className="text-xs font-black text-midyaf-ink dark:text-white truncate">
+                  <p className="text-xs font-black text-slate-900 dark:text-white dark:text-white truncate">
                     {isArabic ? step.titleAr : step.titleEn}
                   </p>
                 </div>

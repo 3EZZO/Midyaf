@@ -64,10 +64,10 @@ export function SupplierContractWorkflow({
   };
 
   return (
-    <div id="section-supplier-contracts" className="rounded-2xl border border-midyaf-purple/15 bg-white p-5 shadow-luxury dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+    <div id="section-supplier-contracts" className="rounded-lg border border-midyaf-purple/15 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-midyaf-gold shadow-glow-purple">
+          <div className="grid size-10 place-items-center rounded-xl bg-[#121626] text-midyaf-gold shadow-none">
             <ShieldCheck size={20} />
           </div>
           <div>
@@ -114,7 +114,7 @@ export function SupplierContractWorkflow({
           className={`relative rounded-xl border p-4 transition-all ${
             isPlanApproved
               ? "border-emerald-500/40 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-950/20"
-              : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50"
+              : "border-white/5 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -153,7 +153,7 @@ export function SupplierContractWorkflow({
               ? "border-emerald-500/40 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-950/20"
               : isPlanApproved
               ? "border-amber-500/40 bg-amber-50/30 dark:border-amber-500/30 dark:bg-amber-950/10 ring-1 ring-amber-400/30"
-              : "border-slate-200 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-800/50"
+              : "border-white/5 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-800/50"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -200,7 +200,7 @@ export function SupplierContractWorkflow({
               ? "border-emerald-500/40 bg-emerald-50/40 dark:border-emerald-500/30 dark:bg-emerald-950/20"
               : isDispatched
               ? "border-amber-500/40 bg-amber-50/30 dark:border-amber-500/30 dark:bg-amber-950/10 ring-1 ring-amber-400/30"
-              : "border-slate-200 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-800/50"
+              : "border-white/5 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-800/50"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -214,7 +214,7 @@ export function SupplierContractWorkflow({
             )}
           </div>
           <h4 className="mt-1 text-sm font-black text-slate-800 dark:text-white">
-            {isArabic ? "استلام العقود وتدقيقها بالمنصة" : "Receive & Verify Contracts"}
+            {isArabic ? "استلام ومطابقة عقود الموردين" : "Receive & Verify Contracts"}
           </h4>
           <p className="mt-1 text-xs text-slate-500">
             {isContractsReceived
@@ -259,7 +259,7 @@ export function SupplierContractWorkflow({
                     ? "border-emerald-500/30 bg-emerald-50/30 dark:border-emerald-500/20 dark:bg-emerald-950/20"
                     : isDispatched
                     ? "border-amber-500/30 bg-amber-50/20 dark:border-amber-500/20 dark:bg-amber-950/10"
-                    : "border-slate-200/70 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-800/40"
+                    : "border-white/5/70 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-800/40"
                 }`}
               >
                 <div>
@@ -285,7 +285,7 @@ export function SupplierContractWorkflow({
                   </p>
                 </div>
 
-                <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800 flex items-center justify-between text-[10px]">
+                <div className="mt-3 border-t border-white/5 pt-2 dark:border-slate-800 flex items-center justify-between text-[10px]">
                   <span className="font-black text-midyaf-purple dark:text-purple-300">
                     {money(c.amount)}
                   </span>

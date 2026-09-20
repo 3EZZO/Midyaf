@@ -250,7 +250,7 @@ export function exportPlanAsPdf(
               <td><strong>${h.name}</strong></td>
               <td>${h.contact || "-"}</td>
               <td>${h.roomType || "-"}</td>
-              <td><strong>${h.roomsBooked}</strong> ${isArabic ? "غرفة" : "rooms"}</td>
+              <td><strong>${h.roomsBooked}</strong> ${isArabic ? "غرفة / جناح" : "rooms"}</td>
               <td>${h.notes || "-"}</td>
             </tr>
           `).join("")}
@@ -279,7 +279,7 @@ export function exportPlanAsPdf(
               <td>${i + 1}</td>
               <td><strong>${r.companyName}</strong></td>
               <td>${r.contact || "-"}</td>
-              <td><strong>${r.fleetCount || "-"}</strong> ${isArabic ? "مركبة" : "units"}</td>
+              <td><strong>${r.fleetCount || "-"}</strong> ${isArabic ? "مركبة / حافلة" : "units"}</td>
               <td>${r.vehicleTypes || "-"}</td>
               <td>${r.notes || "-"}</td>
             </tr>

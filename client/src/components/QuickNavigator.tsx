@@ -513,11 +513,11 @@ export function QuickNavigator({
       }}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-midyaf-gold/30 shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-scaleIn ring-1 ring-midyaf-purple/20"
+        className="w-full max-w-2xl rounded-lg bg-white dark:bg-slate-900 border border-midyaf-gold/30 shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-scaleIn ring-1 ring-midyaf-purple/20"
         onKeyDown={handleKeyDown}
       >
         {/* Top Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80">
+        <div className="flex items-center gap-3 px-4 py-3 border-r border-white/5 last:border-r-0.5 border-b border-white/5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80">
           <Search size={19} className="text-midyaf-gold shrink-0" />
           <input
             ref={inputRef}
@@ -532,7 +532,7 @@ export function QuickNavigator({
                 ? "ابحث عن أي بوابة، قسم، إعداد، أو إجراء سريع (مثال: عقود، CSV، خريطة، PDF)..."
                 : "Search portals, in-page sections, tools, or actions (e.g. CSV, Map, Contracts, PDF)..."
             }
-            className="w-full bg-transparent text-sm text-midyaf-ink dark:text-white placeholder-slate-400 focus:outline-hidden font-medium"
+            className="w-full bg-transparent text-sm text-slate-900 dark:text-white dark:text-white placeholder-slate-400 focus:outline-hidden font-medium"
           />
           {query && (
             <button
@@ -549,7 +549,7 @@ export function QuickNavigator({
         </div>
 
         {/* Filter Category Chips */}
-        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/40 text-xs overflow-x-auto">
+        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-white/5 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/40 text-xs overflow-x-auto">
           {[
             { id: "all", labelEn: "All", labelAr: "الكل" },
             { id: "portal", labelEn: "Portals", labelAr: "بوابات العمل" },
@@ -603,7 +603,7 @@ export function QuickNavigator({
                     <div
                       className={`grid size-8 place-items-center rounded-lg transition-transform ${
                         isSelected
-                          ? "bg-gradient-to-br from-midyaf-purple to-midyaf-purple-dark text-midyaf-gold scale-110 shadow-xs ring-1 ring-midyaf-gold/30"
+                          ? "bg-[#121626] text-midyaf-gold scale-110 shadow-xs ring-1 ring-midyaf-gold/30"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                       }`}
                     >
@@ -640,7 +640,7 @@ export function QuickNavigator({
         </div>
 
         {/* Footer Shortcut Bar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 text-[11px] text-slate-400">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 text-[11px] text-slate-400">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>

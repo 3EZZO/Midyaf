@@ -363,7 +363,7 @@ export function LogisticsMetricModal({
       {/* Modal Top Bar */}
       <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/95 px-6 py-4 shadow-xl shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-3.5">
-          <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-midyaf-purple to-slate-900 text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
+          <div className="grid size-11 place-items-center rounded-lg bg-[#121626] text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
             {modal === "visitors" && <Users className="size-6" />}
             {modal === "tasks" && <ClipboardCheck className="size-6" />}
             {modal === "contracts" && <ReceiptText className="size-6" />}
@@ -418,12 +418,12 @@ export function LogisticsMetricModal({
             <div className="space-y-6">
               {/* Top Metrics Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Total Attendees")}</span>
                   <p className="text-2xl font-black text-white mt-1">1,200</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">100% Accredited</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
+                <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
                   <span className="text-[10px] text-midyaf-gold font-bold uppercase flex items-center gap-1.5">
                     <Crown size={12} />
                     <span>{l("VIP Dignitaries")}</span>
@@ -431,12 +431,12 @@ export function LogisticsMetricModal({
                   <p className="text-2xl font-black text-midyaf-gold mt-1">150</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Sovereign Delegations")}</span>
                   <p className="text-2xl font-black text-white mt-1">42</p>
                   <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "دولة مشاركة" : "Global Countries"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Accredited Media")}</span>
                   <p className="text-2xl font-black text-white mt-1">350</p>
                   <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "جهة إعلامية وتلفزيونية" : "Broadcasters"}</span>
@@ -451,7 +451,7 @@ export function LogisticsMetricModal({
                   value={guestSearch}
                   onChange={(e) => setGuestSearch(e.target.value)}
                   placeholder={isArabic ? "البحث بالاسم أو الجهة أو اللقب..." : "Search VIP guest by name, organization, or title..."}
-                  className="w-full rounded-2xl bg-white/5 ps-10 pe-4 py-3 text-xs text-white border border-white/10 focus:border-midyaf-gold focus:outline-none"
+                  className="w-full rounded-lg bg-white/5 ps-10 pe-4 py-3 text-xs text-white border border-white/10 focus:border-midyaf-gold focus:outline-none"
                 />
               </div>
 
@@ -460,7 +460,7 @@ export function LogisticsMetricModal({
                 {filteredGuests.map((guest, idx) => (
                   <div
                     key={idx}
-                    className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/20 hover:border-midyaf-gold/60 transition space-y-3"
+                    className="rounded-lg glass-tactical p-4 border border-midyaf-gold/20 hover:border-midyaf-gold/60 transition space-y-3"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -520,22 +520,22 @@ export function LogisticsMetricModal({
             <div className="space-y-6">
               {/* Financial Metrics Bar */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
+                <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
                   <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("Gross Procurement GMV")}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "٤ عقود معتمدة" : "4 Approved Contracts"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30">
+                <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
                   <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Platform Revenue Commission")}</span>
                   <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٢٢٤,٦٠٠ ر.س" : "SAR 224,600"}</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "١٠.٣٪ نسبة العمولة" : "10.3% Take Rate"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
                   <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الشهادة الضريبية (زكاة وضريبة)" : "ZATCA Tax Clearance"}</span>
                   <p className="text-2xl font-black text-white mt-1">100%</p>
                   <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "مطابق لنظام الفوترة الإلكترونية" : "E-Invoicing Compliant"}</span>
@@ -543,7 +543,7 @@ export function LogisticsMetricModal({
               </div>
 
               {/* Action Banner to Jump to In-Page Vault */}
-              <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-midyaf-purple to-slate-900 p-4 border border-midyaf-gold/30">
+              <div className="flex items-center justify-between rounded-lg bg-[#121626] p-4 border border-midyaf-gold/30">
                 <div className="flex items-center gap-3">
                   <ShieldCheck size={24} className="text-midyaf-gold" />
                   <div>
@@ -574,7 +574,7 @@ export function LogisticsMetricModal({
                 {CERTIFIED_CONTRACTS.map((contract) => (
                   <div
                     key={contract.id}
-                    className="rounded-2xl glass-tactical p-4 border border-white/10 hover:border-midyaf-gold/40 transition space-y-2.5"
+                    className="rounded-lg glass-tactical p-4 border border-white/10 hover:border-midyaf-gold/40 transition space-y-2.5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -637,7 +637,7 @@ export function LogisticsMetricModal({
               {/* Certified Contract Full Inspection Sheet Overlay */}
               {inspectingContract && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fadeIn">
-                  <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-slate-950 border border-midyaf-gold/60 text-white shadow-2xl flex flex-col max-h-[90vh]">
+                  <div className="relative w-full max-w-3xl overflow-hidden rounded-xl bg-slate-950 border border-midyaf-gold/60 text-white shadow-2xl flex flex-col max-h-[90vh]">
                     {/* Top Bar */}
                     <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-900/90 px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -665,7 +665,7 @@ export function LogisticsMetricModal({
                     {/* Agreement Content */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
                       {/* Legal Header */}
-                      <div className="rounded-2xl bg-white/5 p-4 border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="rounded-lg bg-white/5 p-4 border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الأول (المنظم)" : "First Party (Organizer)"}</span>
                           <p className="font-bold text-white text-xs mt-0.5">{event.name}</p>
@@ -689,22 +689,22 @@ export function LogisticsMetricModal({
                           <ClipboardCheck size={16} />
                           <span>{isArabic ? "نطاق العمل ومحددات الخدمة (SOW)" : "Certified Scope of Work & Deliverables"}</span>
                         </h4>
-                        <div className="rounded-2xl bg-white/5 p-4 border border-white/10 text-slate-200 leading-relaxed">
+                        <div className="rounded-lg bg-white/5 p-4 border border-white/10 text-slate-200 leading-relaxed">
                           {isArabic ? inspectingContract.scopeAr : inspectingContract.scope}
                         </div>
                       </div>
 
                       {/* Financial Settlement Terms */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
+                        <div className="rounded-lg bg-white/5 p-3.5 border border-white/10">
                           <span className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "إجمالي قيمة العقد" : "Contract Value (GMV)"}</span>
                           <p className="text-lg font-black text-white font-mono mt-1">{isArabic ? inspectingContract.amountAr : inspectingContract.amount}</p>
                         </div>
-                        <div className="rounded-2xl bg-white/5 p-3.5 border border-midyaf-gold/30">
+                        <div className="rounded-lg bg-white/5 p-3.5 border border-midyaf-gold/30">
                           <span className="text-[10px] text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
                           <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{isArabic ? inspectingContract.commissionAr : inspectingContract.commission}</p>
                         </div>
-                        <div className="rounded-2xl bg-white/5 p-3.5 border border-emerald-500/30">
+                        <div className="rounded-lg bg-white/5 p-3.5 border border-emerald-500/30">
                           <span className="text-[10px] text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
                           <p className="text-sm font-black text-emerald-400 mt-1.5 flex items-center gap-1">
                             <CheckCircle2 size={14} />
@@ -714,7 +714,7 @@ export function LogisticsMetricModal({
                       </div>
 
                       {/* Multi-Sig Cryptographic Seal Box */}
-                      <div className="rounded-2xl bg-slate-900 p-4 border border-emerald-500/40 space-y-2">
+                      <div className="rounded-lg bg-slate-900 p-4 border border-emerald-500/40 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-emerald-400 text-xs flex items-center gap-1.5">
                             <ShieldCheck size={15} />
@@ -814,7 +814,7 @@ export function LogisticsMetricModal({
                 {filteredTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="rounded-2xl glass-tactical p-4 border border-white/10 hover:border-midyaf-gold/30 transition space-y-3"
+                    className="rounded-lg glass-tactical p-4 border border-white/10 hover:border-midyaf-gold/30 transition space-y-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -872,19 +872,19 @@ export function LogisticsMetricModal({
             <div className="space-y-6">
               {/* Financial Big Numbers */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-2xl glass-tactical p-5 border border-midyaf-gold/40 text-center">
+                <div className="rounded-lg glass-tactical p-5 border border-midyaf-gold/40 text-center">
                   <span className="text-xs text-midyaf-gold font-bold uppercase">{l("Platform Revenue Commission")}</span>
                   <p className="text-3xl font-black text-white mt-1">{isArabic ? `${totalCommission.toLocaleString("ar-SA")} ر.س` : `SAR ${totalCommission.toLocaleString()}`}</p>
                   <p className="text-xs text-emerald-400 font-semibold mt-1">{isArabic ? "١٠.٣٪ متوسط نسبة العمولة" : "10.3% Average Take Rate"}</p>
                 </div>
 
-                <div className="rounded-2xl glass-tactical p-5 border border-white/10 text-center">
+                <div className="rounded-lg glass-tactical p-5 border border-white/10 text-center">
                   <span className="text-xs text-slate-400 font-bold uppercase">{l("Gross Procurement GMV")}</span>
                   <p className="text-3xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
                   <p className="text-xs text-cyan-300 font-semibold mt-1">{isArabic ? "٤ عقود منفذة رسمياً" : "4 Executed Contracts"}</p>
                 </div>
 
-                <div className="rounded-2xl glass-tactical p-5 border border-white/10 text-center">
+                <div className="rounded-lg glass-tactical p-5 border border-white/10 text-center">
                   <span className="text-xs text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
                   <p className="text-3xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
                   <p className="text-xs text-purple-300 font-semibold mt-1">{isArabic ? "حساب الضمان المؤسسي (صلة)" : "Sila Corporate Escrow"}</p>
@@ -892,7 +892,7 @@ export function LogisticsMetricModal({
               </div>
 
               {/* Vendor Commission Breakdown Table */}
-              <div className="rounded-2xl glass-tactical p-4 border border-white/10 overflow-x-auto">
+              <div className="rounded-lg glass-tactical p-4 border border-white/10 overflow-x-auto">
                 <h4 className="text-xs font-bold text-midyaf-gold uppercase tracking-wider mb-3">
                   {l("Detailed Supplier Commission Breakdown")}
                 </h4>
@@ -928,22 +928,22 @@ export function LogisticsMetricModal({
           {modal === "reports" && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl glass-tactical p-4 border border-midyaf-gold/30">
+                <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
                   <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("VIP Satisfaction")}</span>
                   <p className="text-2xl font-black text-white mt-1">96%</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مؤشر التوصية الصافي (NPS 88)" : "Net Promoter Score (NPS 88)"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-emerald-500/30">
+                <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
                   <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Fleet Savings")}</span>
                   <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٨٤,٢٠٠ ر.س" : "SAR 84,200"}</p>
                   <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "توفير الوقود وتقليص الانتظار" : "Fuel & Idle Reduction"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Punctuality Rate")}</span>
                   <p className="text-2xl font-black text-white mt-1">99.4%</p>
                   <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "صفر أخطاء في المسارات" : "Zero Route Failures"}</span>
                 </div>
-                <div className="rounded-2xl glass-tactical p-4 border border-white/10">
+                <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "وفر الانبعاثات الكربونية" : "CO₂ Footprint Saved"}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "١٨.٢ طن" : "18.2 Tons"}</p>
                   <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "تحسين مسارات الأسطول الذكية" : "Fleet Route Optimization"}</span>
@@ -951,7 +951,7 @@ export function LogisticsMetricModal({
               </div>
 
               {/* Manager Sign-Off Card */}
-              <div className="rounded-2xl glass-tactical p-4 border border-white/10 space-y-2">
+              <div className="rounded-lg glass-tactical p-4 border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 size={18} className="text-emerald-400" />
