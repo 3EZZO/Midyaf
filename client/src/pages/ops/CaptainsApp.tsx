@@ -3,7 +3,7 @@
 import { Car, Clock, MapPin, Zap } from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { MetricCard } from "../../components/MetricCard";
-import { RiyadhMap } from "../../components/RiyadhMap";
+import { RiyadhMap } from "../../components/map";
 import { Section } from "../../components/Section";
 import type { PortalProps } from "../types";
 import type { FileAsset, Task } from "@shared/domain";

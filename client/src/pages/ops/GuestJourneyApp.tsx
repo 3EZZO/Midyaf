@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Car, FileText, Luggage, Plane, Play, Ticket, Send, Hotel } from "lucide-react";
 import { Badge } from "../../components/Badge";
-import { RiyadhMap } from "../../components/RiyadhMap";
+import { RiyadhMap } from "../../components/map";
 import { Section } from "../../components/Section";
 import type { PortalProps } from "../types";
 import { DeliveryLog, DocumentCard, JourneyCard, MiniStat, PortalHero, assetFileName, latestFileAsset, useOpsText } from "./shared";

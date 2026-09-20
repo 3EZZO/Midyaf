@@ -38,18 +38,11 @@ export default defineConfig({
       workbox: {
         // Keep the demo alive on venue Wi-Fi: map tiles and fonts are served
         // from cache once a rehearsal has warmed them.
+        // Hosts must match components/map/constants.ts TILE_LAYERS.
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\//i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "map-tiles-carto",
-              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/server\.arcgisonline\.com\//i,
+            // World_Imagery (server.) and the Dark Gray fallback (services.)
+            urlPattern: /^https:\/\/(server|services)\.arcgisonline\.com\//i,
             handler: "CacheFirst",
             options: {
               cacheName: "map-tiles-esri",

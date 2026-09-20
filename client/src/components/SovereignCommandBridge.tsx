@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import type { Driver, Event, Task, GeofenceTransitionEvent } from "@shared/domain";
 import { isArabicLanguage, localizeText } from "../lib/localize";
 import { tacticalAudio } from "../lib/tacticalAudio";
-import { RiyadhMap } from "./RiyadhMap";
+import { RiyadhMap } from "./map";
 
 interface SovereignCommandBridgeProps {
   isOpen: boolean;
@@ -621,13 +621,15 @@ export function SovereignCommandBridge({
         {/* ══ Column 2: Center Tactical Map Deck (6 cols) ══ */}
         <div className="lg:col-span-6 flex flex-col gap-3">
           {/* Tactical Map Container */}
-          <div className="flex-1 rounded-lg glass-tactical overflow-hidden border border-midyaf-gold/30 shadow-2xl relative flex flex-col">
+          {/* No backdrop-filter here: it would trap the map's fixed-position fullscreen fallback. */}
+          <div className="flex-1 rounded-lg bg-surface-2 overflow-hidden border border-midyaf-gold/30 shadow-2xl relative flex flex-col">
             <RiyadhMap
               event={event}
               drivers={drivers}
               tasks={tasks}
               height="h-full min-h-[500px]"
               defaultMode="dark"
+              selectedDriverId={selectedDriver?.id ?? null}
               onSelectDriver={(driver) => {
                 setSelectedDriver(driver);
               }}

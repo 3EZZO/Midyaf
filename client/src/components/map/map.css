@@ -1,0 +1,335 @@
+/* ══════════════════════════════════════════════════════════
+   MAP — Leaflet overrides + marker / ring / corridor motion
+   Imported once by components/map/RiyadhMap.tsx.
+   Colours are the design tokens from styles/index.css.
+   ══════════════════════════════════════════════════════════ */
+
+.leaflet-container {
+  background-color: rgb(var(--surface-0));
+  font-family: var(--m-font-body-ar), var(--m-font-body-en), sans-serif;
+  font-size: 0.75rem;
+}
+
+/* Esri Dark Gray is a warm charcoal; pull it toward the Obsidian surfaces. */
+.map-tiles--dark {
+  filter: saturate(0.6) brightness(0.78) contrast(1.1);
+}
+
+.map-tiles--labels {
+  filter: brightness(1.15);
+  opacity: 0.85;
+}
+
+/* Fallback: OSM standard tiles inverted to a dark canvas (keyless). */
+.map-tiles--inverted {
+  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.72) contrast(1.05);
+}
+
+/* Zoom controls */
+.leaflet-bar {
+  border: 1px solid rgb(var(--gold-500) / 0.35) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5) !important;
+}
+
+.leaflet-bar a {
+  background-color: rgb(var(--surface-2) / 0.92) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgb(var(--gold-500)) !important;
+  border-bottom: 1px solid rgb(var(--gold-500) / 0.2) !important;
+  transition: background-color 120ms ease, color 120ms ease;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: rgb(var(--surface-3)) !important;
+  color: rgb(var(--gold-100)) !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+/* Popups */
+.leaflet-popup-content-wrapper {
+  background: rgb(var(--surface-2) / 0.96) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(var(--gold-500) / 0.4) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.7), 0 0 20px rgb(var(--gold-500) / 0.15) !important;
+  color: rgb(var(--ink)) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+  background: rgb(var(--surface-2) / 0.96) !important;
+  border: 1px solid rgb(var(--gold-500) / 0.4) !important;
+  box-shadow: none !important;
+}
+
+.leaflet-popup-close-button {
+  color: rgb(var(--gold-500)) !important;
+  padding: 6px 8px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: rgb(var(--ink)) !important;
+}
+
+.map-popup {
+  min-width: 170px;
+  font-family: inherit;
+}
+
+.map-popup__title {
+  margin: 0;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  color: rgb(var(--ink));
+}
+
+.map-popup__sub {
+  margin: 3px 0 0;
+  font-size: 0.75rem;
+  color: rgb(var(--ink-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tooltips (rings, corridors) */
+.leaflet-tooltip.map-tooltip {
+  background: rgb(var(--surface-1) / 0.95);
+  color: rgb(var(--ink));
+  border: 1px solid rgb(var(--gold-500) / 0.4);
+  border-radius: 0.375rem;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.map-tooltip::before {
+  display: none;
+}
+
+/* Attribution: required by CARTO/OSM; keep it quiet but readable */
+.leaflet-control-attribution {
+  background: rgb(var(--surface-1) / 0.8) !important;
+  backdrop-filter: blur(8px);
+  color: rgb(var(--ink-faint)) !important;
+  font-size: 0.6875rem !important;
+  border: 1px solid rgb(var(--gold-500) / 0.15) !important;
+  border-bottom: none !important;
+  border-radius: 0.375rem 0.375rem 0 0;
+  margin: 0 !important;
+  padding: 1px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: rgb(var(--gold-500) / 0.7) !important;
+  text-decoration: none;
+}
+
+.leaflet-control-attribution a:hover {
+  color: rgb(var(--gold-500)) !important;
+  text-decoration: underline;
+}
+
+/* ── Markers ─────────────────────────────────────────────── */
+.map-marker-wrap {
+  background: none;
+  border: none;
+}
+
+.map-marker {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.map-marker > * {
+  grid-area: 1 / 1;
+}
+
+.map-marker__body {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  font-weight: 900;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.map-marker__body svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* One-shot acknowledgement ring; only runs while `.is-pulsing` is set. */
+.map-marker__pulse {
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.map-marker.is-pulsing .map-marker__pulse {
+  animation: map-marker-pulse 900ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@keyframes map-marker-pulse {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+/* Driver: heading chevron orbits the body; rotated by the registry. */
+.map-marker--driver .map-marker__body {
+  width: 28px;
+  height: 28px;
+  background: rgb(var(--surface-1));
+  border: 2px solid rgb(var(--status-ok));
+  color: rgb(var(--status-ok));
+  box-shadow: 0 0 14px rgb(var(--status-ok) / 0.55);
+}
+
+.map-marker--driver .map-marker__heading {
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  color: rgb(var(--status-ok));
+  transform-origin: 50% 50%;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.map-marker--driver .map-marker__heading svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 4px rgb(var(--status-ok) / 0.8));
+}
+
+.map-marker--driver .map-marker__pulse {
+  background: rgb(var(--status-ok));
+}
+
+.leaflet-marker-icon.is-selected .map-marker--driver .map-marker__body {
+  border-color: rgb(var(--gold-500));
+  color: rgb(var(--gold-300));
+  box-shadow: 0 0 18px rgb(var(--gold-500) / 0.7);
+}
+
+.leaflet-marker-icon.is-selected .map-marker--driver .map-marker__heading {
+  color: rgb(var(--gold-500));
+}
+
+/* Venue */
+.map-marker--venue .map-marker__body {
+  width: 34px;
+  height: 34px;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, rgb(var(--gold-300)), rgb(var(--gold-700)));
+  border: 1px solid rgb(var(--gold-100));
+  color: rgb(var(--surface-0));
+  box-shadow: 0 0 20px rgb(var(--gold-500) / 0.7);
+}
+
+.map-marker--venue .map-marker__pulse {
+  background: rgb(var(--gold-500));
+}
+
+/* Delay */
+.map-marker--delay .map-marker__body {
+  width: 26px;
+  height: 26px;
+  background: rgb(var(--status-danger));
+  border: 1px solid rgb(var(--ink));
+  color: rgb(var(--surface-0));
+  box-shadow: 0 0 14px rgb(var(--status-danger) / 0.7);
+}
+
+.map-marker--delay .map-marker__pulse {
+  background: rgb(var(--status-danger));
+}
+
+/* Waypoints (pickup / dropoff) */
+.map-marker--waypoint .map-marker__body {
+  width: 22px;
+  height: 22px;
+  background: rgb(var(--surface-3));
+  border: 1px solid rgb(var(--gold-500));
+  color: rgb(var(--ink));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+}
+
+/* ── Trails, rings, corridors ────────────────────────────── */
+.map-trail {
+  pointer-events: none;
+}
+
+.geo-ring {
+  transition: stroke-opacity 400ms ease, fill-opacity 400ms ease;
+}
+
+.geo-ring.geo-ring--pulse {
+  animation: geo-ring-pulse 1100ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@keyframes geo-ring-pulse {
+  0% {
+    stroke-width: 6;
+    stroke-opacity: 1;
+    fill-opacity: 0.35;
+  }
+  100% {
+    stroke-width: 1.5;
+    stroke-opacity: 0.85;
+    fill-opacity: 0.08;
+  }
+}
+
+.corridor-core {
+  transition: stroke 400ms ease, stroke-opacity 400ms ease;
+}
+
+.corridor-core[data-state="reroute"] {
+  animation: corridor-march 1.2s linear infinite;
+}
+
+@keyframes corridor-march {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+/* Reduced motion: no glides, no marching ants, no pulses */
+@media (prefers-reduced-motion: reduce) {
+  .map-marker.is-pulsing .map-marker__pulse,
+  .geo-ring.geo-ring--pulse,
+  .corridor-core[data-state="reroute"] {
+    animation: none;
+  }
+}

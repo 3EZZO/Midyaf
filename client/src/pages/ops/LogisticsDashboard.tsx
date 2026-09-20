@@ -6,7 +6,7 @@ import { Badge } from "../../components/Badge";
 import { MetricCard } from "../../components/MetricCard";
 import { LogisticsMetricModal } from "../../components/LogisticsMetricModal";
 import { useTacticalToast } from "../../components/TacticalToast";
-import { RiyadhMap } from "../../components/RiyadhMap";
+import { RiyadhMap } from "../../components/map";
 import { Section } from "../../components/Section";
 import { localAiReply } from "../../components/AiPanel";
 import { DashboardJumpDock } from "../../components/DashboardJumpDock";

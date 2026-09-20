@@ -259,6 +259,71 @@ export const CONCENTRIC_GEOFENCES = [
   }
 ];
 
+/**
+ * Presentation metadata for each concentric ring, shared by the map
+ * (GeofenceLayer), the War Room radar and the convoy roster dots. Ordered
+ * outermost → innermost. Colours are the status tokens from index.css.
+ */
+export const GEOFENCE_RING_META = {
+  OUTER_APPROACH: { order: 0, color: "#38BDF8", fillOpacity: 0.02, weight: 1.2, dashArray: "4 6" },
+  STAGING_HOLD: { order: 1, color: "#FBBF24", fillOpacity: 0.04, weight: 1.5, dashArray: "3 5" },
+  CURBSIDE_GATE: { order: 2, color: "#34D399", fillOpacity: 0.09, weight: 2, dashArray: "2 4" },
+  DOCKED_BAY: { order: 3, color: "#D4AF37", fillOpacity: 0.25, weight: 2.5, dashArray: null }
+} as const;
+
+export type GeofenceRingName = keyof typeof GEOFENCE_RING_META;
+
+export const GEOFENCE_RING_ORDER = (Object.keys(GEOFENCE_RING_META) as GeofenceRingName[]).sort(
+  (a, b) => GEOFENCE_RING_META[a].order - GEOFENCE_RING_META[b].order
+);
+
+/**
+ * Sovereign arterial corridors drawn on every map. `code` is the handle the
+ * director and the socket use (`corridor.setState`, `MapController.frameCorridor`).
+ */
+export const SUMMIT_CORRIDORS = [
+  {
+    code: "AIRPORT_PROTOCOL" as const,
+    nameEn: "Airport Protocol Corridor (KKIA T2 ↔ Ritz-Carlton)",
+    nameAr: "ممر الاستقبال الدبلوماسي (مطار الملك خالد ↔ الريتز-كارلتون)",
+    color: "#D4AF37",
+    points: [
+      [24.9576, 46.6988],
+      [24.912, 46.705],
+      [24.854, 46.691],
+      [24.795, 46.671],
+      [24.731, 46.65],
+      [24.6661, 46.6302]
+    ] as [number, number][]
+  },
+  {
+    code: "SOVEREIGN_FINANCIAL" as const,
+    nameEn: "Sovereign Financial Corridor (Ritz-Carlton ↔ KAFD Plenary)",
+    nameAr: "الممر المالي السيادي (الريتز-كارلتون ↔ كافد)",
+    color: "#38BDF8",
+    points: [
+      [24.6661, 46.6302],
+      [24.7, 46.635],
+      [24.74, 46.642],
+      [24.7642, 46.6406]
+    ] as [number, number][]
+  },
+  {
+    code: "DIPLOMATIC_HERITAGE" as const,
+    nameEn: "Diplomatic Heritage Corridor (KAFD ↔ Historic Diriyah)",
+    nameAr: "ممر الدرعية التراثي (كافد ↔ مطل البجيري)",
+    color: "#34D399",
+    points: [
+      [24.7642, 46.6406],
+      [24.75, 46.61],
+      [24.7335, 46.5742]
+    ] as [number, number][]
+  }
+];
+
+export type CorridorCode = (typeof SUMMIT_CORRIDORS)[number]["code"];
+export type CorridorState = "normal" | "closed" | "reroute";
+
 export const DEFAULT_COMPLAINTS = [
   {
     id: "cmp-001",
