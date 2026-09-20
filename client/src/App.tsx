@@ -44,7 +44,7 @@ import {
   CompanyDashboard,
   CoordinatorsApp,
   GuestJourneyApp,
-} from "./pages/OperationsPortals";
+} from "./pages/ops";
 import { AdminExecutiveDashboard } from "./components/AdminExecutiveDashboard";
 import { ClientDashboard } from "./components/ClientDashboard";
 import { SilaOperationsDashboard } from "./components/SilaOperationsDashboard";
