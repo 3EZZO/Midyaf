@@ -491,7 +491,7 @@ export function AiPanel({
                       key={action.actionId}
                       disabled={isExecuted}
                       onClick={() => void handleActionClick(message.id, action)}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shadow-xs ${
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shadow-sm ${
                         isExecuted
                           ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 cursor-default"
                           : "bg-midyaf-gold text-white hover:shadow-glow hover:scale-105 active:scale-95 cursor-pointer"
@@ -518,7 +518,7 @@ export function AiPanel({
       </div>
 
       {/* Suggested Prompt Chips */}
-      <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-white/5/60 dark:border-white/10 overflow-x-auto no-scrollbar">
+      <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-white/5 dark:border-white/10 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
           <span className="text-slate-400 font-semibold shrink-0 flex items-center gap-1">
             <Sparkles size={12} className="text-midyaf-gold" />
@@ -530,7 +530,7 @@ export function AiPanel({
               type="button"
               onClick={() => void handleSend(p(chip.en, chip.ar))}
               disabled={isSending}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-white/5 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800 border border-white/5 dark:border-white/10 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:border-midyaf-gold hover:text-midyaf-gold transition-all cursor-pointer shadow-sm"
             >
               {getChipIcon(chip.icon)}
               <span>{p(chip.en, chip.ar)}</span>
@@ -539,7 +539,7 @@ export function AiPanel({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-white/5/80 dark:border-white/10 p-3 bg-white/50 dark:bg-dark-surface/50">
+      <div className="flex gap-2 border-t border-white/5 dark:border-white/10 p-3 bg-white/50 dark:bg-dark-surface/50">
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}

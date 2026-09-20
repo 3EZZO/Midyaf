@@ -346,7 +346,7 @@ export function SovereignCommandBridge({
       {/* ── Top Sovereign Command Header ── */}
       <header className="flex flex-wrap items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/90 px-6 py-3.5 backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="relative flex size-10 items-center justify-center rounded-xl bg-[#121626] ring-2 ring-midyaf-gold/60 shadow-[0_0_20px_rgba(201,168,76,0.4)]">
+          <div className="relative flex size-10 items-center justify-center rounded-xl bg-[#121626] ring-2 ring-midyaf-gold/60 shadow-[0_0_20px_rgba(212, 175, 55,0.4)]">
             <Shield className="size-6 text-midyaf-gold animate-pulse" />
           </div>
 

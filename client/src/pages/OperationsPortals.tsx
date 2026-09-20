@@ -873,7 +873,7 @@ export function ActivityIntakePage({
                   <span>{ui.isArabic ? "2. تفاصيل الفنادق ومقرات الإقامة (Hotels & Accommodation)" : "2. Hotels & Accommodation Details"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-pearl dark:bg-midyaf-purple/30 dark:text-white">
                     {ui.isArabic ? `إجمالي الفنادق: ${hotelsList.length}` : `Hotels: ${hotelsList.length}`}
                   </span>
                   <span className="rounded-md bg-midyaf-gold/15 px-2.5 py-1 font-bold text-midyaf-gold">
@@ -887,14 +887,14 @@ export function ActivityIntakePage({
               {hotelsList.map((hotel, index) => (
                 <div
                   key={hotel.id}
-                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-midyaf-gold/20 text-xs font-black text-midyaf-gold">
                         {index + 1}
                       </span>
-                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                      <span className="text-xs font-black text-midyaf-pearl dark:text-white">
                         {hotel.name || (ui.isArabic ? `فندق #${index + 1}` : `Hotel #${index + 1}`)}
                       </span>
                       {hotel.roomsBooked > 0 && (
@@ -957,7 +957,7 @@ export function ActivityIntakePage({
                 <button
                   type="button"
                   onClick={handleAddHotel}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-midyaf-gold/40 bg-midyaf-gold/5 py-2.5 text-xs font-bold text-midyaf-purple transition-all hover:bg-midyaf-gold/15 dark:text-midyaf-gold dark:hover:bg-midyaf-gold/20 cursor-pointer"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-midyaf-gold/40 bg-midyaf-gold/5 py-2.5 text-xs font-bold text-midyaf-pearl transition-all hover:bg-midyaf-gold/15 dark:text-midyaf-gold dark:hover:bg-midyaf-gold/20 cursor-pointer"
                 >
                   <Plus size={15} />
                   <span>{ui.isArabic ? "+ إضافة فندق آخر" : "+ Add Another Hotel"}</span>
@@ -976,7 +976,7 @@ export function ActivityIntakePage({
                   <span>{ui.isArabic ? "3. شركات تأجير السيارات والحافلات (Car & Bus Rental Companies)" : "3. Car & Bus Rental Companies"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-pearl dark:bg-midyaf-purple/30 dark:text-white">
                     {ui.isArabic ? `إجمالي الشركات: ${carRentalsList.length}` : `Companies: ${carRentalsList.length}`}
                   </span>
                   <span className="rounded-md bg-sky-500/15 px-2.5 py-1 font-bold text-sky-600 dark:text-sky-400">
@@ -990,14 +990,14 @@ export function ActivityIntakePage({
               {carRentalsList.map((rental, index) => (
                 <div
                   key={rental.id}
-                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-sky-500/20 text-xs font-black text-sky-600 dark:text-sky-400">
                         {index + 1}
                       </span>
-                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                      <span className="text-xs font-black text-midyaf-pearl dark:text-white">
                         {rental.companyName || (ui.isArabic ? `شركة تأجير #${index + 1}` : `Rental Company #${index + 1}`)}
                       </span>
                       {rental.fleetCount ? (
@@ -1079,7 +1079,7 @@ export function ActivityIntakePage({
                   <span>{ui.isArabic ? "4. المزودون والموردون المعتمدون وشروط الدفع" : "4. Dedicated Suppliers, Providers & Payment Terms"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-purple dark:bg-midyaf-purple/30 dark:text-white">
+                  <span className="rounded-md bg-midyaf-purple/10 px-2.5 py-1 font-bold text-midyaf-pearl dark:bg-midyaf-purple/30 dark:text-white">
                     {ui.isArabic ? `المزودون المعتمدون: ${suppliersList.length}` : `Providers: ${suppliersList.length}`}
                   </span>
                   {isPlanApproved ? (
@@ -1095,14 +1095,14 @@ export function ActivityIntakePage({
               {suppliersList.map((sup, index) => (
                 <div
                   key={sup.id}
-                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-xs transition-all dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-xl border border-white/5 bg-[#121626]/70 p-4 shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-xs font-black text-emerald-600 dark:text-emerald-400">
                         {index + 1}
                       </span>
-                      <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                      <span className="text-xs font-black text-midyaf-pearl dark:text-white">
                         {sup.providerName || (ui.isArabic ? `مزود #${index + 1}` : `Provider #${index + 1}`)}
                       </span>
                       <Badge tone="purple">
@@ -1163,11 +1163,11 @@ export function ActivityIntakePage({
                     {/* Task 2 Constraint: Payment Terms field MUST ONLY become visible after the plan has been approved and processed — hidden before that stage */}
                     <div className="md:col-span-2">
                       {isPlanApproved ? (
-                        <div className="rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 p-3 animate-fadeInUp shadow-xs">
+                        <div className="rounded-xl border border-midyaf-gold/40 bg-midyaf-gold/10 p-3 animate-fadeInUp shadow-sm">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Sparkles size={14} className="text-midyaf-gold" />
-                              <span className="text-xs font-black text-midyaf-purple dark:text-white">
+                              <span className="text-xs font-black text-midyaf-pearl dark:text-white">
                                 {ui.isArabic ? "شروط الدفع الخاصة بهذا المورد:" : "Payment Terms for this Supplier:"}
                               </span>
                             </div>
@@ -1291,7 +1291,7 @@ export function ActivityIntakePage({
             <div className="rounded-xl border border-midyaf-purple/15 bg-midyaf-purple/5 p-4 dark:border-slate-800 dark:bg-slate-800/40">
               <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                 <div>
-                  <h4 className="font-bold text-midyaf-purple dark:text-white">
+                  <h4 className="font-bold text-midyaf-pearl dark:text-white">
                     {ui.isArabic ? "استيراد وتدقيق بيانات الضيوف (CSV)" : "Bulk Guest CSV Import"}
                   </h4>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -1300,7 +1300,7 @@ export function ActivityIntakePage({
                       : "Paste CSV guest list or load CSV file. Creates guest accounts, journeys, VIP cars, and normal shuttle groups."}
                   </p>
                 </div>
-                <label className="min-w-fit cursor-pointer rounded-lg bg-white px-3 py-1.5 text-center text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 dark:ring-slate-700">
+                <label className="min-w-fit cursor-pointer rounded-lg bg-white px-3 py-1.5 text-center text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 dark:ring-slate-700">
                   {ui.l("Load CSV file")}
                   <input
                     type="file"
@@ -1355,7 +1355,7 @@ export function ActivityIntakePage({
                     setBulkError(null);
                   }}
                   disabled={pendingAction !== null}
-                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer"
+                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer"
                 >
                   {ui.l("Use sample CSV")}
                 </button>
@@ -1414,7 +1414,7 @@ export function ActivityIntakePage({
                   <button
                     type="button"
                     onClick={() => exportPlanAsPdf(activePlan, draft, ui.isArabic)}
-                    className="btn-gold flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                    className="btn-gold flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm cursor-pointer"
                   >
                     <Download size={13} />
                     <span>{ui.isArabic ? "تصدير الخطة (PDF)" : "Export Plan PDF"}</span>
@@ -1422,7 +1422,7 @@ export function ActivityIntakePage({
                   <button
                     type="button"
                     onClick={() => sharePlanLink(activePlan.id, ui.isArabic, toast)}
-                    className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-sm"
                   >
                     <Share2 size={13} />
                     <span>{ui.isArabic ? "مشاركة" : "Share"}</span>
@@ -1432,7 +1432,7 @@ export function ActivityIntakePage({
                       type="button"
                       onClick={() => void handleApprovePlan()}
                       disabled={pendingAction === "approvePlan"}
-                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 cursor-pointer shadow-xs"
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 cursor-pointer shadow-sm"
                     >
                       <CheckCircle2 size={13} />
                       <span>{ui.isArabic ? "اعتماد الخطة" : "Approve Plan"}</span>
@@ -1462,10 +1462,10 @@ export function ActivityIntakePage({
                   <MiniStat label={ui.isArabic ? "حافلات VIP" : "Buses"} value={activePlan.buses || draft.busesCount || 15} />
                   <div className="rounded-xl border border-white/5 bg-[#121626] p-2.5 text-center dark:border-slate-800 dark:bg-slate-800">
                     <p className="text-[10px] text-slate-400">{ui.isArabic ? "القوى البشرية" : "Man Power"}</p>
-                    <p className="mt-0.5 text-base font-black text-midyaf-purple dark:text-purple-300">
+                    <p className="mt-0.5 text-base font-black text-midyaf-pearl dark:text-purple-300">
                       {activePlan.manPower || draft.manPowerCount || 120}
                     </p>
-                    <span className="mt-1 inline-block rounded-md bg-midyaf-purple/10 px-1.5 py-0.5 text-[9px] font-bold text-midyaf-purple dark:text-purple-300">
+                    <span className="mt-1 inline-block rounded-md bg-midyaf-purple/10 px-1.5 py-0.5 text-[9px] font-bold text-midyaf-pearl dark:text-purple-300">
                       {(activePlan.manPowerSubtype || draft.manPowerSubtype) === "CARGO_LOADING"
                         ? (ui.isArabic ? "عمال تحميل" : "Cargo Crew")
                         : (ui.isArabic ? "منظمو الفعالية" : "Event Staff")}
@@ -1484,7 +1484,7 @@ export function ActivityIntakePage({
                 ]).map((assumption) => (
                   <div
                     key={assumption}
-                    className="flex items-center gap-2 rounded-lg bg-white p-2.5 text-xs text-slate-700 shadow-2xs dark:bg-slate-800 dark:text-slate-300"
+                    className="flex items-center gap-2 rounded-lg bg-white p-2.5 text-xs text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-300"
                   >
                     <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
                     <span>{ui.l(assumption)}</span>
@@ -1739,7 +1739,7 @@ export function GuestJourneyApp({ data, updateGuestJourney }: PortalProps) {
                 {ui.l(journey.driverName)}
               </p>
               <p className="text-sm text-slate-500">{journey.driverPhone}</p>
-              <p className="mt-2 text-sm font-semibold text-midyaf-purple">
+              <p className="mt-2 text-sm font-semibold text-midyaf-pearl">
                 {ui.l(journey.carDetails)}
               </p>
             </div>
@@ -1861,7 +1861,7 @@ export function CaptainsApp({
         />
       </div>
 
-      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-5 text-white border border-amber-400/30 shadow-[0_4px_20px_rgba(201,168,76,0.15)]">
+      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-5 text-white border border-amber-400/30 shadow-[0_4px_20px_rgba(212, 175, 55,0.15)]">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
@@ -2276,7 +2276,7 @@ function AirportExpressSection({
         >
           {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
         </button>
-        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-xl border border-amber-500/30 shadow-[0_0_50px_rgba(201,168,76,0.15)] backdrop-blur-2xl">
+        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-xl border border-amber-500/30 shadow-[0_0_50px_rgba(212, 175, 55,0.15)] backdrop-blur-2xl">
           <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
             <Crown size={48} className="animate-pulse" />
           </div>
@@ -2771,7 +2771,7 @@ export function CoordinatorsApp({
             "Normal shuttle group 4 has one extra passenger."
           ].map((item) => (
             <div key={item} className="rounded-lg bg-slate-50 p-4">
-              <MessageSquareText className="mb-3 text-midyaf-purple" size={18} />
+              <MessageSquareText className="mb-3 text-midyaf-pearl" size={18} />
               <p className="text-sm text-slate-700">{ui.l(item)}</p>
             </div>
           ))}
@@ -3295,7 +3295,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
                 <span className="text-[10px] font-black uppercase tracking-wider text-midyaf-gold">
                   {spot.category}
                 </span>
-                <h4 className="mt-0.5 text-sm font-black text-slate-900 dark:text-white dark:text-white">
+                <h4 className="mt-0.5 text-sm font-black text-slate-900 dark:text-white">
                   {ui.p(spot.nameEn, spot.nameAr)}
                 </h4>
               </div>
@@ -3305,7 +3305,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
             <div className="mt-3 flex items-center justify-between text-xs border-t border-white/5 pt-2.5 dark:border-slate-800">
               <div>
                 <span className="text-slate-400">{ui.p("Fleet:", "الأسطول:")} </span>
-                <span className="font-bold text-midyaf-purple dark:text-midyaf-gold">
+                <span className="font-bold text-midyaf-pearl dark:text-midyaf-gold">
                   {spot.activeFleet} {ui.p("Vehicles", "مركبات")}
                 </span>
               </div>
@@ -3566,7 +3566,7 @@ export function LogisticsDashboard({
             ].map(([role, scope]) => (
               <div key={role} className="rounded-lg bg-slate-50 p-4">
                 <BriefcaseBusiness
-                  className="mb-3 text-midyaf-purple"
+                  className="mb-3 text-midyaf-pearl"
                   size={18}
                 />
                 <p className="font-semibold text-slate-900 dark:text-white">{ui.l(role)}</p>
@@ -3973,7 +3973,7 @@ function TaskBoardCard({
               ))}
           </select>
           {isDriverPending ? (
-            <p className="text-xs font-semibold text-midyaf-purple">
+            <p className="text-xs font-semibold text-midyaf-pearl">
               {translate("Saving")}
             </p>
           ) : null}
@@ -4196,7 +4196,7 @@ function OperationsSetup({
                     ? "تم نقل قسم رفع بيانات الضيوف (CSV) إلى بوابة إدخال الفعالية"
                     : "Guest Details (CSV) Relocated to Event Data Entry"}
                 </h3>
-                <span className="rounded-full bg-midyaf-purple/10 px-2.5 py-0.5 text-xs font-bold text-midyaf-purple">
+                <span className="rounded-full bg-midyaf-purple/10 px-2.5 py-0.5 text-xs font-bold text-midyaf-pearl">
                   {ui.isArabic ? "تحديث العمليات" : "Operations Update"}
                 </span>
               </div>
@@ -4211,7 +4211,7 @@ function OperationsSetup({
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="rounded-lg bg-slate-50 p-4">
-          <h3 className="font-bold text-midyaf-purple">{ui.l("Add guest")}</h3>
+          <h3 className="font-bold text-midyaf-pearl">{ui.l("Add guest")}</h3>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <Field
               label={ui.l("Guest name")}
@@ -4282,7 +4282,7 @@ function OperationsSetup({
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4">
-          <h3 className="font-bold text-midyaf-purple">{ui.l("Add captain")}</h3>
+          <h3 className="font-bold text-midyaf-pearl">{ui.l("Add captain")}</h3>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <Field
               label={ui.l("Captain name")}
@@ -4422,7 +4422,7 @@ function OperationsSetup({
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4">
-          <h3 className="font-bold text-midyaf-purple">{ui.l("Add supplier")}</h3>
+          <h3 className="font-bold text-midyaf-pearl">{ui.l("Add supplier")}</h3>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <Field
               label={ui.l("Supplier name")}
@@ -4518,7 +4518,7 @@ function OperationsSetup({
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4">
-          <h3 className="font-bold text-midyaf-purple">
+          <h3 className="font-bold text-midyaf-pearl">
             {ui.l("Add manager or coordinator")}
           </h3>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -4587,7 +4587,7 @@ function OperationsSetup({
         </div>
 
         <div className="rounded-lg bg-slate-50 p-4 xl:col-span-2">
-          <h3 className="font-bold text-midyaf-purple">
+          <h3 className="font-bold text-midyaf-pearl">
             {ui.l("Create operational task")}
           </h3>
           <p className="mt-1 text-xs text-slate-500">
@@ -4886,7 +4886,7 @@ export function CompanyDashboard({
           className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "summary" 
               ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <Building2 size={24} className="mb-2" />
@@ -4976,7 +4976,7 @@ export function CompanyDashboard({
               : "Allows Sila to generate an on-demand executive dashboard for their corporate or government client, controlling permitted modules."}
           </p>
 
-          <div className="rounded-lg border border-white/5 bg-[#121626]/80 p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
+          <div className="rounded-lg border border-white/5 bg-[#121626]/80 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
@@ -5003,7 +5003,7 @@ export function CompanyDashboard({
             </div>
 
             <div>
-              <label className="text-[11px] font-black text-slate-900 dark:text-white dark:text-white uppercase tracking-wider mb-2 block">
+              <label className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2 block">
                 {ui.isArabic ? "مصفوفة الصلاحيات الممنوحة للعميل (تحكم شركة صلة):" : "Client Access Permissions (Controlled by Sila):"}
               </label>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -5012,7 +5012,7 @@ export function CompanyDashboard({
                     type="checkbox"
                     checked={clientConfig.canViewReports}
                     onChange={e => handleUpdatePermission("canViewReports", e.target.checked)}
-                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                    className="rounded text-midyaf-pearl focus:ring-midyaf-purple"
                   />
                   <span>{ui.isArabic ? "التقارير والمخرجات" : "Reports"}</span>
                 </label>
@@ -5022,7 +5022,7 @@ export function CompanyDashboard({
                     type="checkbox"
                     checked={clientConfig.canViewScheduleAmendments}
                     onChange={e => handleUpdatePermission("canViewScheduleAmendments", e.target.checked)}
-                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                    className="rounded text-midyaf-pearl focus:ring-midyaf-purple"
                   />
                   <span>{ui.isArabic ? "عرض تعديلات الجداول" : "View Schedule Updates"}</span>
                 </label>
@@ -5032,7 +5032,7 @@ export function CompanyDashboard({
                     type="checkbox"
                     checked={clientConfig.canCommunicateLogistics}
                     onChange={e => handleUpdatePermission("canCommunicateLogistics", e.target.checked)}
-                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                    className="rounded text-midyaf-pearl focus:ring-midyaf-purple"
                   />
                   <span>{ui.isArabic ? "التواصل مع مدير العمليات" : "Chat with Logistics Mgr"}</span>
                 </label>
@@ -5042,7 +5042,7 @@ export function CompanyDashboard({
                     type="checkbox"
                     checked={clientConfig.canViewPerformance}
                     onChange={e => handleUpdatePermission("canViewPerformance", e.target.checked)}
-                    className="rounded text-midyaf-purple focus:ring-midyaf-purple"
+                    className="rounded text-midyaf-pearl focus:ring-midyaf-purple"
                   />
                   <span>{ui.isArabic ? "عرض مؤشرات الأداء" : "View Performance KPIs"}</span>
                 </label>
@@ -5051,8 +5051,8 @@ export function CompanyDashboard({
 
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5 dark:border-slate-800 flex-wrap text-xs">
               <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
-                <span className="font-bold text-slate-900 dark:text-white dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-purple dark:text-purple-300">{clientConfig.shareableToken}</span>
+                <span className="font-bold text-slate-900 dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-pearl dark:text-purple-300">{clientConfig.shareableToken}</span>
               </div>
               <button
                 type="button"
@@ -5628,7 +5628,7 @@ function QuotesAndContracts({
               </div>
 
               <div className="text-sm">
-                <p className="font-bold text-midyaf-purple">
+                <p className="font-bold text-midyaf-pearl">
                   {isSealed ? (
                     <span className="font-mono tracking-wider text-slate-400">
                       SAR ●●●,●●●
@@ -5693,7 +5693,7 @@ function QuotesAndContracts({
             <div>
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-midyaf-gold" />
-                <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+                <h3 className="text-base font-black text-midyaf-pearl dark:text-white">
                   {ui.p("Certified Contracts & Procurement Hub", "مركز العقود المعتمدة والمشتريات الذكية")}
                 </h3>
               </div>
@@ -5729,15 +5729,15 @@ function QuotesAndContracts({
                       </span>
                       <Badge tone="green">{ui.p("SIGNED & VERIFIED", "موقع ومعتمد")}</Badge>
                     </div>
-                    <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white dark:text-white">
+                    <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white">
                       {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
                     </h4>
-                    <p className="text-[11px] font-bold text-midyaf-purple dark:text-purple-300">
+                    <p className="text-[11px] font-bold text-midyaf-pearl dark:text-purple-300">
                       {ui.p(contract.categoryEn, contract.categoryAr)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-base font-black text-midyaf-purple dark:text-midyaf-gold">
+                    <p className="text-base font-black text-midyaf-pearl dark:text-midyaf-gold">
                       {money(contract.amount)}
                     </p>
                     <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -5757,7 +5757,7 @@ function QuotesAndContracts({
                   <button
                     type="button"
                     onClick={() => setSelectedDemoContract(contract)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-midyaf-purple/5 px-2.5 py-1 text-xs font-bold text-midyaf-pearl transition hover:bg-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10"
                   >
                     <FileText size={13} />
                     {ui.p("View Certified Contract", "استعراض العقد المعتمد")}
@@ -5779,7 +5779,7 @@ function QuotesAndContracts({
                   <Crown size={22} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+                  <h3 className="text-base font-black text-midyaf-pearl dark:text-white">
                     {ui.p("Kingdom of Saudi Arabia · Event Procurement", "المملكة العربية السعودية · مشتريات الفعاليات")}
                   </h3>
                   <p className="text-xs text-slate-400">
@@ -5812,13 +5812,13 @@ function QuotesAndContracts({
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Vendor Name", "اسم المورد")}</p>
-                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white dark:text-white">
+                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white">
                     {ui.p(selectedDemoContract.vendorNameEn, selectedDemoContract.vendorNameAr)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Category", "التصنيف")}</p>
-                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white dark:text-white">
+                  <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white">
                     {ui.p(selectedDemoContract.categoryEn, selectedDemoContract.categoryAr)}
                   </p>
                 </div>
@@ -5834,7 +5834,7 @@ function QuotesAndContracts({
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
                   <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Total Contract Value", "إجمالي قيمة العقد")}</p>
-                  <p className="mt-0.5 font-black text-base text-midyaf-purple dark:text-midyaf-gold">
+                  <p className="mt-0.5 font-black text-base text-midyaf-pearl dark:text-midyaf-gold">
                     {money(selectedDemoContract.amount)}
                   </p>
                 </div>
@@ -5850,7 +5850,7 @@ function QuotesAndContracts({
                 <p className="text-[10px] text-slate-400 font-mono">
                   {ui.p("IMMUTABLE AUDIT HASH", "بصمة التدقيق المشفرة وغير القابلة للتغيير")}
                 </p>
-                <p className="mt-1 font-mono font-bold text-midyaf-purple dark:text-purple-300">
+                <p className="mt-1 font-mono font-bold text-midyaf-pearl dark:text-purple-300">
                   SHA-256: {selectedDemoContract.certifiedHash} · TIMESTAMP: {selectedDemoContract.signedDate}T12:00:00Z
                 </p>
               </div>
@@ -6229,7 +6229,7 @@ function MiniStat({
       }`}
     >
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1.5 font-extrabold tabular-nums text-midyaf-purple">{value}</p>
+      <p className="mt-1.5 font-extrabold tabular-nums text-midyaf-pearl">{value}</p>
     </div>
   );
 }
@@ -6590,7 +6590,7 @@ function JourneyCard({
           : "rounded-lg bg-[#121626] border border-white/5 shadow-sm p-4 text-slate-900 dark:text-white hover:-translate-y-0.5 transition-transform animate-fadeInUp"
       }
     >
-      <Icon className={active ? "text-midyaf-gold" : "text-midyaf-purple"} />
+      <Icon className={active ? "text-midyaf-gold" : "text-midyaf-pearl"} />
       <p className="mt-3 font-bold">{title}</p>
       <p className={active ? "text-sm text-white/70" : "text-sm text-slate-500"}>
         {detail}
@@ -6617,7 +6617,7 @@ function DocumentCard({
   return (
     <div className="rounded-xl bg-white/60 p-4 ring-1 ring-slate-100 hover:-translate-y-0.5 transition-transform">
       <div className="flex items-center justify-between gap-3">
-        <Icon className="text-midyaf-purple" size={20} />
+        <Icon className="text-midyaf-pearl" size={20} />
         <Badge tone="green">{status}</Badge>
       </div>
       <p className="mt-3 font-bold text-slate-900 dark:text-white">{title}</p>
@@ -6627,7 +6627,7 @@ function DocumentCard({
           href={asset.url}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 transition-all hover:shadow-sm hover:ring-midyaf-purple/20"
+          className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 transition-all hover:shadow-sm hover:ring-midyaf-purple/20"
         >
           {translate("Open file")}
         </a>

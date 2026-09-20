@@ -216,11 +216,11 @@ export function AdminExecutiveDashboard({
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               {isArabic ? "إجمالي قيمة العقود المعتمدة" : "Total Contracted Spend"}
             </span>
-            <div className="grid size-9 place-items-center rounded-xl bg-purple-500/10 text-midyaf-purple dark:text-purple-400">
+            <div className="grid size-9 place-items-center rounded-xl bg-purple-500/10 text-midyaf-pearl dark:text-purple-400">
               <ReceiptText size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
             {money(totalContractedSpend || 1950000)}
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -237,7 +237,7 @@ export function AdminExecutiveDashboard({
               <TrendingUp size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
             14.6%
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -254,7 +254,7 @@ export function AdminExecutiveDashboard({
               <Clock size={18} />
             </div>
           </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white dark:text-white font-tnum">
+          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
             {money(pendingDownpayments || 340000)}
           </p>
           <p className="mt-2 text-xs text-slate-400">
@@ -271,7 +271,7 @@ export function AdminExecutiveDashboard({
           className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "submitters" 
               ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <UserCheck size={24} className="mb-2" />
@@ -283,7 +283,7 @@ export function AdminExecutiveDashboard({
           className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             activeTab === "plans" 
               ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
           }`}
         >
           <FileCheck size={24} className="mb-2" />
@@ -357,11 +357,11 @@ export function AdminExecutiveDashboard({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {submitterList.map((sub) => (
                 <tr key={sub.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white dark:text-white">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white">
                     {sub.activityName}
                     <span className="block text-[10px] text-slate-400 font-normal">{sub.activityPlace}</span>
                   </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-midyaf-purple dark:text-purple-300">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-midyaf-pearl dark:text-purple-300">
                     <span className="inline-flex items-center gap-1.5">
                       <Building2 size={13} className="text-midyaf-gold" />
                       {sub.organization}
@@ -409,19 +409,19 @@ export function AdminExecutiveDashboard({
             <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 text-xs">
               <button
                 onClick={() => setPlanFilter("ALL")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "ALL" ? "bg-white text-midyaf-purple shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-500"}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "ALL" ? "bg-white text-midyaf-pearl shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500"}`}
               >
                 {isArabic ? `الكل (${plansList.length})` : `All (${plansList.length})`}
               </button>
               <button
                 onClick={() => setPlanFilter("APPROVED")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "APPROVED" ? "bg-emerald-50 text-emerald-700 shadow-xs dark:bg-emerald-950/50 dark:text-emerald-300" : "text-slate-500"}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "APPROVED" ? "bg-emerald-50 text-emerald-700 shadow-sm dark:bg-emerald-950/50 dark:text-emerald-300" : "text-slate-500"}`}
               >
                 {isArabic ? `المعتمدة (${plansList.filter(p => p.status === "APPROVED").length})` : `Approved (${plansList.filter(p => p.status === "APPROVED").length})`}
               </button>
               <button
                 onClick={() => setPlanFilter("PENDING")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "PENDING" ? "bg-amber-50 text-amber-700 shadow-xs dark:bg-amber-950/50 dark:text-amber-300" : "text-slate-500"}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "PENDING" ? "bg-amber-50 text-amber-700 shadow-sm dark:bg-amber-950/50 dark:text-amber-300" : "text-slate-500"}`}
               >
                 {isArabic ? `قيد الانتظار (${plansList.filter(p => p.status === "PENDING").length})` : `Pending (${plansList.filter(p => p.status === "PENDING").length})`}
               </button>
@@ -433,7 +433,7 @@ export function AdminExecutiveDashboard({
           {filteredPlans.map((plan) => (
             <div
               key={plan.id}
-              className={`rounded-lg border p-5 transition-all shadow-xs ${
+              className={`rounded-lg border p-5 transition-all shadow-sm ${
                 plan.status === "APPROVED"
                   ? "border-emerald-500/30 bg-emerald-50/20 dark:border-emerald-500/20 dark:bg-emerald-950/10"
                   : "border-amber-500/40 bg-amber-50/20 dark:border-amber-500/20 dark:bg-amber-950/10"
@@ -441,7 +441,7 @@ export function AdminExecutiveDashboard({
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white dark:text-white text-base">
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
                     {plan.title}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">{plan.place} · {isArabic ? `إدخال: ${plan.submittedBy}` : `Submitted by: ${plan.submittedBy}`}</p>
@@ -458,11 +458,11 @@ export function AdminExecutiveDashboard({
               <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الضيوف" : "Guests"}</span>
-                  <span className="font-bold text-slate-900 dark:text-white dark:text-white font-tnum">{plan.visitorCount}</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-tnum">{plan.visitorCount}</span>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الغرف المحجوزة" : "Hotel Rooms"}</span>
-                  <span className="font-bold text-midyaf-purple dark:text-purple-300 font-tnum">{plan.hotelRooms}</span>
+                  <span className="font-bold text-midyaf-pearl dark:text-purple-300 font-tnum">{plan.hotelRooms}</span>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-400">{isArabic ? "الأسطول والحافلات" : "Fleet Units"}</span>
@@ -569,11 +569,11 @@ export function AdminExecutiveDashboard({
           {filteredComplaints.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#121626]/80 p-4 transition-all shadow-xs dark:border-slate-800 dark:bg-slate-900/60"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#121626]/80 p-4 transition-all shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
             >
               <div className="space-y-1 max-w-2xl">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-slate-900 dark:text-white dark:text-white text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white text-xs">
                     {isArabic ? (c.complainantNameAr || c.complainantName) : (c.complainantNameEn || c.complainantName)}
                   </span>
                   <span className="text-[10px] text-slate-400">({c.complainantRole})</span>
@@ -634,14 +634,14 @@ export function AdminExecutiveDashboard({
         }
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-midyaf-gold/30 bg-[#121626] p-5 shadow-xs bg-[#121626]">
+          <div className="rounded-lg border border-midyaf-gold/30 bg-[#121626] p-5 shadow-sm bg-[#121626]">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-midyaf-gold">
                   <span className="size-2 rounded-full bg-emerald-500 animate-ping"></span>
                   {isArabic ? "فعالية قيد التنفيذ المباشر (LIVE)" : "Live In-Execution"}
                 </span>
-                <h3 className="font-black text-slate-900 dark:text-white dark:text-white text-base mt-1">
+                <h3 className="font-black text-slate-900 dark:text-white text-base mt-1">
                   {event.name}
                 </h3>
               </div>
@@ -653,7 +653,7 @@ export function AdminExecutiveDashboard({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs mt-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">{isArabic ? "كبار الشخصيات" : "VIP Guests"}</span>
-                <span className="font-extrabold text-slate-900 dark:text-white dark:text-white font-tnum">{intake.vipVisitorCount}</span>
+                <span className="font-extrabold text-slate-900 dark:text-white font-tnum">{intake.vipVisitorCount}</span>
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">{isArabic ? "الكباتن بالخدمة" : "Active Captains"}</span>
@@ -661,7 +661,7 @@ export function AdminExecutiveDashboard({
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
                 <span className="text-[10px] text-slate-400 block">{isArabic ? "المهام المنجزة" : "Completed Tasks"}</span>
-                <span className="font-extrabold text-midyaf-purple dark:text-purple-300 font-tnum">
+                <span className="font-extrabold text-midyaf-pearl dark:text-purple-300 font-tnum">
                   {event.tasks.filter(t => t.status === "COMPLETED").length} / {event.tasks.length}
                 </span>
               </div>
@@ -681,7 +681,7 @@ export function AdminExecutiveDashboard({
                   <Clock size={13} />
                   {isArabic ? "فعالية قادمة — التجهيز اللوجستي" : "Upcoming Pipeline Event"}
                 </span>
-                <h3 className="font-black text-slate-900 dark:text-white dark:text-white text-base mt-1">
+                <h3 className="font-black text-slate-900 dark:text-white text-base mt-1">
                   {isArabic ? "ملتقى الدرعية للتراث والضيافة الرفيعة" : "Diriyah Heritage & High Hospitality Forum"}
                 </h3>
               </div>
@@ -698,7 +698,7 @@ export function AdminExecutiveDashboard({
 
             <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5 dark:border-slate-800">
               <span className="text-slate-400 font-tnum">{isArabic ? "الجدول: 18 - 20 أكتوبر 2026" : "Schedule: Oct 18 - 20, 2026"}</span>
-              <span className="font-bold text-midyaf-purple dark:text-purple-300 font-tnum">{money(450000)} (تقديري)</span>
+              <span className="font-bold text-midyaf-pearl dark:text-purple-300 font-tnum">{money(450000)} (تقديري)</span>
             </div>
           </div>
         </div>
@@ -739,7 +739,7 @@ export function AdminExecutiveDashboard({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-tnum">
               {data.contracts.map((cnt) => (
                 <tr key={cnt.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-mono font-bold text-midyaf-purple dark:text-purple-300">
+                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-mono font-bold text-midyaf-pearl dark:text-purple-300">
                     {cnt.contractNumber}
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-800 dark:text-slate-100">

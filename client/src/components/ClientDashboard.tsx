@@ -102,7 +102,7 @@ export function ClientDashboard({
             className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
               activeTab === "amendments" 
                 ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-                : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-purple dark:bg-slate-900/60 dark:border-slate-800"
+                : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
             }`}
           >
             <Clock size={24} className="mb-2" />
@@ -176,7 +176,7 @@ export function ClientDashboard({
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
               {isArabic ? "دقة الالتزام بالمواعيد" : "Punctuality SLA"}
             </span>
-            <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white dark:text-white font-tnum">99.2%</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white font-tnum">99.2%</p>
             <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
               ✓ {isArabic ? "ضمن المعايير السيادية المعتمدة" : "Within sovereign protocol standard"}
             </p>
@@ -194,7 +194,7 @@ export function ClientDashboard({
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
               {isArabic ? "الضيوف المستقبلون" : "Guests Welcomed"}
             </span>
-            <p className="mt-2 text-3xl font-black text-midyaf-purple dark:text-purple-300 font-tnum">
+            <p className="mt-2 text-3xl font-black text-midyaf-pearl dark:text-purple-300 font-tnum">
               420 / 420
             </p>
             <p className="mt-1 text-[11px] text-slate-400">
@@ -237,7 +237,7 @@ export function ClientDashboard({
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-900 dark:text-white dark:text-white text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs">
                       {isArabic ? (amd.titleAr || amd.title) : (amd.titleEn || amd.title)}
                     </span>
                     <Badge tone="purple">{localizeAmendmentType(amd.type, isArabic)}</Badge>
@@ -345,14 +345,14 @@ export function ClientDashboard({
           title={
             <div className="flex items-center justify-between w-full flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <FileText size={18} className="text-midyaf-purple" />
+                <FileText size={18} className="text-midyaf-pearl" />
                 <span>{isArabic ? "التقارير التنفيذية" : "Executive Reports"}</span>
               </div>
               {onDownloadReport && (
                 <button
                   type="button"
                   onClick={onDownloadReport}
-                  className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 px-3 py-1.5 text-xs font-bold text-midyaf-purple hover:bg-midyaf-purple/20 transition dark:bg-midyaf-purple/20 dark:text-purple-300 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 px-3 py-1.5 text-xs font-bold text-midyaf-pearl hover:bg-midyaf-purple/20 transition dark:bg-midyaf-purple/20 dark:text-purple-300 cursor-pointer"
                 >
                   <Download size={14} />
                   <span>{isArabic ? "تحميل التقرير التنفيذي PDF" : "Download PDF Report"}</span>
@@ -364,7 +364,7 @@ export function ClientDashboard({
           <div className="rounded-lg border border-white/5 bg-[#121626] p-5 shadow-sm space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h4 className="font-extrabold text-slate-900 dark:text-white dark:text-white text-base">
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-base">
                   {report?.title || (isArabic ? "التقرير الختامي المعتمد للفعالية — قمة القيادة والضيافة السيادية" : "Confirmed Event Report — Sovereign Leadership Summit")}
                 </h4>
                 <p className="text-xs text-slate-400 mt-1 font-tnum">
@@ -392,7 +392,7 @@ export function ClientDashboard({
               ].map((stat, i) => (
                 <div key={i} className="rounded-xl border border-white/5 bg-[#121626] p-3 text-center bg-[#121626]">
                   <span className="text-[10px] text-slate-400 block">{stat.label}</span>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-white dark:text-white font-tnum">{stat.val}</span>
+                  <span className="text-base font-extrabold text-slate-900 dark:text-white font-tnum">{stat.val}</span>
                 </div>
               ))}
             </div>

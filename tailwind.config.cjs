@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./client/index.html", "./client/src/**/*.{ts,tsx}"],
+  // The app is dark-only; `dark:` variants are keyed to the attribute the
+  // shell sets on <html>, never to the OS preference.
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -18,10 +21,17 @@ module.exports = {
           smoke: "#94A3B8"
         }
       },
+      // Design rule: maximum radius is rounded-lg (8px). Larger sizes are
+      // locked to the same value so legacy call sites cannot exceed it.
+      borderRadius: {
+        xl: "0.5rem",
+        "2xl": "0.5rem",
+        "3xl": "0.5rem"
+      },
       fontFamily: {
-        arabic: ["IBM Plex Sans Arabic", "Tajawal", "Inter", "sans-serif"],
-        english: ["Inter", "sans-serif"],
-        display: ["IBM Plex Sans Arabic", "Inter", "sans-serif"]
+        arabic: ["IBM Plex Sans Arabic", "Inter Variable", "sans-serif"],
+        english: ["Inter Variable", "IBM Plex Sans Arabic", "sans-serif"],
+        display: ["IBM Plex Sans Arabic", "Inter Variable", "sans-serif"]
       },
       boxShadow: {
         sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",

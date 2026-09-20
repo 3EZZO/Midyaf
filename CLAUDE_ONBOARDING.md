@@ -14,7 +14,10 @@ The project is deployed on **Render** (render.yaml in the root).
 |---|---|
 | **Runtime** | Node.js (v24+), ESM (`"type": "module"` in package.json) |
 | **Language** | TypeScript (strict mode, `ES2022` target) |
-| **Frontend** | React 18 + Vite + Tailwind CSS (no Next.js, no router — single-page portal switching) |
+| **Frontend** | React 19 + Vite 6 + Tailwind CSS 3.4 (no Next.js, no router — single-page portal switching) |
+| **Fonts** | Self-hosted via `@fontsource` — IBM Plex Sans Arabic (Arabic UI) + Inter Variable (Latin). Imported in `client/src/main.tsx`; no Google Fonts. |
+| **Theme** | **Dark-only.** `<html data-theme="dark">` is permanent; Tailwind `darkMode` is keyed to that selector. There is no light mode and no theme toggle. |
+| **Language** | **Arabic default.** Persisted in `localStorage["midyaf.lang"]`; `<html lang/dir>` is set by an inline boot script in `client/index.html` and by i18n's `languageChanged` listener. |
 | **Backend** | Express.js + Socket.IO (real-time events) |
 | **Database** | PostgreSQL via Prisma ORM |
 | **Auth** | JWT (access + refresh tokens, bcryptjs) |
@@ -76,13 +79,11 @@ MIDYAF/
 │   │   │   ├── OperationsPortals.tsx         # MASSIVE FILE (~278KB). Contains:
 │   │   │   │                                 #   CompanyDashboard, ActivityIntakePage,
 │   │   │   │                                 #   CaptainsApp, CoordinatorsApp, GuestJourneyApp
-│   │   │   ├── DriverApp.tsx                 # Driver/Captain mobile app
-│   │   │   ├── GuestApp.tsx                  # Guest journey app
-│   │   │   ├── GuestSelfOnboarding.tsx       # Guest self-registration portal
-│   │   │   ├── OrganizerDashboard.tsx        # Organizer dashboard
-│   │   │   ├── SuperAdmin.tsx                # Super admin panel
-│   │   │   ├── SupplierMarketplace.tsx       # Supplier marketplace
+│   │   │   ├── GuestSelfOnboarding.tsx       # Guest self-registration portal (#onboarding hash)
 │   │   │   └── types.ts                      # Page-level type definitions
+│   │   │   # NOTE: the Guest/Captain/Coordinator portals live INSIDE OperationsPortals.tsx.
+│   │   │   # Older standalone DriverApp/GuestApp/OrganizerDashboard/SuperAdmin/SupplierMarketplace
+│   │   │   # pages were dead code and were deleted (see git history if needed).
 │   │   ├── lib/
 │   │   │   ├── api.ts                        # API client (login, getBootstrap, apiFetch, apiUploadFile)
 │   │   │   ├── format.ts                     # Money, date, percent formatters (uses ar-SA-u-nu-latn)
@@ -93,6 +94,7 @@ MIDYAF/
 │   │   │   ├── tacticalAudio.ts              # Audio feedback system
 │   │   │   ├── telemetryCodec.ts             # Telemetry data encoding/decoding
 │   │   │   ├── navigation.ts                 # Navigation helpers
+│   │   │   ├── useSocket.ts                  # The ONE Socket.IO connection (+ SocketContext, status, typed server events)
 │   │   │   ├── use3DTilt.ts                  # 3D card tilt effect hook
 │   │   │   └── useLiveLocation.ts            # Geolocation hook
 │   │   ├── i18n/index.ts                     # i18next config (AR + EN translations)
@@ -389,3 +391,8 @@ VITE_API_BASE_URL=/api
 8. **RTL correctness** — use `ms-`/`me-`/`ps-`/`pe-` instead of `ml-`/`mr-`/`pl-`/`pr-`
 9. **Accessibility** — maintain WCAG contrast ratios, visible keyboard focus states
 10. **No decorative motion** — animation only for state changes (e.g., `transition-colors`), not hover effects
+11. **Dark-only** — never add `light` theme branches or a theme toggle; `dark:` prefixes are inert-but-correct and may be stripped when a file is touched
+12. **Nothing under 12px** — `text-xs` is the floor; do not add `text-[10px]`/`text-[11px]`
+13. **Codemods live in `scripts/codemods/`** — bulk edits to files containing Arabic must be Node scripts (UTF-8, CRLF-aware), committed for review
+14. **One socket** — never call `io()` outside `client/src/lib/useSocket.ts`; consume `useSocketContext()` instead
+15. **Projector density** — Ctrl+Shift+P toggles `html[data-density="projector"]` (18px root). Size with rem/Tailwind scale, never fixed px, so this keeps working

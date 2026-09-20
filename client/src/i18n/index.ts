@@ -106,13 +106,35 @@ const resources = {
   }
 };
 
+export const LANGUAGE_STORAGE_KEY = "midyaf.lang";
+
+function readStoredLanguage(): "ar" | "en" {
+  try {
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored === "en" || stored === "ar") return stored;
+  } catch {
+    // storage unavailable (private mode, SSR)
+  }
+  return "ar";
+}
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: "en",
+  lng: readStoredLanguage(),
   fallbackLng: "en",
   interpolation: {
     escapeValue: false
   }
+});
+
+i18n.on("languageChanged", (lng) => {
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lng);
+  } catch {
+    // ignore
+  }
+  document.documentElement.lang = lng;
+  document.documentElement.dir = lng === "ar" ? "rtl" : "ltr";
 });
 
 export default i18n;

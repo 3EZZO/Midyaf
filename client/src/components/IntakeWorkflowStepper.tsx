@@ -87,7 +87,7 @@ export function IntakeWorkflowStepper({
           <span className="grid size-6 place-items-center rounded-lg bg-midyaf-gold/20 text-midyaf-gold font-black text-xs">
             <Sparkles size={13} />
           </span>
-          <h3 className="text-xs font-black tracking-wide text-midyaf-purple dark:text-white uppercase">
+          <h3 className="text-xs font-black tracking-wide text-midyaf-pearl dark:text-white uppercase">
             {isArabic ? "مسار العمل اللوجستي الذكي (مراحل الإدخال والاعتماد)" : "Interactive Logistics Workflow Stepper"}
           </h3>
         </div>
@@ -112,18 +112,18 @@ export function IntakeWorkflowStepper({
                 isCompleted
                   ? "bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15"
                   : isActive
-                  ? "bg-midyaf-purple/10 border border-midyaf-purple/30 shadow-none/20 hover:bg-midyaf-purple/15"
+                  ? "bg-midyaf-purple/10 border border-midyaf-purple/30 shadow-none hover:bg-midyaf-purple/15"
                   : isLocked
                   ? "bg-slate-100/70 border border-dashed border-white/5 opacity-70 hover:opacity-100 dark:bg-slate-800/40 dark:border-slate-700"
-                  : "bg-white border border-white/5/80 hover:border-midyaf-gold/50 hover:bg-midyaf-gold/5 dark:bg-slate-800 dark:border-slate-700"
+                  : "bg-white border border-white/5 hover:border-midyaf-gold/50 hover:bg-midyaf-gold/5 dark:bg-slate-800 dark:border-slate-700"
               }`}
             >
               <div
                 className={`grid size-9 shrink-0 place-items-center rounded-lg transition-transform group-hover:scale-105 ${
                   isCompleted
-                    ? "bg-emerald-600 text-white shadow-xs"
+                    ? "bg-emerald-600 text-white shadow-sm"
                     : isActive
-                    ? "bg-midyaf-purple text-midyaf-gold shadow-xs"
+                    ? "bg-midyaf-purple text-midyaf-gold shadow-sm"
                     : isLocked
                     ? "bg-slate-200 text-slate-400 dark:bg-slate-700"
                     : "bg-midyaf-gold/15 text-midyaf-gold dark:bg-midyaf-gold/20"
@@ -143,7 +143,7 @@ export function IntakeWorkflowStepper({
                   <span className="text-[10px] font-black text-slate-400">
                     {step.num}.
                   </span>
-                  <p className="text-xs font-black text-slate-900 dark:text-white dark:text-white truncate">
+                  <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                     {isArabic ? step.titleAr : step.titleEn}
                   </p>
                 </div>

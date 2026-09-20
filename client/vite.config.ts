@@ -9,29 +9,67 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "prompt",
       manifest: {
-        name: 'Midyaf',
-        short_name: 'Midyaf',
-        description: 'AI-powered royal hospitality and sovereign event logistics command center',
-        theme_color: '#000000',
+        id: "/",
+        name: "Midyaf",
+        short_name: "Midyaf",
+        description:
+          "AI-powered royal hospitality and sovereign event logistics command center",
+        lang: "ar",
+        dir: "rtl",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        orientation: "any",
+        theme_color: "#090C15",
+        background_color: "#090C15",
         icons: [
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
           {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
+        ]
+      },
+      workbox: {
+        // Keep the demo alive on venue Wi-Fi: map tiles and fonts are served
+        // from cache once a rehearsal has warmed them.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "map-tiles-carto",
+              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
           },
           {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
+            urlPattern: /^https:\/\/server\.arcgisonline\.com\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "map-tiles-esri",
+              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/[a-c]\.tile\.openstreetmap\.org\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "map-tiles-osm",
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
           }
         ]
       },
       devOptions: {
-        enabled: true,
-        type: 'module',
+        enabled: false
       }
     })
   ],

@@ -1,17 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#090C15" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Midyaf" />
     <meta
       name="description"
       content="Midyaf (مِضْيَافٌ) — AI-powered royal hospitality and sovereign event logistics command center"
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Midyaf | مِضْيَافٌ</title>
+    <script>
+      // Apply the persisted language before React mounts so the first paint
+      // is already in the right direction. Theme is always dark.
+      (function () {
+        try {
+          var lang = localStorage.getItem("midyaf.lang") || "ar";
+          var root = document.documentElement;
+          root.lang = lang;
+          root.dir = lang === "ar" ? "rtl" : "ltr";
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

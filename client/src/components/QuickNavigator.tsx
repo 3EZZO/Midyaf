@@ -24,8 +24,6 @@ import {
   Settings2,
   FileDown,
   Share2,
-  Moon,
-  Sun,
   Languages,
   Shield,
   Briefcase,
@@ -56,7 +54,6 @@ interface QuickNavigatorProps {
   activePortal: PortalKey;
   allowedPortals: PortalKey[];
   onSelectPortal: (portal: PortalKey) => void;
-  onToggleDarkMode: () => void;
   onToggleLanguage: () => void;
   isDemoMode?: boolean;
   onOpenWarRoom?: () => void;
@@ -71,7 +68,6 @@ export function QuickNavigator({
   activePortal,
   allowedPortals,
   onSelectPortal,
-  onToggleDarkMode,
   onToggleLanguage,
   isDemoMode,
   onOpenWarRoom,
@@ -379,17 +375,6 @@ export function QuickNavigator({
       keywordsAr: ["مشاركة", "رابط", "نسخ"]
     },
     {
-      id: "act-toggle-dark",
-      titleEn: "Toggle Dark / Light Mode",
-      titleAr: "تبديل المظهر الليلي / النهاري",
-      category: "action",
-      actionType: "toggle-dark",
-      icon: Moon,
-      shortcut: "Theme",
-      keywordsEn: ["theme", "dark", "light", "mode", "color"],
-      keywordsAr: ["مظهر", "ليلي", "نهاري", "لون", "سمة"]
-    },
-    {
       id: "act-switch-lang",
       titleEn: "Switch Language (العربية / English)",
       titleAr: "تغيير لغة الواجهة (English / العربية)",
@@ -468,9 +453,6 @@ export function QuickNavigator({
         case "share-plan":
           onSharePlan?.();
           break;
-        case "toggle-dark":
-          onToggleDarkMode();
-          break;
         case "switch-lang":
           onToggleLanguage();
           break;
@@ -532,7 +514,7 @@ export function QuickNavigator({
                 ? "ابحث عن أي بوابة، قسم، إعداد، أو إجراء سريع (مثال: عقود، CSV، خريطة، PDF)..."
                 : "Search portals, in-page sections, tools, or actions (e.g. CSV, Map, Contracts, PDF)..."
             }
-            className="w-full bg-transparent text-sm text-slate-900 dark:text-white dark:text-white placeholder-slate-400 focus:outline-hidden font-medium"
+            className="w-full bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden font-medium"
           />
           {query && (
             <button
@@ -565,7 +547,7 @@ export function QuickNavigator({
               }}
               className={`rounded-lg px-2.5 py-1 font-bold text-xs transition-all ${
                 selectedCategory === cat.id
-                  ? "bg-midyaf-purple text-white shadow-xs"
+                  ? "bg-midyaf-purple text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
@@ -595,7 +577,7 @@ export function QuickNavigator({
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all ${
                     isSelected
-                      ? "bg-gradient-to-r from-midyaf-purple/15 via-midyaf-purple/10 to-transparent text-midyaf-purple dark:text-white ring-1 ring-midyaf-gold/40"
+                      ? "bg-gradient-to-r from-midyaf-purple/15 via-midyaf-purple/10 to-transparent text-midyaf-pearl dark:text-white ring-1 ring-midyaf-gold/40"
                       : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
                 >
@@ -603,7 +585,7 @@ export function QuickNavigator({
                     <div
                       className={`grid size-8 place-items-center rounded-lg transition-transform ${
                         isSelected
-                          ? "bg-[#121626] text-midyaf-gold scale-110 shadow-xs ring-1 ring-midyaf-gold/30"
+                          ? "bg-[#121626] text-midyaf-gold scale-110 shadow-sm ring-1 ring-midyaf-gold/30"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                       }`}
                     >

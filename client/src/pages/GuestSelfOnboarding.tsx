@@ -47,7 +47,7 @@ export function GuestSelfOnboarding({
 
           {step === 1 && (
             <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-slate-900 dark:text-white dark:text-white text-sm">{isArabic ? "المعلومات الأساسية" : "Basic Information"}</h3>
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{isArabic ? "المعلومات الأساسية" : "Basic Information"}</h3>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "الاسم الكامل" : "Full Name"}</label>
                 <input required type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full rounded-xl border border-white/5 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "كما هو موضح في الهوية" : "As shown on ID"} />
@@ -61,7 +61,7 @@ export function GuestSelfOnboarding({
 
           {step === 2 && (
             <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-slate-900 dark:text-white dark:text-white text-sm">{isArabic ? "تفضيلات الضيافة" : "Hospitality Preferences"}</h3>
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{isArabic ? "تفضيلات الضيافة" : "Hospitality Preferences"}</h3>
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "القيود الغذائية (اختياري)" : "Dietary Restrictions (Optional)"}</label>
                 <input type="text" value={formData.dietary} onChange={e => setFormData({...formData, dietary: e.target.value})} className="w-full rounded-xl border border-white/5 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "نباتي، خالي من الجلوتين..." : "Vegan, Gluten-free..."} />
@@ -81,7 +81,7 @@ export function GuestSelfOnboarding({
               <div className="mx-auto w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="font-bold text-slate-900 dark:text-white dark:text-white text-lg">{isArabic ? "جاهز للإرسال" : "Ready to Submit"}</h3>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">{isArabic ? "جاهز للإرسال" : "Ready to Submit"}</h3>
               <p className="text-xs text-slate-500">
                 {isArabic ? "سيتم إنشاء ملفك وإصدار بطاقة الصعود الرقمية (QR)." : "Your profile will be created and digital boarding pass (QR) issued."}
               </p>

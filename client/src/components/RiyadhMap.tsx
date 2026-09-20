@@ -93,7 +93,7 @@ export const SUMMIT_CORRIDORS = [
   {
     nameEn: "Airport Protocol Corridor (KKIA T2 ↔ Ritz-Carlton)",
     nameAr: "ممر الاستقبال الدبلوماسي (مطار الملك خالد ↔ الريتز-كارلتون)",
-    color: "#C9A84C",
+    color: "#D4AF37",
     points: [
       [24.9576, 46.6988],
       [24.9120, 46.7050],
@@ -316,7 +316,7 @@ export function RiyadhMap({
             weight = 2;
             dashArray = "2, 4";
           } else if (ring.ring === "DOCKED_BAY") {
-            ringColor = "#C9A84C";
+            ringColor = "#D4AF37";
             fillOpacity = 0.25;
             weight = 2.5;
             dashArray = undefined;
@@ -397,7 +397,7 @@ export function RiyadhMap({
             [dropoffPoint.lat, dropoffPoint.lng]
           ],
           {
-            color: task.status === "DELAYED" ? "#EF4444" : "#C9A84C",
+            color: task.status === "DELAYED" ? "#EF4444" : "#D4AF37",
             weight: 6,
             opacity: 0.35
           }
@@ -849,7 +849,7 @@ function addCustomMarker({
     iconHtml = `
       <div class="relative flex items-center justify-center">
         <span class="absolute inline-flex size-10 animate-ping rounded-full bg-amber-400 opacity-50"></span>
-        <div class="relative z-10 flex items-center justify-center size-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-[0_0_20px_rgba(201,168,76,0.9)] border border-amber-300 text-sm">
+        <div class="relative z-10 flex items-center justify-center size-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-[0_0_20px_rgba(212, 175, 55,0.9)] border border-amber-300 text-sm">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
         </div>
       </div>

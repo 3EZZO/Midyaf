@@ -72,7 +72,7 @@ export function SupplierContractWorkflow({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+              <h3 className="text-base font-black text-midyaf-pearl dark:text-white">
                 {isArabic ? "مسار اعتماد العقود مع الموردين الـ 8 المعتمدين" : "8-Category Supplier Contract Workflow"}
               </h3>
               <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
@@ -259,13 +259,13 @@ export function SupplierContractWorkflow({
                     ? "border-emerald-500/30 bg-emerald-50/30 dark:border-emerald-500/20 dark:bg-emerald-950/20"
                     : isDispatched
                     ? "border-amber-500/30 bg-amber-50/20 dark:border-amber-500/20 dark:bg-amber-950/10"
-                    : "border-white/5/70 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-800/40"
+                    : "border-white/5 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-800/40"
                 }`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-1">
                     <div className="flex items-center gap-2">
-                      <div className="grid size-7 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300">
+                      <div className="grid size-7 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-pearl dark:bg-purple-500/20 dark:text-purple-300">
                         <Icon size={14} />
                       </div>
                       <span className="text-[10px] font-bold text-midyaf-gold uppercase">
@@ -286,7 +286,7 @@ export function SupplierContractWorkflow({
                 </div>
 
                 <div className="mt-3 border-t border-white/5 pt-2 dark:border-slate-800 flex items-center justify-between text-[10px]">
-                  <span className="font-black text-midyaf-purple dark:text-purple-300">
+                  <span className="font-black text-midyaf-pearl dark:text-purple-300">
                     {money(c.amount)}
                   </span>
                   {isContractsReceived ? (

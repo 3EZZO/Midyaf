@@ -89,13 +89,13 @@ export function TacticalToastProvider({ children }: { children: React.ReactNode 
             ? "border-rose-500/50 shadow-[0_8px_32px_rgba(244,63,94,0.25)]"
             : isWarning
             ? "border-amber-500/50 shadow-[0_8px_32px_rgba(245,158,11,0.25)]"
-            : "border-[#C9A84C]/45 shadow-[0_8px_32px_rgba(45,10,95,0.45)]";
+            : "border-[#D4AF37]/45 shadow-[0_8px_32px_rgba(45,10,95,0.45)]";
 
           return (
             <div
               key={toast.id}
               role="alert"
-              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl bg-[#131020]/95 backdrop-blur-xl border ${borderColor} text-[#F0EDE6] transition-all duration-300 animate-in fade-in slide-in-from-bottom-3`}
+              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl bg-[#121626]/95 backdrop-blur-xl border ${borderColor} text-[#F0EDE6] transition-all duration-300 animate-in fade-in slide-in-from-bottom-3`}
             >
               <div className="shrink-0 mt-0.5">
                 {isAlert ? (
@@ -105,7 +105,7 @@ export function TacticalToastProvider({ children }: { children: React.ReactNode 
                 ) : isSuccess ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                 ) : (
-                  <ShieldCheck className="w-5 h-5 text-[#C9A84C]" />
+                  <ShieldCheck className="w-5 h-5 text-[#D4AF37]" />
                 )}
               </div>
 
@@ -123,7 +123,7 @@ export function TacticalToastProvider({ children }: { children: React.ReactNode 
               <button
                 type="button"
                 onClick={() => dismiss(toast.id)}
-                className="shrink-0 p-1 text-[#F0EDE6]/40 hover:text-[#C9A84C] transition-colors rounded"
+                className="shrink-0 p-1 text-[#F0EDE6]/40 hover:text-[#D4AF37] transition-colors rounded"
                 title="Dismiss"
               >
                 <X className="w-3.5 h-3.5" />

@@ -52,14 +52,14 @@ export function CategoryPriceRangeSection({
   };
 
   return (
-    <div id="section-price-ranges" className="rounded-lg border border-white/5/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div id="section-price-ranges" className="rounded-lg border border-white/5 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <div className="grid size-8 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300">
+            <div className="grid size-8 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-pearl dark:bg-purple-500/20 dark:text-purple-300">
               <TrendingDown size={17} />
             </div>
-            <h3 className="text-base font-black text-midyaf-purple dark:text-white">
+            <h3 className="text-base font-black text-midyaf-pearl dark:text-white">
               {isArabic ? "مؤشر نطاقات الأسعار التنافسية (عروض الموردين)" : "Supplier Quotation Price Ranges"}
             </h3>
           </div>
@@ -100,7 +100,7 @@ export function CategoryPriceRangeSection({
                       <IconComponent size={16} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-midyaf-purple dark:text-white">
+                      <h4 className="text-xs font-black text-midyaf-pearl dark:text-white">
                         {isArabic ? range.categoryNameAr : range.categoryNameEn}
                       </h4>
                       <p className="text-[10px] text-slate-400">
@@ -108,7 +108,7 @@ export function CategoryPriceRangeSection({
                       </p>
                     </div>
                   </div>
-                  <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold text-midyaf-purple shadow-xs ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200">
+                  <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold text-midyaf-pearl shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200">
                     {range.currency}
                   </span>
                 </div>
@@ -150,7 +150,7 @@ export function CategoryPriceRangeSection({
                 <button
                   type="button"
                   onClick={() => toggleCategory(range.category)}
-                  className="flex w-full items-center justify-between text-[11px] font-bold text-midyaf-purple hover:text-midyaf-gold dark:text-purple-300 cursor-pointer"
+                  className="flex w-full items-center justify-between text-[11px] font-bold text-midyaf-pearl hover:text-midyaf-gold dark:text-purple-300 cursor-pointer"
                 >
                   <span>{isArabic ? "استعراض عروض الشركات (4–5)" : "View Company Bids (4–5)"}</span>
                   {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -166,14 +166,14 @@ export function CategoryPriceRangeSection({
                             ? "border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/30"
                             : q.status === "RECOMMENDED"
                             ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20"
-                            : "border-white/5/70 bg-white dark:border-slate-700 dark:bg-slate-800"
+                            : "border-white/5 bg-white dark:border-slate-700 dark:bg-slate-800"
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-800 dark:text-white truncate">
                             {q.vendorName}
                           </span>
-                          <span className="font-black text-midyaf-purple dark:text-purple-300">
+                          <span className="font-black text-midyaf-pearl dark:text-purple-300">
                             {money(q.totalPrice)}
                           </span>
                         </div>

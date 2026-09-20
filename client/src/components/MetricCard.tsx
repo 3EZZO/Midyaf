@@ -68,7 +68,7 @@ export function MetricCard({
             </div>
           ) : null}
         </div>
-        <div className="mt-3 text-3xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white dark:text-white transition-colors group-hover:text-midyaf-gold">
+        <div className="mt-3 text-3xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white transition-colors group-hover:text-midyaf-gold">
           {value}
         </div>
         {detail ? (

@@ -70,7 +70,7 @@ export function DashboardJumpDock({ isArabic, isDemoMode }: DashboardJumpDockPro
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto py-1 px-1 -my-1 scrollbar-none animate-fadeIn">
-      <div className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg bg-midyaf-purple/10 dark:bg-midyaf-purple/20 text-[11px] font-black text-midyaf-purple dark:text-purple-300">
+      <div className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg bg-midyaf-purple/10 dark:bg-midyaf-purple/20 text-[11px] font-black text-midyaf-pearl dark:text-purple-300">
         <Navigation size={12} className="text-midyaf-gold" />
         <span>{isArabic ? "انتقال سريع:" : "Quick Jump:"}</span>
       </div>
@@ -83,7 +83,7 @@ export function DashboardJumpDock({ isArabic, isDemoMode }: DashboardJumpDockPro
               key={chip.id}
               type="button"
               onClick={() => smoothScrollToSection(chip.id)}
-              className="flex items-center gap-1.5 rounded-xl border border-white/5/80 bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-midyaf-gold hover:bg-midyaf-gold/10 hover:text-midyaf-purple hover:scale-105 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-midyaf-gold cursor-pointer"
+              className="flex items-center gap-1.5 rounded-xl border border-white/5 bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-all duration-200 hover:border-midyaf-gold hover:bg-midyaf-gold/10 hover:text-midyaf-pearl hover:scale-105 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-midyaf-gold cursor-pointer"
             >
               <Icon size={13} className="text-midyaf-gold shrink-0" />
               <span>{isArabic ? chip.labelAr : chip.labelEn}</span>

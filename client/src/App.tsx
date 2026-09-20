@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { io } from "socket.io-client";
 import {
   Building2,
   Car,
@@ -8,11 +7,9 @@ import {
   Crown,
   Globe2,
   LayoutDashboard,
-  Moon,
   Shield,
   ShieldCheck,
   Sparkles,
-  Sun,
   Users,
   KeyRound,
   Star,
@@ -65,6 +62,7 @@ import type {
   UserCreateInput
 } from "./pages/types";
 import { apiFetch, apiUploadFile, getBootstrap, login } from "./lib/api";
+import { SocketContext, useSocket } from "./lib/useSocket";
 import {
   isArabicLanguage,
   localizeText,
@@ -133,11 +131,6 @@ export function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [realtimeLog, setRealtimeLog] = useState<string[]>([]);
-  const [darkMode, setDarkMode] = useState(() => {
-    const stored = window.localStorage.getItem("midyaf.theme");
-    if (stored) return stored === "dark";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
@@ -233,15 +226,38 @@ export function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canTriggerSimulation, isDemoMode, data, simulation, isArabic, toast]);
 
+  // lang/dir are applied by i18n's languageChanged listener and the inline
+  // boot script in index.html. The theme is always dark.
   useEffect(() => {
-    document.documentElement.lang = i18n.language;
-    document.documentElement.dir = i18n.language === "ar" ? "rtl" : "ltr";
-  }, [i18n.language]);
+    document.documentElement.setAttribute("data-theme", "dark");
+  }, []);
 
+  // Projector density: Ctrl/Cmd+Shift+P scales the root font size.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
-    window.localStorage.setItem("midyaf.theme", darkMode ? "dark" : "light");
-  }, [darkMode]);
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        const root = document.documentElement;
+        const next = root.dataset.density === "projector" ? "" : "projector";
+        if (next) root.dataset.density = next;
+        else delete root.dataset.density;
+        try {
+          window.localStorage.setItem("midyaf.density", next);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    try {
+      if (window.localStorage.getItem("midyaf.density") === "projector") {
+        document.documentElement.dataset.density = "projector";
+      }
+    } catch {
+      // ignore
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -259,65 +275,42 @@ export function App() {
     void loadSessionData(session);
   }, [session?.accessToken]);
 
-  useEffect(() => {
-    if (!session || !data) {
-      return;
-    }
+  const stamp = () =>
+    new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
+  const pushLog = (line: string) =>
+    setRealtimeLog((current) => [line, ...current.slice(0, 4)]);
 
-    const socket = io({
-      autoConnect: true,
-      transports: ["websocket", "polling"]
-    });
-
-    socket.on("connect", () => {
-      if (eventId) {
-        socket.emit("event:join", eventId);
-      }
-
-      if (session.user.id) {
-        socket.emit("user:join", session.user.id);
-      }
-
-      if ( portal === "coordinator") {
-        socket.emit("organizer:join");
-      }
-    });
-
-    socket.on("driver:location_update", (payload) => {
-      setRealtimeLog((current) => [
-        `${p("Driver location updated", "تم تحديث موقع السائق")} · ${new Date().toLocaleTimeString(
-          isArabic ? "ar-SA" : "en-SA"
-        )}`,
-        ...current.slice(0, 4)
-      ]);
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              drivers: current.drivers.map((driver) =>
-                driver.id === payload.driverId
-                  ? {
-                      ...driver,
-                      currentLat: payload.lat,
-                      currentLng: payload.lng,
-                      zone: payload.zone ?? driver.zone,
-                      lastLocationAt: payload.updatedAt
-                    }
-                  : driver
-              )
-            }
-          : current
-      );
-    });
-
-    socket.on("user:location_update", (payload) => {
-      setRealtimeLog((current) => [
-        `${p("User GPS location updated", "تم تحديث موقع المستخدم GPS")} · ${new Date().toLocaleTimeString(
-          isArabic ? "ar-SA" : "en-SA"
-        )}`,
-        ...current.slice(0, 4)
-      ]);
-      if (payload.driverId) {
+  const { socket, status: socketStatus } = useSocket({
+    enabled: Boolean(session && data),
+    sessionKey: session?.accessToken ?? null,
+    eventId,
+    userId: session?.user.id,
+    joinOrganizers: portal === "coordinator",
+    handlers: {
+      "driver:location_update": (payload) => {
+        pushLog(`${p("Driver location updated", "تم تحديث موقع السائق")} · ${stamp()}`);
+        setData((current) =>
+          current
+            ? {
+                ...current,
+                drivers: current.drivers.map((driver) =>
+                  driver.id === payload.driverId
+                    ? {
+                        ...driver,
+                        currentLat: payload.lat,
+                        currentLng: payload.lng,
+                        zone: payload.zone ?? driver.zone,
+                        lastLocationAt: payload.updatedAt
+                      }
+                    : driver
+                )
+              }
+            : current
+        );
+      },
+      "user:location_update": (payload) => {
+        pushLog(`${p("User GPS location updated", "تم تحديث موقع المستخدم GPS")} · ${stamp()}`);
+        if (!payload.driverId) return;
         setData((current) =>
           current
             ? {
@@ -335,50 +328,36 @@ export function App() {
               }
             : current
         );
+      },
+      "rider:update": () => {
+        pushLog(`${p("VIP Hospitality Rider updated", "تم تحديث رايدر الضيافة VIP")} · ${stamp()}`);
+        void refreshData();
+      },
+      "task:status_change": (payload) => {
+        pushLog(`${p("Task status changed", "تم تحديث حالة المهمة")} · ${l(payload.status)}`);
+        updateTaskInState(payload.taskId, payload.status);
+      },
+      "task:assigned": (task) => {
+        pushLog(`${p("Task assigned", "تم إسناد مهمة")} · ${l(task.pickupLocation ?? task.id)}`);
+        void refreshData();
+      },
+      "guest:arrived": (payload) => {
+        pushLog(`${p("Guest arrived", "وصل الضيف")} · ${l(payload.guestName ?? payload.guestId)}`);
+      },
+      "alert:delay": (payload) => {
+        pushLog(`${p("Delay alert", "تنبيه تأخير")} · ${payload.taskId}`);
+        updateTaskInState(payload.taskId, "DELAYED");
+      },
+      "geofence:transition": (event) => {
+        const ring = l(event.currentRing);
+        const site = isArabic ? event.geofenceNameAr : event.geofenceNameEn;
+        pushLog(`${p("Geofence", "النطاق الجغرافي")} · ${site} · ${ring}`);
+      },
+      "fleet:diverted": (payload) => {
+        pushLog(`${p("Fleet diverted", "تم تحويل مسار الأسطول")} · ${payload.message}`);
       }
-    });
-
-    socket.on("rider:update", () => {
-      setRealtimeLog((current) => [
-        `${p("VIP Hospitality Rider updated", "تم تحديث رايدر الضيافة VIP")} · ${new Date().toLocaleTimeString(
-          isArabic ? "ar-SA" : "en-SA"
-        )}`,
-        ...current.slice(0, 4)
-      ]);
-      void refreshData();
-    });
-
-    socket.on("task:status_change", (payload) => {
-      setRealtimeLog((current) => [
-        `${p("Task status changed", "تم تحديث حالة المهمة")} · ${l(
-          payload.status
-        )}`,
-        ...current.slice(0, 4)
-      ]);
-      updateTaskInState(payload.taskId, payload.status);
-    });
-
-    socket.on("guest:arrived", (payload) => {
-      setRealtimeLog((current) => [
-        `${p("Guest arrived", "وصل الضيف")} · ${l(
-          payload.guestName ?? payload.guestId
-        )}`,
-        ...current.slice(0, 4)
-      ]);
-    });
-
-    socket.on("alert:delay", (payload) => {
-      setRealtimeLog((current) => [
-        `${p("Delay alert", "تنبيه تأخير")} · ${payload.taskId}`,
-        ...current.slice(0, 4)
-      ]);
-      updateTaskInState(payload.taskId, "DELAYED");
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [eventId, portal, session?.user.id, data]);
+    }
+  });
 
   const portalProps = useMemo(
     () => ({
@@ -426,10 +405,8 @@ export function App() {
     return (
       <LoginPage
         isArabic={isArabic}
-        darkMode={darkMode}
         error={authError}
         isLoading={isLoading}
-        onDarkModeToggle={() => setDarkMode((v) => !v)}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
@@ -459,7 +436,6 @@ export function App() {
     return (
       <ShellFrame
         isArabic={isArabic}
-        darkMode={darkMode}
         session={session}
         allowedPortals={allowedPortals}
         portal={portal}
@@ -470,7 +446,6 @@ export function App() {
         setIsWarRoomOpen={setIsWarRoomOpen}
         isQuickNavOpen={isQuickNavOpen}
         setIsQuickNavOpen={setIsQuickNavOpen}
-        onDarkModeToggle={() => setDarkMode((v) => !v)}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
@@ -487,9 +462,9 @@ export function App() {
   }
 
   return (
+    <SocketContext.Provider value={{ socket, status: socketStatus }}>
     <ShellFrame
       isArabic={isArabic}
-      darkMode={darkMode}
       session={session}
       allowedPortals={allowedPortals}
       portal={portal}
@@ -506,7 +481,6 @@ export function App() {
       setIsQuickNavOpen={setIsQuickNavOpen}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
-      onDarkModeToggle={() => setDarkMode((v) => !v)}
       onLanguageToggle={() =>
         void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
       }
@@ -514,6 +488,7 @@ export function App() {
     >
       {renderPortal(portal, portalProps, isArabic)}
     </ShellFrame>
+    </SocketContext.Provider>
   );
 
   async function handleLogin(email: string, password: string) {
@@ -1128,7 +1103,6 @@ const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: 
 function ShellFrame({
   children,
   isArabic,
-  darkMode,
   session,
   allowedPortals,
   portal,
@@ -1145,13 +1119,11 @@ function ShellFrame({
   setIsQuickNavOpen,
   onExportPdf,
   onSharePlan,
-  onDarkModeToggle,
   onLanguageToggle,
   onLogout
 }: {
   children: ReactNode;
   isArabic: boolean;
-  darkMode: boolean;
   session: Session;
   allowedPortals: PortalKey[];
   portal: PortalKey;
@@ -1168,33 +1140,25 @@ function ShellFrame({
   setIsQuickNavOpen: (open: boolean) => void;
   onExportPdf?: () => void;
   onSharePlan?: () => void;
-  onDarkModeToggle: () => void;
   onLanguageToggle: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
   const l = (value: string | number | null | undefined) =>
     localizeText(value, isArabic);
-  const rawName = (session.user.name || "").toLowerCase();
-  const isAnonymousAdmin =
-    rawName.includes("izeldin") ||
-    rawName.includes("rashed") ||
-    session.user.role === "SUPER_ADMIN" ||
-    session.user.email === "admin@midyaf.local";
-  const isAnonymousLogistics =
-    session.user.role === "LOGISTICS_MANAGER" ||
-    session.user.email === "organizer@midyaf.local";
+  // Privileged roles are shown by title rather than personal name on shared screens.
+  const roleDisplay: Partial<Record<Role, { en: string; ar: string; initials: string }>> = {
+    SUPER_ADMIN: { en: "Sovereign System Administrator", ar: "المشرف العام للمنظومة", initials: "SA" },
+    LOGISTICS_MANAGER: { en: "Logistics Operations Director", ar: "مدير العمليات اللوجستية", initials: "LD" }
+  };
+  const roleTitle = roleDisplay[session.user.role];
 
-  const sanitizedUserName = isAnonymousAdmin
-    ? (isArabic ? "المشرف العام للمنظومة" : "Sovereign System Administrator")
-    : isAnonymousLogistics
-    ? (isArabic ? "مدير العمليات اللوجستية" : "Logistics Operations Director")
+  const sanitizedUserName = roleTitle
+    ? (isArabic ? roleTitle.ar : roleTitle.en)
     : session.user.name;
 
-  const initials = isAnonymousAdmin
-    ? "SA"
-    : isAnonymousLogistics
-    ? "LD"
+  const initials = roleTitle
+    ? roleTitle.initials
     : session.user.name
         .split(" ")
         .map((w: string) => w[0])
@@ -1225,7 +1189,7 @@ function ShellFrame({
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight text-midyaf-purple dark:text-white">
+                <h1 className="text-lg font-black tracking-tight text-midyaf-pearl dark:text-white">
                   {t("brand")}
                 </h1>
                 <span className="text-shimmer text-sm font-bold">
@@ -1253,7 +1217,7 @@ function ShellFrame({
                 
                 setIsQuickNavOpen(true);
               }}
-              className="flex items-center gap-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-2xs transition-all ring-1 ring-slate-200/80 dark:ring-slate-700 cursor-pointer hover:ring-midyaf-gold/50"
+              className="flex items-center gap-2 rounded-xl bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-sm transition-all ring-1 ring-slate-200/80 dark:ring-slate-700 cursor-pointer hover:ring-midyaf-gold/50"
               title={isArabic ? "البحث والتنقل السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
             >
               <Search size={14} className="text-midyaf-gold" />
@@ -1293,13 +1257,6 @@ function ShellFrame({
             )}
 
             <button
-              onClick={onDarkModeToggle}
-              className="btn-ghost rounded-xl px-2.5 py-2 transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? <Sun size={18} className="text-midyaf-gold" /> : <Moon size={18} className="text-midyaf-purple" />}
-            </button>
-            <button
               onClick={onLanguageToggle}
               className="btn-ghost rounded-xl transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
@@ -1309,7 +1266,7 @@ function ShellFrame({
               <div className="grid size-8 place-items-center rounded-lg bg-[#121626] text-xs font-black text-white shadow-sm ring-1 ring-midyaf-gold/30">
                 {initials}
               </div>
-              <span className="text-sm font-bold text-midyaf-purple dark:text-white">
+              <span className="text-sm font-bold text-midyaf-pearl dark:text-white">
                 {sanitizedUserName}
               </span>
             </div>
@@ -1353,7 +1310,7 @@ function ShellFrame({
                 className={
                   active
                     ? "relative flex min-w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple via-midyaf-purple-light to-midyaf-purple-dark px-3.5 py-2 text-xs font-black text-white shadow-none ring-1 ring-midyaf-gold/40 transition-all duration-200 cursor-pointer"
-                    : "flex min-w-fit items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-500 transition-all duration-150 hover:bg-midyaf-purple/5 hover:text-midyaf-purple dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white cursor-pointer"
+                    : "flex min-w-fit items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-500 transition-all duration-150 hover:bg-midyaf-purple/5 hover:text-midyaf-pearl dark:text-slate-400 dark:hover:bg-midyaf-purple/20 dark:hover:text-white cursor-pointer"
                 }
               >
                 <Icon size={15} className={active ? "text-midyaf-gold" : "text-slate-400"} />
@@ -1375,14 +1332,14 @@ function ShellFrame({
 
       <main className="mx-auto max-w-7xl px-5 py-5">
         {/* Sleek Contextual Operations Bar (Replaces bulky static 220px banner) */}
-        <div className="mb-5 flex flex-col gap-3.5 rounded-lg border border-white/5/80 bg-white/90 p-3.5 shadow-card-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 lg:flex-row lg:items-center lg:justify-between animate-fadeInDown">
+        <div className="mb-5 flex flex-col gap-3.5 rounded-lg border border-white/5 bg-white/90 p-3.5 shadow-card-sm backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 lg:flex-row lg:items-center lg:justify-between animate-fadeInDown">
           <div className="flex items-center gap-3.5">
-            <div className="grid size-11 place-items-center rounded-xl bg-[#121626] text-midyaf-gold shadow-xs ring-1 ring-midyaf-gold/30 shrink-0">
+            <div className="grid size-11 place-items-center rounded-xl bg-[#121626] text-midyaf-gold shadow-sm ring-1 ring-midyaf-gold/30 shrink-0">
               <ActivePortalIcon size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm font-black text-midyaf-purple dark:text-white">
+                <h2 className="text-sm font-black text-midyaf-pearl dark:text-white">
                   {isArabic ? currentMeta?.titleAr : currentMeta?.titleEn}
                 </h2>
                 <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
@@ -1401,7 +1358,7 @@ function ShellFrame({
 
           <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
             {/* Realtime Event Telemetry Ticker */}
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-white/5/60 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-white/5 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
               <span className="live-dot shrink-0" style={{ width: 6, height: 6 }} />
               <span className="truncate max-w-[220px] font-medium text-[11px]">
                 {realtimeLog[0] ?? (isArabic ? "البث المباشر متصل" : "Live telemetry connected")}
@@ -1413,7 +1370,7 @@ function ShellFrame({
               <button
                 type="button"
                 onClick={onExportPdf}
-                className="btn-gold flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                className="btn-gold flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold shadow-sm cursor-pointer"
                 title={isArabic ? "تصدير الخطة كملف PDF" : "Export Plan as PDF"}
               >
                 <Download size={13} />
@@ -1425,7 +1382,7 @@ function ShellFrame({
               <button
                 type="button"
                 onClick={onSharePlan}
-                className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-midyaf-purple ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-purple-300 cursor-pointer shadow-sm"
                 title={isArabic ? "نسخ ومشاركة رابط الخطة" : "Share Plan Link"}
               >
                 <Share2 size={13} />
@@ -1439,7 +1396,7 @@ function ShellFrame({
                 
                 setIsQuickNavOpen(true);
               }}
-              className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 hover:bg-midyaf-purple/20 text-midyaf-purple dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 px-3 py-1.5 text-xs font-black transition-all cursor-pointer"
+              className="flex items-center gap-1.5 rounded-xl bg-midyaf-purple/10 hover:bg-midyaf-purple/20 text-midyaf-pearl dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 px-3 py-1.5 text-xs font-black transition-all cursor-pointer"
               title={isArabic ? "البحث والتنقل السريع (Ctrl + K)" : "Quick Search & Jump (Ctrl + K)"}
             >
               <Search size={13} className="text-midyaf-gold" />
@@ -1471,7 +1428,6 @@ function ShellFrame({
         activePortal={portal}
         allowedPortals={allowedPortals}
         onSelectPortal={setPortal}
-        onToggleDarkMode={onDarkModeToggle}
         onToggleLanguage={onLanguageToggle}
         isDemoMode={isDemoMode}
         onOpenWarRoom={() => setIsWarRoomOpen?.(true)}
@@ -1484,18 +1440,14 @@ function ShellFrame({
 
 function LoginPage({
   isArabic,
-  darkMode,
   error,
   isLoading,
-  onDarkModeToggle,
   onLanguageToggle,
   onLogin
 }: {
   isArabic: boolean;
-  darkMode: boolean;
   error: string | null;
   isLoading: boolean;
-  onDarkModeToggle: () => void;
   onLanguageToggle: () => void;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
@@ -1537,13 +1489,6 @@ function LoginPage({
       {/* Top bar with controls */}
       <div className="absolute top-0 start-0 end-0 z-10 flex items-center justify-end gap-2 px-5 py-4">
         <button
-          onClick={onDarkModeToggle}
-          className="btn-ghost rounded-xl px-2.5 py-2"
-          aria-label="Toggle dark mode"
-        >
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-        <button
           onClick={onLanguageToggle}
           className="btn-ghost rounded-xl"
         >
@@ -1563,7 +1508,7 @@ function LoginPage({
             <p className="text-sm font-bold text-shimmer animate-fadeInUp delay-200">
               {t("common.riyadhOnly")}
             </p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-midyaf-purple animate-fadeInUp delay-300 lg:text-5xl">
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-midyaf-pearl animate-fadeInUp delay-300 lg:text-5xl">
               {t("heroTitle")}
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-7 text-slate-500 animate-fadeInUp delay-400">
@@ -1579,8 +1524,8 @@ function LoginPage({
               { icon: ShieldCheck, label: isArabic ? 'إطلاق العمليات' : 'Summit Launch' }
             ].map(({ icon: Ic, label }) => (
               <div key={label} className="flex items-center gap-2 rounded-xl bg-midyaf-purple/5 px-3.5 py-2 ring-1 ring-midyaf-purple/10">
-                <Ic size={15} className="text-midyaf-purple" />
-                <span className="text-xs font-bold text-midyaf-purple">{label}</span>
+                <Ic size={15} className="text-midyaf-pearl" />
+                <span className="text-xs font-bold text-midyaf-pearl">{label}</span>
               </div>
             ))}
           </div>
@@ -1596,7 +1541,7 @@ function LoginPage({
               <ShieldCheck size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-midyaf-purple">
+              <h2 className="text-xl font-black tracking-tight text-midyaf-pearl">
                 {t("signIn")}
               </h2>
               <p className="text-xs text-slate-400">{t("signInSubtitle")}</p>
@@ -1656,7 +1601,7 @@ function LoginPage({
               <button
                 type="button"
                 onClick={() => void onLogin("admin@midyaf.local", "Midyaf@2026")}
-                className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-purple transition hover:bg-midyaf-purple/10 border border-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10 cursor-pointer"
+                className="flex items-center gap-2.5 rounded-xl bg-midyaf-purple/5 p-2.5 text-left text-xs font-bold text-midyaf-pearl transition hover:bg-midyaf-purple/10 border border-midyaf-purple/10 dark:bg-white/5 dark:text-purple-300 dark:hover:bg-white/10 cursor-pointer"
               >
                 <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-midyaf-gold/15 text-midyaf-gold ring-1 ring-midyaf-gold/30">
                   <Crown size={14} />
