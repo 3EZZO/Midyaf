@@ -21,6 +21,9 @@ export type PortalProps = {
   data: MidyafData;
   session?: Session;
   isDemoMode?: boolean;
+  /** Whether the current user may switch demo mode on/off. */
+  canTriggerSimulation?: boolean;
+  toggleDemoMode?: () => void;
   refreshData: () => Promise<void>;
   inviteGuests: (eventId: string, guests: GuestInviteInput[]) => Promise<void>;
   importGuests: (

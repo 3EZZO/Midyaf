@@ -1,44 +1,42 @@
-import { useState, FormEvent } from "react";
-import {
-  Map,
-  FileText,
-  CarFront,
-  Send,
-  TrendingUp,
-  Layers,
-  ChevronRight,
-  ClipboardList,
-  Mail
-} from "lucide-react";
-import type { MidyafData, Session, TaskStatus, TaskDelegation } from "@shared/domain";
-import { Section } from "./Section";
-import { Badge } from "./Badge";
-import { PortalHero } from "./PortalHero";
+import { useMemo, useState, type FormEvent } from "react";
+import { CarFront, ChevronLeft, ChevronRight, ClipboardList, FileText, Layers, Mail, Map, Send, TrendingUp } from "lucide-react";
+import type { MidyafData, Session, TaskDelegation } from "@shared/domain";
+import { integer, shortTime } from "../lib/format";
+import { fleetUtilisation, guestFunnel, slaSample, taskStatusByZone, taskStatusCounts } from "../lib/metrics";
+import { localizeZone } from "../lib/localizeDomain";
+import { ArcGauge, Funnel, StackedBars } from "./charts";
+import { Badge, Button, EmptyState, IconTabNav, Input, KpiTile, Section, StatusPill, Surface, useToast } from "./ui";
+import { PortalHero } from "./ui/PortalHero";
 
+type Tab = "intake" | "fleet" | "contracts" | "delegation" | "reports";
 
-
-function shortDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-import { useToast } from "./ui/Toast";
 export function SilaOperationsDashboard({
   data,
-  session,
   isDemoMode,
   isArabic,
-  onDownloadReport
+  onDownloadReport,
+  onToggleDemo
 }: {
   data: MidyafData;
   session: Session | null;
   isDemoMode: boolean;
   isArabic: boolean;
   onDownloadReport?: () => void;
+  onToggleDemo?: () => void;
 }) {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<"intake" | "fleet" | "contracts" | "delegation" | "reports">("intake");
+  const [activeTab, setActiveTab] = useState<Tab>("intake");
+  const event = data.events[0];
+  const tasks = event?.tasks ?? [];
 
-  // State from Logistics
+  // ── Selectors ──
+  const fleet = useMemo(() => fleetUtilisation(data.drivers), [data.drivers]);
+  const funnel = useMemo(() => guestFunnel(event?.guests ?? [], data.guestJourneys, isDemoMode), [event?.guests, data.guestJourneys, isDemoMode]);
+  const byZone = useMemo(() => taskStatusByZone(tasks, data.drivers), [tasks, data.drivers]);
+  const counts = useMemo(() => taskStatusCounts(tasks), [tasks]);
+  const sla = useMemo(() => slaSample(tasks), [tasks]);
+  const activeTasks = counts.ASSIGNED + counts.ACCEPTED + counts.EN_ROUTE + counts.ARRIVED + counts.PICKED_UP;
+
   const [replyText, setReplyText] = useState("");
   const [clientMessages, setClientMessages] = useState(() => [
     { id: "1", senderName: "Ministry of Culture (Client)", senderRole: "CLIENT", messageEn: "Are the VIP executive fleets staged at the Royal Terminal?", messageAr: "هل سيارات كبار الشخصيات جاهزة في الصالة الملكية؟", timestamp: "09:14 AM" },
@@ -48,7 +46,7 @@ export function SilaOperationsDashboard({
   const intakes = [...data.activityIntakes];
   const report = data.companyReports[0];
 
-  const [delegationTasks, setDelegationTasks] = useState<TaskDelegation[]>([
+  const [delegationTasks] = useState<TaskDelegation[]>([
     {
       id: "tsk-rel-1",
       taskId: "t-101",
@@ -84,269 +82,271 @@ export function SilaOperationsDashboard({
   function handleSendClientReply(e: FormEvent) {
     e.preventDefault();
     if (!replyText.trim()) return;
-    setClientMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      senderName: "Sila Operations Command",
-      senderRole: "LOGISTICS_MANAGER",
-      messageEn: replyText,
-      messageAr: replyText,
-      timestamp: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-    }]);
+    setClientMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        senderName: "Sila Operations Command",
+        senderRole: "LOGISTICS_MANAGER",
+        messageEn: replyText,
+        messageAr: replyText,
+        timestamp: shortTime(new Date().toISOString())
+      }
+    ]);
     setReplyText("");
   }
 
   const tabs = [
-    { id: "intake", icon: ClipboardList, labelEn: "Activity Intake", labelAr: "استقبال الأنشطة" },
-    { id: "delegation", icon: Layers, labelEn: "Task Delegation", labelAr: "تفويض المهام" },
-    { id: "fleet", icon: CarFront, labelEn: "Fleet Telemetry", labelAr: "تتبع الأسطول" },
-    { id: "contracts", icon: FileText, labelEn: "Supplier Contracts", labelAr: "عقود الموردين" },
-    { id: "reports", icon: TrendingUp, labelEn: "Executive Reports", labelAr: "التقارير التنفيذية" },
-  ] as const;
+    { id: "intake" as const, icon: ClipboardList, labelEn: "Activity Intake", labelAr: "استقبال الأنشطة" },
+    { id: "delegation" as const, icon: Layers, labelEn: "Task Delegation", labelAr: "تفويض المهام" },
+    { id: "fleet" as const, icon: CarFront, labelEn: "Fleet Telemetry", labelAr: "تتبع الأسطول" },
+    { id: "contracts" as const, icon: FileText, labelEn: "Supplier Contracts", labelAr: "عقود الموردين" },
+    { id: "reports" as const, icon: TrendingUp, labelEn: "Executive Reports", labelAr: "التقارير التنفيذية" }
+  ];
+
+  const Chevron = isArabic ? ChevronLeft : ChevronRight;
+  const zoneRows = byZone.map((r) => ({ ...r, label: r.zone === "UNASSIGNED" ? (isArabic ? "غير مسند" : "Unassigned") : localizeZone(r.zone, isArabic) }));
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 space-y-6 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PortalHero
-          badge={isArabic ? "صلة" : "Sila"}
-          title={isArabic ? "منصة عمليات صلة (لوجستيات وفعاليات)" : "Sila Operations Command (Logistics & Events Unified)"}
-          body={isArabic 
-            ? "تتبع الأسطول، تفويض المهام، إدارة العقود، والتواصل مع العميل في لوحة واحدة." 
-            : "Analyze metrics, track fleet telemetry, delegate tasks, and prepare executive reports in one unified dashboard."}
-        />
-        
-        {/* Investor Demo Trigger */}
-        <button
-          onClick={() => {
-            // Dispatch the Ctrl+Shift+D key event to trigger App.tsx simulation toggle
-            const event = new KeyboardEvent('keydown', {
-              key: 'D',
-              code: 'KeyD',
-              ctrlKey: true,
-              shiftKey: true,
-              bubbles: true
-            });
-            window.dispatchEvent(event);
-          }}
-          className={`flex items-center gap-2 rounded-lg px-5 py-3 font-bold shadow-lg transition-all cursor-pointer border ${
-            isDemoMode 
-              ? "bg-red-500 text-white border-red-600 hover:bg-red-600" 
-              : "bg-gradient-to-r from-midyaf-gold to-amber-500 text-white border-amber-600 hover:brightness-110"
-          }`}
-        >
-          <Map size={20} className={isDemoMode ? "animate-spin" : "animate-pulse"} />
-          <span>{isDemoMode ? (isArabic ? "إيقاف العرض التوضيحي" : "Stop Investor Demo") : (isArabic ? "بدء العرض التوضيحي الحي" : "Start Investor Demo")}</span>
-        </button>
+    <div className="space-y-6">
+      <PortalHero
+        badge={isArabic ? "صلة" : "Sila"}
+        title={isArabic ? "منصة عمليات صلة (لوجستيات وفعاليات)" : "Sila Operations Command (Logistics & Events Unified)"}
+        body={
+          isArabic
+            ? "تتبع الأسطول، تفويض المهام، إدارة العقود، والتواصل مع العميل في لوحة واحدة."
+            : "Analyze metrics, track fleet telemetry, delegate tasks, and prepare executive reports in one unified dashboard."
+        }
+        action={
+          onToggleDemo ? (
+            <Button variant={isDemoMode ? "danger" : "gold"} size="lg" leadingIcon={<Map className="size-5" aria-hidden />} onClick={onToggleDemo}>
+              {isDemoMode ? (isArabic ? "إيقاف العرض التوضيحي" : "Stop Investor Demo") : isArabic ? "بدء العرض التوضيحي الحي" : "Start Investor Demo"}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* KPI row */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiTile label={isArabic ? "الأسطول النشط" : "Fleet active"} value={fleet.percent} format="percent" detail={isArabic ? `${integer(fleet.active)} من ${integer(fleet.total)} كابتن` : `${integer(fleet.active)} of ${integer(fleet.total)} captains`} icon={<CarFront className="size-4" aria-hidden />} tone="gold" />
+        <KpiTile label={isArabic ? "المهام الجارية" : "Active tasks"} value={activeTasks} detail={isArabic ? `${integer(counts.COMPLETED)} مكتملة · ${integer(counts.DELAYED)} متأخرة` : `${integer(counts.COMPLETED)} completed · ${integer(counts.DELAYED)} delayed`} icon={<Layers className="size-4" aria-hidden />} tone={counts.DELAYED ? "warn" : "none"} />
+        <KpiTile label={isArabic ? "الالتزام بالوقت" : "On-time"} value={sla.onTimePercent} format="percent" detail={isArabic ? `${integer(sla.completed + sla.delayed)} مهمة مُقاسة` : `${integer(sla.completed + sla.delayed)} tasks measured`} icon={<TrendingUp className="size-4" aria-hidden />} tone={sla.onTimePercent >= 95 ? "ok" : "warn"} />
+        <KpiTile label={isArabic ? "الضيوف الواصلون" : "Guests arrived"} value={funnel.at(-1)?.count ?? 0} detail={isArabic ? `من ${integer(funnel[0]?.count ?? 0)} مدعو` : `of ${integer(funnel[0]?.count ?? 0)} invited`} icon={<ClipboardList className="size-4" aria-hidden />} />
       </div>
 
-      {/* ICON-BASED DRILL-DOWN NAVIGATION */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-center justify-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                isActive 
-                  ? "bg-[#121626] text-midyaf-gold border-white/5 shadow-none" 
-                  : "bg-white/80 border-white/5 text-slate-600 hover:bg-slate-50 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-              }`}
-            >
-              <Icon size={28} className={isActive ? "text-white" : "text-midyaf-pearl dark:text-purple-400"} />
-              <span className="text-xs font-bold text-center leading-tight">
-                {isArabic ? tab.labelAr : tab.labelEn}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* DRILL-DOWN CONTENT */}
-      <div className="mt-6 bg-white/40 dark:bg-slate-900/40 rounded-xl p-1 shadow-sm border border-white/5 dark:border-slate-800/50">
-        
-        {/* TAB: INTAKE */}
-        {activeTab === "intake" && (
-          <Section
-            id="section-intake"
-            title={
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
-                  <ClipboardList size={18} className="text-midyaf-pearl" />
-                  <span>{isArabic ? "استقبال الأنشطة وإدارة الضيوف" : "Sila Intake & Guest Management"}</span>
-                </div>
-                <button
-                  onClick={() => {
-                    const url = window.location.origin + window.location.pathname + "#onboarding";
-                    navigator.clipboard.writeText(url);
-                    toast.success(isArabic ? "تم نسخ رابط التسجيل للضيوف!" : "Guest invite link copied to clipboard!");
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-midyaf-purple/10 text-midyaf-pearl hover:bg-midyaf-purple/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                >
-                  <Mail size={12} />
-                  {isArabic ? "نسخ رابط دعوة الضيوف" : "Copy Guest Invite Link"}
-                </button>
+      {/* Charts row */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Section title={isArabic ? "استغلال الأسطول" : "Fleet utilisation"} bodyClassName="flex flex-col items-center gap-3">
+          <ArcGauge
+            value={fleet.percent}
+            label={isArabic ? "نشط" : "active"}
+            segments={[
+              { value: fleet.active, className: "stroke-gold-500" },
+              { value: fleet.idle, className: "stroke-ok" },
+              { value: fleet.offline, className: "stroke-neutral" }
+            ]}
+          />
+          <dl className="grid w-full grid-cols-3 gap-2 text-center text-xs">
+            {[
+              { l: isArabic ? "نشط" : "Active", v: fleet.active, c: "text-gold-500" },
+              { l: isArabic ? "متاح" : "Idle", v: fleet.idle, c: "text-ok" },
+              { l: isArabic ? "غير متصل" : "Offline", v: fleet.offline, c: "text-ink-muted" }
+            ].map((s) => (
+              <div key={s.l} className="rounded-lg bg-surface-1 p-2">
+                <dt className="text-ink-faint">{s.l}</dt>
+                <dd className={`font-tnum text-lg font-bold ${s.c}`}>{integer(s.v)}</dd>
               </div>
-            }
-          >
+            ))}
+          </dl>
+        </Section>
+        <Section title={isArabic ? "رحلة الضيوف" : "Guest journey"} eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}>
+          <Funnel stages={funnel} isArabic={isArabic} />
+        </Section>
+        <Section title={isArabic ? "المهام حسب المنطقة" : "Tasks by zone"}>
+          {zoneRows.length ? (
+            <StackedBars rows={zoneRows} keys={["COMPLETED", "EN_ROUTE", "ASSIGNED", "PENDING", "DELAYED"]} isArabic={isArabic} height={200} />
+          ) : (
+            <EmptyState compact title={isArabic ? "لا توجد مهام بعد" : "No tasks yet"} />
+          )}
+        </Section>
+      </div>
+
+      <IconTabNav tabs={tabs} value={activeTab} onChange={setActiveTab} layoutId="sila-tabs" ariaLabel={isArabic ? "أقسام العمليات" : "Operations sections"} />
+
+      {activeTab === "intake" && (
+        <Section
+          id="section-intake"
+          title={isArabic ? "استقبال الأنشطة وإدارة الضيوف" : "Sila Intake & Guest Management"}
+          action={
+            <Button
+              size="sm"
+              variant="ghost"
+              leadingIcon={<Mail className="size-4" aria-hidden />}
+              onClick={() => {
+                const url = window.location.origin + window.location.pathname + "#onboarding";
+                void navigator.clipboard.writeText(url);
+                toast.success(isArabic ? "تم نسخ رابط التسجيل للضيوف!" : "Guest invite link copied to clipboard!");
+              }}
+            >
+              {isArabic ? "نسخ رابط دعوة الضيوف" : "Copy Guest Invite Link"}
+            </Button>
+          }
+        >
+          {intakes.length === 0 ? (
+            <EmptyState compact title={isArabic ? "لا توجد أنشطة مسجلة" : "No activities yet"} />
+          ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {intakes.map((act) => (
-                <div key={act.id} className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm transition hover:shadow-md">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{act.activityName}</h4>
-                    <Badge tone={act.status === "PLAN_CONFIRMED" ? "green" : act.status === "DRAFT" ? "red" : "purple"}>
-                      {act.status}
-                    </Badge>
+                <Surface key={act.id} padding="sm">
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <h4 className="text-sm font-semibold leading-tight text-ink">{act.activityName}</h4>
+                    <StatusPill status={act.status} />
                   </div>
-                  <p className="text-xs text-slate-500 mb-3">{act.activityPlace}</p>
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-white/5 dark:border-slate-800/60">
-                    <span>{isArabic ? "الزوار:" : "Visitors:"} {act.visitorCount}</span>
+                  <p className="mb-3 text-xs text-ink-muted">{act.activityPlace}</p>
+                  <div className="flex items-center justify-between border-t border-hairline pt-3 text-xs text-ink-muted">
+                    <span>
+                      {isArabic ? "الزوار:" : "Visitors:"} <span className="font-tnum font-semibold text-ink">{integer(act.visitorCount)}</span>
+                    </span>
+                    <span>
+                      VIP: <span className="font-tnum font-semibold text-gold-500">{integer(act.vipVisitorCount)}</span>
+                    </span>
                   </div>
-                </div>
+                </Surface>
               ))}
             </div>
-          </Section>
-        )}
+          )}
+        </Section>
+      )}
 
-        {/* TAB: FLEET */}
-        {activeTab === "fleet" && (
-          <Section
-            id="section-fleet"
-            title={
-              <div className="flex items-center gap-2">
-                <CarFront size={18} className="text-midyaf-gold" />
-                <span>{isArabic ? "تتبع الأسطول المباشر" : "Live Fleet Telemetry"}</span>
-              </div>
-            }
-          >
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center dark:border-amber-500/10 dark:bg-amber-500/5">
-              <Map size={32} className="mx-auto text-amber-500 mb-2 opacity-50" />
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                {isArabic 
-                  ? "سيتم عرض الخريطة الحية للأسطول عند تفعيل محاكاة العرض التوضيحي (Investor Demo)."
-                  : "Fleet mapping is accessible via the live demo simulation. Trigger the simulation to view active convoys."}
-              </p>
-            </div>
-          </Section>
-        )}
-
-        {/* TAB: DELEGATION */}
-        {activeTab === "delegation" && (
-          <Section
-            id="section-delegation"
-            title={
-              <div className="flex items-center gap-2">
-                <Layers size={18} className="text-midyaf-gold" />
-                <span>{isArabic ? "تفويض المهام وسلسلة الأوامر" : "Task Delegation & Command Chain"}</span>
-              </div>
-            }
-          >
-            <div className="space-y-4">
-              {delegationTasks.map((t) => (
-                <div key={t.id} className="rounded-lg border border-white/5 bg-[#121626] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-                    <div>
-                      <h5 className="font-bold text-slate-900 dark:text-white text-xs">{t.taskTitle}</h5>
-                      <p className="text-xs text-slate-500 mt-1">{t.instructions}</p>
+      {activeTab === "fleet" && (
+        <Section id="section-fleet" title={isArabic ? "تتبع الأسطول المباشر" : "Live Fleet Telemetry"}>
+          {data.drivers.length === 0 ? (
+            <EmptyState compact icon={<Map className="size-5" />} title={isArabic ? "لا يوجد كباتن" : "No captains"} />
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {data.drivers.map((d) => (
+                <li key={d.id}>
+                  <Surface padding="sm" className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">{d.user.name}</p>
+                      <p className="truncate text-xs text-ink-muted">{localizeZone(d.zone, isArabic)}</p>
                     </div>
-                    {t.teamMemberId ? (
-                      <Badge tone="green">{isArabic ? "مفوضة" : "Delegated"}</Badge>
-                    ) : (
-                      <button className="btn-primary rounded-xl px-3 py-1.5 text-xs font-bold cursor-pointer">
-                        {isArabic ? "تفويض لشخص +-" : "Delegate +-"}
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-white/5 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-400">
-                    <span className="font-bold">{isArabic ? "سلسلة الأوامر:" : "Command Chain:"}</span>
-                    <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-pearl">
-                      {t.fromRole}
-                    </span>
-                    <ChevronRight size={12} />
-                    <span className="bg-midyaf-gold/15 text-[#7A5D12] px-2 py-0.5 rounded-md font-bold">
-                      {t.teamMemberId ? t.assignedTo : (isArabic ? "بانتظار التعيين" : "Pending Assignee")}
-                    </span>
-                  </div>
-                </div>
+                    <StatusPill status={d.status} live />
+                  </Surface>
+                </li>
               ))}
-            </div>
-          </Section>
-        )}
+            </ul>
+          )}
+          {!isDemoMode ? (
+            <p className="mt-4 text-xs text-ink-faint">
+              {isArabic
+                ? "سيتم عرض الخريطة الحية للأسطول عند تفعيل محاكاة العرض التوضيحي (Investor Demo)."
+                : "Fleet mapping is accessible via the live demo simulation. Trigger the simulation to view active convoys."}
+            </p>
+          ) : null}
+        </Section>
+      )}
 
-        {/* TAB: CONTRACTS */}
-        {activeTab === "contracts" && (
-          <Section
-            id="section-contracts"
-            title={
-              <div className="flex items-center gap-2">
-                <FileText size={18} className="text-midyaf-pearl" />
-                <span>{isArabic ? "عقود الموردين التشغيلية" : "Operational Supplier Contracts"}</span>
-              </div>
-            }
-          >
+      {activeTab === "delegation" && (
+        <Section id="section-delegation" title={isArabic ? "تفويض المهام وسلسلة الأوامر" : "Task Delegation & Command Chain"}>
+          <ul className="space-y-3">
+            {delegationTasks.map((t) => (
+              <li key={t.id}>
+                <Surface padding="sm">
+                  <div className="mb-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div>
+                      <h5 className="text-sm font-semibold text-ink">{t.taskTitle}</h5>
+                      <p className="mt-1 text-xs text-ink-muted">{t.instructions}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <StatusPill status={t.priority} size="sm" showIcon={false} />
+                      {t.teamMemberId ? <Badge tone="ok">{isArabic ? "مفوضة" : "Delegated"}</Badge> : <Button size="sm">{isArabic ? "تفويض لشخص" : "Delegate"}</Button>}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3 text-xs text-ink-muted">
+                    <span className="font-semibold">{isArabic ? "سلسلة الأوامر:" : "Command Chain:"}</span>
+                    <Badge tone="neutral">{t.fromRole}</Badge>
+                    <Chevron className="size-3.5" aria-hidden />
+                    <Badge tone="gold">{t.teamMemberId ? t.assignedTo : isArabic ? "بانتظار التعيين" : "Pending Assignee"}</Badge>
+                    <span className="ms-auto font-tnum">{t.deadline}</span>
+                  </div>
+                </Surface>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {activeTab === "contracts" && (
+        <Section id="section-contracts" title={isArabic ? "عقود الموردين التشغيلية" : "Operational Supplier Contracts"}>
+          {data.contracts.length === 0 ? (
+            <EmptyState compact title={isArabic ? "لا توجد عقود" : "No contracts"} />
+          ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.contracts.map((cnt) => (
-                <div key={cnt.id} className="rounded-xl border border-white/5 bg-[#121626] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-bold text-midyaf-pearl">{cnt.contractNumber}</span>
-                    <Badge tone="green">{cnt.status}</Badge>
+                <Surface key={cnt.id} padding="sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-mono text-xs text-gold-300">{cnt.contractNumber}</span>
+                    <StatusPill status={cnt.status} size="sm" />
                   </div>
-                  <h5 className="font-bold text-xs">{cnt.vendorName}</h5>
-                  <p className="text-xs text-slate-500 mt-0.5">{cnt.category}</p>
-                </div>
+                  <h5 className="text-sm font-semibold text-ink">{cnt.vendorName}</h5>
+                  <p className="mt-0.5 text-xs text-ink-muted">{cnt.category}</p>
+                </Surface>
               ))}
             </div>
-          </Section>
-        )}
+          )}
+        </Section>
+      )}
 
-        {/* TAB: REPORTS & CHAT */}
-        {activeTab === "reports" && (
-          <Section
-            id="section-reports"
-            title={
-              <div className="flex items-center gap-2">
-                <TrendingUp size={18} className="text-midyaf-gold" />
-                <span>{isArabic ? "التقارير التنفيذية ومحادثة العميل" : "Executive Reports & Client Chat"}</span>
+      {activeTab === "reports" && (
+        <Section id="section-reports" title={isArabic ? "التقارير التنفيذية ومحادثة العميل" : "Executive Reports & Client Chat"}>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Surface padding="sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h5 className="text-sm font-semibold text-ink">{report?.title || (isArabic ? "تقرير تنفيذي" : "Executive Briefing")}</h5>
+                {onDownloadReport ? (
+                  <Button size="sm" variant="ghost" leadingIcon={<FileText className="size-4" aria-hidden />} onClick={onDownloadReport}>
+                    {isArabic ? "تصدير PDF" : "Export PDF"}
+                  </Button>
+                ) : null}
               </div>
-            }
-          >
-            <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-xl border border-white/5 bg-[#121626] p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-bold text-xs">
-                    {report?.title || (isArabic ? "تقرير تنفيذي" : "Executive Briefing")}
-                  </h5>
-                  {onDownloadReport && (
-                    <button onClick={onDownloadReport} className="flex items-center gap-1 rounded-lg bg-midyaf-purple/10 px-2 py-1 text-xs font-bold text-midyaf-pearl cursor-pointer hover:bg-midyaf-purple/20">
-                      <FileText size={12} /> {isArabic ? "تصدير PDF" : "Export PDF"}
-                    </button>
-                  )}
+              <p className="text-sm text-ink-muted">{report?.summary}</p>
+              <dl className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="rounded-lg bg-surface-1 p-2">
+                  <dt className="text-ink-faint">{isArabic ? "الالتزام بالوقت" : "On-Time Rate"}</dt>
+                  <dd className="font-tnum text-lg font-bold text-ok">{sla.onTimePercent}%</dd>
                 </div>
-                <p className="text-xs text-slate-500">{report?.summary}</p>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-xs text-slate-400">On-Time Rate</span><span className="font-bold text-emerald-600">99.4%</span></div>
-                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-xs text-slate-400">Closed Tasks</span><span className="font-bold text-midyaf-pearl">100%</span></div>
+                <div className="rounded-lg bg-surface-1 p-2">
+                  <dt className="text-ink-faint">{isArabic ? "المهام المغلقة" : "Closed Tasks"}</dt>
+                  <dd className="font-tnum text-lg font-bold text-ink">
+                    {integer(sla.completed)} / {integer(sla.total)}
+                  </dd>
                 </div>
-              </div>
-              
-              <div className="rounded-xl border border-white/5 bg-[#121626] p-4 dark:border-slate-800 dark:bg-slate-900 flex flex-col h-[250px]">
-                <div className="flex-1 space-y-3 overflow-y-auto mb-3 pr-2">
-                  {clientMessages.map((m) => (
-                    <div key={m.id} className={`text-xs p-2.5 rounded-xl ${m.senderRole === "CLIENT" ? "bg-slate-100 dark:bg-slate-800" : "bg-midyaf-purple/10 text-midyaf-pearl dark:bg-midyaf-purple/20"}`}>
-                      <div className="flex justify-between text-xs opacity-70 mb-1 font-bold"><span>{m.senderName}</span><span>{m.timestamp}</span></div>
-                      <p>{isArabic ? m.messageAr : m.messageEn}</p>
+              </dl>
+            </Surface>
+
+            <Surface padding="sm" className="flex h-[260px] flex-col">
+              <ul className="mb-3 flex-1 space-y-3 overflow-y-auto pe-1">
+                {clientMessages.map((m) => (
+                  <li key={m.id} className={`rounded-lg p-2.5 text-sm ${m.senderRole === "CLIENT" ? "bg-surface-1" : "bg-gold-500/10"}`}>
+                    <div className="mb-1 flex justify-between text-xs text-ink-muted">
+                      <span className="font-semibold">{m.senderName}</span>
+                      <span className="font-tnum">{m.timestamp}</span>
                     </div>
-                  ))}
-                </div>
-                <form onSubmit={handleSendClientReply} className="flex gap-2 shrink-0">
-                  <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={isArabic ? "رد..." : "Reply..."} className="flex-1 rounded-lg border border-white/5 px-3 py-1.5 text-xs outline-none focus:border-midyaf-purple dark:border-slate-700 dark:bg-slate-900" />
-                  <button type="submit" className="btn-primary rounded-lg px-3 py-1.5 text-xs font-bold flex items-center gap-1 cursor-pointer"><Send size={12} /></button>
-                </form>
-              </div>
-            </div>
-          </Section>
-        )}
-      </div>
+                    <p className="text-ink">{isArabic ? m.messageAr : m.messageEn}</p>
+                  </li>
+                ))}
+              </ul>
+              <form onSubmit={handleSendClientReply} className="flex shrink-0 gap-2">
+                <Input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={isArabic ? "رد..." : "Reply..."} aria-label={isArabic ? "رد" : "Reply"} />
+                <Button type="submit" aria-label={isArabic ? "إرسال" : "Send"}>
+                  <Send className="size-4" aria-hidden />
+                </Button>
+              </form>
+            </Surface>
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

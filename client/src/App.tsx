@@ -137,6 +137,44 @@ export function App() {
         session.user.email === "organizer@midyaf.local")
   );
 
+  /** Full demo mode: swaps in virtual telemetry and unlocks the War Room. */
+  function toggleDemoMode() {
+    if (!canTriggerSimulation) return;
+    if (isDemoMode) {
+      // Deactivate demo mode: stop simulation and restore normal database data
+      setIsDemoMode(false);
+      simulation.stopSimulation();
+      setIsWarRoomOpen(false);
+      if (normalDataRef.current) {
+        setData(normalDataRef.current);
+      }
+      void refreshData();
+      
+      toast.info(
+        isArabic ? "تم إيقاف الوضع التجريبي" : "Demo Mode Disengaged",
+        isArabic
+          ? "تمت العودة للبيانات والعمليات التشغيلية المعتمدة"
+          : "Restored to normal production operations data"
+      );
+    } else {
+      // Activate full demo mode with virtual event telemetry
+      if (data) {
+        normalDataRef.current = data;
+      }
+      setIsDemoMode(true);
+      simulation.startSimulation();
+      
+      toast.success(
+        isArabic
+          ? "تم تفعيل وضع المحاكاة التجريبية الكامل (Ctrl + Shift + D)"
+          : "Full Demo Mode Activated (Ctrl + Shift + D)",
+        isArabic
+          ? "تم تشغيل محاكاة الفعالية الافتراضية والأسطول المباشر · اضغط الآن Ctrl + Space لفتح غرفة العمليات"
+          : "Virtual event telemetry engaged · Press Ctrl + Space for Sovereign War Room"
+      );
+    }
+  }
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // Ctrl + K or Cmd + K: Quick Navigator Command Palette
@@ -153,39 +191,7 @@ export function App() {
         e.preventDefault();
         if (!canTriggerSimulation) return;
 
-        if (isDemoMode) {
-          // Deactivate demo mode: stop simulation and restore normal database data
-          setIsDemoMode(false);
-          simulation.stopSimulation();
-          setIsWarRoomOpen(false);
-          if (normalDataRef.current) {
-            setData(normalDataRef.current);
-          }
-          void refreshData();
-          
-          toast.info(
-            isArabic ? "تم إيقاف الوضع التجريبي" : "Demo Mode Disengaged",
-            isArabic
-              ? "تمت العودة للبيانات والعمليات التشغيلية المعتمدة"
-              : "Restored to normal production operations data"
-          );
-        } else {
-          // Activate full demo mode with virtual event telemetry
-          if (data) {
-            normalDataRef.current = data;
-          }
-          setIsDemoMode(true);
-          simulation.startSimulation();
-          
-          toast.success(
-            isArabic
-              ? "تم تفعيل وضع المحاكاة التجريبية الكامل (Ctrl + Shift + D)"
-              : "Full Demo Mode Activated (Ctrl + Shift + D)",
-            isArabic
-              ? "تم تشغيل محاكاة الفعالية الافتراضية والأسطول المباشر · اضغط الآن Ctrl + Space لفتح غرفة العمليات"
-              : "Virtual event telemetry engaged · Press Ctrl + Space for Sovereign War Room"
-          );
-        }
+        toggleDemoMode();
       }
 
       // Ctrl + Space or Cmd + Space: Sovereign Command Bridge (War Room)
@@ -349,6 +355,8 @@ export function App() {
       data: data as MidyafData,
       session: session ?? undefined,
       isDemoMode,
+      canTriggerSimulation,
+      toggleDemoMode,
       refreshData,
       inviteGuests,
       importGuests,
@@ -1084,6 +1092,7 @@ function renderPortal(
         <ClientDashboard
           data={props.data}
           isArabic={isArabic}
+          isDemoMode={props.isDemoMode ?? false}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) {
@@ -1099,6 +1108,7 @@ function renderPortal(
           session={props.session ?? null}
           isDemoMode={props.isDemoMode ?? false}
           isArabic={isArabic}
+          onToggleDemo={props.canTriggerSimulation ? props.toggleDemoMode : undefined}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) {

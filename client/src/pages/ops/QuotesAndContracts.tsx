@@ -479,10 +479,10 @@ export function QuotesAndContracts({
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
-                {ui.p("Total: SAR 2,170,000", "الإجمالي: ٢,١٧٠,٠٠٠ ر.س")}
+                {ui.p("Total: SAR 2,170,000", "الإجمالي: 2,170,000 ر.س")}
               </span>
               <span className="rounded-lg bg-midyaf-gold/15 px-2.5 py-1 text-xs font-black text-midyaf-gold">
-                {ui.p("Midyaf Take: SAR 224,600", "عمولة مضياف: ٢٢٤,٦٠٠ ر.س")}
+                {ui.p("Midyaf Take: SAR 224,600", "عمولة مضياف: 224,600 ر.س")}
               </span>
             </div>
           </div>

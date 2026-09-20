@@ -24,7 +24,7 @@ const translations: Record<string, string> = {
   "VIP dedicated cars": "سيارات مخصصة لكبار الشخصيات",
   "One car per VIP for full stay": "سيارة واحدة لكل ضيف VIP طوال فترة الإقامة",
   "Normal shuttle groups": "مجموعات النقل الجماعي",
-  "3-4 guests per group": "٣ إلى ٤ ضيوف لكل مجموعة",
+  "3-4 guests per group": "3 إلى 4 ضيوف لكل مجموعة",
   "Planning status": "حالة التخطيط",
   "AI ready": "الخطة الذكية جاهزة",
   "Confirm before vendor RFQs": "تعتمد قبل طلب عروض الموردين",
@@ -49,9 +49,9 @@ const translations: Record<string, string> = {
   "hospitality journey": "رحلة الضيافة",
   "Visa, tickets, promotional videos, arrival tracking, event transportation, personal requests, complaints, and departure timing.":
     "التأشيرة والتذاكر والفيديوهات التعريفية وتتبع الوصول ونقل الفعالية والطلبات الخاصة والشكاوى وتوقيت المغادرة.",
-  "1. Arrival": "١. الوصول",
-  "2. Event transport": "٢. نقل الفعالية",
-  "3. Departure": "٣. المغادرة",
+  "1. Arrival": "1. الوصول",
+  "2. Event transport": "2. نقل الفعالية",
+  "3. Departure": "3. المغادرة",
   Gate: "البوابة",
   pickup: "موعد التحرك",
   "Hotel to venue and return": "من الفندق إلى موقع الفعالية والعودة",
@@ -136,7 +136,7 @@ const translations: Record<string, string> = {
   "VIP personal trip request sent to North Zone Supervisor.":
     "تم إرسال طلب الرحلة الخاصة للـ VIP إلى مشرف المنطقة الشمالية.",
   "Normal shuttle group 4 has one extra passenger.":
-    "مجموعة النقل الجماعي رقم ٤ لديها راكب إضافي.",
+    "مجموعة النقل الجماعي رقم 4 لديها راكب إضافي.",
   "Logistics Dashboard": "لوحة إدارة مضياف",
   "Midyaf Management Dashboard": "لوحة إدارة مضياف",
   "Organizer Dashboard": "لوحة إدارة مضياف",
@@ -362,29 +362,29 @@ const translations: Record<string, string> = {
     "سائق يتحدث لغتين مع مياه معبأة.",
   "Dates, Saudi coffee, and premium display equipment.":
     "تمور وقهوة سعودية ومعدات عرض فاخرة.",
-  "Normal group 4": "المجموعة العادية ٤",
+  "Normal group 4": "المجموعة العادية 4",
   "Logistics Manager": "مدير اللوجستيات",
-  "5-star and 4-star room allocation": "تخصيص غرف ٥ نجوم و٤ نجوم",
+  "5-star and 4-star room allocation": "تخصيص غرف 5 نجوم و4 نجوم",
   "VIP SUVs, luxury sedans, and shuttle vehicles":
     "سيارات SUV للـ VIP وسيدان فاخرة ومركبات نقل جماعي",
   "18 first class + 78 normal tickets":
-    "١٨ تذكرة درجة أولى + ٧٨ تذكرة عادية",
+    "18 تذكرة درجة أولى + 78 تذكرة عادية",
   "VIP full-stay car": "سيارة VIP طوال الإقامة",
-  "5-star hotel room": "غرفة فندق ٥ نجوم",
+  "5-star hotel room": "غرفة فندق 5 نجوم",
   "SUV GMC/Tahoe with captain": "سيارة GMC/Tahoe مع كابتن",
   "Grouped shuttle transfer": "نقل جماعي",
   "First class event ticket": "تذكرة فعالية درجة أولى",
   "Normal event ticket": "تذكرة فعالية عادية",
   "VIP guests receive dedicated sedan/SUV coverage for the full summit stay. Normal guests are grouped into 3-4 person shuttle movements for airport-hotel, hotel-venue, venue-hotel, and hotel-airport.":
-    "يحصل ضيوف VIP على سيارة سيدان أو SUV مخصصة طوال فترة الإقامة بالقمة. ويتم تجميع الضيوف العاديين في نقل جماعي من ٣ إلى ٤ أشخاص لمسارات المطار والفندق وموقع الفعالية والمغادرة.",
+    "يحصل ضيوف VIP على سيارة سيدان أو SUV مخصصة طوال فترة الإقامة بالقمة. ويتم تجميع الضيوف العاديين في نقل جماعي من 3 إلى 4 أشخاص لمسارات المطار والفندق وموقع الفعالية والمغادرة.",
   "VIP guests receive dedicated cars for the full summit stay. Normal guests are grouped into 3-4 person shuttle movements.":
-    "يحصل ضيوف VIP على سيارات مخصصة طوال فترة الإقامة بالقمة، ويتم تجميع الضيوف العاديين في رحلات نقل جماعي من ٣ إلى ٤ أشخاص.",
+    "يحصل ضيوف VIP على سيارات مخصصة طوال فترة الإقامة بالقمة، ويتم تجميع الضيوف العاديين في رحلات نقل جماعي من 3 إلى 4 أشخاص.",
   "18 VIP guests require full-stay vehicle allocation.":
-    "١٨ ضيف VIP يحتاجون إلى سيارات مخصصة طوال فترة الإقامة.",
+    "18 ضيف VIP يحتاجون إلى سيارات مخصصة طوال فترة الإقامة.",
   "78 normal guests grouped into 20 shuttle groups.":
-    "٧٨ ضيفاً عادياً يتم تجميعهم في ٢٠ مجموعة نقل جماعي.",
+    "78 ضيفاً عادياً يتم تجميعهم في 20 مجموعة نقل جماعي.",
   "78 normal guests grouped into shuttle movements.":
-    "٧٨ ضيفاً عادياً يتم تجميعهم في رحلات نقل جماعي.",
+    "78 ضيفاً عادياً يتم تجميعهم في رحلات نقل جماعي.",
   "First class tickets are reserved for VIP guests.":
     "تذاكر الدرجة الأولى مخصصة لضيوف VIP.",
   "Five-star rooms are reserved for VIPs; four-star rooms for normal guests.":
@@ -394,10 +394,10 @@ const translations: Record<string, string> = {
   "Arrival operations": "عمليات الوصول",
   "Departure operations": "عمليات المغادرة",
   "In progress": "قيد التنفيذ",
-  "72%": "٧٢٪",
-  "18/18": "١٨/١٨",
-  "20 groups": "٢٠ مجموعة",
-  "2": "٢",
+  "72%": "72%",
+  "18/18": "18/18",
+  "20 groups": "20 مجموعة",
+  "2": "2",
 
   // 8 Official Supplier Categories
   AIRLINE: "شركات الطيران والرحلات الخاصة",
@@ -511,8 +511,8 @@ const translations: Record<string, string> = {
   OFFLINE: "غير متصل",
   AVAILABLE: "متاح",
   BUSY: "مشغول",
-  FIVE_STAR: "٥ نجوم",
-  FOUR_STAR: "٤ نجوم",
+  FIVE_STAR: "5 نجوم",
+  FOUR_STAR: "4 نجوم",
   LUXURY_SEDAN: "سيدان فاخرة",
   SUV_GMC_TAHOE: "GMC أو Tahoe",
   OPERATIONS_OPEN: "العمليات مفتوحة",
@@ -594,7 +594,7 @@ const translations: Record<string, string> = {
   guest: "ضيف",
   ticket: "تذكرة",
   "18 VIP dedicated vehicles; 78 normal guests in 20 groups.":
-    "١٨ سيارة مخصصة لكبار الشخصيات و٧٨ ضيفاً عادياً في ٢٠ مجموعة.",
+    "18 سيارة مخصصة لكبار الشخصيات و78 ضيفاً عادياً في 20 مجموعة.",
   "Entertainment activity logistics for VIP and normal guests: visas, tickets, hotels, arrivals, hotel-venue movement, and departures.":
     "لوجستيات فعالية ترفيهية لكبار الشخصيات والضيوف العاديين: التأشيرات والتذاكر والفنادق والوصول والتنقل بين الفندق والموقع والمغادرة.",
   "Five-star Riyadh hotel room with VIP welcome amenities.":
@@ -623,7 +623,7 @@ const translations: Record<string, string> = {
   "Guest received at gate A4. VIP vehicle ready.":
     "تم استقبال الضيف عند البوابة A4، وسيارة VIP جاهزة.",
   "18 VIP dedicated vehicles; 78 normal guests in groups.":
-    "١٨ سيارة مخصصة لكبار الشخصيات و٧٨ ضيفاً عادياً ضمن مجموعات.",
+    "18 سيارة مخصصة لكبار الشخصيات و78 ضيفاً عادياً ضمن مجموعات.",
   platinum: "بلاتيني",
   // Secret Simulation & Demo Mode
   "Secret Demo Mode": "وضع العرض السري",
@@ -635,7 +635,7 @@ const translations: Record<string, string> = {
   "Resume Simulation": "استئناف المحاكاة",
   "Reset Simulation": "إعادة تعيين المحاكاة",
   "5 Moving Fleets · 5 VIP Journeys · 4 Signed Contracts · Real-time Telemetry":
-    "٥ أساطيل متحركة · ٥ رحلات VIP · ٤ عقود معتمدة · بيانات تتبع لحظية",
+    "5 أساطيل متحركة · 5 رحلات VIP · 4 عقود معتمدة · بيانات تتبع لحظية",
   "Live Summit Hotspots & Telemetry Radar": "رادار المواقع الحية وعمليات التتبع التكتيكية",
   "Active Hotspots": "المواقع النشطة",
   "Active Fleets": "المركبات النشطة",
@@ -672,11 +672,11 @@ const translations: Record<string, string> = {
   // Contracts Vendors & Scopes
   "Official VIP Hospitality Partner": "شريك الضيافة الرسمي لكبار الشخصيات",
   "100 Royal & Executive Suites for Summit Delegations, Private Lounge Access":
-    "١٠٠ جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
+    "100 جناح ملكي وتنفيذي لوفود القمة مع دخول الاستراحة الملكية الخاصة",
   "Royal Fleet VIP Services": "شركة الأسطول الملكي للتنقل الفاخر",
   "Chauffeur & Mobility Provider": "مزود النقل والتنقل الفاخر مع سائق",
   "50 Mercedes-Maybach S680 & V-Class Vans with 24/7 Diplomatic Escort":
-    "٥٠ سيارة مايباخ وفانات مرسيدس مع مرافقة دبلوماسية على مدار الساعة",
+    "50 سيارة مايباخ وفانات مرسيدس مع مرافقة دبلوماسية على مدار الساعة",
   "Najd Royal Catering & Banqueting": "تموين نجد الملكي والضيافة الفاخرة",
   "Gourmet Catering & Specialty Coffee": "التموين الفاخر والقهوة السعودية المختصة",
   "VIP Plenary Barista Stations, Saudi Organic Dates & Diplomatic Banqueting":
@@ -684,7 +684,7 @@ const translations: Record<string, string> = {
   "Al-Faisal Stage & Acoustic Engineering": "الفيصل لهندسة المسارح والصوتيات",
   "Plenary Audio-Visual & Translation": "الأنظمة المرئية والصوتية والترجمة الفورية",
   "Ultra-HD LED Curved Video Wall, 8-Language Simultaneous Translation Units":
-    "شاشات LED منحنية فائقة الدقة، ووحدات ترجمة فورية لـ ٨ لغات",
+    "شاشات LED منحنية فائقة الدقة، ووحدات ترجمة فورية لـ 8 لغات",
   "Elite Drive Co.": "شركة إليت درايف للنقل",
   // VIP Guests
   "H.E. Yasir Al-Rumayyan": "معالي ياسر الرميان",

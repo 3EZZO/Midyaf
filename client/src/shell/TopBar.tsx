@@ -105,7 +105,7 @@ export function TopBar({
 
         {isDemoMode ? (
           <>
-            <span className="hidden items-center gap-1.5 rounded-lg border border-warn/30 bg-warn/10 px-2.5 py-1 text-xs font-semibold text-warn md:inline-flex">
+            <span className="hidden whitespace-nowrap items-center gap-1.5 rounded-lg border border-warn/30 bg-warn/10 px-2.5 py-1 text-xs font-semibold text-warn xl:inline-flex">
               <Sparkles className="size-3.5" aria-hidden />
               {isArabic ? "الوضع التجريبي نشط" : "DEMO MODE"}
             </span>

@@ -1,40 +1,49 @@
-import { useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
-  Crown,
+  Banknote,
   Building2,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   FileCheck,
-  TrendingUp,
-  Banknote,
-  ReceiptText,
-  UserCheck,
-  MessageSquareWarning,
   Flame,
-  ArrowUpRight,
-  ShieldCheck,
-  Filter,
-  Plus,
   Lock,
-  Search
+  MessageSquareWarning,
+  Plus,
+  ReceiptText,
+  ShieldCheck,
+  TrendingUp,
+  UserCheck
 } from "lucide-react";
-import type { MidyafData, Session, ComplaintItem, ComplaintSeverity, ComplaintStatus } from "@shared/domain";
+import type { ComplaintItem, ComplaintSeverity, ComplaintStatus, Contract, MidyafData, Session } from "@shared/domain";
 import { DEFAULT_COMPLAINTS } from "@shared/constants";
-import { money, shortDate, shortTime } from "../lib/format";
-import { localizeStatus, localizeSeverity, localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
-import { Badge } from "./Badge";
-import { Section } from "./Section";
-import { PortalHero } from "./PortalHero";
-import { useTacticalToast } from "./TacticalToast";
+import { compact, integer, money, shortDate, shortTime } from "../lib/format";
+import { deriveExecutiveKpis, fleetUtilisation, slaSample } from "../lib/metrics";
+import { localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
+import { AreaTrend, EventHistogram } from "./charts";
+import {
+  Badge,
+  Button,
+  DataTable,
+  EmptyState,
+  Field,
+  IconTabNav,
+  Input,
+  KpiTile,
+  Section,
+  Select,
+  StatusPill,
+  Surface,
+  Textarea,
+  useToast
+} from "./ui";
+import { PortalHero } from "./ui/PortalHero";
+
+type Tab = "submitters" | "plans" | "complaints" | "activities" | "vault";
 
 export function AdminExecutiveDashboard({
   data,
-  session,
   isDemoMode,
   isArabic = true,
-  onApproveVendorQuote,
-  onApproveContract,
   onConfirmAiPlan
 }: {
   data: MidyafData;
@@ -45,15 +54,14 @@ export function AdminExecutiveDashboard({
   onApproveContract?: (contractId: string) => Promise<void>;
   onConfirmAiPlan?: (planId: string) => Promise<void>;
 }) {
-  const toast = useTacticalToast();
+  const toast = useToast();
   const event = data.events[0];
   const intake = data.activityIntakes[0];
   const aiPlan = data.aiPlans[0];
 
-  const [activeTab, setActiveTab] = useState<"submitters" | "plans" | "complaints" | "activities" | "vault">("submitters");
+  const [activeTab, setActiveTab] = useState<Tab>("submitters");
 
-
-  // Complaints State
+  // Complaints
   const [complaints, setComplaints] = useState<ComplaintItem[]>(DEFAULT_COMPLAINTS);
   const [complaintFilter, setComplaintFilter] = useState<"ALL" | ComplaintStatus>("ALL");
   const [newComplaintModal, setNewComplaintModal] = useState(false);
@@ -61,24 +69,16 @@ export function AdminExecutiveDashboard({
   const [newComplaintSeverity, setNewComplaintSeverity] = useState<ComplaintSeverity>("HIGH");
   const [newComplaintGuest, setNewComplaintGuest] = useState("");
 
-  // Plans Filter
+  // Plans
   const [planFilter, setPlanFilter] = useState<"ALL" | "APPROVED" | "PENDING">("ALL");
 
-  // Calculate Financial Aggregates
-  const totalCommission = data.vendorQuotes.reduce(
-    (sum, quote) => sum + Number(quote.commissionAmount || 0),
-    0
-  );
+  // ── Every number on screen comes from selectors ──
+  const kpis = useMemo(() => deriveExecutiveKpis(data, { isDemoMode }), [data, isDemoMode]);
+  const fleet = useMemo(() => fleetUtilisation(data.drivers), [data.drivers]);
+  const sla = useMemo(() => slaSample(event?.tasks ?? []), [event?.tasks]);
+  const openComplaints = complaints.filter((c) => c.status === "OPEN").length;
 
-  const totalContractedSpend = data.contracts.reduce(
-    (sum, c) => sum + Number(c.totalValue || 0),
-    0
-  );
-
-  const pendingDownpayments = data.contracts.filter(c => c.status === "PENDING_SIGNATURE").length * 85000;
-
-  // Submitter details
-  const submitterList = data.activityIntakes.map(act => ({
+  const submitterList = data.activityIntakes.map((act) => ({
     id: act.id,
     activityName: act.activityName,
     activityPlace: act.activityPlace,
@@ -91,8 +91,7 @@ export function AdminExecutiveDashboard({
     contact: act.hotelContact || "+966 50 123 4567"
   }));
 
-  // Approved vs Non-Approved Plans
-  const plansList = data.activityIntakes.map(act => {
+  const plansList = data.activityIntakes.map((act) => {
     const isApproved = act.status === "PLAN_CONFIRMED" || act.status === "OPERATIONS_OPEN" || aiPlan?.confirmed;
     return {
       id: act.id,
@@ -102,25 +101,18 @@ export function AdminExecutiveDashboard({
       submittedBy: act.submittedBy || "صلة",
       visitorCount: act.visitorCount,
       vipCount: act.vipVisitorCount,
-      hotelRooms: act.hotels?.reduce((sum, h) => sum + (h.roomsBooked || 0), 0) || act.hotelRoomsBooked || 45,
-      fleetCount: act.carRentals?.reduce((sum, r) => sum + (r.fleetCount || 0), 0) || 30,
-      aiPlanSummary: aiPlan?.summary || (isArabic ? "خطة تشغيلية سيادية معتمدة ومجدولة بالذكاء الاصطناعي" : "Confirmed sovereign AI logistics plan")
+      hotelRooms: act.hotels?.reduce((sum, h) => sum + (h.roomsBooked || 0), 0) || act.hotelRoomsBooked || 0,
+      fleetCount: act.carRentals?.reduce((sum, r) => sum + (r.fleetCount || 0), 0) || 0,
+      aiPlanSummary:
+        aiPlan?.summary || (isArabic ? "خطة تشغيلية سيادية معتمدة ومجدولة بالذكاء الاصطناعي" : "Confirmed sovereign AI logistics plan")
     };
   });
-
-  const filteredPlans = plansList.filter(p => {
-    if (planFilter === "ALL") return true;
-    return p.status === planFilter;
-  });
-
-  const filteredComplaints = complaints.filter(c => {
-    if (complaintFilter === "ALL") return true;
-    return c.status === complaintFilter;
-  });
+  const filteredPlans = plansList.filter((p) => planFilter === "ALL" || p.status === planFilter);
+  const filteredComplaints = complaints.filter((c) => complaintFilter === "ALL" || c.status === complaintFilter);
 
   const handleResolveComplaint = (id: string) => {
-    setComplaints(prev =>
-      prev.map(c =>
+    setComplaints((prev) =>
+      prev.map((c) =>
         c.id === id
           ? {
               ...c,
@@ -137,10 +129,9 @@ export function AdminExecutiveDashboard({
     );
   };
 
-  const handleAddComplaint = (e: React.FormEvent) => {
+  const handleAddComplaint = (e: FormEvent) => {
     e.preventDefault();
     if (!newComplaintText.trim()) return;
-
     const newEntry: ComplaintItem = {
       id: `cmp-${Date.now().toString().slice(-4)}`,
       activityName: event.name,
@@ -152,7 +143,6 @@ export function AdminExecutiveDashboard({
       status: "OPEN",
       createdAt: new Date().toISOString()
     };
-
     setComplaints([newEntry, ...complaints]);
     setNewComplaintText("");
     setNewComplaintGuest("");
@@ -163,25 +153,30 @@ export function AdminExecutiveDashboard({
     );
   };
 
+  const tabs = [
+    { id: "submitters" as const, icon: UserCheck, labelEn: "Submitters Log", labelAr: "سجل الجهات المدخلة" },
+    { id: "plans" as const, icon: FileCheck, labelEn: "Logistics Plans", labelAr: "الخطط اللوجستية" },
+    {
+      id: "complaints" as const,
+      icon: MessageSquareWarning,
+      labelEn: "Complaints",
+      labelAr: "الشكاوى والبلاغات",
+      badge: openComplaints ? <Badge size="sm" tone="danger">{openComplaints}</Badge> : undefined
+    },
+    { id: "activities" as const, icon: Flame, labelEn: "Live Activities", labelAr: "الفعاليات الجارية" },
+    { id: "vault" as const, icon: ShieldCheck, labelEn: "Contracts Vault", labelAr: "خزنة العقود والمالية" }
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Sovereign Owner Header */}
       <PortalHero
         badge={
-          <span className="inline-flex items-center gap-1.5 text-midyaf-gold">
-            <Crown size={15} />
-
-
-      
-
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="size-3.5" aria-hidden />
             {isArabic ? "لوحة الملاك والإدارة التنفيذية لمضياف (سري للغاية)" : "Midyaf Sovereign Ownership & Executive Admin Dashboard"}
           </span>
         }
-        title={
-          isArabic
-            ? "الرقابة المالية والتنفيذية الشاملة لمنظومة مضياف"
-            : "Executive Business Oversight, Financials & Commercial Governance"
-        }
+        title={isArabic ? "الرقابة المالية والتنفيذية الشاملة لمنظومة مضياف" : "Executive Business Oversight, Financials & Commercial Governance"}
         body={
           isArabic
             ? "لوحة خاصة بملاك مضياف فقط: رصد الجهات المدخلة للفعاليات، اعتماد الخطط التشغيلية، سجل الشكاوى، متابعة الفعاليات النشطة، وإدارة العمولات والعقود المالية."
@@ -189,588 +184,477 @@ export function AdminExecutiveDashboard({
         }
       />
 
-      {/* Priority 5: Financial Status Overview (Top KPIs) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-midyaf-gold/30 bg-gradient-to-br from-midyaf-purple/95 to-[#1c0b38] p-5 text-white shadow-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-midyaf-gold uppercase tracking-wider">
-              {isArabic ? "إجمالي العمولات المحققة لمضياف" : "Platform Commissions"}
-            </span>
-            <div className="grid size-9 place-items-center rounded-xl bg-midyaf-gold/20 text-midyaf-gold ring-1 ring-midyaf-gold/40">
-              <Banknote size={18} />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-midyaf-gold font-tnum">
-            {money(totalCommission || 285400)}
-          </p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-300">
-            <span className="flex items-center text-emerald-400 font-bold">
-              <ArrowUpRight size={14} /> +18.4%
-            </span>
-            <span>{isArabic ? "مقارنة بالفعالية السابقة" : "vs previous event"}</span>
-          </div>
-        </div>
-
-        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              {isArabic ? "إجمالي قيمة العقود المعتمدة" : "Total Contracted Spend"}
-            </span>
-            <div className="grid size-9 place-items-center rounded-xl bg-purple-500/10 text-midyaf-pearl dark:text-purple-400">
-              <ReceiptText size={18} />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
-            {money(totalContractedSpend || 1950000)}
-          </p>
-          <p className="mt-2 text-xs text-slate-400">
-            {isArabic ? "عبر 8 قطاعات تزويد رسمية معتمدة" : "Across 8 certified vendor categories"}
-          </p>
-        </div>
-
-        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              {isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
-            </span>
-            <div className="grid size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp size={18} />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
-            14.6%
-          </p>
-          <p className="mt-2 text-xs text-slate-400">
-            {isArabic ? "ضمن النطاق السعري السيادي المستهدف" : "Within sovereign pricing target"}
-          </p>
-        </div>
-
-        <div className="bg-[#121626] border border-white/5 shadow-sm rounded-lg rounded-lg p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              {isArabic ? "الدفعات المستحقة والمقدمة" : "Pending Receivables"}
-            </span>
-            <div className="grid size-9 place-items-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Clock size={18} />
-            </div>
-          </div>
-          <p className="mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-white font-tnum">
-            {money(pendingDownpayments || 340000)}
-          </p>
-          <p className="mt-2 text-xs text-slate-400">
-            {isArabic ? "دفعات مقدمة تنتظر اكتمال التواقيع" : "Downpayments pending contract signing"}
-          </p>
-        </div>
+      {/* Financial overview */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiTile
+          label={isArabic ? "إجمالي العمولات المحققة لمضياف" : "Platform Commissions"}
+          value={kpis.commission.value}
+          format="money"
+          delta={kpis.commission.delta}
+          detail={isArabic ? "مقارنة بالأسبوع السابق" : "vs previous week"}
+          sparkline={kpis.commission.series.points}
+          source={kpis.commission.source}
+          icon={<Banknote className="size-4" aria-hidden />}
+          tone="gold"
+        />
+        <KpiTile
+          label={isArabic ? "إجمالي قيمة العقود المعتمدة" : "Total Contracted Spend"}
+          value={kpis.contractedSpend.value}
+          format="money"
+          detail={
+            isArabic
+              ? `عبر ${integer(kpis.contractedSpend.categories)} قطاعات تزويد رسمية معتمدة`
+              : `Across ${integer(kpis.contractedSpend.categories)} certified vendor categories`
+          }
+          sparkline={kpis.contractedSpend.series.points}
+          source={kpis.contractedSpend.source}
+          icon={<ReceiptText className="size-4" aria-hidden />}
+        />
+        <KpiTile
+          label={isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
+          value={kpis.marginPercent.value}
+          format="percent"
+          detail={isArabic ? "ضمن النطاق السعري السيادي المستهدف" : "Within sovereign pricing target"}
+          icon={<TrendingUp className="size-4" aria-hidden />}
+          tone="ok"
+        />
+        <KpiTile
+          label={isArabic ? "الدفعات المستحقة والمقدمة" : "Pending Receivables"}
+          value={kpis.pendingReceivables.value}
+          format="money"
+          detail={
+            isArabic
+              ? `${integer(kpis.pendingReceivables.count)} عقود تنتظر اكتمال التواقيع`
+              : `${integer(kpis.pendingReceivables.count)} contracts pending signature`
+          }
+          icon={<Clock className="size-4" aria-hidden />}
+          tone={kpis.pendingReceivables.count ? "warn" : "none"}
+        />
       </div>
 
-      
-{/* Icon-based Navigation Tabs (Drill-down Pattern) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <button 
-          onClick={() => setActiveTab("submitters")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "submitters" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
+      {/* Trend + live pulse */}
+      <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <Section
+          title={isArabic ? "منحنى العمولات وقيمة العقود (30 يوماً)" : "Commission & contract value — 30 days"}
+          eyebrow={kpis.commission.source === "derived" ? (isArabic ? "سلسلة مشتقة من الإجمالي" : "Series derived from totals") : (isArabic ? "بيانات حية" : "Live data")}
+          action={
+            <div className="flex items-center gap-4 text-xs text-ink-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-gold-500" /> {isArabic ? "العمولات" : "Commission"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-ink" /> {isArabic ? "قيمة العقود" : "Contract value"}
+              </span>
+            </div>
+          }
         >
-          <UserCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "سجل الجهات المدخلة" : "Submitters Log"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("plans")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "plans" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <FileCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الخطط اللوجستية" : "Logistics Plans"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("complaints")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "complaints" 
-              ? "bg-rose-500 text-white border-rose-500 shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-rose-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <MessageSquareWarning size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("activities")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "activities" 
-              ? "bg-amber-500 text-white border-amber-500 shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <Flame size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("vault")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "vault" 
-              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <ShieldCheck size={24} className="mb-2" />
-          <span className="text-xs font-bold">{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
-        </button>
+          <AreaTrend
+            series={kpis.commission.series}
+            secondary={kpis.contractedSpend.series}
+            valueFormatter={(v) => compact(v)}
+            labels={{ primary: isArabic ? "العمولات" : "Commission", secondary: isArabic ? "قيمة العقود" : "Contract value" }}
+          />
+        </Section>
+        <Section title={isArabic ? "نبض المنظومة" : "System pulse"} eyebrow={isArabic ? "الأحداث المباشرة" : "Live events"}>
+          <EventHistogram isArabic={isArabic} />
+          <dl className="mt-5 grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-surface-1 p-3">
+              <dt className="text-xs uppercase tracking-label text-ink-faint">{isArabic ? "الأسطول النشط" : "Fleet active"}</dt>
+              <dd className="mt-1 font-tnum text-xl font-bold text-ink">{fleet.percent}%</dd>
+            </div>
+            <div className="rounded-lg bg-surface-1 p-3">
+              <dt className="text-xs uppercase tracking-label text-ink-faint">{isArabic ? "الالتزام بالوقت" : "On-time"}</dt>
+              <dd className="mt-1 font-tnum text-xl font-bold text-ok">{sla.onTimePercent}%</dd>
+            </div>
+            <div className="rounded-lg bg-surface-1 p-3">
+              <dt className="text-xs uppercase tracking-label text-ink-faint">{isArabic ? "بلاغات مفتوحة" : "Open issues"}</dt>
+              <dd className={`mt-1 font-tnum text-xl font-bold ${openComplaints ? "text-danger" : "text-ink"}`}>{openComplaints}</dd>
+            </div>
+          </dl>
+        </Section>
       </div>
 
-{/* Priority 1: Who Submitted/Input the Data for Each New Activity */}
-      {activeTab === "submitters" && (<Section
-        id="section-admin-submitters"
-        title={
-          <div className="flex items-center gap-2">
-            <UserCheck size={18} className="text-midyaf-gold" />
-            <span>{isArabic ? "1. سجل الجهات ومسؤولي إدخال بيانات الفعاليات (Submitter Audit Trail)" : "Activity Submitter Audit Trail"}</span>
-          </div>
-        }
-      >
-        <p className="mb-4 text-xs text-slate-500">
-          {isArabic
-            ? "التتبع الصارم للجهة والموظف المسؤول عن تعبئة متطلبات الفعالية، استيراد بيانات الضيوف، وحجز الفنادق والأسطول."
-            : "Audit trail identifying the specific organizer entity and individual who inputted the event specifications, guest lists, and resource requirements."}
-        </p>
-        <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="border-b border-white/5 bg-[#090C15] text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <tr>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "اسم الفعالية" : "Activity Name"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "الجهة المنظمة" : "Organizing Company"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "المسؤول عن الإدخال" : "Submitted By"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "تاريخ ووقت الإدخال" : "Submission Time"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "إجمالي الحضور" : "Total Guests"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "حالة الإدخال" : "Intake Status"}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {submitterList.map((sub) => (
-                <tr key={sub.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white">
-                    {sub.activityName}
-                    <span className="block text-xs text-slate-400 font-normal">{sub.activityPlace}</span>
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-midyaf-pearl dark:text-purple-300">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Building2 size={13} className="text-midyaf-gold" />
-                      {sub.organization}
+      <IconTabNav tabs={tabs} value={activeTab} onChange={setActiveTab} layoutId="admin-tabs" ariaLabel={isArabic ? "أقسام لوحة الملاك" : "Admin sections"} />
+
+      {activeTab === "submitters" && (
+        <Section
+          id="section-admin-submitters"
+          title={isArabic ? "1. سجل الجهات ومسؤولي إدخال بيانات الفعاليات (Submitter Audit Trail)" : "Activity Submitter Audit Trail"}
+          description={
+            isArabic
+              ? "التتبع الصارم للجهة والموظف المسؤول عن تعبئة متطلبات الفعالية، استيراد بيانات الضيوف، وحجز الفنادق والأسطول."
+              : "Audit trail identifying the specific organizer entity and individual who inputted the event specifications, guest lists, and resource requirements."
+          }
+        >
+          <DataTable
+            rows={submitterList}
+            rowKey={(r) => r.id}
+            defaultSort={{ id: "submittedAt", dir: "desc" }}
+            columns={[
+              {
+                id: "activity",
+                header: isArabic ? "اسم الفعالية" : "Activity Name",
+                sortValue: (r) => r.activityName,
+                cell: (r) => (
+                  <>
+                    <span className="font-semibold text-ink">{r.activityName}</span>
+                    <span className="block text-xs text-ink-muted">{r.activityPlace}</span>
+                  </>
+                )
+              },
+              {
+                id: "org",
+                header: isArabic ? "الجهة المنظمة" : "Organizing Company",
+                sortValue: (r) => r.organization,
+                cell: (r) => (
+                  <span className="inline-flex items-center gap-1.5 text-ink">
+                    <Building2 className="size-3.5 text-gold-500" aria-hidden />
+                    {r.organization}
+                  </span>
+                )
+              },
+              {
+                id: "by",
+                header: isArabic ? "المسؤول عن الإدخال" : "Submitted By",
+                cell: (r) => (
+                  <span className="flex items-center gap-2">
+                    <span className="grid size-7 place-items-center rounded-lg bg-gold-500/15 text-xs font-bold text-gold-500">
+                      {r.submittedBy.slice(0, 2).toUpperCase()}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
-                    <div className="flex items-center gap-2">
-                      <div className="grid size-6 place-items-center rounded-full bg-midyaf-gold/20 text-xs font-black text-midyaf-gold">
-                        {sub.submittedBy.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-100">{sub.submittedBy}</p>
-                        <p className="text-xs text-slate-400">{sub.contact}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-tnum text-slate-500">
-                    {shortDate(sub.submittedAt)} · {shortTime(sub.submittedAt)}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-tnum">
-                    <span className="font-bold text-slate-800 dark:text-slate-100">{sub.visitors}</span>
-                    <span className="text-xs text-midyaf-gold font-bold ms-1">({sub.vipCount} VIP)</span>
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
-                    <Badge tone={sub.status === "OPERATIONS_OPEN" || sub.status === "PLAN_CONFIRMED" ? "green" : "gold"}>
-                      {localizeStatus(sub.status, isArabic)}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>)}
+                    <span>
+                      <span className="block font-semibold text-ink">{r.submittedBy}</span>
+                      <span className="block text-xs text-ink-muted" dir="ltr">
+                        {r.contact}
+                      </span>
+                    </span>
+                  </span>
+                )
+              },
+              {
+                id: "submittedAt",
+                header: isArabic ? "تاريخ ووقت الإدخال" : "Submission Time",
+                sortValue: (r) => r.submittedAt,
+                numeric: true,
+                cell: (r) => (
+                  <span className="text-ink-muted">
+                    {shortDate(r.submittedAt)} · {shortTime(r.submittedAt)}
+                  </span>
+                )
+              },
+              {
+                id: "guests",
+                header: isArabic ? "إجمالي الحضور" : "Total Guests",
+                sortValue: (r) => r.visitors,
+                numeric: true,
+                align: "end",
+                cell: (r) => (
+                  <>
+                    <span className="font-semibold text-ink">{integer(r.visitors)}</span>
+                    <span className="ms-1 text-xs font-semibold text-gold-500">({integer(r.vipCount)} VIP)</span>
+                  </>
+                )
+              },
+              { id: "status", header: isArabic ? "حالة الإدخال" : "Intake Status", sortValue: (r) => r.status, cell: (r) => <StatusPill status={r.status} /> }
+            ]}
+          />
+        </Section>
+      )}
 
-      {/* Priority 2: Approved Plans vs Non-Approved (Pending) Plans */}
-      {activeTab === "plans" && (<Section
-        id="section-admin-plans"
-        title={
-          <div className="flex items-center justify-between w-full flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <FileCheck size={18} className="text-emerald-500" />
-              <span>{isArabic ? "2. مصفوفة الخطط اللوجستية: المعتمدة وقيد الانتظار (Plans Approval Matrix)" : "Approved Plans Matrix"}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 text-xs">
-              <button
-                onClick={() => setPlanFilter("ALL")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "ALL" ? "bg-white text-midyaf-pearl shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500"}`}
-              >
-                {isArabic ? `الكل (${plansList.length})` : `All (${plansList.length})`}
-              </button>
-              <button
-                onClick={() => setPlanFilter("APPROVED")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "APPROVED" ? "bg-emerald-50 text-emerald-700 shadow-sm dark:bg-emerald-950/50 dark:text-emerald-300" : "text-slate-500"}`}
-              >
-                {isArabic ? `المعتمدة (${plansList.filter(p => p.status === "APPROVED").length})` : `Approved (${plansList.filter(p => p.status === "APPROVED").length})`}
-              </button>
-              <button
-                onClick={() => setPlanFilter("PENDING")}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${planFilter === "PENDING" ? "bg-amber-50 text-amber-700 shadow-sm dark:bg-amber-950/50 dark:text-amber-300" : "text-slate-500"}`}
-              >
-                {isArabic ? `قيد الانتظار (${plansList.filter(p => p.status === "PENDING").length})` : `Pending (${plansList.filter(p => p.status === "PENDING").length})`}
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredPlans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`rounded-lg border p-5 transition-all shadow-sm ${
-                plan.status === "APPROVED"
-                  ? "border-emerald-500/30 bg-emerald-50/20 dark:border-emerald-500/20 dark:bg-emerald-950/10"
-                  : "border-amber-500/40 bg-amber-50/20 dark:border-amber-500/20 dark:bg-amber-950/10"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                    {plan.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{plan.place} · {isArabic ? `إدخال: ${plan.submittedBy}` : `Submitted by: ${plan.submittedBy}`}</p>
-                </div>
-                <Badge tone={plan.status === "APPROVED" ? "green" : "gold"}>
-                  {plan.status === "APPROVED" ? (isArabic ? "خطة معتمدة رسمياً" : "Plan Approved") : (isArabic ? "بانتظار الاعتماد" : "Pending Approval")}
-                </Badge>
-              </div>
-
-              <p className="text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-white/5 dark:border-slate-800 leading-relaxed mb-4">
-                {plan.aiPlanSummary}
-              </p>
-
-              <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-xs text-slate-400">{isArabic ? "الضيوف" : "Guests"}</span>
-                  <span className="font-bold text-slate-900 dark:text-white font-tnum">{plan.visitorCount}</span>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-xs text-slate-400">{isArabic ? "الغرف المحجوزة" : "Hotel Rooms"}</span>
-                  <span className="font-bold text-midyaf-pearl dark:text-purple-300 font-tnum">{plan.hotelRooms}</span>
-                </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-xs text-slate-400">{isArabic ? "الأسطول والحافلات" : "Fleet Units"}</span>
-                  <span className="font-bold text-midyaf-gold font-tnum">{plan.fleetCount}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-white/5 dark:border-slate-800">
-                <span className="text-xs text-slate-400">
-                  {plan.status === "APPROVED"
-                    ? (isArabic ? "تم قفل شروط الدفع وتوليد العقود" : "Payment terms locked & active")
-                    : (isArabic ? "شروط الدفع مقفلة لحين الاعتماد" : "Terms locked until approved")}
-                </span>
-                {plan.status === "PENDING" && onConfirmAiPlan && aiPlan && (
+      {activeTab === "plans" && (
+        <Section
+          id="section-admin-plans"
+          title={isArabic ? "2. مصفوفة الخطط اللوجستية: المعتمدة وقيد الانتظار (Plans Approval Matrix)" : "Approved Plans Matrix"}
+          action={
+            <div className="flex items-center gap-1 rounded-lg border border-hairline bg-surface-1 p-1 text-xs">
+              {(["ALL", "APPROVED", "PENDING"] as const).map((f) => {
+                const count = f === "ALL" ? plansList.length : plansList.filter((p) => p.status === f).length;
+                const label = f === "ALL" ? (isArabic ? "الكل" : "All") : f === "APPROVED" ? (isArabic ? "المعتمدة" : "Approved") : isArabic ? "قيد الانتظار" : "Pending";
+                return (
                   <button
-                    onClick={() => void onConfirmAiPlan(aiPlan.id)}
-                    className="btn-primary rounded-xl px-3.5 py-1.5 text-xs font-bold cursor-pointer"
-                  >
-                    {isArabic ? "اعتماد الخطة فوراً ↗" : "Approve Plan Now ↗"}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>)}
-
-      {/* Priority 3: Any Complaints (Centralized Registry) */}
-      {activeTab === "complaints" && (<Section
-        id="section-admin-complaints"
-        title={
-          <div className="flex items-center justify-between w-full flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <MessageSquareWarning size={18} className="text-rose-500" />
-              <span>{isArabic ? "الشكاوى والبلاغات" : "Complaints"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setNewComplaintModal(true)}
-                className="flex items-center gap-1 rounded-lg bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-500/20 transition dark:bg-rose-500/20 dark:text-rose-300 cursor-pointer"
-              >
-                <Plus size={13} />
-                {isArabic ? "تسجيل بلاغ جديد" : "Log New Incident"}
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <p className="mb-4 text-xs text-slate-500">
-          {isArabic
-            ? "رصد مباشر لجميع الشكاوى الواردة من ضيوف كبار الشخصيات، منسقي الميدان، أو الشركة المنظمة مع تتبع حالة المعالجة وسرعة الحل."
-            : "Direct incident registry of VIP guest concerns, coordinator alerts, and client notes with real-time resolution workflow."}
-        </p>
-
-        {newComplaintModal && (
-          <form onSubmit={handleAddComplaint} className="mb-5 rounded-xl border border-rose-200 bg-rose-50/40 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
-            <h4 className="text-xs font-bold text-rose-700 dark:text-rose-300 mb-2">
-              {isArabic ? "تسجيل بلاغ تنفيذي أو شكوى عاجلة" : "Log New Incident or Executive Complaint"}
-            </h4>
-            <div className="grid gap-3 sm:grid-cols-2 mb-3">
-              <input
-                type="text"
-                value={newComplaintGuest}
-                onChange={e => setNewComplaintGuest(e.target.value)}
-                placeholder={isArabic ? "الجهة الشاكية أو اسم الضيف" : "Complainant or VIP Guest Name"}
-                className="rounded-lg border border-white/5 bg-[#121626] px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
-              />
-              <select
-                value={newComplaintSeverity}
-                onChange={e => setNewComplaintSeverity(e.target.value as ComplaintSeverity)}
-                className="rounded-lg border border-white/5 bg-[#121626] px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"
-              >
-                <option value="NORMAL">{isArabic ? "درجة عادية (Normal)" : "Normal Severity"}</option>
-                <option value="HIGH">{isArabic ? "درجة عالية (High)" : "High Severity"}</option>
-                <option value="CRITICAL">{isArabic ? "حرجة وطارئة (Critical)" : "Critical Severity"}</option>
-              </select>
-            </div>
-            <textarea
-              rows={2}
-              value={newComplaintText}
-              onChange={e => setNewComplaintText(e.target.value)}
-              placeholder={isArabic ? "تفاصيل الشكوى أو الملاحظة الميدانية..." : "Describe the incident or complaint..."}
-              className="w-full rounded-lg border border-white/5 bg-[#121626] p-3 text-xs dark:border-slate-700 dark:bg-slate-900 mb-3"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setNewComplaintModal(false)}
-                className="rounded-lg px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 transition cursor-pointer"
-              >
-                {isArabic ? "إلغاء" : "Cancel"}
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer"
-              >
-                {isArabic ? "حفظ البلاغ في اللوحة" : "Save Incident"}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <div className="space-y-3">
-          {filteredComplaints.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#121626]/80 p-4 transition-all shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-            >
-              <div className="space-y-1 max-w-2xl">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-slate-900 dark:text-white text-xs">
-                    {isArabic ? (c.complainantNameAr || c.complainantName) : (c.complainantNameEn || c.complainantName)}
-                  </span>
-                  <span className="text-xs text-slate-400">({c.complainantRole})</span>
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-black ${
-                      c.severity === "CRITICAL"
-                        ? "bg-rose-500 text-white animate-pulse"
-                        : c.severity === "HIGH"
-                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                    }`}
-                  >
-                    {localizeSeverity(c.severity, isArabic)}
-                  </span>
-                  <span className="text-xs text-slate-400 font-tnum">
-                    {shortTime(c.createdAt)}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {isArabic ? (c.descriptionAr || c.description) : (c.descriptionEn || c.description)}
-                </p>
-                {c.resolutionNotes && (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                    ✓ {isArabic ? (c.resolutionNotesAr || c.resolutionNotes) : (c.resolutionNotesEn || c.resolutionNotes)}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {c.status === "RESOLVED" ? (
-                  <Badge tone="green">
-                    <CheckCircle2 size={12} className="me-1" />
-                    {isArabic ? "تم الحل والمعالجة" : "Resolved"}
-                  </Badge>
-                ) : (
-                  <button
+                    key={f}
                     type="button"
-                    onClick={() => handleResolveComplaint(c.id)}
-                    className="btn-primary rounded-xl px-3 py-1.5 text-xs font-bold cursor-pointer"
+                    onClick={() => setPlanFilter(f)}
+                    className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${planFilter === f ? "bg-surface-3 text-ink" : "text-ink-muted hover:text-ink"}`}
                   >
-                    {isArabic ? "تسوية البلاغ ✓" : "Resolve Incident ✓"}
+                    {label} ({integer(count)})
                   </button>
-                )}
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </Section>)}
-
-      {/* Priority 4: Status of Currently Running Activities */}
-      {activeTab === "activities" && (<Section
-        id="section-admin-activities"
-        title={
-          <div className="flex items-center gap-2">
-            <Flame size={18} className="text-amber-500" />
-            <span>{isArabic ? "الفعاليات الجارية" : "Live Activities"}</span>
-          </div>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-midyaf-gold/30 bg-[#121626] p-5 shadow-sm bg-[#121626]">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-midyaf-gold">
-                  <span className="size-2 rounded-full bg-emerald-500 animate-ping"></span>
-                  {isArabic ? "فعالية قيد التنفيذ المباشر (LIVE)" : "Live In-Execution"}
-                </span>
-                <h3 className="font-black text-slate-900 dark:text-white text-base mt-1">
-                  {event.name}
-                </h3>
-              </div>
-              <Badge tone="gold">
-                {isArabic ? "الصحة اللوجستية: 99.4%" : "Health: 99.4%"}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs mt-4">
-              <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-xs text-slate-400 block">{isArabic ? "كبار الشخصيات" : "VIP Guests"}</span>
-                <span className="font-extrabold text-slate-900 dark:text-white font-tnum">{intake.vipVisitorCount}</span>
-              </div>
-              <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-xs text-slate-400 block">{isArabic ? "الكباتن بالخدمة" : "Active Captains"}</span>
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 font-tnum">{data.drivers.length}</span>
-              </div>
-              <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-xs text-slate-400 block">{isArabic ? "المهام المنجزة" : "Completed Tasks"}</span>
-                <span className="font-extrabold text-midyaf-pearl dark:text-purple-300 font-tnum">
-                  {event.tasks.filter(t => t.status === "COMPLETED").length} / {event.tasks.length}
-                </span>
-              </div>
-              <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-xs text-slate-400 block">{isArabic ? "البلاغات المفتوحة" : "Open Issues"}</span>
-                <span className="font-extrabold text-rose-600 dark:text-rose-400 font-tnum">
-                  {complaints.filter(c => c.status === "OPEN").length}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-white/5 bg-[#121626] p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
-                  <Clock size={13} />
-                  {isArabic ? "فعالية قادمة — التجهيز اللوجستي" : "Upcoming Pipeline Event"}
-                </span>
-                <h3 className="font-black text-slate-900 dark:text-white text-base mt-1">
-                  {isArabic ? "ملتقى الدرعية للتراث والضيافة الرفيعة" : "Diriyah Heritage & High Hospitality Forum"}
-                </h3>
-              </div>
-              <Badge tone="purple">
-                {isArabic ? "مرحلة عروض الأسعار" : "Quoting Phase"}
-              </Badge>
-            </div>
-
-            <p className="text-xs text-slate-500 leading-relaxed mt-2 mb-4">
-              {isArabic
-                ? "تم استقبال متطلبات الفعالية وتجهيز الغرف الفندقية في حي الطريف التراثي، بانتظار إغلاق خزنة المنافسة الرقمية واعتماد العقود."
-                : "Requirements received and heritage rooms reserved at At-Turaif. Pending digital vault sealing and contract approvals."}
-            </p>
-
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5 dark:border-slate-800">
-              <span className="text-slate-400 font-tnum">{isArabic ? "الجدول: 18 - 20 أكتوبر 2026" : "Schedule: Oct 18 - 20, 2026"}</span>
-              <span className="font-bold text-midyaf-pearl dark:text-purple-300 font-tnum">{money(450000)} (تقديري)</span>
-            </div>
-          </div>
-        </div>
-      </Section>)}
-
-      {/* Priority 6: Aggregate Business Overview & Contract Vault (Relocated from Operations) */}
-      {activeTab === "vault" && (<Section
-        id="section-admin-vault"
-        title={
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-midyaf-gold" />
-            <span>{isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}</span>
-          </div>
-        }
-      >
-        <div className="mb-4 rounded-xl bg-midyaf-gold/10 border border-midyaf-gold/30 p-4 text-xs text-[#7A5D12] dark:text-midyaf-gold flex items-center gap-3">
-          <Lock size={18} className="shrink-0 text-midyaf-gold" />
-          <p>
-            {isArabic
-              ? "تم عزل هذه البيانات المالية والتسعيرية بالكامل عن لوحة العمليات الميدانية وفقاً لبروتوكول الحوكمة، وهي متاحة حصراً لملاك وإدارة مضياف."
-              : "Financial, pricing, and quotation data has been strictly segregated from field operations per governance protocol, accessible exclusively to Midyaf ownership."}
-          </p>
-        </div>
-
-        <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="border-b border-white/5 bg-[#090C15] text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <tr>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "رقم العقد" : "Contract #"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "المورد المعتمد" : "Certified Vendor"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "التصنيف" : "Category"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "القيمة الإجمالية" : "Total Value"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "عمولة مضياف" : "Midyaf Commission"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "شروط الدفع" : "Payment Terms"}</th>
-                <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "الختم الرقمي" : "Digital Seal"}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-tnum">
-              {data.contracts.map((cnt) => (
-                <tr key={cnt.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-mono font-bold text-midyaf-pearl dark:text-purple-300">
-                    {cnt.contractNumber}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-800 dark:text-slate-100">
-                    {cnt.vendorName}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-normal">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">
-                      {localizeCategory(cnt.category, isArabic)}
+          }
+        >
+          {filteredPlans.length === 0 ? (
+            <EmptyState compact title={isArabic ? "لا توجد خطط في هذا التصنيف" : "No plans in this filter"} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredPlans.map((plan) => (
+                <Surface key={plan.id} tone={plan.status === "APPROVED" ? "ok" : "warn"}>
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-ink">{plan.title}</h3>
+                      <p className="mt-0.5 text-xs text-ink-muted">
+                        {plan.place} · {isArabic ? `إدخال: ${plan.submittedBy}` : `Submitted by: ${plan.submittedBy}`}
+                      </p>
+                    </div>
+                    <StatusPill status={plan.status} />
+                  </div>
+                  <p className="rounded-lg border border-hairline bg-surface-1 p-3 text-xs leading-relaxed text-ink-muted">{plan.aiPlanSummary}</p>
+                  <dl className="my-4 grid grid-cols-3 gap-2 text-center text-xs">
+                    {[
+                      { l: isArabic ? "الضيوف" : "Guests", v: plan.visitorCount, c: "text-ink" },
+                      { l: isArabic ? "الغرف المحجوزة" : "Hotel Rooms", v: plan.hotelRooms, c: "text-info" },
+                      { l: isArabic ? "الأسطول والحافلات" : "Fleet Units", v: plan.fleetCount, c: "text-gold-500" }
+                    ].map((s) => (
+                      <div key={s.l} className="rounded-lg bg-surface-1 p-2">
+                        <dt className="text-ink-faint">{s.l}</dt>
+                        <dd className={`font-tnum font-bold ${s.c}`}>{integer(s.v)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <div className="flex items-center justify-between border-t border-hairline pt-3">
+                    <span className="text-xs text-ink-faint">
+                      {plan.status === "APPROVED"
+                        ? isArabic
+                          ? "تم قفل شروط الدفع وتوليد العقود"
+                          : "Payment terms locked & active"
+                        : isArabic
+                          ? "شروط الدفع مقفلة لحين الاعتماد"
+                          : "Terms locked until approved"}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white">
-                    {money(Number(cnt.amount ?? cnt.totalValue ?? 0))}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-emerald-600 dark:text-emerald-400">
-                    {money(Number(cnt.amount ?? cnt.totalValue ?? 0) * 0.12)}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-slate-600 dark:text-slate-400">
-                    {localizePaymentTerms(cnt.paymentTerms, isArabic)}
-                  </td>
-                  <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
-                    <span className="inline-flex items-center gap-1 font-mono text-xs text-midyaf-gold">
-                      <ShieldCheck size={12} />
-                      {cnt.digitalSeal ? cnt.digitalSeal.slice(0, 10) + "..." : "SHA-256 Verified"}
-                    </span>
-                  </td>
-                </tr>
+                    {plan.status === "PENDING" && onConfirmAiPlan && aiPlan ? (
+                      <Button size="sm" variant="gold" onClick={() => void onConfirmAiPlan(aiPlan.id)}>
+                        {isArabic ? "اعتماد الخطة فوراً ↗" : "Approve Plan Now ↗"}
+                      </Button>
+                    ) : null}
+                  </div>
+                </Surface>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>)}
+            </div>
+          )}
+        </Section>
+      )}
+
+      {activeTab === "complaints" && (
+        <Section
+          id="section-admin-complaints"
+          title={isArabic ? "الشكاوى والبلاغات" : "Complaints"}
+          description={
+            isArabic
+              ? "رصد مباشر لجميع الشكاوى الواردة من ضيوف كبار الشخصيات، منسقي الميدان، أو الشركة المنظمة مع تتبع حالة المعالجة وسرعة الحل."
+              : "Direct incident registry of VIP guest concerns, coordinator alerts, and client notes with real-time resolution workflow."
+          }
+          action={
+            <div className="flex items-center gap-2">
+              <Select
+                aria-label={isArabic ? "تصفية" : "Filter"}
+                value={complaintFilter}
+                onChange={(e) => setComplaintFilter(e.target.value as typeof complaintFilter)}
+                className="h-9 w-40 py-0"
+                options={[
+                  { value: "ALL", label: isArabic ? "الكل" : "All" },
+                  { value: "OPEN", label: isArabic ? "مفتوح" : "Open" },
+                  { value: "IN_REVIEW", label: isArabic ? "قيد التحقيق" : "In review" },
+                  { value: "RESOLVED", label: isArabic ? "تم الحل" : "Resolved" }
+                ]}
+              />
+              <Button size="sm" variant="danger" leadingIcon={<Plus className="size-4" aria-hidden />} onClick={() => setNewComplaintModal((v) => !v)}>
+                {isArabic ? "تسجيل بلاغ جديد" : "Log New Incident"}
+              </Button>
+            </div>
+          }
+        >
+          {newComplaintModal ? (
+            <form onSubmit={handleAddComplaint} className="mb-5 rounded-lg border border-danger/30 bg-surface-1 p-4">
+              <h4 className="mb-3 text-sm font-semibold text-danger">
+                {isArabic ? "تسجيل بلاغ تنفيذي أو شكوى عاجلة" : "Log New Incident or Executive Complaint"}
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={isArabic ? "الجهة الشاكية أو اسم الضيف" : "Complainant or VIP Guest Name"}>
+                  <Input value={newComplaintGuest} onChange={(e) => setNewComplaintGuest(e.target.value)} />
+                </Field>
+                <Field label={isArabic ? "درجة الخطورة" : "Severity"}>
+                  <Select
+                    value={newComplaintSeverity}
+                    onChange={(e) => setNewComplaintSeverity(e.target.value as ComplaintSeverity)}
+                    options={[
+                      { value: "NORMAL", label: isArabic ? "درجة عادية (Normal)" : "Normal Severity" },
+                      { value: "HIGH", label: isArabic ? "درجة عالية (High)" : "High Severity" },
+                      { value: "CRITICAL", label: isArabic ? "حرجة وطارئة (Critical)" : "Critical Severity" }
+                    ]}
+                  />
+                </Field>
+              </div>
+              <Field label={isArabic ? "التفاصيل" : "Details"} className="mt-3" required>
+                <Textarea
+                  rows={2}
+                  value={newComplaintText}
+                  onChange={(e) => setNewComplaintText(e.target.value)}
+                  placeholder={isArabic ? "تفاصيل الشكوى أو الملاحظة الميدانية..." : "Describe the incident or complaint..."}
+                />
+              </Field>
+              <div className="mt-3 flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setNewComplaintModal(false)}>
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button size="sm" variant="danger" type="submit">
+                  {isArabic ? "حفظ البلاغ في اللوحة" : "Save Incident"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
+
+          {filteredComplaints.length === 0 ? (
+            <EmptyState compact title={isArabic ? "لا توجد بلاغات" : "No complaints"} />
+          ) : (
+            <ul className="space-y-3">
+              {filteredComplaints.map((c) => (
+                <li key={c.id}>
+                  <Surface tone={c.severity === "CRITICAL" ? "danger" : c.severity === "HIGH" ? "warn" : "none"} padding="sm" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="max-w-2xl space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-ink">
+                          {isArabic ? c.complainantNameAr || c.complainantName : c.complainantNameEn || c.complainantName}
+                        </span>
+                        <span className="text-xs text-ink-faint">({c.complainantRole})</span>
+                        <StatusPill status={c.severity} size="sm" showIcon={false} live={c.severity === "CRITICAL" && c.status !== "RESOLVED"} />
+                        <span className="font-tnum text-xs text-ink-faint">{shortTime(c.createdAt)}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-ink-muted">{isArabic ? c.descriptionAr || c.description : c.descriptionEn || c.description}</p>
+                      {c.resolutionNotes ? (
+                        <p className="text-xs font-medium text-ok">
+                          ✓ {isArabic ? c.resolutionNotesAr || c.resolutionNotes : c.resolutionNotesEn || c.resolutionNotes}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0">
+                      {c.status === "RESOLVED" ? (
+                        <Badge tone="ok">
+                          <CheckCircle2 className="size-3" aria-hidden />
+                          {isArabic ? "تم الحل والمعالجة" : "Resolved"}
+                        </Badge>
+                      ) : (
+                        <Button size="sm" onClick={() => handleResolveComplaint(c.id)}>
+                          {isArabic ? "تسوية البلاغ ✓" : "Resolve Incident ✓"}
+                        </Button>
+                      )}
+                    </div>
+                  </Surface>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
+      {activeTab === "activities" && (
+        <Section id="section-admin-activities" title={isArabic ? "الفعاليات الجارية" : "Live Activities"}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Surface tone="gold">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-label text-gold-500">
+                    <span className="size-2 rounded-full bg-ok animate-pulse" aria-hidden />
+                    {isArabic ? "فعالية قيد التنفيذ المباشر (LIVE)" : "Live In-Execution"}
+                  </span>
+                  <h3 className="mt-1 text-base font-bold text-ink">{event.name}</h3>
+                </div>
+                <Badge tone="gold">{isArabic ? `الالتزام بالوقت: ${sla.onTimePercent}%` : `On-time: ${sla.onTimePercent}%`}</Badge>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
+                {[
+                  { l: isArabic ? "كبار الشخصيات" : "VIP Guests", v: integer(intake?.vipVisitorCount ?? 0), c: "text-ink" },
+                  { l: isArabic ? "الكباتن بالخدمة" : "Active Captains", v: `${integer(fleet.active)} / ${integer(fleet.total)}`, c: "text-ok" },
+                  { l: isArabic ? "المهام المنجزة" : "Completed Tasks", v: `${integer(sla.completed)} / ${integer(sla.total)}`, c: "text-info" },
+                  { l: isArabic ? "البلاغات المفتوحة" : "Open Issues", v: integer(openComplaints), c: openComplaints ? "text-danger" : "text-ink" }
+                ].map((s) => (
+                  <div key={s.l} className="rounded-lg bg-surface-1 p-2.5">
+                    <dt className="text-ink-faint">{s.l}</dt>
+                    <dd className={`mt-0.5 font-tnum text-lg font-bold ${s.c}`}>{s.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Surface>
+
+            <Surface>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-label text-ink-muted">
+                    <Clock className="size-3.5" aria-hidden />
+                    {isArabic ? "فعالية قادمة — التجهيز اللوجستي" : "Upcoming Pipeline Event"}
+                  </span>
+                  <h3 className="mt-1 text-base font-bold text-ink">
+                    {isArabic ? "ملتقى الدرعية للتراث والضيافة الرفيعة" : "Diriyah Heritage & High Hospitality Forum"}
+                  </h3>
+                </div>
+                <StatusPill status="QUOTING" />
+              </div>
+              <p className="mb-4 mt-2 text-sm leading-relaxed text-ink-muted">
+                {isArabic
+                  ? "تم استقبال متطلبات الفعالية وتجهيز الغرف الفندقية في حي الطريف التراثي، بانتظار إغلاق خزنة المنافسة الرقمية واعتماد العقود."
+                  : "Requirements received and heritage rooms reserved at At-Turaif. Pending digital vault sealing and contract approvals."}
+              </p>
+              <div className="flex items-center justify-between border-t border-hairline pt-3 text-xs">
+                <span className="font-tnum text-ink-faint">{isArabic ? "الجدول: 18 - 20 أكتوبر 2026" : "Schedule: Oct 18 - 20, 2026"}</span>
+                <span className="font-tnum font-semibold text-ink">
+                  {money(450000)} <span className="font-normal text-ink-faint">({isArabic ? "تقديري" : "estimate"})</span>
+                </span>
+              </div>
+            </Surface>
+          </div>
+        </Section>
+      )}
+
+      {activeTab === "vault" && (
+        <Section id="section-admin-vault" title={isArabic ? "خزنة العقود والمالية" : "Contracts Vault"}>
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-gold-500/30 bg-gold-500/10 p-4 text-sm text-gold-300">
+            <Lock className="size-5 shrink-0 text-gold-500" aria-hidden />
+            <p>
+              {isArabic
+                ? "تم عزل هذه البيانات المالية والتسعيرية بالكامل عن لوحة العمليات الميدانية وفقاً لبروتوكول الحوكمة، وهي متاحة حصراً لملاك وإدارة مضياف."
+                : "Financial, pricing, and quotation data has been strictly segregated from field operations per governance protocol, accessible exclusively to Midyaf ownership."}
+            </p>
+          </div>
+          <DataTable<Contract>
+            rows={data.contracts}
+            rowKey={(c) => c.id}
+            defaultSort={{ id: "value", dir: "desc" }}
+            empty={<EmptyState compact title={isArabic ? "لا توجد عقود بعد" : "No contracts yet"} />}
+            columns={[
+              { id: "number", header: isArabic ? "رقم العقد" : "Contract #", cell: (c) => <span className="font-mono text-xs text-gold-300">{c.contractNumber}</span> },
+              { id: "vendor", header: isArabic ? "المورد المعتمد" : "Certified Vendor", sortValue: (c) => c.vendorName, cell: (c) => <span className="font-semibold">{c.vendorName}</span> },
+              { id: "category", header: isArabic ? "التصنيف" : "Category", cell: (c) => <Badge tone="neutral">{localizeCategory(c.category, isArabic)}</Badge> },
+              {
+                id: "value",
+                header: isArabic ? "القيمة الإجمالية" : "Total Value",
+                sortValue: (c) => Number(c.amount ?? c.totalValue ?? 0),
+                numeric: true,
+                align: "end",
+                cell: (c) => <span className="font-semibold">{money(Number(c.amount ?? c.totalValue ?? 0))}</span>
+              },
+              {
+                id: "commission",
+                header: isArabic ? "عمولة مضياف" : "Midyaf Commission",
+                sortValue: (c) => Number(c.commissionAmount ?? 0),
+                numeric: true,
+                align: "end",
+                cell: (c) => <span className="font-semibold text-ok">{money(Number(c.commissionAmount ?? 0))}</span>
+              },
+              { id: "terms", header: isArabic ? "شروط الدفع" : "Payment Terms", cell: (c) => <span className="text-ink-muted">{localizePaymentTerms(c.paymentTerms, isArabic)}</span> },
+              { id: "status", header: isArabic ? "الحالة" : "Status", sortValue: (c) => c.status, cell: (c) => <StatusPill status={c.status} /> },
+              {
+                id: "seal",
+                header: isArabic ? "الختم الرقمي" : "Digital Seal",
+                cell: (c) => (
+                  <span className="inline-flex items-center gap-1 font-mono text-xs text-gold-500" dir="ltr">
+                    <ShieldCheck className="size-3.5" aria-hidden />
+                    {c.digitalSeal ? c.digitalSeal.slice(0, 10) + "…" : "SHA-256"}
+                  </span>
+                )
+              }
+            ]}
+          />
+        </Section>
+      )}
     </div>
   );
 }

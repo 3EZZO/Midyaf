@@ -327,7 +327,7 @@ export function SovereignCommandBridge({
         
         setScenarioLog((prev) => [
           isArabic
-            ? `[مصافحة السياج الجغرافي] ${timestamp} · تم رصد اختراق الحلقات الأربع للصالة الملكية بمطار الملك خالد — وصول الكابتن سلطان لرصيف كبار الشخصيات (٢٥٠م) وتأكيد الإرساء الفوري.`
+            ? `[مصافحة السياج الجغرافي] ${timestamp} · تم رصد اختراق الحلقات الأربع للصالة الملكية بمطار الملك خالد — وصول الكابتن سلطان لرصيف كبار الشخصيات (250م) وتأكيد الإرساء الفوري.`
             : `[GEOFENCE HANDSHAKE] ${timestamp} · Concentric rings verified at KKIA Royal Terminal — Capt. Sultan crossed 250m Curbside Gate -> Docked Bay #1 confirmed.`,
           ...prev.slice(0, 5)
         ]);
@@ -389,14 +389,14 @@ export function SovereignCommandBridge({
             <Thermometer size={13} className="text-amber-400" />
             <span>28°C</span>
             <Wind size={13} className="text-cyan-400 ms-1" />
-            <span>{isArabic ? "١٢ كم/س" : "12 km/h"}</span>
-            <span className="text-emerald-400 font-bold ms-1">{isArabic ? "جودة الهواء ٣٢" : "AQI 32"}</span>
+            <span>{isArabic ? "12 كم/س" : "12 km/h"}</span>
+            <span className="text-emerald-400 font-bold ms-1">{isArabic ? "جودة الهواء 32" : "AQI 32"}</span>
           </div>
 
           {/* Spatial Buffer Ingestion Telemetry */}
           <div className="hidden xl:flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 border border-emerald-500/30">
             <Radio size={13} className="text-emerald-400 animate-pulse" />
-            <span className="font-mono font-bold text-xs">{isArabic ? "مخزن الإحداثيات: نشط (٠ تأخير)" : "Spatial Buffer: Active (0ms Lag)"}</span>
+            <span className="font-mono font-bold text-xs">{isArabic ? "مخزن الإحداثيات: نشط (0 تأخير)" : "Spatial Buffer: Active (0ms Lag)"}</span>
             <span className="text-xs px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono">1.5 Hz</span>
           </div>
         </div>
@@ -482,7 +482,7 @@ export function SovereignCommandBridge({
                 </h3>
               </div>
               <span className="text-xs font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                {isArabic ? "٤ حلقات نشطة" : "4 Rings Active"}
+                {isArabic ? "4 حلقات نشطة" : "4 Rings Active"}
               </span>
             </div>
 
@@ -580,7 +580,7 @@ export function SovereignCommandBridge({
                       clearance: isArabic ? "بروتوكول ملكي مستوى 1 - تصريح سيادي فائق" : "Royal Protocol Level 1 - Sovereign Clearance",
                       chauffeur: convoy.driver,
                       vehicle: convoy.vehicle,
-                      plate: isArabic ? "٢٠٢٧ ك س أ" : "2027 KSA",
+                      plate: isArabic ? "2027 ك س أ" : "2027 KSA",
                       location: convoy.route,
                       rider: isArabic ? [
                         "قهوة سعودية مختصة فاخرة",

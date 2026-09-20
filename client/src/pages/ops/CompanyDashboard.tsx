@@ -5,6 +5,7 @@ import { FileText, Key, Sparkles, Send, Download, Building2, Copy, ExternalLink 
 import { Badge } from "../../components/Badge";
 import { useTacticalToast } from "../../components/TacticalToast";
 import { Section } from "../../components/Section";
+import { IconTabNav } from "../../components/ui/IconTabNav";
 import { apiFetch } from "../../lib/api";
 import type { PortalProps } from "../types";
 import type { ClientPermissionConfig, Task } from "@shared/domain";
@@ -152,56 +153,17 @@ export function CompanyDashboard({
       />
 
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <button 
-          onClick={() => setActiveTab("summary")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "summary" 
-              ? "bg-midyaf-purple text-white border-midyaf-purple shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-pearl dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <Building2 size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "ملخص الفعالية" : "Activity Summary"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("client")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "client" 
-              ? "bg-midyaf-gold text-white border-midyaf-gold shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-midyaf-gold dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <ExternalLink size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "بوابة العميل" : "Client Portal"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("reports")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "reports" 
-              ? "bg-emerald-500 text-white border-emerald-500 shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-emerald-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <FileText size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "التقارير والمخرجات" : "Reports"}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab("updates")}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
-            activeTab === "updates" 
-              ? "bg-amber-500 text-white border-amber-500 shadow-none" 
-              : "bg-white/80 text-slate-500 border-white/5 hover:bg-slate-50 hover:text-amber-500 dark:bg-slate-900/60 dark:border-slate-800"
-          }`}
-        >
-          <Sparkles size={24} className="mb-2" />
-          <span className="text-xs font-bold">{ui.isArabic ? "تحديثات الفعالية" : "Activity Updates"}</span>
-        </button>
-      </div>
-
+      <IconTabNav
+        layoutId="company-tabs"
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: "summary", icon: Building2, labelEn: "Activity Summary", labelAr: "ملخص الفعالية" },
+          { id: "client", icon: ExternalLink, labelEn: "Client Portal", labelAr: "بوابة العميل" },
+          { id: "reports", icon: FileText, labelEn: "Reports", labelAr: "التقارير والمخرجات" },
+          { id: "updates", icon: Sparkles, labelEn: "Activity Updates", labelAr: "تحديثات الفعالية" }
+        ]}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         {activeTab === "summary" && (<Section title={ui.l("Activity summary")}>
@@ -489,7 +451,7 @@ export function CompanyDashboard({
             onChange={(event) => setNewData(event.target.value)}
             placeholder={ui.p(
               "Example: 4 additional VIP guests arriving on SV102 at 18:20, need SUV and hotel rooms.",
-              "مثال: وصول ٤ ضيوف VIP إضافيين على رحلة SV102 الساعة 18:20 ويحتاجون سيارة SUV وغرف فندقية."
+              "مثال: وصول 4 ضيوف VIP إضافيين على رحلة SV102 الساعة 18:20 ويحتاجون سيارة SUV وغرف فندقية."
             )}
             className="min-h-28 rounded-lg border border-white/5 px-3 py-2 text-sm"
           />

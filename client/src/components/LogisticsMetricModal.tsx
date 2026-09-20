@@ -25,6 +25,10 @@ import {
 import { useTranslation } from "react-i18next";
 import type { MidyafData, Event, Session, TaskStatus } from "@shared/domain";
 import { isArabicLanguage, localizeText } from "../lib/localize";
+import { compact, integer } from "../lib/format";
+import { deriveExecutiveKpis } from "../lib/metrics";
+import { KpiTile } from "./ui/KpiTile";
+import { AreaTrend } from "./charts/AreaTrend";
 import { tacticalAudio } from "../lib/tacticalAudio";
 import { useTacticalToast } from "./TacticalToast";
 import { Badge } from "./Badge";
@@ -82,7 +86,7 @@ const VIP_GUESTS_DATA: DisplayGuest[] = [
     vehicleAr: "مرسيدس مايباخ S680",
     plate: "2027 KSA",
     rider: "Saudi Artisanal Qahwa · Organic Sukari Dates · 20.0°C Cabin · Police Escort",
-    riderAr: "قهوة سعودية مختصة · تمر سكري عضوي · تكييف ٢٠°م · موكب مرافقة أمني",
+    riderAr: "قهوة سعودية مختصة · تمر سكري عضوي · تكييف 20°م · موكب مرافقة أمني",
     status: "Checked In · Keynote Ready",
     statusAr: "تم تسجيل الوصول · جاهز للكلمة الافتتاحية"
   },
@@ -180,16 +184,16 @@ const CERTIFIED_CONTRACTS = [
     category: "Royal Hospitality & Accommodation",
     categoryAr: "الضيافة الملكية والإقامة الفاخرة",
     amount: "SAR 1,250,000",
-    amountAr: "١,٢٥٠,٠٠٠ ر.س",
+    amountAr: "1,250,000 ر.س",
     rawAmount: 1250000,
     commission: "SAR 125,000",
-    commissionAr: "١٢٥,٠٠٠ ر.س",
+    commissionAr: "125,000 ر.س",
     takeRate: "10.0%",
     status: "SIGNED & EXECUTED",
     statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 8f4a...d91c",
     scope: "100 Royal & Executive Suites for Sovereign Delegations and PIF leadership.",
-    scopeAr: "١٠٠ جناح ملكي وتنفيذي للوفود السيادية وقيادات صندوق الاستثمارات العامة."
+    scopeAr: "100 جناح ملكي وتنفيذي للوفود السيادية وقيادات صندوق الاستثمارات العامة."
   },
   {
     id: "c-2",
@@ -198,16 +202,16 @@ const CERTIFIED_CONTRACTS = [
     category: "Diplomatic Transportation & Motorcades",
     categoryAr: "النقل الدبلوماسي ومواكب الحراسة",
     amount: "SAR 450,000",
-    amountAr: "٤٥٠,٠٠٠ ر.س",
+    amountAr: "450,000 ر.س",
     rawAmount: 450000,
     commission: "SAR 45,000",
-    commissionAr: "٤٥,٠٠٠ ر.س",
+    commissionAr: "45,000 ر.س",
     takeRate: "10.0%",
     status: "SIGNED & EXECUTED",
     statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 3c9b...7e21",
     scope: "50 Mercedes-Maybach S680 and V-Class VIP Vans with 24/7 Diplomatic Police Escort.",
-    scopeAr: "٥٠ سيارة مرسيدس مايباخ وفانات V-Class فاخرة مع مرافقة أمنية دبلوماسية على مدار الساعة."
+    scopeAr: "50 سيارة مرسيدس مايباخ وفانات V-Class فاخرة مع مرافقة أمنية دبلوماسية على مدار الساعة."
   },
   {
     id: "c-3",
@@ -216,10 +220,10 @@ const CERTIFIED_CONTRACTS = [
     category: "Diplomatic Catering & Banqueting",
     categoryAr: "الضيافة والتموين الدبلوماسي",
     amount: "SAR 210,000",
-    amountAr: "٢١٠,٠٠٠ ر.س",
+    amountAr: "210,000 ر.س",
     rawAmount: 210000,
     commission: "SAR 25,200",
-    commissionAr: "٢٥,٢٠٠ ر.س",
+    commissionAr: "25,200 ر.س",
     takeRate: "12.0%",
     status: "APPROVED & ACTIVE",
     statusAr: "معتمد ونشط",
@@ -234,10 +238,10 @@ const CERTIFIED_CONTRACTS = [
     category: "Summit Production & Simultaneous Translation",
     categoryAr: "إنتاج القمة والترجمة الفورية",
     amount: "SAR 260,000",
-    amountAr: "٢٦٠,٠٠٠ ر.س",
+    amountAr: "260,000 ر.س",
     rawAmount: 260000,
     commission: "SAR 29,400",
-    commissionAr: "٢٩,٤٠٠ ر.س",
+    commissionAr: "29,400 ر.س",
     takeRate: "11.3%",
     status: "SIGNED & EXECUTED",
     statusAr: "موقع ومعتمد رسمياً",
@@ -308,6 +312,15 @@ export function LogisticsMetricModal({
     }
     return VIP_GUESTS_DATA;
   }, [isDemoMode, event.guests, data.guestJourneys, event.name, event.venue]);
+
+  const exec = useMemo(() => deriveExecutiveKpis(data, { isDemoMode }), [data, isDemoMode]);
+  const visitorStats = useMemo(() => {
+    const total = guestsToDisplay.length;
+    const vip = guestsToDisplay.filter((g) => /H.E.|H.R.H|Minister|Governor|معالي|سمو|وزير/i.test(g.title + g.titleAr + g.name + g.nameAr)).length;
+    const delegations = new Set(guestsToDisplay.map((g) => g.org).filter(Boolean)).size;
+    const arrived = guestsToDisplay.filter((g) => /arrived|venue|checked|وصل|القاعة/i.test(g.status + (g.statusAr ?? ""))).length;
+    return { total, vip, delegations, arrived };
+  }, [guestsToDisplay]);
 
   if (!modal) return null;
 
@@ -415,31 +428,12 @@ export function LogisticsMetricModal({
              ══════════════════════════════════════════════════════ */}
           {modal === "visitors" && (
             <div className="space-y-6">
-              {/* Top Metrics Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Total Attendees")}</span>
-                  <p className="text-2xl font-black text-white mt-1">1,200</p>
-                  <span className="text-xs text-emerald-400 font-semibold">100% Accredited</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-xs text-midyaf-gold font-bold uppercase flex items-center gap-1.5">
-                    <Crown size={12} />
-                    <span>{l("VIP Dignitaries")}</span>
-                  </span>
-                  <p className="text-2xl font-black text-midyaf-gold mt-1">150</p>
-                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"}</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Sovereign Delegations")}</span>
-                  <p className="text-2xl font-black text-white mt-1">42</p>
-                  <span className="text-xs text-cyan-300 font-semibold">{isArabic ? "دولة مشاركة" : "Global Countries"}</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Accredited Media")}</span>
-                  <p className="text-2xl font-black text-white mt-1">350</p>
-                  <span className="text-xs text-purple-300 font-semibold">{isArabic ? "جهة إعلامية وتلفزيونية" : "Broadcasters"}</span>
-                </div>
+              {/* Top metrics — from the guest list actually shown */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <KpiTile label={l("Total Attendees")} value={visitorStats.total} detail={isArabic ? "إجمالي المعتمدين" : "Accredited"} size="md" />
+                <KpiTile label={l("VIP Dignitaries")} value={visitorStats.vip} tone="gold" icon={<Crown className="size-4" aria-hidden />} detail={isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"} />
+                <KpiTile label={l("Sovereign Delegations")} value={visitorStats.delegations} tone="info" detail={isArabic ? "وفد" : "Delegations"} />
+                <KpiTile label={isArabic ? "وصلوا" : "Arrived"} value={visitorStats.arrived} tone="ok" detail={isArabic ? `من ${integer(visitorStats.total)}` : `of ${integer(visitorStats.total)}`} />
               </div>
 
               {/* Search Bar */}
@@ -517,28 +511,12 @@ export function LogisticsMetricModal({
              ══════════════════════════════════════════════════════ */}
           {modal === "contracts" && (
             <div className="space-y-6">
-              {/* Financial Metrics Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-xs text-midyaf-gold font-bold uppercase">{l("Gross Procurement GMV")}</span>
-                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
-                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "٤ عقود معتمدة" : "4 Approved Contracts"}</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
-                  <span className="text-xs text-emerald-400 font-bold uppercase">{l("Platform Revenue Commission")}</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٢٢٤,٦٠٠ ر.س" : "SAR 224,600"}</p>
-                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "١٠.٣٪ نسبة العمولة" : "10.3% Take Rate"}</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
-                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
-                  <span className="text-xs text-cyan-300 font-semibold">{isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"}</span>
-                </div>
-                <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "الشهادة الضريبية (زكاة وضريبة)" : "ZATCA Tax Clearance"}</span>
-                  <p className="text-2xl font-black text-white mt-1">100%</p>
-                  <span className="text-xs text-purple-300 font-semibold">{isArabic ? "مطابق لنظام الفوترة الإلكترونية" : "E-Invoicing Compliant"}</span>
-                </div>
+              {/* Financial metrics — selectors, never literals */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <KpiTile label={l("Gross Procurement GMV")} value={exec.contractedSpend.value} format="money" tone="gold" sparkline={exec.contractedSpend.series.points} source={exec.contractedSpend.source} detail={isArabic ? `${integer(data.contracts.length)} عقود معتمدة` : `${integer(data.contracts.length)} contracts`} />
+                <KpiTile label={l("Platform Revenue Commission")} value={exec.commission.value} format="money" tone="ok" detail={isArabic ? `${exec.marginPercent.value}% نسبة العمولة` : `${exec.marginPercent.value}% take rate`} />
+                <KpiTile label={l("Supplier Payouts")} value={Math.max(0, exec.contractedSpend.value - exec.commission.value)} format="money" detail={isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"} />
+                <KpiTile label={isArabic ? "العقود الموقعة" : "Signed contracts"} value={data.contracts.filter((c) => c.status === "SIGNED" || c.status === "ACTIVE").length} detail={isArabic ? `من ${integer(data.contracts.length)}` : `of ${integer(data.contracts.length)}`} tone="info" />
               </div>
 
               {/* Action Banner to Jump to In-Page Vault */}
@@ -869,25 +847,18 @@ export function LogisticsMetricModal({
              ══════════════════════════════════════════════════════ */}
           {modal === "commission" && (
             <div className="space-y-6">
-              {/* Financial Big Numbers */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-lg glass-tactical p-5 border border-midyaf-gold/40 text-center">
-                  <span className="text-xs text-midyaf-gold font-bold uppercase">{l("Platform Revenue Commission")}</span>
-                  <p className="text-3xl font-black text-white mt-1">{isArabic ? `${totalCommission.toLocaleString("ar-SA")} ر.س` : `SAR ${totalCommission.toLocaleString()}`}</p>
-                  <p className="text-xs text-emerald-400 font-semibold mt-1">{isArabic ? "١٠.٣٪ متوسط نسبة العمولة" : "10.3% Average Take Rate"}</p>
-                </div>
+              {/* Financial big numbers — selectors, never literals */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <KpiTile size="lg" tone="gold" label={l("Platform Revenue Commission")} value={exec.commission.value} format="money" delta={exec.commission.delta} sparkline={exec.commission.series.points} source={exec.commission.source} detail={isArabic ? `${exec.marginPercent.value}% متوسط نسبة العمولة` : `${exec.marginPercent.value}% average take rate`} />
+                <KpiTile size="lg" label={l("Gross Procurement GMV")} value={exec.contractedSpend.value} format="money" sparkline={exec.contractedSpend.series.points} source={exec.contractedSpend.source} detail={isArabic ? `${integer(data.contracts.length)} عقود منفذة رسمياً` : `${integer(data.contracts.length)} executed contracts`} />
+                <KpiTile size="lg" label={l("Supplier Payouts")} value={Math.max(0, exec.contractedSpend.value - exec.commission.value)} format="money" detail={isArabic ? "حساب الضمان المؤسسي (صلة)" : "Sila Corporate Escrow"} />
+              </div>
 
-                <div className="rounded-lg glass-tactical p-5 border border-white/10 text-center">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Gross Procurement GMV")}</span>
-                  <p className="text-3xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
-                  <p className="text-xs text-cyan-300 font-semibold mt-1">{isArabic ? "٤ عقود منفذة رسمياً" : "4 Executed Contracts"}</p>
-                </div>
-
-                <div className="rounded-lg glass-tactical p-5 border border-white/10 text-center">
-                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
-                  <p className="text-3xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
-                  <p className="text-xs text-purple-300 font-semibold mt-1">{isArabic ? "حساب الضمان المؤسسي (صلة)" : "Sila Corporate Escrow"}</p>
-                </div>
+              <div className="rounded-lg border border-hairline bg-surface-2 p-4">
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-label text-gold-500">
+                  {isArabic ? "منحنى العمولات مقابل قيمة العقود — 30 يوماً" : "Commission vs contract value — 30 days"}
+                </h4>
+                <AreaTrend series={exec.commission.series} secondary={exec.contractedSpend.series} valueFormatter={(v) => compact(v)} labels={{ primary: isArabic ? "العمولات" : "Commission", secondary: isArabic ? "قيمة العقود" : "Contract value" }} />
               </div>
 
               {/* Vendor Commission Breakdown Table */}
@@ -934,7 +905,7 @@ export function LogisticsMetricModal({
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
                   <span className="text-xs text-emerald-400 font-bold uppercase">{l("Fleet Savings")}</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٨٤,٢٠٠ ر.س" : "SAR 84,200"}</p>
+                  <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "84,200 ر.س" : "SAR 84,200"}</p>
                   <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "توفير الوقود وتقليص الانتظار" : "Fuel & Idle Reduction"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
@@ -944,7 +915,7 @@ export function LogisticsMetricModal({
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
                   <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "وفر الانبعاثات الكربونية" : "CO₂ Footprint Saved"}</span>
-                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "١٨.٢ طن" : "18.2 Tons"}</p>
+                  <p className="text-2xl font-black text-white mt-1">{isArabic ? "18.2 طن" : "18.2 Tons"}</p>
                   <span className="text-xs text-purple-300 font-semibold">{isArabic ? "تحسين مسارات الأسطول الذكية" : "Fleet Route Optimization"}</span>
                 </div>
               </div>
