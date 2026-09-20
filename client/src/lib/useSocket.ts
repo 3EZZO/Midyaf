@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { DriverZone, GeofenceTransitionEvent, Task, TaskStatus } from "@shared/domain";
+import { liveEvents } from "./liveEvents";
 
 /**
  * One Socket.IO connection per session.
@@ -119,6 +120,9 @@ export function useSocket({
 
     for (const name of EVENT_NAMES) {
       instance.on(name, (payload: unknown) => {
+        // Every server event is republished on the bus so panels can
+        // subscribe without touching the socket.
+        liveEvents.emit(name, payload as ServerEvents[typeof name], "socket");
         const handler = handlersRef.current[name] as
           | ((value: unknown) => void)
           | undefined;

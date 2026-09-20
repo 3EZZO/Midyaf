@@ -11,6 +11,8 @@ export interface ToastItem {
   message?: string;
   type?: ToastType;
   duration?: number;
+  /** Optional call-to-action rendered as a button inside the toast. */
+  action?: { label: string; onClick: () => void };
 }
 
 export interface ToastApi {
@@ -40,9 +42,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const show = useCallback(
-    ({ title, message, type = "success", duration = 3400 }: Omit<ToastItem, "id">) => {
+    ({ title, message, type = "success", duration = 3400, action }: Omit<ToastItem, "id">) => {
       const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      setToasts((prev) => [...prev.slice(-3), { id, title, message, type, duration }]);
+      setToasts((prev) => [...prev.slice(-3), { id, title, message, type, duration, action }]);
       if (duration > 0) setTimeout(() => dismiss(id), duration);
     },
     [dismiss]
@@ -90,6 +92,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold leading-snug text-ink">{toast.title}</p>
                   {toast.message ? <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">{toast.message}</p> : null}
+                  {toast.action ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.action?.onClick();
+                        dismiss(toast.id);
+                      }}
+                      className="mt-2 inline-flex h-8 items-center rounded-lg bg-gold-500 px-3 text-xs font-semibold text-surface-0 transition-colors hover:bg-gold-300 focus-visible:outline-none focus-visible:shadow-focus"
+                    >
+                      {toast.action.label}
+                    </button>
+                  ) : null}
                 </div>
                 <button
                   type="button"
