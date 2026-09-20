@@ -8,6 +8,7 @@ import type { CoordinatorRequestInput, PortalProps } from "../types";
 import { DateTimeField, Field, PortalHero, RouteLine, SelectField, defaultDeadline, useOpsText } from "./shared";
 import { AirportExpressSection, HospitalityRidersSection } from "./RiderSections";
 
+import { useToast } from "../../components/ui/Toast";
 export function CoordinatorsApp({
   data,
   session,
@@ -16,6 +17,7 @@ export function CoordinatorsApp({
   updateCoordinatorRequest
 }: PortalProps) {
   const ui = useOpsText();
+  const toast = useToast();
   const event = data.events[0];
   const [requestDraft, setRequestDraft] = useState<CoordinatorRequestInput>(
     () => ({
@@ -76,7 +78,7 @@ export function CoordinatorsApp({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40">
                   {ui.p("AMBER SURGE ALERT", "تنبيه ازدحام عاجل")}
                 </span>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white dark:text-dark-primary">
@@ -93,7 +95,7 @@ export function CoordinatorsApp({
           </div>
           <button
             onClick={() => {
-              alert(ui.p("5 Vans Diverted from Terminal 1 to Terminal 2. At-risk guest count reduced from 25 to 0.", "تم تحويل 5 حافلات بنجاح من الصالة 1 إلى الصالة 2. تم تأمين تنقل جميع الضيوف (25 ضيفاً)."));
+              toast.success(ui.p("5 Vans Diverted from Terminal 1 to Terminal 2. At-risk guest count reduced from 25 to 0.", "تم تحويل 5 حافلات بنجاح من الصالة 1 إلى الصالة 2. تم تأمين تنقل جميع الضيوف (25 ضيفاً)."));
             }}
             className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-purple to-midyaf-purple-dark text-white font-bold px-4 py-2.5 text-xs shadow-md hover:shadow-glow hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >

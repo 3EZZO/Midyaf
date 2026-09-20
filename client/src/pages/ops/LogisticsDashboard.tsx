@@ -23,6 +23,7 @@ import { PlanPhases } from "./PlanPhases";
 
 function LiveCommandCenterSection({ session }: { session?: PortalProps["session"] }) {
   const ui = useOpsText();
+  const toast = useTacticalToast();
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
   async function handleDivert() {
     if (!data?.activeAlert?.actionEndpoint || !session?.accessToken) return;
     await apiFetch<any>(data.activeAlert.actionEndpoint, session.accessToken, { method: "POST" });
-    alert(ui.l("Fleet successfully diverted."));
+    toast.success(ui.l("Fleet successfully diverted."));
     setData({ ...data, activeAlert: null });
   }
 
@@ -412,19 +413,19 @@ function SmartAssistantSection({
                   <div className="grid grid-cols-2 gap-2 text-center text-xs">
                     <div className="rounded bg-white/5 p-2 border border-white/10">
                       <div className="text-base font-black text-emerald-400">{msg.widget.metrics.totalGuestsServed}</div>
-                      <div className="text-[10px] text-slate-400">{ui.p("VIPs Served", "الضيوف المخدومين")}</div>
+                      <div className="text-xs text-slate-400">{ui.p("VIPs Served", "الضيوف المخدومين")}</div>
                     </div>
                     <div className="rounded bg-white/5 p-2 border border-white/10">
                       <div className="text-base font-black text-amber-400">{msg.widget.metrics.npsScore}</div>
-                      <div className="text-[10px] text-slate-400">{ui.p("NPS Score", "مؤشر الرضا")}</div>
+                      <div className="text-xs text-slate-400">{ui.p("NPS Score", "مؤشر الرضا")}</div>
                     </div>
                     <div className="rounded bg-white/5 p-2 border border-white/10">
                       <div className="text-base font-black text-cyan-400">SAR {msg.widget.metrics.estimatedCostSavingsSAR.toLocaleString()}</div>
-                      <div className="text-[10px] text-slate-400">{ui.p("Fleet Savings", "وفورات الأسطول")}</div>
+                      <div className="text-xs text-slate-400">{ui.p("Fleet Savings", "وفورات الأسطول")}</div>
                     </div>
                     <div className="rounded bg-white/5 p-2 border border-white/10">
                       <div className="text-base font-black text-purple-400">-{msg.widget.metrics.fleetIdlePercentage}%</div>
-                      <div className="text-[10px] text-slate-400">{ui.p("Idle Time Cut", "خفض الهدر")}</div>
+                      <div className="text-xs text-slate-400">{ui.p("Idle Time Cut", "خفض الهدر")}</div>
                     </div>
                   </div>
                 </div>
@@ -434,12 +435,12 @@ function SmartAssistantSection({
                 <div className="mt-3 rounded-xl bg-slate-950 p-3.5 border border-emerald-500/40 text-white">
                   <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-2 border-b border-emerald-500/20 pb-1">
                     <span className="flex items-center gap-1"><Radio size={14} className="animate-pulse" /> {msg.widget.vehicle}</span>
-                    <span className="font-mono text-[11px] text-amber-300">{msg.widget.plate}</span>
+                    <span className="font-mono text-xs text-amber-300">{msg.widget.plate}</span>
                   </div>
                   <div className="text-xs text-slate-300">
                     <div>{ui.p("Chauffeur", "السائق")}: <strong className="text-white">{msg.widget.driverName}</strong></div>
                     <div>{ui.p("Status", "الحالة")}: <span className="text-emerald-300">{msg.widget.status} ({msg.widget.speed})</span></div>
-                    <div className="text-[11px] font-mono text-slate-400 mt-1">{msg.widget.coords}</div>
+                    <div className="text-xs font-mono text-slate-400 mt-1">{msg.widget.coords}</div>
                   </div>
                 </div>
               )}
@@ -533,7 +534,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-midyaf-gold">
+                <span className="text-xs font-black uppercase tracking-wider text-midyaf-gold">
                   {spot.category}
                 </span>
                 <h4 className="mt-0.5 text-sm font-black text-slate-900 dark:text-white">
@@ -560,7 +561,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
               )}
             </div>
 
-            <p className="mt-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs font-bold text-slate-500 dark:text-slate-400">
               ● {ui.p(spot.statusEn, spot.statusAr)}
             </p>
           </div>

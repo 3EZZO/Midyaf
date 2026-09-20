@@ -70,7 +70,7 @@ export function DashboardJumpDock({ isArabic, isDemoMode }: DashboardJumpDockPro
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto py-1 px-1 -my-1 scrollbar-none animate-fadeIn">
-      <div className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg bg-midyaf-purple/10 dark:bg-midyaf-purple/20 text-[11px] font-black text-midyaf-pearl dark:text-purple-300">
+      <div className="flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg bg-midyaf-purple/10 dark:bg-midyaf-purple/20 text-xs font-black text-midyaf-pearl dark:text-purple-300">
         <Navigation size={12} className="text-midyaf-gold" />
         <span>{isArabic ? "انتقال سريع:" : "Quick Jump:"}</span>
       </div>

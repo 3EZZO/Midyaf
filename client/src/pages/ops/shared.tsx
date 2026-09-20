@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { FileText, Plane, ShieldCheck, Hotel } from "lucide-react";
 import { Badge } from "../../components/Badge";
+import { KpiTile } from "../../components/ui/KpiTile";
 import { Section } from "../../components/Section";
 import { shortDate, shortTime } from "../../lib/format";
 import { isArabicLanguage, localizeText, pickText } from "../../lib/localize";
@@ -345,23 +346,7 @@ export function taskStatusTone(status: TaskStatus) {
 }
 
 
-export function PortalHero({
-  badge,
-  title,
-  body
-}: {
-  badge: string;
-  title: string;
-  body: string;
-}) {
-  return (
-    <section className="hero-gradient rounded-xl p-6 text-white shadow-sm overflow-hidden animate-fadeInUp">
-      <Badge tone="gold">{badge}</Badge>
-      <h1 className="mt-4 text-2xl font-black tracking-tight animate-fadeInUp delay-200">{title}</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/70 animate-fadeInUp delay-300">{body}</p>
-    </section>
-  );
-}
+export { PortalHero } from "../../components/ui/PortalHero";
 
 export function RouteLine({
   title,
@@ -630,17 +615,7 @@ export function MiniStat({
   value: string | number;
   onClick?: () => void;
 }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`rounded-xl bg-white/80 p-3.5 shadow-sm ring-1 ring-slate-100 card-gradient-border hover:-translate-y-0.5 transition-transform ${
-        onClick ? "cursor-pointer transition hover:scale-[1.02] hover:ring-midyaf-gold/60" : ""
-      }`}
-    >
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1.5 font-extrabold tabular-nums text-midyaf-pearl">{value}</p>
-    </div>
-  );
+  return <KpiTile label={label} value={value} format="raw" onClick={onClick} size="md" className="p-3.5" />;
 }
 
 export function FileAssetList({ assets }: { assets: FileAsset[] }) {

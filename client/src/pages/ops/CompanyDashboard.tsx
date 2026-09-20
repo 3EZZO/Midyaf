@@ -251,7 +251,7 @@ export function CompanyDashboard({
           <div className="rounded-lg border border-white/5 bg-[#121626]/80 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">
                   {ui.isArabic ? "اسم ممثل العميل" : "Client Representative Name"}
                 </label>
                 <input
@@ -262,7 +262,7 @@ export function CompanyDashboard({
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">
                   {ui.isArabic ? "الجهة أو الوزارة المتعاقدة" : "Client Entity / Ministry"}
                 </label>
                 <input
@@ -275,7 +275,7 @@ export function CompanyDashboard({
             </div>
 
             <div>
-              <label className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2 block">
+              <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2 block">
                 {ui.isArabic ? "مصفوفة الصلاحيات الممنوحة للعميل (تحكم شركة صلة):" : "Client Access Permissions (Controlled by Sila):"}
               </label>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -322,7 +322,7 @@ export function CompanyDashboard({
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5 dark:border-slate-800 flex-wrap text-xs">
-              <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
+              <div className="flex items-center gap-2 text-slate-500 font-mono text-xs">
                 <span className="font-bold text-slate-900 dark:text-white font-sans">{ui.isArabic ? "رمز الوصول الآمن:" : "Token:"}</span>
                 <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-pearl dark:text-purple-300">{clientConfig.shareableToken}</span>
               </div>
@@ -414,7 +414,7 @@ export function CompanyDashboard({
             <div className="space-y-5 animate-fadeIn">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
                 <div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 mb-1">
                     <Sparkles size={10} className="text-amber-400" />
                     <span>{ui.p("AI EXECUTIVE REPORT", "التقرير التنفيذي الذكي")}</span>
                   </span>
@@ -424,7 +424,7 @@ export function CompanyDashboard({
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => alert(ui.p("PDF Export generated! Ready for executive stakeholders.", "تم تصدير التقرير بصيغة PDF بنجاح جاهز للإدارة العليا."))}
+                    onClick={() => toast.success(ui.p("PDF Export generated! Ready for executive stakeholders.", "تم تصدير التقرير بصيغة PDF بنجاح جاهز للإدارة العليا."))}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition-all"
                   >
                     <FileText size={13} />
@@ -456,23 +456,23 @@ export function CompanyDashboard({
               {aiReport.metrics && (
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-center">
-                    <span className="text-[10px] text-slate-400 block">{ui.p("Guests Served", "الضيوف المخدومون")}</span>
+                    <span className="text-xs text-slate-400 block">{ui.p("Guests Served", "الضيوف المخدومون")}</span>
                     <strong className="text-white text-base font-black">{aiReport.metrics.totalGuestsServed}</strong>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-center">
-                    <span className="text-[10px] text-slate-400 block">{ui.p("Avg Wait Time", "متوسط وقت الانتظار")}</span>
+                    <span className="text-xs text-slate-400 block">{ui.p("Avg Wait Time", "متوسط وقت الانتظار")}</span>
                     <strong className="text-emerald-400 text-base font-black">{aiReport.metrics.averagePickupWaitMinutes} {ui.p("m", "د")}</strong>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-center">
-                    <span className="text-[10px] text-slate-400 block">{ui.p("Fleet Idle Time", "وقت الانتظار الخامل")}</span>
+                    <span className="text-xs text-slate-400 block">{ui.p("Fleet Idle Time", "وقت الانتظار الخامل")}</span>
                     <strong className="text-amber-400 text-base font-black">{aiReport.metrics.fleetIdlePercentage}%</strong>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-center">
-                    <span className="text-[10px] text-slate-400 block">{ui.p("Est. Savings", "التوفير المتوقع")}</span>
+                    <span className="text-xs text-slate-400 block">{ui.p("Est. Savings", "التوفير المتوقع")}</span>
                     <strong className="text-emerald-400 text-base font-black">SAR {aiReport.metrics.estimatedCostSavingsSAR?.toLocaleString()}</strong>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-center col-span-2 sm:col-span-1">
-                    <span className="text-[10px] text-slate-400 block">{ui.p("NPS Score", "مؤشر الرضا")}</span>
+                    <span className="text-xs text-slate-400 block">{ui.p("NPS Score", "مؤشر الرضا")}</span>
                     <strong className="text-purple-400 text-base font-black">+{aiReport.metrics.npsScore}</strong>
                   </div>
                 </div>

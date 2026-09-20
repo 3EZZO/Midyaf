@@ -344,7 +344,7 @@ export function AdminExecutiveDashboard({
         </p>
         <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="border-b border-white/5 bg-[#090C15] text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <thead className="border-b border-white/5 bg-[#090C15] text-xs font-bold text-slate-400 uppercase tracking-widest">
               <tr>
                 <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "اسم الفعالية" : "Activity Name"}</th>
                 <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "الجهة المنظمة" : "Organizing Company"}</th>
@@ -359,7 +359,7 @@ export function AdminExecutiveDashboard({
                 <tr key={sub.id} className="hover:bg-slate-50/50 transition dark:hover:bg-slate-800/40">
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-bold text-slate-900 dark:text-white">
                     {sub.activityName}
-                    <span className="block text-[10px] text-slate-400 font-normal">{sub.activityPlace}</span>
+                    <span className="block text-xs text-slate-400 font-normal">{sub.activityPlace}</span>
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-semibold text-midyaf-pearl dark:text-purple-300">
                     <span className="inline-flex items-center gap-1.5">
@@ -369,12 +369,12 @@ export function AdminExecutiveDashboard({
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
                     <div className="flex items-center gap-2">
-                      <div className="grid size-6 place-items-center rounded-full bg-midyaf-gold/20 text-[10px] font-black text-midyaf-gold">
+                      <div className="grid size-6 place-items-center rounded-full bg-midyaf-gold/20 text-xs font-black text-midyaf-gold">
                         {sub.submittedBy.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-bold text-slate-800 dark:text-slate-100">{sub.submittedBy}</p>
-                        <p className="text-[10px] text-slate-400">{sub.contact}</p>
+                        <p className="text-xs text-slate-400">{sub.contact}</p>
                       </div>
                     </div>
                   </td>
@@ -383,7 +383,7 @@ export function AdminExecutiveDashboard({
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-tnum">
                     <span className="font-bold text-slate-800 dark:text-slate-100">{sub.visitors}</span>
-                    <span className="text-[10px] text-midyaf-gold font-bold ms-1">({sub.vipCount} VIP)</span>
+                    <span className="text-xs text-midyaf-gold font-bold ms-1">({sub.vipCount} VIP)</span>
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
                     <Badge tone={sub.status === "OPERATIONS_OPEN" || sub.status === "PLAN_CONFIRMED" ? "green" : "gold"}>
@@ -457,21 +457,21 @@ export function AdminExecutiveDashboard({
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-[10px] text-slate-400">{isArabic ? "الضيوف" : "Guests"}</span>
+                  <span className="block text-xs text-slate-400">{isArabic ? "الضيوف" : "Guests"}</span>
                   <span className="font-bold text-slate-900 dark:text-white font-tnum">{plan.visitorCount}</span>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-[10px] text-slate-400">{isArabic ? "الغرف المحجوزة" : "Hotel Rooms"}</span>
+                  <span className="block text-xs text-slate-400">{isArabic ? "الغرف المحجوزة" : "Hotel Rooms"}</span>
                   <span className="font-bold text-midyaf-pearl dark:text-purple-300 font-tnum">{plan.hotelRooms}</span>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg border border-white/5 dark:border-slate-800">
-                  <span className="block text-[10px] text-slate-400">{isArabic ? "الأسطول والحافلات" : "Fleet Units"}</span>
+                  <span className="block text-xs text-slate-400">{isArabic ? "الأسطول والحافلات" : "Fleet Units"}</span>
                   <span className="font-bold text-midyaf-gold font-tnum">{plan.fleetCount}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-white/5 dark:border-slate-800">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {plan.status === "APPROVED"
                     ? (isArabic ? "تم قفل شروط الدفع وتوليد العقود" : "Payment terms locked & active")
                     : (isArabic ? "شروط الدفع مقفلة لحين الاعتماد" : "Terms locked until approved")}
@@ -576,9 +576,9 @@ export function AdminExecutiveDashboard({
                   <span className="font-bold text-slate-900 dark:text-white text-xs">
                     {isArabic ? (c.complainantNameAr || c.complainantName) : (c.complainantNameEn || c.complainantName)}
                   </span>
-                  <span className="text-[10px] text-slate-400">({c.complainantRole})</span>
+                  <span className="text-xs text-slate-400">({c.complainantRole})</span>
                   <span
-                    className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                    className={`rounded-md px-2 py-0.5 text-xs font-black ${
                       c.severity === "CRITICAL"
                         ? "bg-rose-500 text-white animate-pulse"
                         : c.severity === "HIGH"
@@ -588,7 +588,7 @@ export function AdminExecutiveDashboard({
                   >
                     {localizeSeverity(c.severity, isArabic)}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-tnum">
+                  <span className="text-xs text-slate-400 font-tnum">
                     {shortTime(c.createdAt)}
                   </span>
                 </div>
@@ -596,7 +596,7 @@ export function AdminExecutiveDashboard({
                   {isArabic ? (c.descriptionAr || c.description) : (c.descriptionEn || c.description)}
                 </p>
                 {c.resolutionNotes && (
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                     ✓ {isArabic ? (c.resolutionNotesAr || c.resolutionNotes) : (c.resolutionNotesEn || c.resolutionNotes)}
                   </p>
                 )}
@@ -637,7 +637,7 @@ export function AdminExecutiveDashboard({
           <div className="rounded-lg border border-midyaf-gold/30 bg-[#121626] p-5 shadow-sm bg-[#121626]">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-midyaf-gold">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-midyaf-gold">
                   <span className="size-2 rounded-full bg-emerald-500 animate-ping"></span>
                   {isArabic ? "فعالية قيد التنفيذ المباشر (LIVE)" : "Live In-Execution"}
                 </span>
@@ -652,21 +652,21 @@ export function AdminExecutiveDashboard({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs mt-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">{isArabic ? "كبار الشخصيات" : "VIP Guests"}</span>
+                <span className="text-xs text-slate-400 block">{isArabic ? "كبار الشخصيات" : "VIP Guests"}</span>
                 <span className="font-extrabold text-slate-900 dark:text-white font-tnum">{intake.vipVisitorCount}</span>
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">{isArabic ? "الكباتن بالخدمة" : "Active Captains"}</span>
+                <span className="text-xs text-slate-400 block">{isArabic ? "الكباتن بالخدمة" : "Active Captains"}</span>
                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400 font-tnum">{data.drivers.length}</span>
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">{isArabic ? "المهام المنجزة" : "Completed Tasks"}</span>
+                <span className="text-xs text-slate-400 block">{isArabic ? "المهام المنجزة" : "Completed Tasks"}</span>
                 <span className="font-extrabold text-midyaf-pearl dark:text-purple-300 font-tnum">
                   {event.tasks.filter(t => t.status === "COMPLETED").length} / {event.tasks.length}
                 </span>
               </div>
               <div className="rounded-xl bg-slate-100/70 p-2.5 dark:bg-slate-800/60">
-                <span className="text-[10px] text-slate-400 block">{isArabic ? "البلاغات المفتوحة" : "Open Issues"}</span>
+                <span className="text-xs text-slate-400 block">{isArabic ? "البلاغات المفتوحة" : "Open Issues"}</span>
                 <span className="font-extrabold text-rose-600 dark:text-rose-400 font-tnum">
                   {complaints.filter(c => c.status === "OPEN").length}
                 </span>
@@ -677,7 +677,7 @@ export function AdminExecutiveDashboard({
           <div className="rounded-lg border border-white/5 bg-[#121626] p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400">
                   <Clock size={13} />
                   {isArabic ? "فعالية قادمة — التجهيز اللوجستي" : "Upcoming Pipeline Event"}
                 </span>
@@ -725,7 +725,7 @@ export function AdminExecutiveDashboard({
 
         <div className="overflow-x-auto rounded-lg border border-white/5 bg-[#121626] shadow-sm">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="border-b border-white/5 bg-[#090C15] text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <thead className="border-b border-white/5 bg-[#090C15] text-xs font-bold text-slate-400 uppercase tracking-widest">
               <tr>
                 <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "رقم العقد" : "Contract #"}</th>
                 <th className="px-4 py-3 border-r border-white/5 last:border-r-0">{isArabic ? "المورد المعتمد" : "Certified Vendor"}</th>
@@ -746,7 +746,7 @@ export function AdminExecutiveDashboard({
                     {cnt.vendorName}
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5 font-normal">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold dark:bg-slate-800">
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold dark:bg-slate-800">
                       {localizeCategory(cnt.category, isArabic)}
                     </span>
                   </td>
@@ -760,7 +760,7 @@ export function AdminExecutiveDashboard({
                     {localizePaymentTerms(cnt.paymentTerms, isArabic)}
                   </td>
                   <td className="px-4 py-3 border-r border-white/5 last:border-r-0.5">
-                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-midyaf-gold">
+                    <span className="inline-flex items-center gap-1 font-mono text-xs text-midyaf-gold">
                       <ShieldCheck size={12} />
                       {cnt.digitalSeal ? cnt.digitalSeal.slice(0, 10) + "..." : "SHA-256 Verified"}
                     </span>

@@ -91,7 +91,7 @@ export function IntakeWorkflowStepper({
             {isArabic ? "مسار العمل اللوجستي الذكي (مراحل الإدخال والاعتماد)" : "Interactive Logistics Workflow Stepper"}
           </h3>
         </div>
-        <span className="text-[11px] text-slate-400 font-medium">
+        <span className="text-xs text-slate-400 font-medium">
           {isArabic ? "اضغط على أي مرحلة للانتقال السريع لها" : "Click any step to smoothly jump to its section"}
         </span>
       </div>
@@ -140,14 +140,14 @@ export function IntakeWorkflowStepper({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black text-slate-400">
+                  <span className="text-xs font-black text-slate-400">
                     {step.num}.
                   </span>
                   <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                     {isArabic ? step.titleAr : step.titleEn}
                   </p>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                   {isArabic ? step.descAr : step.descEn}
                 </p>
               </div>

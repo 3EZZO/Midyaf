@@ -354,7 +354,7 @@ export function SovereignCommandBridge({
             <div className="flex items-center gap-2.5">
               <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
                 <span>{l("Sovereign Command Bridge")}</span>
-                <span className="rounded-md bg-midyaf-gold/20 px-2 py-0.5 text-[10px] font-black uppercase text-midyaf-gold ring-1 ring-midyaf-gold/50">
+                <span className="rounded-md bg-midyaf-gold/20 px-2 py-0.5 text-xs font-black uppercase text-midyaf-gold ring-1 ring-midyaf-gold/50">
                   {isArabic ? "القمة السيادية 2027" : "SUMMIT 2027"}
                 </span>
               </h2>
@@ -396,8 +396,8 @@ export function SovereignCommandBridge({
           {/* Spatial Buffer Ingestion Telemetry */}
           <div className="hidden xl:flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 border border-emerald-500/30">
             <Radio size={13} className="text-emerald-400 animate-pulse" />
-            <span className="font-mono font-bold text-[11px]">{isArabic ? "مخزن الإحداثيات: نشط (٠ تأخير)" : "Spatial Buffer: Active (0ms Lag)"}</span>
-            <span className="text-[10px] px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono">1.5 Hz</span>
+            <span className="font-mono font-bold text-xs">{isArabic ? "مخزن الإحداثيات: نشط (٠ تأخير)" : "Spatial Buffer: Active (0ms Lag)"}</span>
+            <span className="text-xs px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono">1.5 Hz</span>
           </div>
         </div>
 
@@ -440,7 +440,7 @@ export function SovereignCommandBridge({
                   {l("Airspace & Flight Radar")}
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30">
+              <span className="text-xs font-mono text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30">
                 KKIA T2
               </span>
             </div>
@@ -453,15 +453,15 @@ export function SovereignCommandBridge({
                 >
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-cyan-300 font-mono">{flight.flightNo}</span>
-                    <span className="text-emerald-400 font-black text-[11px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    <span className="text-emerald-400 font-black text-xs bg-emerald-500/10 px-1.5 py-0.5 rounded">
                       {isArabic ? "الوصول" : "ETA"} {flight.eta}
                     </span>
                   </div>
-                  <p className="text-[11px] font-medium text-slate-300 mt-0.5 truncate">{flight.airline}</p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                  <p className="text-xs font-medium text-slate-300 mt-0.5 truncate">{flight.airline}</p>
+                  <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
                     <span>{flight.origin} → {flight.gate}</span>
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between border-t border-white/5 pt-1 text-[10px]">
+                  <div className="mt-1.5 flex items-center justify-between border-t border-white/5 pt-1 text-xs">
                     <span className="text-midyaf-gold font-semibold truncate flex items-center gap-1.5">
                       <Crown size={12} className="text-midyaf-gold shrink-0" />
                       <span>{flight.vipOnBoard}</span>
@@ -481,13 +481,13 @@ export function SovereignCommandBridge({
                   {isArabic ? "رادار السياج الجغرافي الحلقي" : "Concentric Geofence Radar"}
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-xs font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
                 {isArabic ? "٤ حلقات نشطة" : "4 Rings Active"}
               </span>
             </div>
 
             {/* Quick 4-Ring Architecture Legend */}
-            <div className="grid grid-cols-2 gap-1.5 mb-3 text-[10px] font-mono">
+            <div className="grid grid-cols-2 gap-1.5 mb-3 text-xs font-mono">
               <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 px-2 py-1 flex items-center justify-between text-sky-300">
                 <span>R1 {isArabic ? "اقتراب" : "Appr."}</span>
                 <span className="font-bold">5,000m</span>
@@ -526,12 +526,12 @@ export function SovereignCommandBridge({
 
             {/* Recent Ring Crossings / Stage Events */}
             <div className="space-y-1.5">
-              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+              <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">
                 {isArabic ? "آخر عمليات اختراق الحلقات اللحظية:" : "Live Ring Transitions:"}
               </p>
               {recentGeofenceEvents.length > 0 ? (
                 recentGeofenceEvents.slice(0, 3).map((ev) => (
-                  <div key={ev.id} className="rounded-lg bg-white/5 p-2 text-[10px] border border-white/5 flex items-center justify-between">
+                  <div key={ev.id} className="rounded-lg bg-white/5 p-2 text-xs border border-white/5 flex items-center justify-between">
                     <div>
                       <span className="text-white font-bold">{ev.driverName ?? "VIP Motorcade"}</span>
                       <p className="text-slate-400">
@@ -544,7 +544,7 @@ export function SovereignCommandBridge({
                   </div>
                 ))
               ) : (
-                <div className="rounded-lg bg-white/5 p-2 text-[10px] text-slate-400 text-center font-mono">
+                <div className="rounded-lg bg-white/5 p-2 text-xs text-slate-400 text-center font-mono">
                   {isArabic ? "جاهز لرصد اختراق النطاقات الجغرافية" : "Geofence Radar Armed · Monitoring"}
                 </div>
               )}
@@ -560,7 +560,7 @@ export function SovereignCommandBridge({
                   {l("Convoy Formations")}
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
                 {convoys.length} {isArabic ? "مواكب حماية" : "Escorts"}
               </span>
             </div>
@@ -599,16 +599,16 @@ export function SovereignCommandBridge({
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white">{convoy.name}</span>
-                    <span className="font-mono font-black text-emerald-400 text-[11px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    <span className="font-mono font-black text-emerald-400 text-xs bg-emerald-500/10 px-1.5 py-0.5 rounded">
                       {convoy.speed} km/h
                     </span>
                   </div>
-                  <p className="text-[11px] text-midyaf-gold font-semibold mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-midyaf-gold font-semibold mt-0.5 flex items-center gap-1.5">
                     <Crown size={12} className="text-midyaf-gold shrink-0" />
                     <span>{convoy.vip}</span>
                   </p>
-                  <p className="text-[10px] text-slate-400">{convoy.vehicle} · {convoy.driver}</p>
-                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 border-t border-white/5 pt-1">
+                  <p className="text-xs text-slate-400">{convoy.vehicle} · {convoy.driver}</p>
+                  <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400 border-t border-white/5 pt-1">
                     <span className="truncate">{convoy.route}</span>
                     <span className="text-cyan-300 font-semibold">{convoy.status}</span>
                   </div>
@@ -638,24 +638,24 @@ export function SovereignCommandBridge({
           {/* Fleet Cabin Environmental Biometrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">{l("Cabin Climate")}</p>
+              <p className="text-xs text-slate-400 uppercase font-bold">{l("Cabin Climate")}</p>
               <p className="text-sm font-black text-white mt-0.5">20.2°C</p>
-              <span className="text-[10px] text-emerald-400 font-semibold">● {l("Optimal")}</span>
+              <span className="text-xs text-emerald-400 font-semibold">● {l("Optimal")}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "تشبع الأكسجين O₂" : "O₂ Saturation"}</p>
+              <p className="text-xs text-slate-400 uppercase font-bold">{isArabic ? "تشبع الأكسجين O₂" : "O₂ Saturation"}</p>
               <p className="text-sm font-black text-white mt-0.5">99.4%</p>
-              <span className="text-[10px] text-emerald-400 font-semibold">● {isArabic ? "مستوى طبي نقي" : "Medical Grade"}</span>
+              <span className="text-xs text-emerald-400 font-semibold">● {isArabic ? "مستوى طبي نقي" : "Medical Grade"}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "زجاج الخصوصية العازل" : "Privacy Glass"}</p>
+              <p className="text-xs text-slate-400 uppercase font-bold">{isArabic ? "زجاج الخصوصية العازل" : "Privacy Glass"}</p>
               <p className="text-sm font-black text-white mt-0.5">100%</p>
-              <span className="text-[10px] text-midyaf-gold font-semibold">● {isArabic ? "تعتيم قطبي نشط" : "Polarized Active"}</span>
+              <span className="text-xs text-midyaf-gold font-semibold">● {isArabic ? "تعتيم قطبي نشط" : "Polarized Active"}</span>
             </div>
             <div className="rounded-xl glass-tactical p-3 border border-white/10">
-              <p className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "ضغط الإطارات" : "Tire Pressure"}</p>
+              <p className="text-xs text-slate-400 uppercase font-bold">{isArabic ? "ضغط الإطارات" : "Tire Pressure"}</p>
               <p className="text-sm font-black text-white mt-0.5">36 PSI</p>
-              <span className="text-[10px] text-cyan-400 font-semibold">● {isArabic ? "كافة سيارات المايباخ الـ 5" : "All 5 Maybachs"}</span>
+              <span className="text-xs text-cyan-400 font-semibold">● {isArabic ? "كافة سيارات المايباخ الـ 5" : "All 5 Maybachs"}</span>
             </div>
           </div>
         </div>
@@ -671,12 +671,12 @@ export function SovereignCommandBridge({
                   {l("AI Sovereign Contingency Engine")}
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
                 {isArabic ? "كفاءة اسمية 99.8%" : "Nominal 99.8%"}
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-300 mb-3">
+            <p className="text-xs text-slate-300 mb-3">
               {isArabic
                 ? "محاكي سيناريوهات الطوارئ السيادية اللحظية — انقر لتنفيذ إعادة التوجيه الفوري:"
                 : "Real-time Sovereign Contingency Simulator — Click to test dynamic autonomous re-routing:"}
@@ -742,10 +742,10 @@ export function SovereignCommandBridge({
                   {l("Encrypted Mission Log")}
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-400">{isArabic ? "مزامنة مباشرة" : "Live Sync"}</span>
+              <span className="text-xs text-slate-400">{isArabic ? "مزامنة مباشرة" : "Live Sync"}</span>
             </div>
 
-            <div className="space-y-2 overflow-y-auto flex-1 font-mono text-[11px] text-slate-300">
+            <div className="space-y-2 overflow-y-auto flex-1 font-mono text-xs text-slate-300">
               {scenarioLog.length > 0 ? (
                 scenarioLog.map((entry, idx) => (
                   <div key={idx} className="rounded-lg bg-white/5 p-2 border-s-2 border-midyaf-gold">
@@ -785,7 +785,7 @@ export function SovereignCommandBridge({
               <div className="mx-auto size-10 rounded-xl bg-midyaf-gold/20 ring-1 ring-midyaf-gold/40 flex items-center justify-center text-midyaf-gold mb-2">
                 <Crown size={20} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-midyaf-gold">
+              <p className="text-xs font-black uppercase tracking-widest text-midyaf-gold">
                 {l("Encrypted VIP Security Dossier")}
               </p>
               <h3 className="text-lg font-black text-white mt-1">{selectedVip.name}</h3>
@@ -795,26 +795,26 @@ export function SovereignCommandBridge({
             {/* Dossier Body */}
             <div className="py-4 space-y-3 text-xs">
               <div className="rounded-xl bg-white/5 p-2.5 border border-white/10">
-                <span className="text-[10px] uppercase text-slate-400 font-bold block">{l("Clearance Level")}</span>
+                <span className="text-xs uppercase text-slate-400 font-bold block">{l("Clearance Level")}</span>
                 <span className="text-midyaf-gold font-bold text-xs">{l(selectedVip.clearance)}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-white/5 p-2.5 border border-white/10">
-                  <span className="text-[10px] uppercase text-slate-400 font-bold block">{l("Assigned Vehicle")}</span>
+                  <span className="text-xs uppercase text-slate-400 font-bold block">{l("Assigned Vehicle")}</span>
                   <span className="text-white font-bold">{selectedVip.vehicle}</span>
                 </div>
                 <div className="rounded-xl bg-white/5 p-2.5 border border-white/10">
-                  <span className="text-[10px] uppercase text-slate-400 font-bold block">{l("Chauffeur Direct Link")}</span>
+                  <span className="text-xs uppercase text-slate-400 font-bold block">{l("Chauffeur Direct Link")}</span>
                   <span className="text-emerald-400 font-bold">{selectedVip.chauffeur}</span>
                 </div>
               </div>
 
               <div className="rounded-xl bg-white/5 p-2.5 border border-white/10">
-                <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">
+                <span className="text-xs uppercase text-slate-400 font-bold block mb-1">
                   {l("Dietary & Hospitality Rider")}
                 </span>
-                <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[11px]">
+                <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-xs">
                   {selectedVip.rider.map((item, idx) => (
                     <li key={idx}>{item}</li>
                   ))}

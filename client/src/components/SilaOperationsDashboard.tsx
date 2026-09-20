@@ -21,6 +21,7 @@ function shortDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+import { useToast } from "./ui/Toast";
 export function SilaOperationsDashboard({
   data,
   session,
@@ -34,6 +35,7 @@ export function SilaOperationsDashboard({
   isArabic: boolean;
   onDownloadReport?: () => void;
 }) {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<"intake" | "fleet" | "contracts" | "delegation" | "reports">("intake");
 
   // State from Logistics
@@ -152,7 +154,7 @@ export function SilaOperationsDashboard({
               }`}
             >
               <Icon size={28} className={isActive ? "text-white" : "text-midyaf-pearl dark:text-purple-400"} />
-              <span className="text-[11px] font-bold text-center leading-tight">
+              <span className="text-xs font-bold text-center leading-tight">
                 {isArabic ? tab.labelAr : tab.labelEn}
               </span>
             </button>
@@ -177,9 +179,9 @@ export function SilaOperationsDashboard({
                   onClick={() => {
                     const url = window.location.origin + window.location.pathname + "#onboarding";
                     navigator.clipboard.writeText(url);
-                    alert(isArabic ? "تم نسخ رابط التسجيل للضيوف!" : "Guest invite link copied to clipboard!");
+                    toast.success(isArabic ? "تم نسخ رابط التسجيل للضيوف!" : "Guest invite link copied to clipboard!");
                   }}
-                  className="flex items-center gap-1.5 text-[10px] font-bold bg-midyaf-purple/10 text-midyaf-pearl hover:bg-midyaf-purple/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-bold bg-midyaf-purple/10 text-midyaf-pearl hover:bg-midyaf-purple/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                 >
                   <Mail size={12} />
                   {isArabic ? "نسخ رابط دعوة الضيوف" : "Copy Guest Invite Link"}
@@ -197,7 +199,7 @@ export function SilaOperationsDashboard({
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 mb-3">{act.activityPlace}</p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-3 border-t border-white/5 dark:border-slate-800/60">
+                  <div className="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-white/5 dark:border-slate-800/60">
                     <span>{isArabic ? "الزوار:" : "Visitors:"} {act.visitorCount}</span>
                   </div>
                 </div>
@@ -245,17 +247,17 @@ export function SilaOperationsDashboard({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                     <div>
                       <h5 className="font-bold text-slate-900 dark:text-white text-xs">{t.taskTitle}</h5>
-                      <p className="text-[11px] text-slate-500 mt-1">{t.instructions}</p>
+                      <p className="text-xs text-slate-500 mt-1">{t.instructions}</p>
                     </div>
                     {t.teamMemberId ? (
                       <Badge tone="green">{isArabic ? "مفوضة" : "Delegated"}</Badge>
                     ) : (
-                      <button className="btn-primary rounded-xl px-3 py-1.5 text-[10px] font-bold cursor-pointer">
+                      <button className="btn-primary rounded-xl px-3 py-1.5 text-xs font-bold cursor-pointer">
                         {isArabic ? "تفويض لشخص +-" : "Delegate +-"}
                       </button>
                     )}
                   </div>
-                  <div className="mt-3 pt-2.5 border-t border-white/5 dark:border-slate-800 flex items-center gap-2 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2.5 border-t border-white/5 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-400">
                     <span className="font-bold">{isArabic ? "سلسلة الأوامر:" : "Command Chain:"}</span>
                     <span className="bg-slate-100 px-2 py-0.5 rounded-md dark:bg-slate-800 text-midyaf-pearl">
                       {t.fromRole}
@@ -286,11 +288,11 @@ export function SilaOperationsDashboard({
               {data.contracts.map((cnt) => (
                 <div key={cnt.id} className="rounded-xl border border-white/5 bg-[#121626] p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-[10px] font-bold text-midyaf-pearl">{cnt.contractNumber}</span>
+                    <span className="font-mono text-xs font-bold text-midyaf-pearl">{cnt.contractNumber}</span>
                     <Badge tone="green">{cnt.status}</Badge>
                   </div>
                   <h5 className="font-bold text-xs">{cnt.vendorName}</h5>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{cnt.category}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{cnt.category}</p>
                 </div>
               ))}
             </div>
@@ -315,23 +317,23 @@ export function SilaOperationsDashboard({
                     {report?.title || (isArabic ? "تقرير تنفيذي" : "Executive Briefing")}
                   </h5>
                   {onDownloadReport && (
-                    <button onClick={onDownloadReport} className="flex items-center gap-1 rounded-lg bg-midyaf-purple/10 px-2 py-1 text-[10px] font-bold text-midyaf-pearl cursor-pointer hover:bg-midyaf-purple/20">
+                    <button onClick={onDownloadReport} className="flex items-center gap-1 rounded-lg bg-midyaf-purple/10 px-2 py-1 text-xs font-bold text-midyaf-pearl cursor-pointer hover:bg-midyaf-purple/20">
                       <FileText size={12} /> {isArabic ? "تصدير PDF" : "Export PDF"}
                     </button>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500">{report?.summary}</p>
+                <p className="text-xs text-slate-500">{report?.summary}</p>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-[10px] text-slate-400">On-Time Rate</span><span className="font-bold text-emerald-600">99.4%</span></div>
-                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-[10px] text-slate-400">Closed Tasks</span><span className="font-bold text-midyaf-pearl">100%</span></div>
+                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-xs text-slate-400">On-Time Rate</span><span className="font-bold text-emerald-600">99.4%</span></div>
+                  <div className="bg-slate-50 p-2 rounded-lg dark:bg-slate-800"><span className="block text-xs text-slate-400">Closed Tasks</span><span className="font-bold text-midyaf-pearl">100%</span></div>
                 </div>
               </div>
               
               <div className="rounded-xl border border-white/5 bg-[#121626] p-4 dark:border-slate-800 dark:bg-slate-900 flex flex-col h-[250px]">
                 <div className="flex-1 space-y-3 overflow-y-auto mb-3 pr-2">
                   {clientMessages.map((m) => (
-                    <div key={m.id} className={`text-[11px] p-2.5 rounded-xl ${m.senderRole === "CLIENT" ? "bg-slate-100 dark:bg-slate-800" : "bg-midyaf-purple/10 text-midyaf-pearl dark:bg-midyaf-purple/20"}`}>
-                      <div className="flex justify-between text-[9px] opacity-70 mb-1 font-bold"><span>{m.senderName}</span><span>{m.timestamp}</span></div>
+                    <div key={m.id} className={`text-xs p-2.5 rounded-xl ${m.senderRole === "CLIENT" ? "bg-slate-100 dark:bg-slate-800" : "bg-midyaf-purple/10 text-midyaf-pearl dark:bg-midyaf-purple/20"}`}>
+                      <div className="flex justify-between text-xs opacity-70 mb-1 font-bold"><span>{m.senderName}</span><span>{m.timestamp}</span></div>
                       <p>{isArabic ? m.messageAr : m.messageEn}</p>
                     </div>
                   ))}

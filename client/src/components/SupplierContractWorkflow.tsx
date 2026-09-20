@@ -75,7 +75,7 @@ export function SupplierContractWorkflow({
               <h3 className="text-base font-black text-midyaf-pearl dark:text-white">
                 {isArabic ? "مسار اعتماد العقود مع الموردين الـ 8 المعتمدين" : "8-Category Supplier Contract Workflow"}
               </h3>
-              <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
+              <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-xs font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
                 {isArabic ? "بروتوكول العقود" : "Contract Protocol"}
               </span>
             </div>
@@ -118,7 +118,7 @@ export function SupplierContractWorkflow({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               {isArabic ? "الخطوة 1" : "Step 1"}
             </span>
             {isPlanApproved ? (
@@ -157,7 +157,7 @@ export function SupplierContractWorkflow({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               {isArabic ? "الخطوة 2" : "Step 2"}
             </span>
             {isDispatched ? (
@@ -204,7 +204,7 @@ export function SupplierContractWorkflow({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               {isArabic ? "الخطوة 3" : "Step 3"}
             </span>
             {isContractsReceived ? (
@@ -268,11 +268,11 @@ export function SupplierContractWorkflow({
                       <div className="grid size-7 place-items-center rounded-lg bg-midyaf-purple/10 text-midyaf-pearl dark:bg-purple-500/20 dark:text-purple-300">
                         <Icon size={14} />
                       </div>
-                      <span className="text-[10px] font-bold text-midyaf-gold uppercase">
+                      <span className="text-xs font-bold text-midyaf-gold uppercase">
                         {isArabic ? c.categoryAr : c.categoryEn}
                       </span>
                     </div>
-                    <span className="text-[9px] font-mono text-slate-400">
+                    <span className="text-xs font-mono text-slate-400">
                       {c.contractNumber}
                     </span>
                   </div>
@@ -280,12 +280,12 @@ export function SupplierContractWorkflow({
                   <h5 className="mt-2 text-xs font-black text-slate-800 dark:text-white truncate">
                     {isArabic ? c.vendorNameAr : c.vendorNameEn}
                   </h5>
-                  <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-2">
+                  <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
                     {isArabic ? c.scopeAr : c.scopeEn}
                   </p>
                 </div>
 
-                <div className="mt-3 border-t border-white/5 pt-2 dark:border-slate-800 flex items-center justify-between text-[10px]">
+                <div className="mt-3 border-t border-white/5 pt-2 dark:border-slate-800 flex items-center justify-between text-xs">
                   <span className="font-black text-midyaf-pearl dark:text-purple-300">
                     {money(c.amount)}
                   </span>

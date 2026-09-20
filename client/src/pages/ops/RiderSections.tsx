@@ -10,6 +10,7 @@ import type { PortalProps } from "../types";
 import type { Task } from "@shared/domain";
 import { useOpsText } from "./shared";
 
+import { useToast } from "../../components/ui/Toast";
 export function HospitalityRidersSection({
   data,
   session,
@@ -155,6 +156,7 @@ export function AirportExpressSection({
   refreshData
 }: Pick<PortalProps, "data" | "session" | "refreshData">) {
   const ui = useOpsText();
+  const toast = useToast();
   const event = data.events[0];
   const [isOpen, setIsOpen] = useState(false);
   const [isKioskMode, setIsKioskMode] = useState(false);
@@ -206,7 +208,7 @@ export function AirportExpressSection({
       setTitle("");
       refreshData();
     } catch (err: any) {
-      alert(err.message || "Failed to register walk-in guest");
+      toast.alert(ui.p("Failed to register walk-in guest", "تعذر تسجيل الضيف"), err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -312,7 +314,7 @@ export function AirportExpressSection({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
                   <Zap size={11} />
                   <span>{ui.p("INSTANT DISPATCH", "توجيه فوري")}</span>
                 </span>

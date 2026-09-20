@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import * as DialogPrimitive from "radix-ui/dialog";
 import {
   X,
   Users,
@@ -268,23 +269,6 @@ export function LogisticsMetricModal({
   const [verifiedSeal, setVerifiedSeal] = useState<string | null>(null);
   const [inspectingContract, setInspectingContract] = useState<(typeof CERTIFIED_CONTRACTS)[number] | null>(null);
 
-  useEffect(() => {
-    if (!modal) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [modal, onClose]);
-
-  if (!modal) return null;
 
   const totalCommission = data.vendorQuotes.reduce(
     (sum, quote) => sum + Number(quote.commissionAmount),
@@ -325,6 +309,8 @@ export function LogisticsMetricModal({
     return VIP_GUESTS_DATA;
   }, [isDemoMode, event.guests, data.guestJourneys, event.name, event.venue]);
 
+  if (!modal) return null;
+
   const filteredGuests = guestsToDisplay.filter(
     (g) =>
       g.name.toLowerCase().includes(guestSearch.toLowerCase()) ||
@@ -359,7 +345,20 @@ export function LogisticsMetricModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] w-screen h-screen bg-[#0b0814] text-white flex flex-col overflow-hidden animate-fadeIn">
+    <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-dialog bg-surface-0/80" />
+        <DialogPrimitive.Content
+          className="fixed inset-0 z-dialog flex h-screen w-screen flex-col overflow-hidden bg-surface-1 text-ink animate-fade-in focus:outline-none"
+          aria-describedby={undefined}
+        >
+          <DialogPrimitive.Title className="sr-only">
+            {modal === "visitors" && l("VIP Guests & Summit Visitors Intelligence Hub")}
+            {modal === "tasks" && l("Live Operations Task Dispatch & Execution Board")}
+            {modal === "contracts" && l("Certified Procurement & Vendor Contracts Hub")}
+            {modal === "commission" && l("Platform Revenue, Take Rate & Financial Settlement")}
+            {modal === "reports" && l("Executive Post-Event Performance & Impact Analytics")}
+          </DialogPrimitive.Title>
       {/* Modal Top Bar */}
       <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/95 px-6 py-4 shadow-xl shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-3.5">
@@ -379,14 +378,14 @@ export function LogisticsMetricModal({
                 {modal === "commission" && l("Platform Revenue, Take Rate & Financial Settlement")}
                 {modal === "reports" && l("Executive Post-Event Performance & Impact Analytics")}
               </span>
-              <span className="hidden sm:inline-flex items-center gap-1 rounded bg-midyaf-gold/20 px-2 py-0.5 text-[11px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded bg-midyaf-gold/20 px-2 py-0.5 text-xs font-bold text-midyaf-gold ring-1 ring-midyaf-gold/40">
                 <Maximize2 size={11} />
                 <span>{isArabic ? "شاشة كاملة" : "Fullscreen Deck"}</span>
               </span>
             </h3>
             <p className="text-xs text-slate-400 flex items-center gap-2">
               <span>{event.name} · {isArabic ? "منطقة العمليات السيادية" : "Sovereign Operations Zone"} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}</span>
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold uppercase tracking-wider ${
                 isDemoMode ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30" : "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30"
               }`}>
                 {isDemoMode ? (isArabic ? "محاكاة تجريبية" : "DEMO SIMULATION") : (isArabic ? "بيانات حقيقية" : "LIVE PRODUCTION")}
@@ -419,27 +418,27 @@ export function LogisticsMetricModal({
               {/* Top Metrics Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Total Attendees")}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Total Attendees")}</span>
                   <p className="text-2xl font-black text-white mt-1">1,200</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">100% Accredited</span>
+                  <span className="text-xs text-emerald-400 font-semibold">100% Accredited</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-[10px] text-midyaf-gold font-bold uppercase flex items-center gap-1.5">
+                  <span className="text-xs text-midyaf-gold font-bold uppercase flex items-center gap-1.5">
                     <Crown size={12} />
                     <span>{l("VIP Dignitaries")}</span>
                   </span>
                   <p className="text-2xl font-black text-midyaf-gold mt-1">150</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"}</span>
+                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Sovereign Delegations")}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Sovereign Delegations")}</span>
                   <p className="text-2xl font-black text-white mt-1">42</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "دولة مشاركة" : "Global Countries"}</span>
+                  <span className="text-xs text-cyan-300 font-semibold">{isArabic ? "دولة مشاركة" : "Global Countries"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Accredited Media")}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Accredited Media")}</span>
                   <p className="text-2xl font-black text-white mt-1">350</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "جهة إعلامية وتلفزيونية" : "Broadcasters"}</span>
+                  <span className="text-xs text-purple-300 font-semibold">{isArabic ? "جهة إعلامية وتلفزيونية" : "Broadcasters"}</span>
                 </div>
               </div>
 
@@ -482,14 +481,14 @@ export function LogisticsMetricModal({
                         <Car size={13} className="text-emerald-400" />
                         <span>{isArabic ? guest.driverAr : guest.driver} · <span className="font-mono text-slate-200">{isArabic ? guest.vehicleAr : guest.vehicle}</span> ({guest.plate})</span>
                       </p>
-                      <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5">
                         <FileText size={12} className="text-midyaf-gold shrink-0" />
                         <span>{l("Hospitality Rider")}: {isArabic ? guest.riderAr : guest.rider}</span>
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-white/5 pt-2 text-xs">
-                      <span className="text-emerald-400 font-semibold text-[11px] flex items-center gap-1.5">
+                      <span className="text-emerald-400 font-semibold text-xs flex items-center gap-1.5">
                         <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span>{isArabic ? guest.statusAr : guest.status}</span>
                       </span>
@@ -502,7 +501,7 @@ export function LogisticsMetricModal({
                             `${guest.name} · ${guest.driver}`
                           );
                         }}
-                        className="rounded-lg bg-white/10 px-3 py-1 text-[11px] font-bold text-slate-200 hover:bg-white/20 transition"
+                        className="rounded-lg bg-white/10 px-3 py-1 text-xs font-bold text-slate-200 hover:bg-white/20 transition"
                       >
                         {l("Dispatch Chauffeur Escort")}
                       </button>
@@ -521,24 +520,24 @@ export function LogisticsMetricModal({
               {/* Financial Metrics Bar */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("Gross Procurement GMV")}</span>
+                  <span className="text-xs text-midyaf-gold font-bold uppercase">{l("Gross Procurement GMV")}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "٢,١٧٠,٠٠٠ ر.س" : "SAR 2,170,000"}</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "٤ عقود معتمدة" : "4 Approved Contracts"}</span>
+                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "٤ عقود معتمدة" : "4 Approved Contracts"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Platform Revenue Commission")}</span>
+                  <span className="text-xs text-emerald-400 font-bold uppercase">{l("Platform Revenue Commission")}</span>
                   <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٢٢٤,٦٠٠ ر.س" : "SAR 224,600"}</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "١٠.٣٪ نسبة العمولة" : "10.3% Take Rate"}</span>
+                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "١٠.٣٪ نسبة العمولة" : "10.3% Take Rate"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Supplier Payouts")}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "١,٩٤٥,٤٠٠ ر.س" : "SAR 1,945,400"}</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"}</span>
+                  <span className="text-xs text-cyan-300 font-semibold">{isArabic ? "حساب الضمان المالي مؤمن (صلة)" : "Sila Escrow Secured"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الشهادة الضريبية (زكاة وضريبة)" : "ZATCA Tax Clearance"}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "الشهادة الضريبية (زكاة وضريبة)" : "ZATCA Tax Clearance"}</span>
                   <p className="text-2xl font-black text-white mt-1">100%</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "مطابق لنظام الفوترة الإلكترونية" : "E-Invoicing Compliant"}</span>
+                  <span className="text-xs text-purple-300 font-semibold">{isArabic ? "مطابق لنظام الفوترة الإلكترونية" : "E-Invoicing Compliant"}</span>
                 </div>
               </div>
 
@@ -548,7 +547,7 @@ export function LogisticsMetricModal({
                   <ShieldCheck size={24} className="text-midyaf-gold" />
                   <div>
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider">{l("Triple-Key Security Vault Active")}</h4>
-                    <p className="text-[11px] text-slate-300">{l("Tamper-proof sealed bids and encrypted vendor quotations")}</p>
+                    <p className="text-xs text-slate-300">{l("Tamper-proof sealed bids and encrypted vendor quotations")}</p>
                   </div>
                 </div>
                 <button
@@ -583,14 +582,14 @@ export function LogisticsMetricModal({
                       </div>
                       <div className="text-right">
                         <span className="font-mono text-base font-black text-midyaf-gold">{isArabic ? contract.amountAr : contract.amount}</span>
-                        <p className="text-[11px] text-emerald-400 font-semibold">{l("Commission")}: {isArabic ? contract.commissionAr : contract.commission} ({contract.takeRate})</p>
+                        <p className="text-xs text-emerald-400 font-semibold">{l("Commission")}: {isArabic ? contract.commissionAr : contract.commission} ({contract.takeRate})</p>
                       </div>
                     </div>
 
                     <p className="text-xs text-slate-300">{isArabic ? contract.scopeAr : contract.scope}</p>
 
                     <div className="flex flex-wrap items-center justify-between border-t border-white/5 pt-2.5 text-xs gap-2">
-                      <span className="font-mono text-[11px] text-slate-400">{contract.seal}</span>
+                      <span className="font-mono text-xs text-slate-400">{contract.seal}</span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -636,7 +635,7 @@ export function LogisticsMetricModal({
 
               {/* Certified Contract Full Inspection Sheet Overlay */}
               {inspectingContract && (
-                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fadeIn">
+                <div className="fixed inset-0 z-palette flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fadeIn">
                   <div className="relative w-full max-w-3xl overflow-hidden rounded-xl bg-slate-950 border border-midyaf-gold/60 text-white shadow-2xl flex flex-col max-h-[90vh]">
                     {/* Top Bar */}
                     <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-900/90 px-6 py-4">
@@ -667,19 +666,19 @@ export function LogisticsMetricModal({
                       {/* Legal Header */}
                       <div className="rounded-lg bg-white/5 p-4 border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الأول (المنظم)" : "First Party (Organizer)"}</span>
+                          <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "الطرف الأول (المنظم)" : "First Party (Organizer)"}</span>
                           <p className="font-bold text-white text-xs mt-0.5">{event.name}</p>
-                          <p className="text-[10px] text-slate-400">{isArabic ? "سجل تجاري: 1010894421" : "CR: 1010894421"}</p>
+                          <p className="text-xs text-slate-400">{isArabic ? "سجل تجاري: 1010894421" : "CR: 1010894421"}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "الطرف الثاني (المورد المعتمد)" : "Second Party (Vendor)"}</span>
+                          <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "الطرف الثاني (المورد المعتمد)" : "Second Party (Vendor)"}</span>
                           <p className="font-bold text-midyaf-gold text-xs mt-0.5">{isArabic ? inspectingContract.vendorAr : inspectingContract.vendor}</p>
-                          <p className="text-[10px] text-slate-400">{isArabic ? inspectingContract.categoryAr : inspectingContract.category}</p>
+                          <p className="text-xs text-slate-400">{isArabic ? inspectingContract.categoryAr : inspectingContract.category}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "منصة الوساطة والضمان" : "Platform Escrow Authority"}</span>
+                          <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "منصة الوساطة والضمان" : "Platform Escrow Authority"}</span>
                           <p className="font-bold text-purple-300 text-xs mt-0.5">{isArabic ? "حساب مضياف للضمان المالي السيادي" : "Midyaf Sovereign Escrow"}</p>
-                          <p className="text-[10px] text-slate-400">{isArabic ? "عمولة المنصة: " : "Platform Take: "}{inspectingContract.takeRate}</p>
+                          <p className="text-xs text-slate-400">{isArabic ? "عمولة المنصة: " : "Platform Take: "}{inspectingContract.takeRate}</p>
                         </div>
                       </div>
 
@@ -697,15 +696,15 @@ export function LogisticsMetricModal({
                       {/* Financial Settlement Terms */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <div className="rounded-lg bg-white/5 p-3.5 border border-white/10">
-                          <span className="text-[10px] text-slate-400 uppercase font-bold">{isArabic ? "إجمالي قيمة العقد" : "Contract Value (GMV)"}</span>
+                          <span className="text-xs text-slate-400 uppercase font-bold">{isArabic ? "إجمالي قيمة العقد" : "Contract Value (GMV)"}</span>
                           <p className="text-lg font-black text-white font-mono mt-1">{isArabic ? inspectingContract.amountAr : inspectingContract.amount}</p>
                         </div>
                         <div className="rounded-lg bg-white/5 p-3.5 border border-midyaf-gold/30">
-                          <span className="text-[10px] text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
+                          <span className="text-xs text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
                           <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{isArabic ? inspectingContract.commissionAr : inspectingContract.commission}</p>
                         </div>
                         <div className="rounded-lg bg-white/5 p-3.5 border border-emerald-500/30">
-                          <span className="text-[10px] text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
+                          <span className="text-xs text-emerald-400 uppercase font-bold">{isArabic ? "حالة الاعتماد المالي" : "Settlement Status"}</span>
                           <p className="text-sm font-black text-emerald-400 mt-1.5 flex items-center gap-1">
                             <CheckCircle2 size={14} />
                             <span>{isArabic ? inspectingContract.statusAr : inspectingContract.status}</span>
@@ -720,11 +719,11 @@ export function LogisticsMetricModal({
                             <ShieldCheck size={15} />
                             <span>{isArabic ? "أختام الموافقة المشفرة (Multi-Sig Vault)" : "Multi-Sig Cryptographic Approvals"}</span>
                           </span>
-                          <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-mono text-emerald-300">
                             3/3 Verified
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-300 font-mono">
+                        <div className="grid grid-cols-3 gap-2 text-xs text-slate-300 font-mono">
                           <div className="rounded-xl bg-black/40 p-2 border border-white/5">
                             <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 1: صلة" : "Key 1: Sila Ops"}</p>
                             <p className="text-emerald-400 font-bold truncate">0x71a2...c890</p>
@@ -738,7 +737,7 @@ export function LogisticsMetricModal({
                             <p className="text-emerald-400 font-bold truncate">0x3e1a...7d44</p>
                           </div>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-mono">
+                        <p className="text-xs text-slate-400 font-mono">
                           {inspectingContract.seal} · Immutable Ledger Record
                         </p>
                       </div>
@@ -833,7 +832,7 @@ export function LogisticsMetricModal({
 
                       {/* Instant Status Transition Buttons */}
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-400 me-1">{l("Set Status")}:</span>
+                        <span className="text-xs text-slate-400 me-1">{l("Set Status")}:</span>
                         {(["READY", "ASSIGNED", "EN_ROUTE", "COMPLETED"] as TaskStatus[]).map((st) => (
                           <button
                             key={st}
@@ -848,7 +847,7 @@ export function LogisticsMetricModal({
                                 void onUpdateTaskStatus(task.id, st);
                               }
                             }}
-                            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                               task.status === st
                                 ? "bg-midyaf-gold text-slate-950"
                                 : "bg-white/10 text-slate-300 hover:bg-white/20"
@@ -929,24 +928,24 @@ export function LogisticsMetricModal({
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-lg glass-tactical p-4 border border-midyaf-gold/30">
-                  <span className="text-[10px] text-midyaf-gold font-bold uppercase">{l("VIP Satisfaction")}</span>
+                  <span className="text-xs text-midyaf-gold font-bold uppercase">{l("VIP Satisfaction")}</span>
                   <p className="text-2xl font-black text-white mt-1">96%</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "مؤشر التوصية الصافي (NPS 88)" : "Net Promoter Score (NPS 88)"}</span>
+                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "مؤشر التوصية الصافي (NPS 88)" : "Net Promoter Score (NPS 88)"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-emerald-500/30">
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase">{l("Fleet Savings")}</span>
+                  <span className="text-xs text-emerald-400 font-bold uppercase">{l("Fleet Savings")}</span>
                   <p className="text-2xl font-black text-emerald-300 mt-1">{isArabic ? "٨٤,٢٠٠ ر.س" : "SAR 84,200"}</p>
-                  <span className="text-[11px] text-emerald-400 font-semibold">{isArabic ? "توفير الوقود وتقليص الانتظار" : "Fuel & Idle Reduction"}</span>
+                  <span className="text-xs text-emerald-400 font-semibold">{isArabic ? "توفير الوقود وتقليص الانتظار" : "Fuel & Idle Reduction"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{l("Punctuality Rate")}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{l("Punctuality Rate")}</span>
                   <p className="text-2xl font-black text-white mt-1">99.4%</p>
-                  <span className="text-[11px] text-cyan-300 font-semibold">{isArabic ? "صفر أخطاء في المسارات" : "Zero Route Failures"}</span>
+                  <span className="text-xs text-cyan-300 font-semibold">{isArabic ? "صفر أخطاء في المسارات" : "Zero Route Failures"}</span>
                 </div>
                 <div className="rounded-lg glass-tactical p-4 border border-white/10">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{isArabic ? "وفر الانبعاثات الكربونية" : "CO₂ Footprint Saved"}</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "وفر الانبعاثات الكربونية" : "CO₂ Footprint Saved"}</span>
                   <p className="text-2xl font-black text-white mt-1">{isArabic ? "١٨.٢ طن" : "18.2 Tons"}</p>
-                  <span className="text-[11px] text-purple-300 font-semibold">{isArabic ? "تحسين مسارات الأسطول الذكية" : "Fleet Route Optimization"}</span>
+                  <span className="text-xs text-purple-300 font-semibold">{isArabic ? "تحسين مسارات الأسطول الذكية" : "Fleet Route Optimization"}</span>
                 </div>
               </div>
 
@@ -991,6 +990,8 @@ export function LogisticsMetricModal({
             </div>
           )}
         </div>
-      </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

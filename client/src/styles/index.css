@@ -8,7 +8,31 @@
    ══════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Obsidian surfaces ── */
+  /* ══ Design tokens (RGB triplets; consumed by tailwind.config.cjs) ══
+     Surfaces: 0 backdrop · 1 page · 2 card · 3 raised/selected · 4 hover */
+  --surface-0: 5 7 13;
+  --surface-1: 9 12 21;
+  --surface-2: 18 22 38;
+  --surface-3: 26 31 51;
+  --surface-4: 35 42 69;
+
+  --gold-100: 247 236 196;
+  --gold-300: 242 213 117;
+  --gold-500: 212 175 55;
+  --gold-700: 168 136 32;
+  --gold-900: 90 71 17;
+
+  --ink: 248 250 252;
+  --ink-muted: 148 163 184;
+  --ink-faint: 100 116 139;
+
+  --status-ok: 52 211 153;
+  --status-warn: 251 191 36;
+  --status-danger: 251 113 133;
+  --status-info: 56 189 248;
+  --status-neutral: 148 163 184;
+
+  /* ── Obsidian surfaces (legacy hex aliases) ── */
   --m-purple: #090C15;
   --m-purple-light: #121626;
   --m-purple-dark: #05070D;

@@ -1090,7 +1090,7 @@ export function ActivityIntakePage({
 
               {/* Resource Allocation Grid: Core & New Categories (Task 3) */}
               <div className="mt-4">
-                <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
+                <h5 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
                   {ui.isArabic ? "توزيع الموارد والأصول:" : "Resource & Asset Quotas:"}
                 </h5>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -1104,11 +1104,11 @@ export function ActivityIntakePage({
                   <MiniStat label={ui.isArabic ? "رافعات ومعدات" : "Heavy Equipment"} value={activePlan.heavyEquipment || draft.heavyEquipmentCount || 6} />
                   <MiniStat label={ui.isArabic ? "حافلات VIP" : "Buses"} value={activePlan.buses || draft.busesCount || 15} />
                   <div className="rounded-xl border border-white/5 bg-[#121626] p-2.5 text-center dark:border-slate-800 dark:bg-slate-800">
-                    <p className="text-[10px] text-slate-400">{ui.isArabic ? "القوى البشرية" : "Man Power"}</p>
+                    <p className="text-xs text-slate-400">{ui.isArabic ? "القوى البشرية" : "Man Power"}</p>
                     <p className="mt-0.5 text-base font-black text-midyaf-pearl dark:text-purple-300">
                       {activePlan.manPower || draft.manPowerCount || 120}
                     </p>
-                    <span className="mt-1 inline-block rounded-md bg-midyaf-purple/10 px-1.5 py-0.5 text-[9px] font-bold text-midyaf-pearl dark:text-purple-300">
+                    <span className="mt-1 inline-block rounded-md bg-midyaf-purple/10 px-1.5 py-0.5 text-xs font-bold text-midyaf-pearl dark:text-purple-300">
                       {(activePlan.manPowerSubtype || draft.manPowerSubtype) === "CARGO_LOADING"
                         ? (ui.isArabic ? "عمال تحميل" : "Cargo Crew")
                         : (ui.isArabic ? "منظمو الفعالية" : "Event Staff")}

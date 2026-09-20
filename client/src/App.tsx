@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   Building2,
@@ -37,17 +37,24 @@ import type {
   TaskStatus
 } from "@shared/domain";
 import { Badge } from "./components/Badge";
-import { RoyalCard } from "./components/RoyalCard";
-import {
-  ActivityIntakePage,
-  CaptainsApp,
-  CompanyDashboard,
-  CoordinatorsApp,
-  GuestJourneyApp,
-} from "./pages/ops";
-import { AdminExecutiveDashboard } from "./components/AdminExecutiveDashboard";
-import { ClientDashboard } from "./components/ClientDashboard";
-import { SilaOperationsDashboard } from "./components/SilaOperationsDashboard";
+// Portals are code-split: each becomes its own chunk and loads on first use.
+const ActivityIntakePage = lazy(() => import("./pages/ops/ActivityIntakePage").then((m) => ({ default: m.ActivityIntakePage })));
+const CaptainsApp = lazy(() => import("./pages/ops/CaptainsApp").then((m) => ({ default: m.CaptainsApp })));
+const CompanyDashboard = lazy(() => import("./pages/ops/CompanyDashboard").then((m) => ({ default: m.CompanyDashboard })));
+const CoordinatorsApp = lazy(() => import("./pages/ops/CoordinatorsApp").then((m) => ({ default: m.CoordinatorsApp })));
+const GuestJourneyApp = lazy(() => import("./pages/ops/GuestJourneyApp").then((m) => ({ default: m.GuestJourneyApp })));
+const AdminExecutiveDashboard = lazy(() =>
+  import("./components/AdminExecutiveDashboard").then((m) => ({ default: m.AdminExecutiveDashboard }))
+);
+const ClientDashboard = lazy(() => import("./components/ClientDashboard").then((m) => ({ default: m.ClientDashboard })));
+const SilaOperationsDashboard = lazy(() =>
+  import("./components/SilaOperationsDashboard").then((m) => ({ default: m.SilaOperationsDashboard }))
+);
+const DesignSystemPreview = lazy(() =>
+  import("./pages/DesignSystemPreview").then((m) => ({ default: m.DesignSystemPreview }))
+);
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { PortalSkeleton } from "./components/ui/Skeleton";
 import { GuestSelfOnboarding } from "./pages/GuestSelfOnboarding";
 import type {
   CoordinatorRequestInput,
@@ -114,9 +121,16 @@ export function App() {
   const [isOnboarding, setIsOnboarding] = useState(
     window.location.hash.startsWith("#onboarding")
   );
-  
+  // Dev-only design-system gallery (see pages/DesignSystemPreview).
+  const [isDesignPreview, setIsDesignPreview] = useState(
+    import.meta.env.DEV && window.location.hash === "#design"
+  );
+
   useEffect(() => {
-    const handleHash = () => setIsOnboarding(window.location.hash.startsWith("#onboarding"));
+    const handleHash = () => {
+      setIsOnboarding(window.location.hash.startsWith("#onboarding"));
+      setIsDesignPreview(import.meta.env.DEV && window.location.hash === "#design");
+    };
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
@@ -389,6 +403,16 @@ export function App() {
     [data, session, isDemoMode]
   );
 
+  if (isDesignPreview) {
+    return (
+      <Suspense fallback={<PortalSkeleton />}>
+        <DesignSystemPreview
+          onLanguageToggle={() => void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")}
+        />
+      </Suspense>
+    );
+  }
+
   if (!session) {
     if (isOnboarding) {
       return (
@@ -486,7 +510,9 @@ export function App() {
       }
       onLogout={handleLogout}
     >
-      {renderPortal(portal, portalProps, isArabic)}
+      <ErrorBoundary resetKey={portal} isArabic={isArabic}>
+        <Suspense fallback={<PortalSkeleton />}>{renderPortal(portal, portalProps, isArabic)}</Suspense>
+      </ErrorBoundary>
     </ShellFrame>
     </SocketContext.Provider>
   );
@@ -1222,7 +1248,7 @@ function ShellFrame({
             >
               <Search size={14} className="text-midyaf-gold" />
               <span className="hidden sm:inline font-medium">{isArabic ? "بحث سريع..." : "Quick Jump..."}</span>
-              <kbd className="rounded bg-white dark:bg-slate-900 border border-white/5 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-midyaf-gold font-bold">
+              <kbd className="rounded bg-white dark:bg-slate-900 border border-white/5 dark:border-slate-700 px-1.5 py-0.5 text-xs font-mono text-midyaf-gold font-bold">
                 ⌘K
               </kbd>
             </button>
@@ -1230,10 +1256,10 @@ function ShellFrame({
             {/* Sovereign Command Bridge (War Room) & Full Demo Mode Badge */}
             {isDemoMode && (
               <>
-                <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-[11px] font-black text-amber-500 animate-pulse">
+                <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-xs font-black text-amber-500 animate-pulse">
                   <Sparkles size={13} />
                   <span>{isArabic ? "الوضع التجريبي نشط" : "DEMO MODE ACTIVE"}</span>
-                  <span className="text-[10px] text-amber-400/80 font-mono">[Ctrl+Shift+D]</span>
+                  <span className="text-xs text-amber-400/80 font-mono">[Ctrl+Shift+D]</span>
                 </div>
 
                 <button
@@ -1251,7 +1277,7 @@ function ShellFrame({
                   </span>
                   <Shield size={14} className="text-midyaf-gold" />
                   <span>{isArabic ? "غرفة العمليات" : "WAR ROOM"}</span>
-                  <span className="text-[10px] text-midyaf-gold/70 font-mono">[Ctrl+Space]</span>
+                  <span className="text-xs text-midyaf-gold/70 font-mono">[Ctrl+Space]</span>
                 </button>
               </>
             )}
@@ -1315,7 +1341,7 @@ function ShellFrame({
               >
                 <Icon size={15} className={active ? "text-midyaf-gold" : "text-slate-400"} />
                 <span>{t(`portals.${item}`)}</span>
-                <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                <span className={`text-xs px-1.5 py-0.2 rounded font-semibold ${
                   active ? "bg-midyaf-gold/20 text-midyaf-gold" : "bg-slate-200/60 dark:bg-slate-800 text-slate-400"
                 }`}>
                   {categoryTag}
@@ -1342,10 +1368,10 @@ function ShellFrame({
                 <h2 className="text-sm font-black text-midyaf-pearl dark:text-white">
                   {isArabic ? currentMeta?.titleAr : currentMeta?.titleEn}
                 </h2>
-                <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
+                <span className="rounded-md bg-midyaf-gold/15 px-2 py-0.5 text-xs font-bold text-midyaf-gold ring-1 ring-midyaf-gold/30">
                   {isArabic ? "نطاق القمة السيادية" : "Sovereign Summit Zone"}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <span className="live-dot" style={{ width: 5, height: 5 }} />
                   {isArabic ? "مباشر" : "Live"}
                 </span>
@@ -1360,7 +1386,7 @@ function ShellFrame({
             {/* Realtime Event Telemetry Ticker */}
             <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-white/5 dark:border-slate-700/60 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
               <span className="live-dot shrink-0" style={{ width: 6, height: 6 }} />
-              <span className="truncate max-w-[220px] font-medium text-[11px]">
+              <span className="truncate max-w-[220px] font-medium text-xs">
                 {realtimeLog[0] ?? (isArabic ? "البث المباشر متصل" : "Live telemetry connected")}
               </span>
             </div>
@@ -1401,7 +1427,7 @@ function ShellFrame({
             >
               <Search size={13} className="text-midyaf-gold" />
               <span>{isArabic ? "بحث سريع" : "Quick Jump"}</span>
-              <kbd className="text-[10px] font-mono opacity-75">⌘K</kbd>
+              <kbd className="text-xs font-mono opacity-75">⌘K</kbd>
             </button>
           </div>
         </div>
@@ -1593,7 +1619,7 @@ function LoginPage({
 
           {/* Executive Fast Access */}
           <div className="mt-6 border-t border-white/5 pt-5 dark:border-slate-800">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-midyaf-gold flex items-center gap-1.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-midyaf-gold flex items-center gap-1.5">
               <ShieldCheck size={13} className="text-midyaf-gold" />
               <span>{isArabic ? "الدخول القيادي السريع" : "Executive Fast Access"}</span>
             </p>
@@ -1607,8 +1633,8 @@ function LoginPage({
                   <Crown size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "مالك مضياف (الإدارة المالية)" : "Midyaf Owner (Admin)"}</p>
-                  <p className="truncate text-[10px] text-slate-400">admin@midyaf.local</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "مالك مضياف (الإدارة المالية)" : "Midyaf Owner (Admin)"}</p>
+                  <p className="truncate text-xs text-slate-400">admin@midyaf.local</p>
                 </div>
               </button>
 
@@ -1621,8 +1647,8 @@ function LoginPage({
                   <Building2 size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "شركة صلة (المنظم)" : "Sila Organizer"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "توليد لوحة العميل" : "Client Portal Gen"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "شركة صلة (المنظم)" : "Sila Organizer"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "توليد لوحة العميل" : "Client Portal Gen"}</p>
                 </div>
               </button>
 
@@ -1635,8 +1661,8 @@ function LoginPage({
                   <Briefcase size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير اللوجستيات" : "Logistics Manager"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "تقارير وتوجيه المهام" : "Ops & Task Relay"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "مدير اللوجستيات" : "Logistics Manager"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "تقارير وتوجيه المهام" : "Ops & Task Relay"}</p>
                 </div>
               </button>
 
@@ -1649,8 +1675,8 @@ function LoginPage({
                   <Users size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "مدير الفعالية / النشاط" : "Event / Activity Mgr"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "بناء الفريق وتوزيع المهام" : "Team & Tasks"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "مدير الفعالية / النشاط" : "Event / Activity Mgr"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "بناء الفريق وتوزيع المهام" : "Team & Tasks"}</p>
                 </div>
               </button>
 
@@ -1663,8 +1689,8 @@ function LoginPage({
                   <ShieldCheck size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "بوابة العميل (السياحة)" : "Client Portal (VIP)"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "متابعة وتقارير وتواصل" : "Reports & Comms"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "بوابة العميل (السياحة)" : "Client Portal (VIP)"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "متابعة وتقارير وتواصل" : "Reports & Comms"}</p>
                 </div>
               </button>
 
@@ -1677,8 +1703,8 @@ function LoginPage({
                   <Car size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "كابتن الأسطول" : "Fleet Captain"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "فهد القحطاني" : "Fahad Al Qahtani"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "كابتن الأسطول" : "Fleet Captain"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "فهد القحطاني" : "Fahad Al Qahtani"}</p>
                 </div>
               </button>
 
@@ -1691,8 +1717,8 @@ function LoginPage({
                   <Star size={14} />
                 </div>
                 <div className="truncate">
-                  <p className="truncate text-[11px] font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
-                  <p className="truncate text-[10px] text-slate-400">{isArabic ? "نورة الحربي" : "Noura Al Harbi"}</p>
+                  <p className="truncate text-xs font-black">{isArabic ? "ضيف VIP" : "VIP Guest"}</p>
+                  <p className="truncate text-xs text-slate-400">{isArabic ? "نورة الحربي" : "Noura Al Harbi"}</p>
                 </div>
               </button>
             </div>

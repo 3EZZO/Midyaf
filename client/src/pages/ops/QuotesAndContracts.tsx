@@ -157,7 +157,7 @@ export function QuotesAndContracts({
                 <h4 className="font-bold tracking-wide text-white md:text-base">
                   {ui.l("Midyaf Anti-Corruption Vault: Multi-Party Authorization")}
                 </h4>
-                <span className="rounded-md bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-400/30">
+                <span className="rounded-md bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/30">
                   {ui.l("PATENT-PENDING")}
                 </span>
               </div>
@@ -210,7 +210,7 @@ export function QuotesAndContracts({
               />
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <span className="text-[11px]">
+              <span className="text-xs">
                 {vaultState.key1 ? (
                   <span className="font-semibold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={13} className="shrink-0" />
@@ -255,7 +255,7 @@ export function QuotesAndContracts({
               />
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <span className="text-[11px]">
+              <span className="text-xs">
                 {vaultState.key2 ? (
                   <span className="font-semibold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={13} className="shrink-0" />
@@ -300,7 +300,7 @@ export function QuotesAndContracts({
               />
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <span className="text-[11px]">
+              <span className="text-xs">
                 {vaultState.key3 ? (
                   <span className="font-semibold text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 size={13} className="shrink-0" />
@@ -388,7 +388,7 @@ export function QuotesAndContracts({
                     {ui.l(quote.vendorName)}
                   </p>
                   {isSealed && (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
                       <Lock className="h-2.5 w-2.5" />
                       {ui.l("ENCRYPTED BID")}
                     </span>
@@ -504,7 +504,7 @@ export function QuotesAndContracts({
                     <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white">
                       {ui.p(contract.vendorNameEn, contract.vendorNameAr)}
                     </h4>
-                    <p className="text-[11px] font-bold text-midyaf-pearl dark:text-purple-300">
+                    <p className="text-xs font-bold text-midyaf-pearl dark:text-purple-300">
                       {ui.p(contract.categoryEn, contract.categoryAr)}
                     </p>
                   </div>
@@ -512,7 +512,7 @@ export function QuotesAndContracts({
                     <p className="text-base font-black text-midyaf-pearl dark:text-midyaf-gold">
                       {money(contract.amount)}
                     </p>
-                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       {contract.commissionPercent}% {ui.p("Take Rate", "عمولة")} ({money(contract.commissionAmount)})
                     </p>
                   </div>
@@ -523,7 +523,7 @@ export function QuotesAndContracts({
                 </p>
 
                 <div className="mt-3.5 flex items-center justify-between border-t border-white/5 pt-3 dark:border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400">
+                  <span className="text-xs font-mono text-slate-400">
                     {contract.certifiedHash}
                   </span>
                   <button
@@ -583,13 +583,13 @@ export function QuotesAndContracts({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Vendor Name", "اسم المورد")}</p>
+                  <p className="text-xs text-slate-400 uppercase font-bold">{ui.p("Vendor Name", "اسم المورد")}</p>
                   <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white">
                     {ui.p(selectedDemoContract.vendorNameEn, selectedDemoContract.vendorNameAr)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Category", "التصنيف")}</p>
+                  <p className="text-xs text-slate-400 uppercase font-bold">{ui.p("Category", "التصنيف")}</p>
                   <p className="mt-0.5 font-bold text-sm text-slate-900 dark:text-white">
                     {ui.p(selectedDemoContract.categoryEn, selectedDemoContract.categoryAr)}
                   </p>
@@ -597,7 +597,7 @@ export function QuotesAndContracts({
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Scope of Work", "نطاق العمل والتوريد")}</p>
+                <p className="text-xs text-slate-400 uppercase font-bold">{ui.p("Scope of Work", "نطاق العمل والتوريد")}</p>
                 <p className="mt-1 text-xs text-slate-700 leading-relaxed dark:text-slate-300">
                   {ui.p(selectedDemoContract.scopeEn, selectedDemoContract.scopeAr)}
                 </p>
@@ -605,13 +605,13 @@ export function QuotesAndContracts({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">{ui.p("Total Contract Value", "إجمالي قيمة العقد")}</p>
+                  <p className="text-xs text-slate-400 uppercase font-bold">{ui.p("Total Contract Value", "إجمالي قيمة العقد")}</p>
                   <p className="mt-0.5 font-black text-base text-midyaf-pearl dark:text-midyaf-gold">
                     {money(selectedDemoContract.amount)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-emerald-500/10 p-3 border border-emerald-500/20">
-                  <p className="text-[10px] text-emerald-600 uppercase font-bold">{ui.p("Midyaf Take Rate (Platform Fee)", "عمولة منصة مضياف")}</p>
+                  <p className="text-xs text-emerald-600 uppercase font-bold">{ui.p("Midyaf Take Rate (Platform Fee)", "عمولة منصة مضياف")}</p>
                   <p className="mt-0.5 font-black text-base text-emerald-600 dark:text-emerald-400">
                     {money(selectedDemoContract.commissionAmount)} ({selectedDemoContract.commissionPercent}%)
                   </p>
@@ -619,7 +619,7 @@ export function QuotesAndContracts({
               </div>
 
               <div className="rounded-lg border border-dashed border-slate-300 p-3 text-center dark:border-slate-700">
-                <p className="text-[10px] text-slate-400 font-mono">
+                <p className="text-xs text-slate-400 font-mono">
                   {ui.p("IMMUTABLE AUDIT HASH", "بصمة التدقيق المشفرة وغير القابلة للتغيير")}
                 </p>
                 <p className="mt-1 font-mono font-bold text-midyaf-pearl dark:text-purple-300">

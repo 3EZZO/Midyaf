@@ -339,7 +339,7 @@ export function RiyadhMap({
               permanent: false,
               direction: "top",
               className:
-                "bg-slate-950 text-white border border-midyaf-gold/40 text-[11px] px-2 py-1 rounded shadow-2xl backdrop-blur-md font-sans"
+                "bg-slate-950 text-white border border-midyaf-gold/40 text-xs px-2 py-1 rounded shadow-2xl backdrop-blur-md font-sans"
             }
           );
         }
@@ -485,17 +485,17 @@ export function RiyadhMap({
             <div>
               <p className="text-sm font-black tracking-tight text-midyaf-gold flex items-center gap-2 group-hover:text-amber-300 transition-colors">
                 <span>{isFullscreen ? l("Fullscreen Operational Tactical Map") : l("Sovereign Dark Tactical")}</span>
-                <span className="rounded bg-midyaf-gold/20 px-1.5 py-0.2 text-[10px] text-midyaf-gold ring-1 ring-midyaf-gold/40">
+                <span className="rounded bg-midyaf-gold/20 px-1.5 py-0.2 text-xs text-midyaf-gold ring-1 ring-midyaf-gold/40">
                   {isArabic ? "العمليات السيادية" : "Sovereign Ops"}
                 </span>
                 {!isFullscreen && (
-                  <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-2 py-0.5 text-[10px] font-black text-midyaf-gold ring-1 ring-midyaf-gold/40 group-hover:bg-midyaf-gold/30">
+                  <span className="inline-flex items-center gap-1 rounded bg-midyaf-gold/15 px-2 py-0.5 text-xs font-black text-midyaf-gold ring-1 ring-midyaf-gold/40 group-hover:bg-midyaf-gold/30">
                     <Maximize2 size={10} />
                     <span>{isArabic ? "تكبير الشاشة" : "Enlarge"}</span>
                   </span>
                 )}
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 {RIYADH.centerLat.toFixed(4)}° N, {RIYADH.centerLng.toFixed(4)}° E · {drivers.length} {l("Active Fleets")} · {tasks.length} {l("Missions")}
               </p>
             </div>
@@ -513,7 +513,7 @@ export function RiyadhMap({
                     
                     setSelectedZone(z);
                   }}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                     selectedZone === z
                       ? "bg-midyaf-gold text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
@@ -689,7 +689,7 @@ export function RiyadhMap({
                               {speed} km/h
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400 mt-1">{vehicle} · {plate}</p>
+                          <p className="text-xs text-slate-400 mt-1">{vehicle} · {plate}</p>
                           <div className="mt-2 flex items-center justify-between">
                             <Badge tone={driver.status === "OFFLINE" ? "slate" : "green"}>
                               {l(driver.status)}
@@ -697,7 +697,7 @@ export function RiyadhMap({
                             <button
                               type="button"
                               onClick={() => handleLocateDriver(driver)}
-                              className="flex items-center gap-1 text-[11px] font-bold text-midyaf-gold hover:text-amber-300 transition"
+                              className="flex items-center gap-1 text-xs font-bold text-midyaf-gold hover:text-amber-300 transition"
                             >
                               <Crosshair size={12} />
                               <span>{isArabic ? "تحديد الموقع على الخريطة" : "Locate on Map"}</span>
@@ -721,12 +721,12 @@ export function RiyadhMap({
                             <Crown size={13} className="text-midyaf-gold" />
                             <span>{vip.name}</span>
                           </span>
-                          <span className="text-[10px] text-cyan-300 font-mono bg-cyan-950/60 px-1.5 py-0.5 rounded">
+                          <span className="text-xs text-cyan-300 font-mono bg-cyan-950/60 px-1.5 py-0.5 rounded">
                             VIP
                           </span>
                         </div>
-                        <p className="text-[11px] text-midyaf-gold mt-0.5">{vip.title}</p>
-                        <div className="mt-2 text-[10px] text-slate-400 space-y-1 border-t border-white/5 pt-1.5">
+                        <p className="text-xs text-midyaf-gold mt-0.5">{vip.title}</p>
+                        <div className="mt-2 text-xs text-slate-400 space-y-1 border-t border-white/5 pt-1.5">
                           <p className="flex items-center gap-1.5">
                             <Car size={11} className="text-midyaf-gold shrink-0" />
                             <span>{l("Chauffeur")}: <span className="text-slate-200 font-semibold">{vip.driver}</span> ({vip.vehicle})</span>
@@ -758,10 +758,10 @@ export function RiyadhMap({
                             {l(task.status)}
                           </Badge>
                         </div>
-                        <p className="text-[11px] text-slate-300 mt-1">
+                        <p className="text-xs text-slate-300 mt-1">
                           {l(task.pickupLocation)} → {l(task.dropoffLocation)}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-1">
+                        <p className="text-xs text-slate-400 mt-1">
                           {l("Owner")}: {l(task.ownerName)}
                         </p>
                       </div>
@@ -796,12 +796,12 @@ export function RiyadhMap({
                 <span>{l("Live GPS Telemetry")}</span>
               </div>
               <span className="text-slate-500">|</span>
-              <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
+              <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
                 <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                 {drivers.length} {l("Chauffeurs Active")}
               </span>
               <span className="text-slate-500">|</span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 {tasks.length} {l("Active Missions")}
               </span>
             </div>
@@ -865,7 +865,7 @@ function addCustomMarker({
     `;
   } else {
     iconHtml = `
-      <div class="flex items-center justify-center size-6 rounded-full bg-midyaf-purple border border-midyaf-gold text-white shadow-md text-[11px] font-bold">
+      <div class="flex items-center justify-center size-6 rounded-full bg-midyaf-purple border border-midyaf-gold text-white shadow-md text-xs font-bold">
         ${tone === "dropoff" ? "↓" : "↑"}
       </div>
     `;

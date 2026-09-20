@@ -101,6 +101,7 @@ function getChipIcon(iconType: string) {
   }
 }
 
+import { useToast } from "./ui/Toast";
 export function AiPanel({
   persona = "Noura",
   initialMessage,
@@ -112,6 +113,7 @@ export function AiPanel({
   session?: Session;
   context?: Record<string, any>;
 }) {
+  const toast = useToast();
   const { t, i18n } = useTranslation();
   const isArabic = isArabicLanguage(i18n.language);
   const p = (en: string, ar: string) => pickText(isArabic, en, ar);
@@ -394,27 +396,27 @@ export function AiPanel({
                           {p("Live Telemetry Radar", "رادار التتبع المباشر")}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-emerald-400">
+                      <span className="text-xs font-mono text-emerald-400">
                         {radar.coords}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-[10px] text-emerald-300/70 uppercase block">{p("Chauffeur", "السائق")}</span>
+                        <span className="text-xs text-emerald-300/70 uppercase block">{p("Chauffeur", "السائق")}</span>
                         <strong className="text-white font-bold">{radar.driverName}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-emerald-300/70 uppercase block">{p("Vehicle & Plate", "المركبة واللوحة")}</span>
+                        <span className="text-xs text-emerald-300/70 uppercase block">{p("Vehicle & Plate", "المركبة واللوحة")}</span>
                         <span className="text-amber-300 font-bold">{radar.vehicle} ({radar.plate})</span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-[10px] text-emerald-300/70 uppercase block">{p("Status & Climate", "الحالة والتكييف")}</span>
+                        <span className="text-xs text-emerald-300/70 uppercase block">{p("Status & Climate", "الحالة والتكييف")}</span>
                         <span className="text-emerald-100 font-medium">{radar.status} · {radar.speed}</span>
                       </div>
                     </div>
                     <div className="mt-3 pt-2 border-t border-emerald-500/20 flex gap-2">
                       <button
-                        onClick={() => alert(p(`Calling ${radar.driverName} at ${radar.phone}...`, `جاري الاتصال بالسائق ${radar.driverName}...`))}
+                        onClick={() => toast.info(p(`Calling ${radar.driverName} at ${radar.phone}...`, `جاري الاتصال بالسائق ${radar.driverName}...`))}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition shadow-sm"
                       >
                         <Phone size={13} />
@@ -434,13 +436,13 @@ export function AiPanel({
                         {p("VIP Shuttle Status", "حالة حافلة كبار الشخصيات")}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-amber-400">
+                    <span className="text-xs font-bold text-amber-400">
                       {message.widget.eta}
                     </span>
                   </div>
                   <div className="space-y-1.5 text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 block">{p("Route", "المسار")}</span>
+                      <span className="text-xs text-slate-400 block">{p("Route", "المسار")}</span>
                       <strong className="text-white">{message.widget.route}</strong>
                     </div>
                     <div className="flex justify-between items-center text-slate-300 pt-1">
@@ -462,19 +464,19 @@ export function AiPanel({
                   <div className="grid grid-cols-2 gap-2 text-center text-xs">
                     <div className="rounded-lg bg-white/5 p-2 border border-white/10">
                       <div className="text-lg font-black text-emerald-400">{message.widget.satisfaction}</div>
-                      <div className="text-[10px] text-slate-400">{p("VIP Satisfaction", "رضا الضيوف")}</div>
+                      <div className="text-xs text-slate-400">{p("VIP Satisfaction", "رضا الضيوف")}</div>
                     </div>
                     <div className="rounded-lg bg-white/5 p-2 border border-white/10">
                       <div className="text-lg font-black text-amber-400">{message.widget.nps}</div>
-                      <div className="text-[10px] text-slate-400">{p("Net Promoter Score", "مؤشر NPS")}</div>
+                      <div className="text-xs text-slate-400">{p("Net Promoter Score", "مؤشر NPS")}</div>
                     </div>
                     <div className="rounded-lg bg-white/5 p-2 border border-white/10">
                       <div className="text-lg font-black text-cyan-400">{message.widget.savingsSAR}</div>
-                      <div className="text-[10px] text-slate-400">{p("Direct Cost Savings", "الوفورات المالية")}</div>
+                      <div className="text-xs text-slate-400">{p("Direct Cost Savings", "الوفورات المالية")}</div>
                     </div>
                     <div className="rounded-lg bg-white/5 p-2 border border-white/10">
                       <div className="text-lg font-black text-purple-400">{message.widget.idleReduction}</div>
-                      <div className="text-[10px] text-slate-400">{p("Idle Fleet Reduced", "خفض هدر الأسطول")}</div>
+                      <div className="text-xs text-slate-400">{p("Idle Fleet Reduced", "خفض هدر الأسطول")}</div>
                     </div>
                   </div>
                 </div>
@@ -519,7 +521,7 @@ export function AiPanel({
 
       {/* Suggested Prompt Chips */}
       <div className="px-3 pt-2 pb-1 bg-slate-50/80 dark:bg-dark-surface/80 border-t border-white/5 dark:border-white/10 overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
+        <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
           <span className="text-slate-400 font-semibold shrink-0 flex items-center gap-1">
             <Sparkles size={12} className="text-midyaf-gold" />
             <span>{p("Try:", "جرّب:")}</span>

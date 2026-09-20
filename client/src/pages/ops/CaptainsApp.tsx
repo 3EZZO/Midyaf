@@ -9,12 +9,14 @@ import type { PortalProps } from "../types";
 import type { FileAsset, Task } from "@shared/domain";
 import { DeliveryLog, PortalHero, assetFileName, latestFileAsset, useOpsText } from "./shared";
 
+import { useToast } from "../../components/ui/Toast";
 export function CaptainsApp({
   data,
   shareDriverLocation,
   updateTaskStatus
 }: PortalProps) {
   const ui = useOpsText();
+  const toast = useToast();
   const event = data.events[0];
   const captain = data.drivers[0];
   const tasks = event.tasks.filter((task) => task.driverId === captain.id);
@@ -71,7 +73,7 @@ export function CaptainsApp({
               <h3 className="text-sm font-bold text-white">
                 Airport Walk-in Express Pickup (ركوب مباشر من المطار)
               </h3>
-              <p className="text-[11px] text-slate-300">
+              <p className="text-xs text-slate-300">
                 Register unannounced VIP arriving at gate without prior reservation
               </p>
             </div>
@@ -102,19 +104,19 @@ export function CaptainsApp({
                 })
               });
               if (res.ok) {
-                alert("VIP Walk-in Registered! Trip assigned to your active queue.");
+                toast.success(ui.p("VIP walk-in registered", "تم تسجيل الضيف"), ui.p("Trip assigned to your active queue.", "تمت إضافة الرحلة إلى قائمة مهامك."));
                 nameInput.value = "";
               } else {
-                alert("Failed to register walk-in");
+                toast.alert(ui.p("Failed to register walk-in", "تعذر تسجيل الضيف"));
               }
             } catch (err) {
-              alert("Error registering walk-in");
+              toast.alert(ui.p("Error registering walk-in", "حدث خطأ أثناء تسجيل الضيف"));
             }
           }}
           className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end"
         >
           <div>
-            <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+            <label className="block text-xs font-semibold text-amber-300/80 mb-1">
               VIP Guest Name (اسم الضيف) *
             </label>
             <input
@@ -126,7 +128,7 @@ export function CaptainsApp({
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-amber-300/80 mb-1">
+            <label className="block text-xs font-semibold text-amber-300/80 mb-1">
               Destination Venue (الوجهة) *
             </label>
             <input

@@ -45,7 +45,7 @@ export function PwaUpdateBanner() {
         <p className="font-black text-midyaf-gold">
           {isArabic ? "تحديث تشغيلي فوري متاح" : "New Operational Build Ready"}
         </p>
-        <p className="text-[11px] text-slate-300 mt-0.5">
+        <p className="text-xs text-slate-300 mt-0.5">
           {isArabic
             ? "تم نشر إصدار محدث على الخادم. انقر للتحديث الفوري بدون كاش قديم."
             : "Latest server release deployed. Refresh now to apply the latest build."}

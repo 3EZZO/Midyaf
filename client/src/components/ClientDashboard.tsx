@@ -177,7 +177,7 @@ export function ClientDashboard({
               {isArabic ? "دقة الالتزام بالمواعيد" : "Punctuality SLA"}
             </span>
             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white font-tnum">99.2%</p>
-            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
               ✓ {isArabic ? "ضمن المعايير السيادية المعتمدة" : "Within sovereign protocol standard"}
             </p>
           </div>
@@ -186,7 +186,7 @@ export function ClientDashboard({
               {isArabic ? "معدل رضا الضيوف VIP" : "VIP Satisfaction NPS"}
             </span>
             <p className="mt-2 text-3xl font-black text-midyaf-gold font-tnum">98 / 100</p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-xs text-slate-400">
               {isArabic ? "بناءً على تقييمات كبار الشخصيات" : "Based on guest feedback"}
             </p>
           </div>
@@ -197,7 +197,7 @@ export function ClientDashboard({
             <p className="mt-2 text-3xl font-black text-midyaf-pearl dark:text-purple-300 font-tnum">
               420 / 420
             </p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-xs text-slate-400">
               {isArabic ? "اكتمال وصول جميع الوفود" : "All delegations arrived safely"}
             </p>
           </div>
@@ -206,7 +206,7 @@ export function ClientDashboard({
               {isArabic ? "الحوادث الحرجة" : "Critical Incidents"}
             </span>
             <p className="mt-2 text-3xl font-black text-emerald-600 dark:text-emerald-400 font-tnum">0</p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-xs text-slate-400">
               {isArabic ? "سجل تشغيلي نظيف 100%" : "100% clean incident record"}
             </p>
           </div>
@@ -241,7 +241,7 @@ export function ClientDashboard({
                       {isArabic ? (amd.titleAr || amd.title) : (amd.titleEn || amd.title)}
                     </span>
                     <Badge tone="purple">{localizeAmendmentType(amd.type, isArabic)}</Badge>
-                    <span className="text-[10px] text-slate-400 font-tnum">{amd.updatedAt}</span>
+                    <span className="text-xs text-slate-400 font-tnum">{amd.updatedAt}</span>
                   </div>
                   <p className="text-xs text-slate-500">
                     {isArabic
@@ -251,7 +251,7 @@ export function ClientDashboard({
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right text-xs">
-                    <span className="text-[10px] text-slate-400 block line-through">{amd.originalTime}</span>
+                    <span className="text-xs text-slate-400 block line-through">{amd.originalTime}</span>
                     <span className="font-extrabold text-midyaf-gold text-sm font-tnum">{amd.revisedTime}</span>
                   </div>
                   <Badge tone="green">
@@ -290,7 +290,7 @@ export function ClientDashboard({
                     key={m.id}
                     className={`flex flex-col ${isFromClient ? "items-start" : "items-end"}`}
                   >
-                    <div className="flex items-center gap-1.5 mb-1 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-1.5 mb-1 text-xs text-slate-400">
                       <span className="font-bold">{m.senderName}</span>
                       <span>·</span>
                       <span className="font-tnum">{m.timestamp}</span>
@@ -391,7 +391,7 @@ export function ClientDashboard({
                 { label: isArabic ? "تقييم الخدمة" : "Service Rating", val: "5.0 / 5.0" }
               ].map((stat, i) => (
                 <div key={i} className="rounded-xl border border-white/5 bg-[#121626] p-3 text-center bg-[#121626]">
-                  <span className="text-[10px] text-slate-400 block">{stat.label}</span>
+                  <span className="text-xs text-slate-400 block">{stat.label}</span>
                   <span className="text-base font-extrabold text-slate-900 dark:text-white font-tnum">{stat.val}</span>
                 </div>
               ))}

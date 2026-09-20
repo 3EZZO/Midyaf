@@ -103,19 +103,19 @@ export function CategoryPriceRangeSection({
                       <h4 className="text-xs font-black text-midyaf-pearl dark:text-white">
                         {isArabic ? range.categoryNameAr : range.categoryNameEn}
                       </h4>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-xs text-slate-400">
                         {range.quoteCount} {isArabic ? "عروض متنافسة" : "bids evaluated"}
                       </p>
                     </div>
                   </div>
-                  <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold text-midyaf-pearl shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200">
+                  <span className="rounded-md bg-white px-2 py-0.5 text-xs font-bold text-midyaf-pearl shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200">
                     {range.currency}
                   </span>
                 </div>
 
                 <div className="mt-4 space-y-2">
                   <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-[11px] text-slate-500">{isArabic ? "النطاق السعري:" : "Price Range:"}</span>
+                    <span className="text-xs text-slate-500">{isArabic ? "النطاق السعري:" : "Price Range:"}</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
                       {money(range.minPrice)} – {money(range.maxPrice)}
                     </span>
@@ -130,7 +130,7 @@ export function CategoryPriceRangeSection({
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1 text-xs">
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Sparkles size={11} />
                       {isArabic ? "أفضل قيمة متوفرة:" : "Best Available Tier:"}
                     </span>
@@ -139,7 +139,7 @@ export function CategoryPriceRangeSection({
                     </span>
                   </div>
 
-                  <div className="flex items-baseline justify-between text-[11px] text-slate-400">
+                  <div className="flex items-baseline justify-between text-xs text-slate-400">
                     <span>{isArabic ? "متوسط السوق:" : "Market Average:"}</span>
                     <span>{money(range.avgPrice)}</span>
                   </div>
@@ -150,7 +150,7 @@ export function CategoryPriceRangeSection({
                 <button
                   type="button"
                   onClick={() => toggleCategory(range.category)}
-                  className="flex w-full items-center justify-between text-[11px] font-bold text-midyaf-pearl hover:text-midyaf-gold dark:text-purple-300 cursor-pointer"
+                  className="flex w-full items-center justify-between text-xs font-bold text-midyaf-pearl hover:text-midyaf-gold dark:text-purple-300 cursor-pointer"
                 >
                   <span>{isArabic ? "استعراض عروض الشركات (4–5)" : "View Company Bids (4–5)"}</span>
                   {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -161,7 +161,7 @@ export function CategoryPriceRangeSection({
                     {categoryQuotes.map((q) => (
                       <div
                         key={q.id}
-                        className={`rounded-lg border p-2 text-[11px] ${
+                        className={`rounded-lg border p-2 text-xs ${
                           q.status === "APPROVED"
                             ? "border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/30"
                             : q.status === "RECOMMENDED"
@@ -177,10 +177,10 @@ export function CategoryPriceRangeSection({
                             {money(q.totalPrice)}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-[10px] text-slate-500 truncate">
+                        <p className="mt-0.5 text-xs text-slate-500 truncate">
                           {q.item}
                         </p>
-                        <div className="mt-1 flex items-center justify-between text-[9px]">
+                        <div className="mt-1 flex items-center justify-between text-xs">
                           <span className="flex items-center gap-0.5 text-emerald-600 font-bold">
                             <ShieldCheck size={10} />
                             {isArabic ? "سجل تجاري معتمد" : "Verified CR"} · {q.score}%
