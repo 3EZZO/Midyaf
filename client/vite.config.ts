@@ -3,7 +3,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-
 export default defineConfig({
   root: path.resolve(__dirname),
   plugins: [
@@ -46,7 +45,10 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "map-tiles-esri",
-              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: {
+                maxEntries: 2000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
               cacheableResponse: { statuses: [0, 200] }
             }
           },
@@ -55,7 +57,10 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "map-tiles-osm",
-              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
               cacheableResponse: { statuses: [0, 200] }
             }
           }
@@ -82,7 +87,13 @@ export default defineConfig({
       }
     },
     fs: {
-      allow: [path.resolve(__dirname), path.resolve(__dirname, "../shared")]
+      // The self-hosted @fontsource files live in the root node_modules, which
+      // is outside the client root; without this the dev server 403s them.
+      allow: [
+        path.resolve(__dirname),
+        path.resolve(__dirname, "../shared"),
+        path.resolve(__dirname, "../node_modules")
+      ]
     }
   },
   build: {
@@ -95,8 +106,10 @@ export default defineConfig({
           if (id.includes("node_modules")) {
             if (id.includes("leaflet")) return "vendor-leaflet";
             if (id.includes("lucide-react")) return "vendor-lucide";
-            if (id.includes("socket.io-client") || id.includes("engine.io")) return "vendor-socket";
-            if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
+            if (id.includes("socket.io-client") || id.includes("engine.io"))
+              return "vendor-socket";
+            if (id.includes("react") || id.includes("scheduler"))
+              return "vendor-react";
           }
         }
       }

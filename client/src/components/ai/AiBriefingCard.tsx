@@ -90,12 +90,21 @@ export function AiBriefingCard({
     [run]
   );
 
+  // Runs on `hasData`, not `data`, so live updates never restart the brief;
+  // re-arms on cleanup so a StrictMode double-mount still briefs once.
+  const runRef = useRef(run);
+  runRef.current = run;
   const started = useRef(false);
+  const hasData = Boolean(data);
   useEffect(() => {
-    if (!autoBrief || started.current || !data) return;
+    if (!autoBrief || !hasData || started.current) return;
     started.current = true;
-    void run("situation");
-  }, [autoBrief, data, run]);
+    void runRef.current("situation");
+    return () => {
+      abortRef.current?.abort();
+      started.current = false;
+    };
+  }, [autoBrief, hasData]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

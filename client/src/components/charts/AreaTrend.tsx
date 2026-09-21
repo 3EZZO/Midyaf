@@ -1,5 +1,14 @@
 import { useId, useMemo } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useTranslation } from "react-i18next";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 import type { Series } from "../../lib/metrics";
 import { axisDate, compact } from "../../lib/format";
 import { chartColors, tickStyle, tooltipStyle } from "./theme";
@@ -22,6 +31,9 @@ export function AreaTrend({
   labels?: { primary: string; secondary?: string };
 }) {
   const id = useId();
+  // Axis labels are locale-formatted: key the chart on the language so a
+  // switch relabels the ticks Recharts would otherwise keep cached.
+  const { i18n } = useTranslation();
   const c = chartColors();
   const data = useMemo(
     () =>
@@ -38,7 +50,11 @@ export function AreaTrend({
     // Time flows left→right regardless of document direction.
     <div style={{ direction: "ltr", height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <AreaChart
+          key={i18n.language}
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+        >
           <defs>
             <linearGradient id={`${id}-p`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={c.gold} stopOpacity={0.22} />
@@ -52,7 +68,7 @@ export function AreaTrend({
           <CartesianGrid stroke={c.grid} strokeDasharray="0" vertical={false} />
           <XAxis
             dataKey="date"
-            tickFormatter={axisDate}
+            tickFormatter={(v) => axisDate(String(v))}
             tick={tickStyle()}
             axisLine={false}
             tickLine={false}
@@ -69,7 +85,12 @@ export function AreaTrend({
           <Tooltip
             {...tt}
             labelFormatter={(v) => axisDate(String(v))}
-            formatter={(v, name) => [valueFormatter(Number(v)), name === "primary" ? labels?.primary ?? "" : labels?.secondary ?? ""]}
+            formatter={(v, name) => [
+              valueFormatter(Number(v)),
+              name === "primary"
+                ? (labels?.primary ?? "")
+                : (labels?.secondary ?? "")
+            ]}
           />
           {secondary ? (
             <Area
@@ -90,7 +111,12 @@ export function AreaTrend({
             strokeWidth={2}
             fill={`url(#${id}-p)`}
             dot={false}
-            activeDot={{ r: 4, fill: c.gold, stroke: c.surface, strokeWidth: 2 }}
+            activeDot={{
+              r: 4,
+              fill: c.gold,
+              stroke: c.surface,
+              strokeWidth: 2
+            }}
             isAnimationActive
             animationDuration={900}
           />

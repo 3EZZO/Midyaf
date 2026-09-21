@@ -693,28 +693,31 @@ export function DeliveryLog({
             const user = users.find((item) => item.id === notification.userId);
 
             return (
-              <div key={notification.id} className="rounded-lg bg-slate-50 p-4">
+              <div
+                key={notification.id}
+                className="rounded-lg bg-surface-3 p-4"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-slate-900 dark:text-white">
+                    <p className="font-semibold text-ink">
                       {ui.l(notification.title)}
                     </p>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-ink-muted">
                       {ui.l(notification.body)}
                     </p>
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-ink-faint">
                       {ui.l("Recipient")}:{" "}
                       {ui.l(user?.name ?? notification.recipientPhone)}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge tone={notification.read ? "slate" : "green"}>
+                    <UiBadge tone={notification.read ? "neutral" : "ok"}>
                       {ui.l(notification.deliveryStatus)}
-                    </Badge>
-                    <Badge tone="purple">{ui.l(notification.channel)}</Badge>
+                    </UiBadge>
+                    <UiBadge tone="gold">{ui.l(notification.channel)}</UiBadge>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-ink-faint">
                   <span>{ui.date(notification.createdAt)}</span>
                   <span>{ui.time(notification.createdAt)}</span>
                   {notification.provider ? (
@@ -726,7 +729,7 @@ export function DeliveryLog({
           })}
         </div>
       ) : (
-        <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+        <p className="rounded-lg bg-surface-3 p-4 text-sm text-ink-muted">
           {ui.l("No delivery notifications yet")}
         </p>
       )}

@@ -205,13 +205,18 @@ export function AiPanel({
       const driver = isDriverQuestion(result.meta?.toolIntent, message)
         ? pickDriver(data)
         : null;
-      patch(aiId, (m) => ({
-        ...m,
-        body: result.text || m.body,
-        streaming: false,
-        aborted: result.aborted,
-        widget: driver ? { type: "driver", driverId: driver.id } : m.widget
-      }));
+      if (result.aborted && !result.text) {
+        // Cut off before the first token: nothing to show, so no bubble.
+        setMessages((current) => current.filter((m) => m.id !== aiId));
+      } else {
+        patch(aiId, (m) => ({
+          ...m,
+          body: result.text || m.body,
+          streaming: false,
+          aborted: result.aborted,
+          widget: driver ? { type: "driver", driverId: driver.id } : m.widget
+        }));
+      }
       // An interrupted run must not clear the flag the interrupting run owns.
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -246,12 +251,23 @@ export function AiPanel({
     [brief]
   );
 
+  // Auto-brief once the snapshot exists. The effect owns nothing but its
+  // guard: it runs on `hasData`, not `data`, so socket updates never restart
+  // it, and it re-arms on cleanup so a StrictMode double-mount (which aborts
+  // the first stream) still briefs exactly once.
+  const briefRef = useRef(brief);
+  briefRef.current = brief;
   const autoBriefed = useRef(false);
+  const hasData = Boolean(data);
   useEffect(() => {
-    if (!autoBrief || autoBriefed.current || !data) return;
+    if (!autoBrief || !hasData || autoBriefed.current) return;
     autoBriefed.current = true;
-    brief("situation");
-  }, [autoBrief, brief, data]);
+    briefRef.current("situation");
+    return () => {
+      abortRef.current?.abort();
+      autoBriefed.current = false;
+    };
+  }, [autoBrief, hasData]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

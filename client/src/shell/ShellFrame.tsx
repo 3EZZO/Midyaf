@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type {
   Driver,
@@ -66,6 +66,11 @@ export function ShellFrame({
   onLanguageToggle,
   onLogout
 }: ShellFrameProps) {
+  // A portal is a new page: start it at the top, not at the previous scroll offset.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [portal]);
+
   return (
     <div
       className={cn(
