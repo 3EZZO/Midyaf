@@ -1,98 +1,370 @@
-import { useState, FormEvent } from "react";
-import { UserPlus, UploadCloud, CheckCircle2 } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import { CheckCircle2, ImageUp, UserPlus } from "lucide-react";
+import { motion } from "motion/react";
+import type { Session } from "@shared/domain";
+import { Button, Field, Input } from "../components/ui";
+import { apiUploadFile, registerGuest } from "../lib/api";
+import { cn } from "../lib/cn";
+import { entrance } from "../lib/motion";
 
+type Step = 1 | 2 | 3;
+
+/**
+ * Guest self-registration (pre-login, `#onboarding`). Three steps: identity,
+ * hospitality preferences + ID document, review. Submit registers the guest
+ * account, uploads the document under the new session, then hands that
+ * session back so the guest lands in their app signed in.
+ */
 export function GuestSelfOnboarding({
   isArabic,
   onComplete
 }: {
   isArabic: boolean;
-  onComplete: (data: any) => void;
+  onComplete: (session: Session) => void;
 }) {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
+  const p = (en: string, ar: string) => (isArabic ? ar : en);
+  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState({
     fullName: "",
-    phone: "",
+    email: "",
+    phone: "+9665",
+    password: "",
     dietary: ""
   });
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const set =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const phoneOk = /^\+9665\d{8}$/.test(form.phone);
+
+  function pickFile(next: File | null) {
+    setFile(next);
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(
+      next && next.type.startsWith("image/") ? URL.createObjectURL(next) : null
+    );
+  }
+
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    if (step < 3) {
-      setStep(step + 1);
-    } else {
-      onComplete(formData);
+    setError(null);
+    if (step === 1) {
+      if (!phoneOk) {
+        setError(
+          p(
+            "Phone must be +9665XXXXXXXX",
+            "يجب أن يكون الجوال بصيغة +9665XXXXXXXX"
+          )
+        );
+        return;
+      }
+      setStep(2);
+      return;
     }
-  };
+    if (step === 2) {
+      setStep(3);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const session = await registerGuest({
+        name: form.fullName.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        password: form.password,
+        language: isArabic ? "ar" : "en"
+      });
+      if (file) {
+        // Best effort: the account exists either way; a failed upload is
+        // reported, not fatal, so the guest is never stranded pre-login.
+        try {
+          await apiUploadFile(
+            file,
+            { type: "OTHER", userId: session.user.id },
+            session.accessToken
+          );
+        } catch {
+          setError(
+            p(
+              "Account created; the ID upload failed — you can retry from your app.",
+              "تم إنشاء الحساب؛ تعذر رفع الهوية — يمكنك المحاولة من تطبيقك."
+            )
+          );
+        }
+      }
+      onComplete(session);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : p("Registration failed", "تعذر التسجيل")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 dark:bg-slate-950 font-sans" dir={isArabic ? "rtl" : "ltr"}>
-      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden dark:bg-slate-900 border border-white/5 dark:border-slate-800">
-        <div className="bg-midyaf-purple p-6 text-white text-center">
-          <UserPlus size={40} className="mx-auto mb-3 opacity-90" />
-          <h2 className="text-xl font-bold">{isArabic ? "تسجيل الضيوف الذاتي" : "Guest Self-Registration"}</h2>
-          <p className="text-xs opacity-80 mt-1">{isArabic ? "بوابة ضيوف صلة" : "Sila Guest Portal"}</p>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="flex justify-between mb-4 relative">
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 -z-10 -translate-y-1/2"></div>
-            {[1, 2, 3].map((s) => (
-              <div key={s} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                step >= s ? "bg-midyaf-purple text-white shadow-md" : "bg-white text-slate-400 border border-white/5 dark:bg-slate-900 dark:border-slate-700"
-              }`}>
+    <div
+      className={cn(
+        "flex min-h-screen items-center justify-center bg-surface-0 p-4 text-ink",
+        isArabic ? "font-arabic" : "font-english"
+      )}
+      style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+    >
+      <motion.div
+        variants={entrance.rise(0)}
+        initial="initial"
+        animate="animate"
+        className="w-full max-w-md overflow-hidden rounded-lg border border-hairline bg-surface-2 shadow-dropdown"
+      >
+        <header className="border-b border-hairline px-6 py-5 text-center">
+          <span className="mx-auto mb-3 grid size-12 place-items-center rounded-lg border border-gold-500/40 bg-gold-500/10 text-gold-300">
+            <UserPlus className="size-5" />
+          </span>
+          <h1 className="text-display-sm text-ink">
+            {p("Guest registration", "تسجيل الضيوف")}
+          </h1>
+          <p className="mt-1 text-xs text-ink-muted">
+            {p("Sila guest portal", "بوابة ضيوف صلة")}
+          </p>
+        </header>
+
+        <form onSubmit={submit} className="space-y-5 p-6">
+          <ol
+            className="relative flex justify-between"
+            aria-label={p("Steps", "الخطوات")}
+          >
+            <span
+              className="absolute inset-x-4 top-1/2 -z-0 h-px -translate-y-1/2 bg-hairline"
+              aria-hidden
+            />
+            {([1, 2, 3] as Step[]).map((s) => (
+              <li
+                key={s}
+                aria-current={step === s ? "step" : undefined}
+                className={cn(
+                  "font-tnum relative z-10 grid size-8 place-items-center rounded-full text-xs font-bold transition-colors duration-base",
+                  step >= s
+                    ? "bg-gold-500 text-surface-0"
+                    : "border border-hairline bg-surface-2 text-ink-muted"
+                )}
+              >
                 {s}
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
 
-          {step === 1 && (
-            <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{isArabic ? "المعلومات الأساسية" : "Basic Information"}</h3>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "الاسم الكامل" : "Full Name"}</label>
-                <input required type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full rounded-xl border border-white/5 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "كما هو موضح في الهوية" : "As shown on ID"} />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "رقم الجوال" : "Phone Number"}</label>
-                <input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full rounded-xl border border-white/5 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder="+966 5X XXX XXXX" />
-              </div>
+          {step === 1 ? (
+            <div className="space-y-4">
+              <h2 className="text-sm font-bold text-ink">
+                {p("Your details", "بياناتك")}
+              </h2>
+              <Field label={p("Full name", "الاسم الكامل")} required>
+                <Input
+                  required
+                  value={form.fullName}
+                  onChange={set("fullName")}
+                  placeholder={p("As shown on ID", "كما هو موضح في الهوية")}
+                  className="h-11"
+                  autoComplete="name"
+                />
+              </Field>
+              <Field label={p("Email", "البريد الإلكتروني")} required>
+                <Input
+                  required
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  className="h-11"
+                  autoComplete="email"
+                  dir="ltr"
+                />
+              </Field>
+              <Field
+                label={p("Mobile", "رقم الجوال")}
+                hint="+9665XXXXXXXX"
+                required
+              >
+                <Input
+                  required
+                  type="tel"
+                  value={form.phone}
+                  onChange={set("phone")}
+                  className="h-11 font-tnum"
+                  autoComplete="tel"
+                  dir="ltr"
+                />
+              </Field>
+              <Field
+                label={p("Password", "كلمة المرور")}
+                hint={p("At least 8 characters", "8 أحرف على الأقل")}
+                required
+              >
+                <Input
+                  required
+                  type="password"
+                  minLength={8}
+                  value={form.password}
+                  onChange={set("password")}
+                  className="h-11"
+                  autoComplete="new-password"
+                  dir="ltr"
+                />
+              </Field>
             </div>
-          )}
+          ) : null}
 
-          {step === 2 && (
-            <div className="space-y-4 animate-fadeIn">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{isArabic ? "تفضيلات الضيافة" : "Hospitality Preferences"}</h3>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">{isArabic ? "القيود الغذائية (اختياري)" : "Dietary Restrictions (Optional)"}</label>
-                <input type="text" value={formData.dietary} onChange={e => setFormData({...formData, dietary: e.target.value})} className="w-full rounded-xl border border-white/5 px-4 py-2.5 outline-none focus:border-midyaf-purple dark:bg-slate-800 dark:border-slate-700 text-sm" placeholder={isArabic ? "نباتي، خالي من الجلوتين..." : "Vegan, Gluten-free..."} />
-              </div>
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-600 mb-2">{isArabic ? "رفع الهوية الوطنية / الجواز" : "Upload National ID / Passport"}</label>
-                <div className="border-2 border-dashed border-white/5 rounded-lg p-6 text-center hover:border-midyaf-purple hover:bg-midyaf-purple/5 transition-colors cursor-pointer dark:border-slate-700">
-                  <UploadCloud size={24} className="mx-auto text-slate-400 mb-2" />
-                  <span className="text-xs text-slate-500 font-medium">{isArabic ? "انقر لرفع صورة" : "Click to upload image"}</span>
-                </div>
-              </div>
+          {step === 2 ? (
+            <div className="space-y-4">
+              <h2 className="text-sm font-bold text-ink">
+                {p("Hospitality preferences", "تفضيلات الضيافة")}
+              </h2>
+              <Field
+                label={p(
+                  "Dietary restrictions (optional)",
+                  "القيود الغذائية (اختياري)"
+                )}
+              >
+                <Input
+                  value={form.dietary}
+                  onChange={set("dietary")}
+                  placeholder={p(
+                    "Vegan, gluten-free…",
+                    "نباتي، خالٍ من الغلوتين…"
+                  )}
+                  className="h-11"
+                />
+              </Field>
+              <Field
+                label={p("National ID / passport", "الهوية الوطنية / الجواز")}
+                hint={p(
+                  "Photo or PDF, up to 10 MB",
+                  "صورة أو PDF حتى 10 ميغابايت"
+                )}
+              >
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  className={cn(
+                    "flex min-h-28 w-full items-center justify-center gap-3 rounded-lg border border-dashed p-4 text-start transition-colors duration-base focus-visible:outline-none focus-visible:shadow-focus",
+                    file
+                      ? "border-ok/50 bg-ok/5"
+                      : "border-gold-500/40 bg-surface-1 hover:bg-surface-3"
+                  )}
+                >
+                  {preview ? (
+                    <img
+                      src={preview}
+                      alt=""
+                      className="size-16 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <ImageUp className="size-6 shrink-0 text-gold-300" />
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-ink">
+                      {file
+                        ? file.name
+                        : p(
+                            "Tap to photograph or choose a file",
+                            "انقر لالتقاط صورة أو اختيار ملف"
+                          )}
+                    </span>
+                    <span className="block text-xs text-ink-muted">
+                      {file
+                        ? p("Tap to replace", "انقر للاستبدال")
+                        : p(
+                            "Optional now; required before arrival",
+                            "اختياري الآن؛ مطلوب قبل الوصول"
+                          )}
+                    </span>
+                  </span>
+                </button>
+              </Field>
             </div>
-          )}
+          ) : null}
 
-          {step === 3 && (
-            <div className="space-y-4 animate-fadeIn text-center py-6">
-              <div className="mx-auto w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                <CheckCircle2 size={32} />
-              </div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-lg">{isArabic ? "جاهز للإرسال" : "Ready to Submit"}</h3>
-              <p className="text-xs text-slate-500">
-                {isArabic ? "سيتم إنشاء ملفك وإصدار بطاقة الصعود الرقمية (QR)." : "Your profile will be created and digital boarding pass (QR) issued."}
+          {step === 3 ? (
+            <div className="space-y-4 py-2 text-center">
+              <span className="mx-auto grid size-14 place-items-center rounded-full bg-ok/10 text-ok">
+                <CheckCircle2 className="size-7" />
+              </span>
+              <h2 className="text-lg font-bold text-ink">
+                {p("Ready to submit", "جاهز للإرسال")}
+              </h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-start text-sm">
+                <dt className="text-ink-muted">{p("Name", "الاسم")}</dt>
+                <dd className="truncate text-ink">{form.fullName}</dd>
+                <dt className="text-ink-muted">{p("Mobile", "الجوال")}</dt>
+                <dd className="font-tnum text-ink" dir="ltr">
+                  {form.phone}
+                </dd>
+                <dt className="text-ink-muted">{p("Document", "المستند")}</dt>
+                <dd className="truncate text-ink">
+                  {file ? file.name : p("Not attached", "غير مرفق")}
+                </dd>
+              </dl>
+              <p className="text-xs text-ink-muted">
+                {p(
+                  "Your account is created and your digital arrival pass is issued at the curb.",
+                  "سيتم إنشاء حسابك وإصدار بطاقة الوصول الرقمية عند الرصيف."
+                )}
               </p>
             </div>
-          )}
+          ) : null}
 
-          <button type="submit" className="w-full bg-midyaf-purple hover:bg-midyaf-purple-dark text-white rounded-xl py-3 text-sm font-bold shadow-lg shadow-midyaf-purple/20 transition-all cursor-pointer">
-            {step < 3 ? (isArabic ? "التالي" : "Next") : (isArabic ? "إكمال التسجيل" : "Complete Registration")}
-          </button>
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <div className="flex gap-2">
+            {step > 1 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                className="h-12"
+                disabled={busy}
+                onClick={() => setStep((s) => (s - 1) as Step)}
+              >
+                {p("Back", "رجوع")}
+              </Button>
+            ) : null}
+            <Button
+              type="submit"
+              variant="gold"
+              size="lg"
+              className="h-12 flex-1"
+              loading={busy}
+            >
+              {step < 3
+                ? p("Next", "التالي")
+                : p("Complete registration", "إكمال التسجيل")}
+            </Button>
+          </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

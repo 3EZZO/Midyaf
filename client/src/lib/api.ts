@@ -35,6 +35,37 @@ export async function login(email: string, password: string): Promise<Session> {
   };
 }
 
+export type GuestRegistration = {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  language: "ar" | "en";
+};
+
+/** Public guest self-registration; returns a session like `login`. */
+export async function registerGuest(
+  input: GuestRegistration
+): Promise<Session> {
+  const response = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, role: "GUEST" })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error?.message ?? "Registration failed");
+  }
+
+  const data = (await response.json()) as LoginResponse;
+  return {
+    user: data.user,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken
+  };
+}
+
 export async function getBootstrap(accessToken: string): Promise<MidyafData> {
   return apiFetch<MidyafData>("/bootstrap", accessToken);
 }

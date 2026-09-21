@@ -93,7 +93,8 @@ export function ShellFrame({
           onLogout={onLogout}
         />
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
+        {/* Bottom padding clears the tab bar plus the phone's home-indicator inset. */}
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={portal}

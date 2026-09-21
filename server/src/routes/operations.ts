@@ -49,7 +49,8 @@ router.use(requireAuth);
 router.get(
   "/operations/telemetry/snapshot",
   asyncHandler(async (req: AuthRequest, res) => {
-    const eventId = typeof req.query.eventId === "string" ? req.query.eventId : undefined;
+    const eventId =
+      typeof req.query.eventId === "string" ? req.query.eventId : undefined;
     const snapshot = telemetryBuffer.getSnapshot(eventId);
     res.json({
       count: snapshot.length,
@@ -73,13 +74,22 @@ router.get(
     const lat = parseFloat(req.query.lat as string);
     const lng = parseFloat(req.query.lng as string);
     const radius = parseFloat(req.query.radius as string) || 5000;
-    const eventId = typeof req.query.eventId === "string" ? req.query.eventId : undefined;
+    const eventId =
+      typeof req.query.eventId === "string" ? req.query.eventId : undefined;
 
     if (isNaN(lat) || isNaN(lng)) {
-      throw new HttpError(400, "Latitude and longitude query params are required");
+      throw new HttpError(
+        400,
+        "Latitude and longitude query params are required"
+      );
     }
 
-    const nearby = telemetryBuffer.findDriversWithinRadius(lat, lng, radius, eventId);
+    const nearby = telemetryBuffer.findDriversWithinRadius(
+      lat,
+      lng,
+      radius,
+      eventId
+    );
     res.json({
       origin: { lat, lng },
       radiusMeters: radius,
@@ -129,9 +139,14 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const driverId = (req.body?.driverId as string) || "driver-sultan";
     const geofenceCode = (req.body?.geofenceCode as string) || "KKIA_ROYAL_T5";
-    const driverName = (req.body?.driverName as string) || "Capt. Sultan Al-Otaibi";
+    const driverName =
+      (req.body?.driverName as string) || "Capt. Sultan Al-Otaibi";
 
-    const events = geofenceEngine.simulateHandshakeSequence(driverId, geofenceCode, driverName);
+    const events = geofenceEngine.simulateHandshakeSequence(
+      driverId,
+      geofenceCode,
+      driverName
+    );
 
     const io = req.app.get("io");
     if (io) {
@@ -150,7 +165,6 @@ router.post(
     });
   })
 );
-
 
 type AuthUser = NonNullable<AuthRequest["user"]>;
 
@@ -188,7 +202,8 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = activityIntakeSchema.parse(req.body);
     const normalVisitorCount =
-      body.normalVisitorCount ?? Math.max(0, body.visitorCount - body.vipVisitorCount);
+      body.normalVisitorCount ??
+      Math.max(0, body.visitorCount - body.vipVisitorCount);
     const submittedBy =
       req.user!.role === Role.COMPANY_ORGANIZER
         ? await submittedByForUser(req.user!)
@@ -468,7 +483,8 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = vendorQuoteSchema.parse(req.body);
     await assertCanMutateIntakeId(req.user!, body.intakeId);
-    const totalPrice = body.totalPrice ?? roundCurrency(body.quantity * body.unitPrice);
+    const totalPrice =
+      body.totalPrice ?? roundCurrency(body.quantity * body.unitPrice);
     const commissionAmount = calculateCommission(
       totalPrice,
       body.commissionPercent
@@ -521,8 +537,7 @@ router.put(
     ) {
       const quantity = body.quantity ?? current.quantity;
       const unitPrice = body.unitPrice ?? Number(current.unitPrice);
-      const totalPrice =
-        body.totalPrice ?? roundCurrency(quantity * unitPrice);
+      const totalPrice = body.totalPrice ?? roundCurrency(quantity * unitPrice);
       const commissionPercent =
         body.commissionPercent ?? Number(current.commissionPercent);
 
@@ -779,7 +794,10 @@ router.put(
       await prisma.vendorContract.findUnique({ where: { id: req.params.id } }),
       "Contract not found"
     );
-    await assertCanMutateQuoteId(req.user!, body.quoteId ?? existingContract.quoteId);
+    await assertCanMutateQuoteId(
+      req.user!,
+      body.quoteId ?? existingContract.quoteId
+    );
 
     const contract = await prisma.vendorContract.update({
       where: { id: existingContract.id },
@@ -985,7 +1003,9 @@ router.put(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = coordinatorRequestSchema.partial().parse(req.body);
     const existingRequest = requireEntity(
-      await prisma.coordinatorRequest.findUnique({ where: { id: req.params.id } }),
+      await prisma.coordinatorRequest.findUnique({
+        where: { id: req.params.id }
+      }),
       "Coordinator request not found"
     );
     const coordinatorRequest = await prisma.coordinatorRequest.update({
@@ -1006,9 +1026,7 @@ router.put(
 
 const companyReportSchema = z.object({
   title: z.string().min(2),
-  status: z
-    .nativeEnum(CompanyReportStatus)
-    .default(CompanyReportStatus.DRAFT),
+  status: z.nativeEnum(CompanyReportStatus).default(CompanyReportStatus.DRAFT),
   kpis: z.array(z.object({ label: z.string(), value: z.string() })),
   pdfUrl: z.string().optional()
 });
@@ -1082,11 +1100,16 @@ router.get(
     const kpis = Array.isArray(report.kpis)
       ? (report.kpis as Array<{ label: string; value: string }>)
       : [];
+    // `?lang=ar` from the client; Accept-Language as the fallback.
+    const langHint = String(
+      req.query.lang ?? req.headers["accept-language"] ?? ""
+    );
     const pdf = await generateReportPdf({
       title: report.title,
       status: report.status,
       updatedAt: report.updatedAt,
-      kpis
+      kpis,
+      language: langHint.toLowerCase().startsWith("ar") ? "ar" : "en"
     });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -1162,7 +1185,9 @@ async function buildGuestJourneyVisibilityWhere(
       select: { guestId: true }
     });
 
-    return { guestId: { in: uniqueStrings(tasks.map((task) => task.guestId)) } };
+    return {
+      guestId: { in: uniqueStrings(tasks.map((task) => task.guestId)) }
+    };
   }
 
   return { id: "__no_journey_access__" };
@@ -1334,7 +1359,9 @@ async function submittedByValuesForUser(user: AuthUser) {
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value)))
+  ];
 }
 
 const expressArrivalSchema = z.object({
@@ -1367,7 +1394,8 @@ router.post(
         phone: placeholderPhone,
         role: Role.GUEST,
         language: "ar",
-        passwordHash: "$2a$12$e0M2/Wq5y5q5y5q5y5q5yO/e0M2/Wq5y5q5y5q5y5q5yO/e0M2"
+        passwordHash:
+          "$2a$12$e0M2/Wq5y5q5y5q5y5q5yO/e0M2/Wq5y5q5y5q5y5q5yO/e0M2"
       }
     });
 
@@ -1403,12 +1431,16 @@ router.post(
           driverId: assignedDriverId,
           type: "AIRPORT_PICKUP",
           status: "EN_ROUTE",
-          pickupLocation: "King Khalid International Airport (KKIA) - Royal Terminal",
+          pickupLocation:
+            "King Khalid International Airport (KKIA) - Royal Terminal",
           dropoffLocation: body.destination,
           scheduledAt: new Date(),
-          ownerName: `VIP WALK-IN: ${body.title ? body.title + ' ' : ''}${body.guestName}`
+          ownerName: `VIP WALK-IN: ${body.title ? body.title + " " : ""}${body.guestName}`
         },
-        include: { driver: { include: { user: true } }, guest: { include: { user: true } } }
+        include: {
+          driver: { include: { user: true } },
+          guest: { include: { user: true } }
+        }
       });
 
       await prisma.driver.update({
@@ -1420,10 +1452,24 @@ router.post(
     const rider = await prisma.hospitalityRider.create({
       data: {
         guestId: guest.id,
-        dietaryNeeds: ["Halal / حلال", "Saudi Coffee & Sukkari Dates / قهوة عربية وتمر سكري", "Evian Still Water / مياه إيفيان"],
-        roomPreferences: ["21°C Ambient Temp / حرارة الغرفة 21 مئوية", "King Suite / جناح ملكي", "Express Check-in / دخول سريع"],
-        vehicleRider: ["VIP Luxury Sedan / سيارة سيدان فاخرة", "Quiet Driver / سائق هادئ", "Tinted Windows / زجاج مظلل"],
-        securityNotes: ["Airport Walk-in VIP Escort / مراقبة أمنية للوصول المباشر"],
+        dietaryNeeds: [
+          "Halal / حلال",
+          "Saudi Coffee & Sukkari Dates / قهوة عربية وتمر سكري",
+          "Evian Still Water / مياه إيفيان"
+        ],
+        roomPreferences: [
+          "21°C Ambient Temp / حرارة الغرفة 21 مئوية",
+          "King Suite / جناح ملكي",
+          "Express Check-in / دخول سريع"
+        ],
+        vehicleRider: [
+          "VIP Luxury Sedan / سيارة سيدان فاخرة",
+          "Quiet Driver / سائق هادئ",
+          "Tinted Windows / زجاج مظلل"
+        ],
+        securityNotes: [
+          "Airport Walk-in VIP Escort / مراقبة أمنية للوصول المباشر"
+        ],
         fulfilled: false
       }
     });
@@ -1469,18 +1515,22 @@ router.get(
     const delayedFlights = Math.floor(Math.random() * 3) + 2; // Always at least 2 delayed for the alert
     const incomingGuests = delayedFlights * 15;
     const availableVans = Math.floor(Math.random() * 3) + 1; // Few vans available
-    
+
     // 2. Simulate checking "At Risk" tasks where driver is too far
     const atRiskTasks = await prisma.task.findMany({
       where: {
         type: "AIRPORT_PICKUP",
         status: { in: ["PENDING", "ASSIGNED", "EN_ROUTE"] }
       },
-      include: { guest: { include: { user: true } }, driver: { include: { user: true } }, event: true },
+      include: {
+        guest: { include: { user: true } },
+        driver: { include: { user: true } },
+        event: true
+      },
       take: 3
     });
 
-    const flaggedTasks = atRiskTasks.map(task => ({
+    const flaggedTasks = atRiskTasks.map((task) => ({
       ...task,
       riskLevel: "HIGH",
       reason: "Flight landed 30 mins ago, but driver is 15 mins away.",
@@ -1521,12 +1571,15 @@ router.post(
     // Simulate diverting the fleet
     const io = req.app.get("io");
     if (io) {
-      io.emit("fleet:diverted", { message: "5 vans have been diverted to Terminal 2." });
+      io.emit("fleet:diverted", {
+        message: "5 vans have been diverted to Terminal 2."
+      });
     }
-    
+
     res.json({
       ok: true,
-      message: "Fleet successfully diverted. Drivers received their new instructions instantly."
+      message:
+        "Fleet successfully diverted. Drivers received their new instructions instantly."
     });
   })
 );

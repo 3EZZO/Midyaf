@@ -46,6 +46,7 @@
     "multer": "^2.1.1",
     "openai": "^4.77.0",
     "pdfkit": "^0.19.1",
+    "qrcode.react": "^4.2.0",
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

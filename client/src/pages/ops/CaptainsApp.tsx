@@ -1,30 +1,190 @@
-// Captain (driver) field app.
-// Extracted verbatim from OperationsPortals.tsx (Phase 1 split).
-import { Car, Clock, MapPin, Zap } from "lucide-react";
-import { Badge } from "../../components/Badge";
-import { MetricCard } from "../../components/MetricCard";
+// Captain (driver) field app (phone-first).
+import { useEffect, useMemo, useState } from "react";
+import {
+  Car,
+  Clock,
+  ListChecks,
+  LocateFixed,
+  LocateOff,
+  MapPin,
+  Navigation,
+  Zap
+} from "lucide-react";
+import type { FileAsset, Task, TaskStatus } from "@shared/domain";
 import { RiyadhMap } from "../../components/map";
-import { Section } from "../../components/Section";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  KpiTile,
+  QrCode,
+  Section,
+  Sheet,
+  StatusPill,
+  Switch,
+  useToast
+} from "../../components/ui";
+import { apiFetch } from "../../lib/api";
+import { cn } from "../../lib/cn";
+import { useLiveLocation } from "../../lib/useLiveLocation";
+import { useSocketContext } from "../../lib/useSocket";
 import type { PortalProps } from "../types";
-import type { FileAsset, Task } from "@shared/domain";
-import { DeliveryLog, PortalHero, assetFileName, latestFileAsset, useOpsText } from "./shared";
+import {
+  DeliveryLog,
+  PortalHero,
+  assetFileName,
+  latestFileAsset,
+  nextTaskStatuses,
+  statusActionLabel,
+  useOpsText
+} from "./shared";
 
-import { useToast } from "../../components/ui/Toast";
+const GPS_PREF_KEY = "midyaf.captain.gps";
+
+function readGpsPref(): boolean | null {
+  try {
+    const raw = window.localStorage.getItem(GPS_PREF_KEY);
+    return raw === null ? null : raw === "on";
+  } catch {
+    return null;
+  }
+}
+
 export function CaptainsApp({
   data,
+  session,
+  isDemoMode,
   shareDriverLocation,
   updateTaskStatus
 }: PortalProps) {
   const ui = useOpsText();
   const toast = useToast();
+  const { socket } = useSocketContext();
   const event = data.events[0];
-  const captain = data.drivers[0];
+  // The signed-in captain on a real phone; the first captain on a demo login.
+  const captain =
+    data.drivers.find((d) => d.userId === session?.user.id) ?? data.drivers[0];
   const tasks = event.tasks.filter((task) => task.driverId === captain.id);
   const captainPhotoAsset = latestFileAsset(
     data.fileAssets,
     "DRIVER_PHOTO",
     (asset) => asset.driverId === captain.id
   );
+
+  // ── Real GPS ──────────────────────────────────────────────────────────
+  // On shift → phone telemetry goes to the server, which runs the geofence
+  // engine on it. Off by default while a directed demo owns the convoys.
+  const onShift = captain.status !== "OFFLINE" && captain.active !== false;
+  const [gpsPref, setGpsPref] = useState<boolean | null>(() => readGpsPref());
+  const gpsWanted = gpsPref ?? !isDemoMode;
+  const gpsEnabled = onShift && gpsWanted;
+  const location = useLiveLocation({
+    enabled: gpsEnabled,
+    userId: session?.user.id,
+    role: "DRIVER",
+    driverId: captain.id,
+    eventId: event.id,
+    socket
+  });
+  const setGps = (on: boolean) => {
+    setGpsPref(on);
+    try {
+      window.localStorage.setItem(GPS_PREF_KEY, on ? "on" : "off");
+    } catch {
+      // Preference is a convenience; losing it is harmless.
+    }
+  };
+
+  const gpsState: "off" | "live" | "waiting" | "denied" = !gpsEnabled
+    ? "off"
+    : location.error
+      ? "denied"
+      : location.lat != null
+        ? "live"
+        : "waiting";
+  const gpsMeta = {
+    off: { tone: "neutral" as const, en: "Location off", ar: "الموقع متوقف" },
+    waiting: {
+      tone: "warn" as const,
+      en: "Acquiring fix…",
+      ar: "جارٍ تحديد الموقع…"
+    },
+    live: { tone: "ok" as const, en: "Location live", ar: "الموقع مباشر" },
+    denied: {
+      tone: "danger" as const,
+      en: "Location denied",
+      ar: "تم رفض الموقع"
+    }
+  }[gpsState];
+
+  useEffect(() => {
+    if (gpsState === "denied") {
+      toast.warning(
+        ui.p("Location permission denied", "تم رفض إذن الموقع"),
+        ui.p(
+          "Use “I'm at the gate” to report your position manually.",
+          "استخدم «أنا عند البوابة» للإبلاغ عن موقعك يدوياً."
+        )
+      );
+    }
+    // Only when the state flips to denied.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsState]);
+
+  const [manifestOpen, setManifestOpen] = useState(false);
+  const [busyTask, setBusyTask] = useState<string | null>(null);
+  const [walkin, setWalkin] = useState({
+    name: "",
+    destination: "Mandarin Oriental Al Faisaliah"
+  });
+  const [walkinBusy, setWalkinBusy] = useState(false);
+
+  const openTasks = useMemo(
+    () =>
+      tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED"),
+    [tasks]
+  );
+
+  async function advance(task: Task, status: TaskStatus) {
+    setBusyTask(task.id);
+    try {
+      await updateTaskStatus(task.id, status);
+    } finally {
+      setBusyTask(null);
+    }
+  }
+
+  async function registerWalkin() {
+    if (!walkin.name.trim() || !session) return;
+    setWalkinBusy(true);
+    try {
+      await apiFetch("/operations/express-arrival", session.accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          guestName: walkin.name.trim(),
+          destination:
+            walkin.destination.trim() || "Mandarin Oriental Al Faisaliah",
+          driverId: captain.id,
+          eventId: event.id,
+          isVIP: true
+        })
+      });
+      toast.success(
+        ui.p("VIP walk-in registered", "تم تسجيل الضيف"),
+        ui.p(
+          "Trip assigned to your active queue.",
+          "تمت إضافة الرحلة إلى قائمة مهامك."
+        )
+      );
+      setWalkin((w) => ({ ...w, name: "" }));
+    } catch {
+      toast.alert(ui.p("Failed to register walk-in", "تعذر تسجيل الضيف"));
+    } finally {
+      setWalkinBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -34,134 +194,177 @@ export function CaptainsApp({
         body={ui.l(
           "Shifts, tasks, car information, visit count, active status, overtime availability, and task feedback."
         )}
+        action={
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-11"
+            leadingIcon={<ListChecks className="size-4" />}
+            onClick={() => setManifestOpen(true)}
+          >
+            {ui.p("Manifest", "البيان")}
+          </Button>
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard
+      {/* Location strip: state pill, live toggle, manual fallback. 44px targets. */}
+      <Card
+        padding="sm"
+        tone={
+          gpsState === "live" ? "ok" : gpsState === "denied" ? "danger" : "none"
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={cn(
+              "grid size-10 shrink-0 place-items-center rounded-lg",
+              gpsState === "live"
+                ? "bg-ok/10 text-ok"
+                : "bg-surface-3 text-ink-muted"
+            )}
+          >
+            {gpsState === "live" ? (
+              <LocateFixed className="size-4" />
+            ) : (
+              <LocateOff className="size-4" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={gpsMeta.tone} dot={gpsState === "live"}>
+                {ui.isArabic ? gpsMeta.ar : gpsMeta.en}
+              </Badge>
+              {gpsState === "live" && location.speed != null ? (
+                <span className="font-tnum text-xs text-ink-muted" dir="ltr">
+                  {Math.round(location.speed * 3.6)} {ui.p("km/h", "كم/س")}
+                  {location.accuracy
+                    ? ` · ±${Math.round(location.accuracy)} m`
+                    : ""}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {onShift
+                ? ui.p(
+                    "Your phone's position feeds the geofence rings and the War Room.",
+                    "موقع هاتفك يغذّي حلقات النطاق الجغرافي وغرفة العمليات."
+                  )
+                : ui.p(
+                    "You are off shift; tracking is paused.",
+                    "أنت خارج المناوبة؛ التتبع متوقف."
+                  )}
+            </p>
+          </div>
+          <Switch
+            checked={gpsWanted}
+            onCheckedChange={setGps}
+            disabled={!onShift}
+            label={ui.p("Share live", "مشاركة مباشرة")}
+            className="h-11"
+          />
+          <Button
+            variant="gold"
+            size="lg"
+            className="h-11"
+            leadingIcon={<Navigation className="size-4" />}
+            onClick={() => void shareDriverLocation(captain.id)}
+          >
+            {ui.p("I'm at the gate", "أنا عند البوابة")}
+          </Button>
+        </div>
+      </Card>
+
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <KpiTile
           label={ui.l("Shift")}
-          value={`${ui.time(captain.shiftStart ?? event.date)}-${ui.time(
-            captain.shiftEnd ?? event.date
-          )}`}
+          value={`${ui.time(captain.shiftStart ?? event.date)}–${ui.time(captain.shiftEnd ?? event.date)}`}
+          format="raw"
           detail={
             captain.overtimeAvailable
               ? ui.l("Overtime available")
               : ui.l("No overtime")
           }
-          icon={<Clock size={17} />}
+          icon={<Clock className="size-4" />}
         />
-        <MetricCard
+        <KpiTile
           label={ui.l("Visits")}
           value={captain.visitsCompleted ?? 0}
+          format="number"
           detail={ui.l("Today")}
-          icon={<MapPin size={17} />}
+          icon={<MapPin className="size-4" />}
         />
-        <MetricCard
+        <KpiTile
+          label={ui.p("Open tasks", "مهام مفتوحة")}
+          value={openTasks.length}
+          format="number"
+          detail={`${tasks.length} ${ui.p("assigned", "مسندة")}`}
+          icon={<ListChecks className="size-4" />}
+        />
+        <KpiTile
           label={ui.l("Car")}
-          value={ui.p("GMC Yukon", "جي إم سي يوكن")}
-          detail={`${captain.licenseNo} · ${ui.l(captain.zone)}`}
-          icon={<Car size={17} />}
+          value={captain.licenseNo}
+          format="raw"
+          detail={ui.l(captain.zone)}
+          icon={<Car className="size-4" />}
         />
       </div>
 
-      <section className="rounded-xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 p-5 text-white border border-amber-400/30 shadow-[0_4px_20px_rgba(212, 175, 55,0.15)]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
-              <Zap size={16} />
-            </span>
-            <div>
-              <h3 className="text-sm font-bold text-white">
-                Airport Walk-in Express Pickup (ركوب مباشر من المطار)
-              </h3>
-              <p className="text-xs text-slate-300">
-                Register unannounced VIP arriving at gate without prior reservation
-              </p>
-            </div>
-          </div>
-        </div>
+      <Section
+        title={ui.p("Airport walk-in express pickup", "ركوب مباشر من المطار")}
+        description={ui.p(
+          "Register an unannounced VIP arriving at the gate without a reservation.",
+          "تسجيل ضيف VIP وصل إلى البوابة دون حجز مسبق."
+        )}
+      >
         <form
-          onSubmit={async (e) => {
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          onSubmit={(e) => {
             e.preventDefault();
-            const form = e.currentTarget;
-            const nameInput = form.elements.namedItem("walkinName") as HTMLInputElement;
-            const destInput = form.elements.namedItem("walkinDest") as HTMLInputElement;
-            if (!nameInput.value.trim() || !event || !captain) return;
-            try {
-              const stored = window.localStorage.getItem("midyaf.session");
-              const token = stored ? JSON.parse(stored).accessToken : "";
-              const res = await fetch("/api/operations/express-arrival", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  guestName: nameInput.value.trim(),
-                  destination: destInput.value.trim() || "Mandarin Oriental Al Faisaliah",
-                  driverId: captain.id,
-                  eventId: event.id,
-                  isVIP: true
-                })
-              });
-              if (res.ok) {
-                toast.success(ui.p("VIP walk-in registered", "تم تسجيل الضيف"), ui.p("Trip assigned to your active queue.", "تمت إضافة الرحلة إلى قائمة مهامك."));
-                nameInput.value = "";
-              } else {
-                toast.alert(ui.p("Failed to register walk-in", "تعذر تسجيل الضيف"));
-              }
-            } catch (err) {
-              toast.alert(ui.p("Error registering walk-in", "حدث خطأ أثناء تسجيل الضيف"));
-            }
+            void registerWalkin();
           }}
-          className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end"
         >
-          <div>
-            <label className="block text-xs font-semibold text-amber-300/80 mb-1">
-              VIP Guest Name (اسم الضيف) *
-            </label>
-            <input
-              name="walkinName"
-              type="text"
+          <Field label={ui.p("VIP guest name", "اسم الضيف")} required>
+            <Input
+              value={walkin.name}
+              onChange={(e) =>
+                setWalkin((w) => ({ ...w, name: e.target.value }))
+              }
+              placeholder={ui.p("e.g. Delegation aide", "مثال: مرافق الوفد")}
+              className="h-11"
               required
-              placeholder="e.g. Mr. French Delegation Aide"
-              className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-amber-300/80 mb-1">
-              Destination Venue (الوجهة) *
-            </label>
-            <input
-              name="walkinDest"
-              type="text"
+          </Field>
+          <Field label={ui.p("Destination venue", "الوجهة")} required>
+            <Input
+              value={walkin.destination}
+              onChange={(e) =>
+                setWalkin((w) => ({ ...w, destination: e.target.value }))
+              }
+              className="h-11"
               required
-              defaultValue="Mandarin Oriental Al Faisaliah"
-              className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-amber-500/30 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-amber-400"
             />
-          </div>
-          <button
+          </Field>
+          <Button
             type="submit"
-            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 font-bold text-slate-950 text-xs shadow-md transition-all h-[34px]"
+            variant="gold"
+            size="lg"
+            className="h-11"
+            loading={walkinBusy}
+            leadingIcon={<Zap className="size-4" />}
           >
-            <Zap size={14} className="fill-current" />
-            <span>{ui.p("Start VIP Trip", "بدء رحلة VIP")}</span>
-          </button>
+            {ui.p("Start VIP trip", "بدء رحلة VIP")}
+          </Button>
         </form>
-      </section>
+      </Section>
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <Section
-          title={ui.l("Task routes and feedback")}
-          action={
-            <button
-              onClick={() => void shareDriverLocation(captain.id)}
-              className="btn-gold rounded-xl px-3 py-2 text-xs font-bold text-white"
-            >
-              {ui.l("Share location")}
-            </button>
-          }
-        >
+        <Section title={ui.l("Task routes and feedback")}>
           <div className="space-y-3">
+            {tasks.length === 0 ? (
+              <p className="text-sm text-ink-muted">
+                {ui.p("No tasks assigned yet.", "لا توجد مهام مسندة بعد.")}
+              </p>
+            ) : null}
             {tasks.map((task) => (
               <CaptainTaskCard
                 key={task.id}
@@ -171,9 +374,10 @@ export function CaptainsApp({
                   "GUEST_PHOTO",
                   (asset) => asset.guestId === task.guestId
                 )}
+                busy={busyTask === task.id}
                 translate={ui.l}
                 formatTime={ui.time}
-                onComplete={() => void updateTaskStatus(task.id, "COMPLETED")}
+                onAdvance={(status) => void advance(task, status)}
               />
             ))}
           </div>
@@ -181,17 +385,17 @@ export function CaptainsApp({
 
         <div className="space-y-4">
           <Section title={ui.l("Captain media")}>
-            <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-4">
+            <div className="flex items-center gap-3">
               <img
                 src={captainPhotoAsset?.url ?? "/midyaf-logo.jpeg"}
                 alt={ui.l(captain.user.name)}
                 className="size-16 rounded-lg object-cover"
               />
-              <div>
-                <p className="font-semibold text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-ink">
                   {ui.l(captain.user.name)}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-ink-muted">
                   {captainPhotoAsset
                     ? assetFileName(captainPhotoAsset)
                     : ui.l("No uploaded driver photo yet")}
@@ -208,9 +412,54 @@ export function CaptainsApp({
             users={data.users}
           />
 
-          <RiyadhMap event={event} drivers={data.drivers} tasks={tasks} />
+          <RiyadhMap
+            event={event}
+            drivers={[captain]}
+            tasks={tasks}
+            height="h-[320px]"
+          />
         </div>
       </div>
+
+      <Sheet
+        open={manifestOpen}
+        onOpenChange={setManifestOpen}
+        title={ui.p("Captain manifest", "بيان الكابتن")}
+        description={ui.p(
+          "Present this code at the curbside desk; it lists every guest on your run.",
+          "اعرض هذا الرمز عند مكتب الرصيف؛ يتضمن كل ضيف على رحلتك."
+        )}
+        closeLabel={ui.p("Close", "إغلاق")}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <QrCode
+            value={`midyaf:captain:${captain.id}:${event.id}`}
+            size={180}
+            label={ui.l(captain.user.name)}
+          />
+          <ul className="w-full divide-y divide-hairline rounded-lg border border-hairline">
+            {tasks.map((task) => (
+              <li key={task.id} className="flex items-center gap-3 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {task.guest ? ui.l(task.guest.user.name) : ui.l(task.type)}
+                  </p>
+                  <p className="truncate text-xs text-ink-muted">
+                    {ui.l(task.pickupLocation)} → {ui.l(task.dropoffLocation)} ·{" "}
+                    {ui.time(task.scheduledAt)}
+                  </p>
+                </div>
+                <StatusPill status={task.status} size="sm" />
+              </li>
+            ))}
+            {tasks.length === 0 ? (
+              <li className="px-3 py-4 text-center text-sm text-ink-muted">
+                {ui.p("No guests on this run.", "لا يوجد ضيوف على هذه الرحلة.")}
+              </li>
+            ) : null}
+          </ul>
+        </div>
+      </Sheet>
     </div>
   );
 }
@@ -218,51 +467,82 @@ export function CaptainsApp({
 function CaptainTaskCard({
   task,
   guestPhoto,
+  busy,
   translate,
   formatTime,
-  onComplete
+  onAdvance
 }: {
-  task: PortalProps["data"]["events"][number]["tasks"][number];
+  task: Task;
   guestPhoto?: FileAsset;
+  busy: boolean;
   translate: (value: string | number | null | undefined) => string;
   formatTime: (value: string) => string;
-  onComplete: () => void;
+  onAdvance: (status: TaskStatus) => void;
 }) {
+  // The forward step is the big button; delays/cancels stay secondary.
+  const next = nextTaskStatuses(task.status);
+  const primary = next.find((s) => s !== "DELAYED" && s !== "CANCELLED");
+  const secondary = next.filter((s) => s !== primary);
   return (
-    <div className="rounded-lg border border-white/5 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
-          <img
-            src={guestPhoto?.url ?? "/midyaf-logo.jpeg"}
-            alt={translate(task.guest?.user.name ?? "Guest")}
-            className="size-14 rounded-lg object-cover"
+    <Card
+      padding="sm"
+      tone={
+        task.status === "DELAYED"
+          ? "danger"
+          : task.status === "EN_ROUTE"
+            ? "ok"
+            : "none"
+      }
+    >
+      <div className="flex gap-3">
+        <img
+          src={guestPhoto?.url ?? "/midyaf-logo.jpeg"}
+          alt={translate(task.guest?.user.name ?? "Guest")}
+          className="size-14 shrink-0 rounded-lg object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <StatusPill
+            status={task.status}
+            size="sm"
+            live={task.status === "EN_ROUTE"}
           />
-          <div>
-            <Badge tone={task.status === "DELAYED" ? "red" : "purple"}>
-              {translate(task.status)}
-            </Badge>
-            <h3 className="mt-3 font-bold text-slate-900 dark:text-white">
-              {translate(task.pickupLocation)} {translate("to")}{" "}
-              {translate(task.dropoffLocation)}
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              {translate("Deadline")}{" "}
-              {formatTime(task.deadlineAt ?? task.scheduledAt)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {guestPhoto
-                ? translate("Guest photo ready")
-                : translate("Guest photo not uploaded yet")}
-            </p>
-          </div>
+          <h3 className="mt-2 text-sm font-bold text-ink">
+            {translate(task.pickupLocation)} → {translate(task.dropoffLocation)}
+          </h3>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            {task.guest ? `${translate(task.guest.user.name)} · ` : ""}
+            {translate("Deadline")}{" "}
+            {formatTime(task.deadlineAt ?? task.scheduledAt)}
+          </p>
         </div>
-        <button
-          onClick={onComplete}
-          className="rounded-lg bg-midyaf-purple px-3 py-2 text-xs font-bold text-white"
-        >
-          {translate("Complete")}
-        </button>
       </div>
-    </div>
+      {next.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {primary ? (
+            <Button
+              variant="gold"
+              size="lg"
+              className="h-11 flex-1"
+              loading={busy}
+              onClick={() => onAdvance(primary)}
+            >
+              {translate(statusActionLabel(primary))}
+            </Button>
+          ) : null}
+          {secondary.map((s) => (
+            <Button
+              key={s}
+              variant={s === "CANCELLED" ? "danger" : "primary"}
+              size="lg"
+              className="h-11"
+              disabled={busy}
+              onClick={() => onAdvance(s)}
+            >
+              {translate(statusActionLabel(s))}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </Card>
   );
 }

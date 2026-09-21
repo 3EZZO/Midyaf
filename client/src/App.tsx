@@ -414,13 +414,20 @@ export function App() {
   if (!session) {
     if (isOnboarding) {
       return (
-        <GuestSelfOnboarding 
-          isArabic={isArabic} 
-          onComplete={() => { 
-            window.location.hash = ""; 
+        <GuestSelfOnboarding
+          isArabic={isArabic}
+          onComplete={(nextSession) => {
+            // Registration already signed the guest in; land them in their app.
+            window.location.hash = "";
             setIsOnboarding(false);
-            toast.success(isArabic ? "تم التسجيل بنجاح" : "Registration Complete", isArabic ? "يمكنك الآن تسجيل الدخول" : "You can now login");
-          }} 
+            storeSession(nextSession);
+            setSession(nextSession);
+            setPortal(portalsByRole[nextSession.user.role][0]);
+            toast.success(
+              isArabic ? "تم التسجيل بنجاح" : "Registration complete",
+              isArabic ? "مرحباً بك في تطبيق الضيف" : "Welcome to your guest app"
+            );
+          }}
         />
       );
     }

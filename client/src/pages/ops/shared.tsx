@@ -4,11 +4,24 @@ import { useTranslation } from "react-i18next";
 import { FileText, Plane, ShieldCheck, Hotel } from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { KpiTile } from "../../components/ui/KpiTile";
+import { Surface } from "../../components/ui/Surface";
+import { Badge as UiBadge } from "../../components/ui/Badge";
 import { Section } from "../../components/Section";
 import { shortDate, shortTime } from "../../lib/format";
 import { isArabicLanguage, localizeText, pickText } from "../../lib/localize";
 import type { GuestBulkImportInput, PortalProps } from "../types";
-import type { AppNotification, AuditLog, FileAsset, FileAssetType, HotelDetail, CarRentalDetail, SupplierDetail, Task, TaskStatus, User } from "@shared/domain";
+import type {
+  AppNotification,
+  AuditLog,
+  FileAsset,
+  FileAssetType,
+  HotelDetail,
+  CarRentalDetail,
+  SupplierDetail,
+  Task,
+  TaskStatus,
+  User
+} from "@shared/domain";
 
 export const driverZones = [
   "NORTH_ZONE",
@@ -272,15 +285,18 @@ export function latestFileAsset(
     .filter((asset) => asset.type === type && matches(asset))
     .sort(
       (left, right) =>
-        new Date(right.createdAt).getTime() -
-        new Date(left.createdAt).getTime()
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
     )[0];
 }
 
 export function assetFileName(asset: FileAsset) {
-  return asset.key.split("/").pop()?.replace(/^\d+-[a-f0-9-]+-/i, "") ?? asset.key;
+  return (
+    asset.key
+      .split("/")
+      .pop()
+      ?.replace(/^\d+-[a-f0-9-]+-/i, "") ?? asset.key
+  );
 }
-
 
 export function nextTaskStatuses(status: TaskStatus): TaskStatus[] {
   switch (status) {
@@ -344,7 +360,6 @@ export function taskStatusTone(status: TaskStatus) {
 
   return "purple";
 }
-
 
 export { PortalHero } from "../../components/ui/PortalHero";
 
@@ -503,7 +518,9 @@ export function parseGuestCsv(csv: string): GuestBulkImportInput[] {
     const phone = value("phone");
 
     if (!name || !email || !phone) {
-      throw new Error(`CSV row ${index + 2}: name, email, and phone are required`);
+      throw new Error(
+        `CSV row ${index + 2}: name, email, and phone are required`
+      );
     }
 
     return {
@@ -512,7 +529,8 @@ export function parseGuestCsv(csv: string): GuestBulkImportInput[] {
       phone,
       language: value("language") === "en" ? "en" : "ar",
       isVIP: parseCsvBoolean(value("isvip")),
-      tier: value("tier") || (parseCsvBoolean(value("isvip")) ? "vip" : "standard"),
+      tier:
+        value("tier") || (parseCsvBoolean(value("isvip")) ? "vip" : "standard"),
       arrivalGate: optionalString(value("arrivalgate")),
       arrivalFlight: optionalString(value("arrivalflight")),
       pickupLocation: optionalString(value("pickuplocation")),
@@ -615,7 +633,16 @@ export function MiniStat({
   value: string | number;
   onClick?: () => void;
 }) {
-  return <KpiTile label={label} value={value} format="raw" onClick={onClick} size="md" className="p-3.5" />;
+  return (
+    <KpiTile
+      label={label}
+      value={value}
+      format="raw"
+      onClick={onClick}
+      size="md"
+      className="p-3.5"
+    />
+  );
 }
 
 export function FileAssetList({ assets }: { assets: FileAsset[] }) {
@@ -666,10 +693,7 @@ export function DeliveryLog({
             const user = users.find((item) => item.id === notification.userId);
 
             return (
-              <div
-                key={notification.id}
-                className="rounded-lg bg-slate-50 p-4"
-              >
+              <div key={notification.id} className="rounded-lg bg-slate-50 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900 dark:text-white">
@@ -754,7 +778,10 @@ export function AuditLogPanel({ auditLogs }: { auditLogs: AuditLog[] }) {
         <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
           <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
             <ShieldCheck size={16} />
-            {ui.p("No operational changes recorded yet", "لا توجد تغييرات تشغيلية مسجلة بعد")}
+            {ui.p(
+              "No operational changes recorded yet",
+              "لا توجد تغييرات تشغيلية مسجلة بعد"
+            )}
           </div>
           <p>
             {ui.p(
@@ -967,19 +994,17 @@ export function JourneyCard({
   active?: boolean;
 }) {
   return (
-    <div
-      className={
-        active
-          ? "rounded-xl bg-[#121626] p-4 text-white shadow-none animate-fadeInUp"
-          : "rounded-lg bg-[#121626] border border-white/5 shadow-sm p-4 text-slate-900 dark:text-white hover:-translate-y-0.5 transition-transform animate-fadeInUp"
-      }
+    <Surface
+      tone={active ? "gold" : "none"}
+      padding="sm"
+      level={active ? 3 : 2}
     >
-      <Icon className={active ? "text-midyaf-gold" : "text-midyaf-pearl"} />
-      <p className="mt-3 font-bold">{title}</p>
-      <p className={active ? "text-sm text-white/70" : "text-sm text-slate-500"}>
-        {detail}
-      </p>
-    </div>
+      <Icon
+        className={active ? "size-5 text-gold-300" : "size-5 text-ink-muted"}
+      />
+      <p className="mt-3 text-sm font-bold text-ink">{title}</p>
+      <p className="mt-0.5 text-xs text-ink-muted">{detail}</p>
+    </Surface>
   );
 }
 
@@ -999,23 +1024,23 @@ export function DocumentCard({
   translate: (value: string) => string;
 }) {
   return (
-    <div className="rounded-xl bg-white/60 p-4 ring-1 ring-slate-100 hover:-translate-y-0.5 transition-transform">
+    <Surface padding="sm">
       <div className="flex items-center justify-between gap-3">
-        <Icon className="text-midyaf-pearl" size={20} />
-        <Badge tone="green">{status}</Badge>
+        <Icon className="size-5 text-gold-300" />
+        <UiBadge tone={asset ? "ok" : "neutral"}>{status}</UiBadge>
       </div>
-      <p className="mt-3 font-bold text-slate-900 dark:text-white">{title}</p>
-      <p className="mt-1 text-sm text-slate-500">{detail}</p>
+      <p className="mt-3 text-sm font-bold text-ink">{title}</p>
+      <p className="mt-0.5 text-xs text-ink-muted">{detail}</p>
       {asset ? (
         <a
           href={asset.url}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-xs font-bold text-midyaf-pearl ring-1 ring-slate-200 transition-all hover:shadow-sm hover:ring-midyaf-purple/20"
+          className="mt-3 inline-flex h-9 items-center rounded-lg border border-gold-500/40 px-3 text-xs font-bold text-gold-300 transition-colors duration-base hover:bg-gold-500/10"
         >
           {translate("Open file")}
         </a>
       ) : null}
-    </div>
+    </Surface>
   );
 }

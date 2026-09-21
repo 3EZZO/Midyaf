@@ -21,3 +21,6 @@ export { Kbd } from "./Kbd";
 export { ToastProvider, useToast } from "./Toast";
 export type { ToastApi, ToastItem, ToastType } from "./Toast";
 export { ConnectionDot } from "./ConnectionDot";
+export { QrCode } from "./QrCode";
+export { BoardingPass } from "./BoardingPass";
+export type { BoardingPassProps } from "./BoardingPass";

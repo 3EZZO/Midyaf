@@ -72,11 +72,14 @@ router.get(
 
 router.post(
   "/uploads",
+  // Guests are admitted only for self-service documents; `validateUploadTarget`
+  // pins them to their own account.
   requireRole([
     Role.LOGISTICS_MANAGER,
     Role.ORGANIZER,
     Role.SUPER_ADMIN,
-    Role.COORDINATOR
+    Role.COORDINATOR,
+    Role.GUEST
   ]),
   upload.single("file"),
   asyncHandler(async (req: AuthRequest, res) => {
@@ -123,13 +126,13 @@ router.post(
       }
     });
 
-    res.status(201).json({ 
-      fileAsset, 
+    res.status(201).json({
+      fileAsset,
       deliveries,
-      aiOcrVerification: { 
-        status: "APPROVED", 
+      aiOcrVerification: {
+        status: "APPROVED",
         confidence: 0.98,
-        documentType: "Vendor ID / Registration" 
+        documentType: "Vendor ID / Registration"
       }
     });
   })
@@ -137,10 +140,53 @@ router.post(
 
 export default router;
 
+/**
+ * Self-service (guest onboarding): a guest may attach an identity document
+ * (`OTHER`) to their own user, or a photo to a guest record they own. Any
+ * other target is refused — a guest never files documents for someone else.
+ */
+async function validateGuestSelfUpload(
+  user: AuthUser,
+  body: UploadNotificationBody
+) {
+  if (
+    body.type !== FileAssetType.OTHER &&
+    body.type !== FileAssetType.GUEST_PHOTO
+  ) {
+    throw new HttpError(403, "Guests may only upload identity documents");
+  }
+  if (body.driverId || body.eventId) {
+    throw new HttpError(403, "Guests cannot target drivers or events");
+  }
+  if (body.userId && body.userId !== user.id) {
+    throw new HttpError(403, "Guests may only upload to their own account");
+  }
+  if (body.guestId) {
+    const guest = requireEntity(
+      await prisma.guest.findUnique({
+        where: { id: body.guestId },
+        select: { userId: true }
+      }),
+      "Guest not found"
+    );
+    if (guest.userId !== user.id) {
+      throw new HttpError(403, "Guest record belongs to another user");
+    }
+  } else if (body.type === FileAssetType.GUEST_PHOTO) {
+    throw new HttpError(400, "Guest photo uploads require guestId");
+  }
+  body.userId = user.id;
+}
+
 async function validateUploadTarget(
   user: AuthUser,
   body: UploadNotificationBody
 ) {
+  if (user.role === Role.GUEST) {
+    await validateGuestSelfUpload(user, body);
+    return;
+  }
+
   if (
     body.type === FileAssetType.REPORT_PDF &&
     user.role !== Role.LOGISTICS_MANAGER &&
@@ -293,7 +339,9 @@ async function buildFileAssetVisibilityWhere(
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value)))
+  ];
 }
 
 type UploadNotificationBody = {
@@ -369,7 +417,9 @@ async function notifyCaptainsOfGuestPhoto(
   const drivers = uniqueBy(
     tasks
       .map((task) => task.driver)
-      .filter((driver): driver is NonNullable<typeof driver> => Boolean(driver)),
+      .filter((driver): driver is NonNullable<typeof driver> =>
+        Boolean(driver)
+      ),
     (driver) => driver.id
   );
 

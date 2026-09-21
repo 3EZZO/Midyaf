@@ -1,5 +1,42 @@
 import type { ActivityIntake, AiLogisticsPlan } from "@shared/domain";
+// The print window is a separate document: it cannot see the fonts Vite
+// loaded for the app, so the same self-hosted files are declared again with
+// their bundled URLs.
+import plexArabic400 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url";
+import plexArabic700 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url";
+import plexLatin400 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-400-normal.woff2?url";
+import plexLatin700 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-700-normal.woff2?url";
+import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
 import { money } from "./format";
+
+/** Print tokens: the brand's Obsidian + gold on a white sheet. */
+const PRINT = {
+  obsidian: "#090C15",
+  obsidian2: "#121626",
+  gold: "#D4AF37",
+  goldDark: "#A88820",
+  ink: "#0F172A",
+  inkMuted: "#475569",
+  inkFaint: "#94A3B8",
+  hairline: "#E2E8F0",
+  surface: "#F8FAFC",
+  ok: "#047857"
+} as const;
+
+function printFontFaces() {
+  const abs = (u: string) => new URL(u, window.location.origin).href;
+  const face = (family: string, url: string, weight: string, range?: string) =>
+    `@font-face { font-family: '${family}'; src: url('${abs(url)}') format('woff2'); font-weight: ${weight}; font-style: normal; font-display: swap;${range ? ` unicode-range: ${range};` : ""} }`;
+  const arabicRange =
+    "U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC";
+  return [
+    face("IBM Plex Sans Arabic", plexArabic400, "400", arabicRange),
+    face("IBM Plex Sans Arabic", plexArabic700, "700", arabicRange),
+    face("IBM Plex Sans Arabic", plexLatin400, "400"),
+    face("IBM Plex Sans Arabic", plexLatin700, "700"),
+    face("Inter Variable", interLatin, "100 900")
+  ].join("\n");
+}
 
 export function exportPlanAsPdf(
   plan: AiLogisticsPlan,
@@ -9,7 +46,9 @@ export function exportPlanAsPdf(
   const printWindow = window.open("", "_blank", "width=900,height=800");
   if (!printWindow) return;
 
-  const title = isArabic ? "وثيقة الخطة اللوجستية التنفيذية - مضياف" : "Midyaf Executive Logistics Plan";
+  const title = isArabic
+    ? "وثيقة الخطة اللوجستية التنفيذية - مضياف"
+    : "Midyaf Executive Logistics Plan";
   const dateStr = new Date().toLocaleDateString(isArabic ? "ar-SA" : "en-US", {
     year: "numeric",
     month: "long",
@@ -17,72 +56,121 @@ export function exportPlanAsPdf(
   });
 
   // Multi-entity resolutions
-  const hotelsList = intake.hotels && intake.hotels.length > 0 ? intake.hotels : [
-    {
-      id: "h-1",
-      name: intake.hotelName || (isArabic ? "فندق الريتز-كارلتون" : "The Ritz-Carlton"),
-      contact: intake.hotelContact || "+966 11 802 8888",
-      roomsBooked: intake.hotelRoomsBooked || 70,
-      roomType: intake.hotelRoomType || "Royal & Executive Suites",
-      notes: isArabic ? "مقر وفود كبار الشخصيات والوزراء" : "VIP Delegations HQ"
-    },
-    {
-      id: "h-2",
-      name: isArabic ? "فندق فورسيزونز برج المملكة" : "Four Seasons Hotel Kingdom Centre",
-      contact: "+966 11 211 5000",
-      roomsBooked: 50,
-      roomType: "Deluxe Premium Rooms",
-      notes: isArabic ? "مقر المتحدثين والمستثمرين الدوليين" : "Speakers & Global Investors"
-    }
-  ];
-  const totalRoomsAll = hotelsList.reduce((sum, h) => sum + (Number(h.roomsBooked) || 0), 0);
+  const hotelsList =
+    intake.hotels && intake.hotels.length > 0
+      ? intake.hotels
+      : [
+          {
+            id: "h-1",
+            name:
+              intake.hotelName ||
+              (isArabic ? "فندق الريتز-كارلتون" : "The Ritz-Carlton"),
+            contact: intake.hotelContact || "+966 11 802 8888",
+            roomsBooked: intake.hotelRoomsBooked || 70,
+            roomType: intake.hotelRoomType || "Royal & Executive Suites",
+            notes: isArabic
+              ? "مقر وفود كبار الشخصيات والوزراء"
+              : "VIP Delegations HQ"
+          },
+          {
+            id: "h-2",
+            name: isArabic
+              ? "فندق فورسيزونز برج المملكة"
+              : "Four Seasons Hotel Kingdom Centre",
+            contact: "+966 11 211 5000",
+            roomsBooked: 50,
+            roomType: "Deluxe Premium Rooms",
+            notes: isArabic
+              ? "مقر المتحدثين والمستثمرين الدوليين"
+              : "Speakers & Global Investors"
+          }
+        ];
+  const totalRoomsAll = hotelsList.reduce(
+    (sum, h) => sum + (Number(h.roomsBooked) || 0),
+    0
+  );
 
-  const rentalsList = intake.carRentals && intake.carRentals.length > 0 ? intake.carRentals : [
-    {
-      id: "r-1",
-      companyName: intake.carRentalCompanyName || (isArabic ? "شركة الأسطول الملكي لتأجير السيارات الفاخرة" : "Royal Fleet Rentals"),
-      contact: intake.carRentalContact || "+966 50 111 2233",
-      fleetCount: 40,
-      vehicleTypes: isArabic ? "مرسيدس مايباخ S680 وبي إم دبليو الفئة السابعة" : "Mercedes-Maybach & BMW 7-Series",
-      notes: isArabic ? "مواكب الشخصيات الرسمية" : "Official Motorcades"
-    },
-    {
-      id: "r-2",
-      companyName: isArabic ? "شركة لوجستيات الحافلات والنقل الماسي" : "Diamond Bus & Coach Logistics",
-      contact: "+966 55 444 5566",
-      fleetCount: 15,
-      vehicleTypes: isArabic ? "حافلات VIP فاخرة 50 راكب" : "Luxury 50-Seater Coaches",
-      notes: isArabic ? "نقل الوفود العامة بين الفنادق والمقر" : "General Delegate Shuttle"
-    }
-  ];
-  const totalFleetAll = rentalsList.reduce((sum, r) => sum + (Number(r.fleetCount) || 0), 0);
+  const rentalsList =
+    intake.carRentals && intake.carRentals.length > 0
+      ? intake.carRentals
+      : [
+          {
+            id: "r-1",
+            companyName:
+              intake.carRentalCompanyName ||
+              (isArabic
+                ? "شركة الأسطول الملكي لتأجير السيارات الفاخرة"
+                : "Royal Fleet Rentals"),
+            contact: intake.carRentalContact || "+966 50 111 2233",
+            fleetCount: 40,
+            vehicleTypes: isArabic
+              ? "مرسيدس مايباخ S680 وبي إم دبليو الفئة السابعة"
+              : "Mercedes-Maybach & BMW 7-Series",
+            notes: isArabic ? "مواكب الشخصيات الرسمية" : "Official Motorcades"
+          },
+          {
+            id: "r-2",
+            companyName: isArabic
+              ? "شركة لوجستيات الحافلات والنقل الماسي"
+              : "Diamond Bus & Coach Logistics",
+            contact: "+966 55 444 5566",
+            fleetCount: 15,
+            vehicleTypes: isArabic
+              ? "حافلات VIP فاخرة 50 راكب"
+              : "Luxury 50-Seater Coaches",
+            notes: isArabic
+              ? "نقل الوفود العامة بين الفنادق والمقر"
+              : "General Delegate Shuttle"
+          }
+        ];
+  const totalFleetAll = rentalsList.reduce(
+    (sum, r) => sum + (Number(r.fleetCount) || 0),
+    0
+  );
 
-  const suppliersList = intake.suppliers && intake.suppliers.length > 0 ? intake.suppliers : [
-    {
-      id: "s-1",
-      providerName: intake.providerName || (isArabic ? "مجموعة الضيافة والخدمات المساندة" : "Sovereign Mobility Group"),
-      category: "HOTEL",
-      contact: "+966 54 777 8899",
-      scopeOfWork: isArabic ? "خدمات الضيافة والإعاشة الفندقية والتسكين" : "Hospitality & Accommodation",
-      paymentTerms: intake.paymentTerms || "INSTALLMENTS"
-    },
-    {
-      id: "s-2",
-      providerName: isArabic ? "شركة تموين المؤتمرات والمعارض الملكية" : "Royal Catering Services",
-      category: "CATERING",
-      contact: "+966 56 333 4455",
-      scopeOfWork: isArabic ? "بوفيهات القاعات الكبرى والولائم الرسمية" : "Plenary Banquets & Catering",
-      paymentTerms: "DOWNPAYMENT"
-    },
-    {
-      id: "s-3",
-      providerName: isArabic ? "شركة الإمداد البشري والتنظيم الميداني" : "Event Protocol Workforce",
-      category: "MAN_POWER",
-      contact: "+966 50 888 9900",
-      scopeOfWork: isArabic ? "120 فرد تنظيم ومشرفو استقبال ومراسم" : "120 Protocol & Ushers",
-      paymentTerms: "INSTALLMENTS"
-    }
-  ];
+  const suppliersList =
+    intake.suppliers && intake.suppliers.length > 0
+      ? intake.suppliers
+      : [
+          {
+            id: "s-1",
+            providerName:
+              intake.providerName ||
+              (isArabic
+                ? "مجموعة الضيافة والخدمات المساندة"
+                : "Sovereign Mobility Group"),
+            category: "HOTEL",
+            contact: "+966 54 777 8899",
+            scopeOfWork: isArabic
+              ? "خدمات الضيافة والإعاشة الفندقية والتسكين"
+              : "Hospitality & Accommodation",
+            paymentTerms: intake.paymentTerms || "INSTALLMENTS"
+          },
+          {
+            id: "s-2",
+            providerName: isArabic
+              ? "شركة تموين المؤتمرات والمعارض الملكية"
+              : "Royal Catering Services",
+            category: "CATERING",
+            contact: "+966 56 333 4455",
+            scopeOfWork: isArabic
+              ? "بوفيهات القاعات الكبرى والولائم الرسمية"
+              : "Plenary Banquets & Catering",
+            paymentTerms: "DOWNPAYMENT"
+          },
+          {
+            id: "s-3",
+            providerName: isArabic
+              ? "شركة الإمداد البشري والتنظيم الميداني"
+              : "Event Protocol Workforce",
+            category: "MAN_POWER",
+            contact: "+966 50 888 9900",
+            scopeOfWork: isArabic
+              ? "120 فرد تنظيم ومشرفو استقبال ومراسم"
+              : "120 Protocol & Ushers",
+            paymentTerms: "INSTALLMENTS"
+          }
+        ];
 
   const html = `
     <!DOCTYPE html>
@@ -91,10 +179,12 @@ export function exportPlanAsPdf(
       <meta charset="utf-8" />
       <title>${title}</title>
       <style>
+        ${printFontFaces()}
         @page { size: A4 portrait; margin: 18mm 15mm; }
         body {
-          font-family: ${isArabic ? "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif" : "'Inter', 'Segoe UI', Arial, sans-serif"};
-          color: #1e1b4b;
+          font-family: ${isArabic ? "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif" : "'Inter Variable', 'IBM Plex Sans Arabic', 'Segoe UI', Arial, sans-serif"};
+          font-variant-numeric: tabular-nums;
+          color: ${PRINT.ink};
           background: #ffffff;
           line-height: 1.5;
           margin: 0;
@@ -104,19 +194,19 @@ export function exportPlanAsPdf(
           display: flex;
           align-items: center;
           justify-content: space-between;
-          border-bottom: 3px solid #d4af37;
+          border-bottom: 3px solid ${PRINT.gold};
           padding-bottom: 16px;
           margin-bottom: 24px;
         }
         .brand {
           font-size: 26px;
           font-weight: 900;
-          color: #2b1842;
+          color: ${PRINT.obsidian};
           letter-spacing: -0.5px;
         }
         .badge {
-          background: #2b1842;
-          color: #d4af37;
+          background: ${PRINT.obsidian};
+          color: ${PRINT.gold};
           padding: 4px 12px;
           border-radius: 6px;
           font-size: 11px;
@@ -126,8 +216,8 @@ export function exportPlanAsPdf(
         .section-title {
           font-size: 15px;
           font-weight: 800;
-          color: #2b1842;
-          border-bottom: 1px solid #e2e8f0;
+          color: ${PRINT.obsidian};
+          border-bottom: 1px solid ${PRINT.hairline};
           padding-bottom: 6px;
           margin-top: 20px;
           margin-bottom: 12px;
@@ -139,29 +229,29 @@ export function exportPlanAsPdf(
           margin-bottom: 16px;
         }
         .card {
-          border: 1px solid #e2e8f0;
+          border: 1px solid ${PRINT.hairline};
           border-radius: 8px;
           padding: 10px 12px;
-          background: #f8fafc;
+          background: ${PRINT.surface};
         }
         .card-label {
           font-size: 11px;
-          color: #64748b;
+          color: ${PRINT.inkMuted};
           font-weight: 600;
         }
         .card-value {
           font-size: 16px;
           font-weight: 800;
-          color: #2b1842;
+          color: ${PRINT.obsidian};
           margin-top: 4px;
         }
         .summary-box {
-          background: #faf5ff;
-          border: 1px solid #e9d5ff;
+          background: ${PRINT.surface};
+          border: 1px solid ${PRINT.hairline};
           border-radius: 8px;
           padding: 14px;
           font-size: 13px;
-          color: #334155;
+          color: ${PRINT.ink};
           margin-bottom: 20px;
         }
         .table {
@@ -171,24 +261,24 @@ export function exportPlanAsPdf(
           margin-top: 10px;
         }
         .table th, .table td {
-          border: 1px solid #e2e8f0;
+          border: 1px solid ${PRINT.hairline};
           padding: 8px 10px;
           text-align: ${isArabic ? "right" : "left"};
         }
         .table th {
-          background: #f1f5f9;
+          background: ${PRINT.surface};
           font-weight: 700;
-          color: #2b1842;
+          color: ${PRINT.obsidian};
         }
         .seal {
           margin-top: 30px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-top: 1px dashed #cbd5e1;
+          border-top: 1px dashed ${PRINT.hairline};
           padding-top: 16px;
           font-size: 11px;
-          color: #64748b;
+          color: ${PRINT.inkMuted};
         }
         @media print {
           body { padding: 0; }
@@ -200,13 +290,13 @@ export function exportPlanAsPdf(
       <div class="header">
         <div>
           <div class="brand">مِضْيَافٌ · MIDYAF</div>
-          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+          <div style="font-size: 12px; color: ${PRINT.inkMuted}; margin-top: 2px;">
             ${isArabic ? "نظام إدارة لوجستيات الفعاليات والقمم السيادية" : "Sovereign Summit & Event Logistics Platform"}
           </div>
         </div>
         <div style="text-align: ${isArabic ? "left" : "right"};">
           <span class="badge">${isArabic ? "خطة لوجستية معتمدة وموثقة" : "Certified Approved Plan"}</span>
-          <div style="font-size: 11px; color: #64748b; margin-top: 6px;">${dateStr}</div>
+          <div style="font-size: 11px; color: ${PRINT.inkMuted}; margin-top: 6px;">${dateStr}</div>
         </div>
       </div>
 
@@ -244,7 +334,9 @@ export function exportPlanAsPdf(
           </tr>
         </thead>
         <tbody>
-          ${hotelsList.map((h, i) => `
+          ${hotelsList
+            .map(
+              (h, i) => `
             <tr>
               <td>${i + 1}</td>
               <td><strong>${h.name}</strong></td>
@@ -253,10 +345,12 @@ export function exportPlanAsPdf(
               <td><strong>${h.roomsBooked}</strong> ${isArabic ? "غرفة / جناح" : "rooms"}</td>
               <td>${h.notes || "-"}</td>
             </tr>
-          `).join("")}
-          <tr style="background: #f8fafc; font-weight: bold;">
+          `
+            )
+            .join("")}
+          <tr style="background: ${PRINT.surface}; font-weight: bold;">
             <td colspan="4" style="text-align: ${isArabic ? "left" : "right"};">${isArabic ? "إجمالي الغرف المحجوزة عبر جميع الفنادق:" : "Total Rooms Across All Hotels:"}</td>
-            <td colspan="2" style="color: #2b1842; font-size: 13px;">${totalRoomsAll} ${isArabic ? "غرفة / جناح" : "rooms"}</td>
+            <td colspan="2" style="color: ${PRINT.obsidian}; font-size: 13px;">${totalRoomsAll} ${isArabic ? "غرفة / جناح" : "rooms"}</td>
           </tr>
         </tbody>
       </table>
@@ -274,7 +368,9 @@ export function exportPlanAsPdf(
           </tr>
         </thead>
         <tbody>
-          ${rentalsList.map((r, i) => `
+          ${rentalsList
+            .map(
+              (r, i) => `
             <tr>
               <td>${i + 1}</td>
               <td><strong>${r.companyName}</strong></td>
@@ -283,10 +379,12 @@ export function exportPlanAsPdf(
               <td>${r.vehicleTypes || "-"}</td>
               <td>${r.notes || "-"}</td>
             </tr>
-          `).join("")}
-          <tr style="background: #f8fafc; font-weight: bold;">
+          `
+            )
+            .join("")}
+          <tr style="background: ${PRINT.surface}; font-weight: bold;">
             <td colspan="3" style="text-align: ${isArabic ? "left" : "right"};">${isArabic ? "إجمالي أسطول المركبات والحافلات:" : "Total Fleet Units:"}</td>
-            <td colspan="3" style="color: #2b1842; font-size: 13px;">${totalFleetAll} ${isArabic ? "مركبة / حافلة" : "units"}</td>
+            <td colspan="3" style="color: ${PRINT.obsidian}; font-size: 13px;">${totalFleetAll} ${isArabic ? "مركبة / حافلة" : "units"}</td>
           </tr>
         </tbody>
       </table>
@@ -304,18 +402,22 @@ export function exportPlanAsPdf(
           </tr>
         </thead>
         <tbody>
-          ${suppliersList.map((s, i) => `
+          ${suppliersList
+            .map(
+              (s, i) => `
             <tr>
               <td>${i + 1}</td>
               <td><strong>${s.providerName}</strong></td>
               <td><span class="badge" style="padding: 2px 6px; font-size: 10px;">${s.category}</span></td>
               <td>${s.contact || "-"}</td>
               <td>${s.scopeOfWork || "-"}</td>
-              <td style="color: #047857; font-weight: bold;">
-                ${s.paymentTerms === "DOWNPAYMENT" ? (isArabic ? "دفعة أولى مقدمة" : "Downpayment") : (isArabic ? "أقساط مجدولة" : "Installments")}
+              <td style="color: ${PRINT.ok}; font-weight: bold;">
+                ${s.paymentTerms === "DOWNPAYMENT" ? (isArabic ? "دفعة أولى مقدمة" : "Downpayment") : isArabic ? "أقساط مجدولة" : "Installments"}
               </td>
             </tr>
-          `).join("")}
+          `
+            )
+            .join("")}
         </tbody>
       </table>
 
@@ -334,49 +436,49 @@ export function exportPlanAsPdf(
             <td><strong>${isArabic ? "طيران الوفود" : "Airlines"}</strong></td>
             <td>2</td>
             <td>${isArabic ? "رحلات طيران خاص دبلوماسي سريع" : "Private Executive Diplomatic Charters"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "وساطة المركبات" : "Vehicle Brokerage"}</strong></td>
             <td>40</td>
             <td>${isArabic ? "وساطة وتنسيق مواكب رسمية وسيارات مرافقة" : "Official Motorcade & Escort Brokerage"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "تأجير السيارات والحافلات" : "Car & Bus Rental"}</strong></td>
             <td>${plan.vipCars || 50} ${isArabic ? "سيارة فاخرة" : "VIP Cars"} + ${plan.buses || intake.busesCount || 15} ${isArabic ? "حافلة VIP" : "Buses"}</td>
-            <td>${intake.carType === "BUSES" ? (isArabic ? "حافلات VIP فاخرة 50 راكب" : "Luxury 50-Seater Coaches") : (isArabic ? "مرسيدس مايباخ وحافلات وفود" : "Maybach Fleet & Executive Coaches")}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td>${intake.carType === "BUSES" ? (isArabic ? "حافلات VIP فاخرة 50 راكب" : "Luxury 50-Seater Coaches") : isArabic ? "مرسيدس مايباخ وحافلات وفود" : "Maybach Fleet & Executive Coaches"}</td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "القوى البشرية والتشغيل" : "Man Power"}</strong></td>
             <td>${plan.manPower || intake.manPowerCount || 120} ${isArabic ? "فرد" : "Staff"}</td>
-            <td>${(plan.manPowerSubtype || intake.manPowerSubtype) === "CARGO_LOADING" ? (isArabic ? "عمال تحميل وبضائع وتجهيز شحنات" : "Cargo & Loading Workers") : (isArabic ? "منظمو الفعالية ومشرفو المراسم" : "Event Organizers & Protocol Ushers")}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td>${(plan.manPowerSubtype || intake.manPowerSubtype) === "CARGO_LOADING" ? (isArabic ? "عمال تحميل وبضائع وتجهيز شحنات" : "Cargo & Loading Workers") : isArabic ? "منظمو الفعالية ومشرفو المراسم" : "Event Organizers & Protocol Ushers"}</td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "عربات الجولف" : "Golf Carts"}</strong></td>
             <td>${plan.golfCarts || intake.golfCartsCount || 30}</td>
             <td>${isArabic ? "عربات جولف كهربائية فاخرة متعددة الركاب" : "VIP Electric Multi-Seater Mini-Mobility"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "شاحنات النقل الثقيل" : "Heavy Trucks"}</strong></td>
             <td>${plan.heavyTrucks || intake.heavyTrucksCount || 18}</td>
             <td>${isArabic ? "شاحنات نقل ثقيل ومقطورات مسارح وتجهيزات" : "Flatbed & Heavy Transportation Haulage"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "الرافعات والمعدات الثقيلة" : "Cranes & Heavy Equipment"}</strong></td>
             <td>${plan.heavyEquipment || intake.heavyEquipmentCount || 6}</td>
             <td>${isArabic ? "رافعات هيدروليكية ومعدات رفع صناعية" : "Mobile Hydraulic Cranes & Industrial Boom Lifts"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
           <tr>
             <td><strong>${isArabic ? "الفنادق والضيافة" : "Hotels & Hospitality"}</strong></td>
             <td>${plan.hotelRooms || 100}</td>
             <td>${isArabic ? "أجنحة ملكية وتنفيذية شاملة خدمات الضيافة" : "Royal Suites & Diplomatic Hospitality Access"}</td>
-            <td><span style="color: #047857; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
+            <td><span style="color: ${PRINT.ok}; font-weight: bold;">${isArabic ? "معتمد" : "Approved"}</span></td>
           </tr>
         </tbody>
       </table>
@@ -388,7 +490,7 @@ export function exportPlanAsPdf(
         </div>
         <div style="text-align: ${isArabic ? "left" : "right"};">
           <div>${isArabic ? "الختم السيادي لمنصة مضياف" : "Midyaf Sovereign Verification Seal"}</div>
-          <div style="color: #047857; font-weight: bold;">✓ ${isArabic ? "موثق إلكترونياً" : "Digitally Certified"}</div>
+          <div style="color: ${PRINT.ok}; font-weight: bold;">✓ ${isArabic ? "موثق إلكترونياً" : "Digitally Certified"}</div>
         </div>
       </div>
 
@@ -409,25 +511,30 @@ export function exportPlanAsPdf(
 export function sharePlanLink(
   planId: string,
   isArabic: boolean,
-  toast: { success: (title: string, desc?: string) => void; alert: (title: string, desc?: string) => void }
+  toast: {
+    success: (title: string, desc?: string) => void;
+    alert: (title: string, desc?: string) => void;
+  }
 ) {
   const shareUrl = `${window.location.origin}/?portal=intake&plan=${encodeURIComponent(planId || "active")}`;
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      toast.success(
-        isArabic ? "تم نسخ رابط الخطة إلى الحافظة" : "Plan Link Copied",
-        isArabic ? "يمكنك الآن مشاركة الرابط مع مسؤولي الفعالية والموردين" : "Direct plan link copied to clipboard"
-      );
-    }).catch(() => {
-      toast.alert(
-        isArabic ? "تعذر نسخ الرابط" : "Failed to copy link",
-        shareUrl
-      );
-    });
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        toast.success(
+          isArabic ? "تم نسخ رابط الخطة إلى الحافظة" : "Plan Link Copied",
+          isArabic
+            ? "يمكنك الآن مشاركة الرابط مع مسؤولي الفعالية والموردين"
+            : "Direct plan link copied to clipboard"
+        );
+      })
+      .catch(() => {
+        toast.alert(
+          isArabic ? "تعذر نسخ الرابط" : "Failed to copy link",
+          shareUrl
+        );
+      });
   } else {
-    toast.success(
-      isArabic ? "رابط المشاركة" : "Share URL",
-      shareUrl
-    );
+    toast.success(isArabic ? "رابط المشاركة" : "Share URL", shareUrl);
   }
 }
