@@ -86,10 +86,42 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error?.message ?? "API request failed");
+    throw new ApiError(
+      error?.error?.message ?? "API request failed",
+      response.status
+    );
   }
 
   return (await response.json()) as T;
+}
+
+/** An HTTP failure with its status, so callers can tell "expired" from "down". */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/** Trade the refresh token for a fresh session; throws when it too has expired. */
+export async function refreshSession(refreshToken: string): Promise<Session> {
+  const response = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+  if (!response.ok) {
+    throw new ApiError("Session expired", response.status);
+  }
+  const data = (await response.json()) as LoginResponse;
+  return {
+    user: data.user,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken
+  };
 }
 
 export async function apiUploadFile(

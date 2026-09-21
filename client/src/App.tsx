@@ -52,7 +52,7 @@ import type {
   TaskCreateInput,
   UserCreateInput
 } from "./pages/types";
-import { apiFetch, apiUploadFile, getBootstrap, login } from "./lib/api";
+import { ApiError, apiFetch, apiUploadFile, getBootstrap, login, refreshSession } from "./lib/api";
 import { SocketContext, useSocket } from "./lib/useSocket";
 import {
   isArabicLanguage,
@@ -588,6 +588,26 @@ export function App() {
         // Ignore cache write error
       }
     } catch (error) {
+      // An expired access token is not a load failure: trade the refresh
+      // token for a new session and try once more; if that fails too, the
+      // session is gone and the login screen is the honest answer.
+      if (error instanceof ApiError && error.status === 401) {
+        try {
+          const next = await refreshSession(activeSession.refreshToken);
+          storeSession(next);
+          // The new access token re-runs the session effect, which reloads.
+          setSession(next);
+          return;
+        } catch {
+          // The refresh token is gone too — fall through to logout.
+        }
+        handleLogout();
+        toast.info(
+          isArabic ? "انتهت الجلسة" : "Session expired",
+          isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
+        );
+        return;
+      }
       // If cached data is present, do not disrupt the UI with a blocking error
       setData((curr) => {
         if (!curr) {
