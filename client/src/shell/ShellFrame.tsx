@@ -1,6 +1,13 @@
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import type { Driver, Event, PortalKey, Session, Task } from "@shared/domain";
+import type {
+  Driver,
+  Event,
+  MidyafData,
+  PortalKey,
+  Session,
+  Task
+} from "@shared/domain";
 import { QuickNavigator } from "../components/QuickNavigator";
 import { SovereignCommandBridge } from "../components/warroom";
 import { cn } from "../lib/cn";
@@ -20,6 +27,8 @@ export type ShellFrameProps = {
   realtimeLog?: string[];
   event?: Event;
   drivers?: Driver[];
+  /** Full snapshot; the War Room briefing grounds its prompt in it. */
+  data?: MidyafData;
   tasks?: Task[];
   isWarRoomOpen?: boolean;
   setIsWarRoomOpen?: (open: boolean) => void;
@@ -46,6 +55,7 @@ export function ShellFrame({
   realtimeLog = [],
   event,
   drivers,
+  data,
   tasks,
   isWarRoomOpen,
   setIsWarRoomOpen,
@@ -57,8 +67,18 @@ export function ShellFrame({
   onLogout
 }: ShellFrameProps) {
   return (
-    <div className={cn("min-h-screen bg-surface-1 text-ink", isArabic ? "font-arabic" : "font-english")}>
-      <IconRail allowedPortals={allowedPortals} portal={portal} setPortal={setPortal} isArabic={isArabic} />
+    <div
+      className={cn(
+        "min-h-screen bg-surface-1 text-ink",
+        isArabic ? "font-arabic" : "font-english"
+      )}
+    >
+      <IconRail
+        allowedPortals={allowedPortals}
+        portal={portal}
+        setPortal={setPortal}
+        isArabic={isArabic}
+      />
 
       <div className="flex min-h-screen flex-col lg:ps-[72px]">
         <TopBar
@@ -75,14 +95,25 @@ export function ShellFrame({
 
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={portal} variants={portalSwitch} initial="initial" animate="animate" exit="exit">
+            <motion.div
+              key={portal}
+              variants={portalSwitch}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
               {children}
             </motion.div>
           </AnimatePresence>
         </main>
       </div>
 
-      <BottomTabBar allowedPortals={allowedPortals} portal={portal} setPortal={setPortal} isArabic={isArabic} />
+      <BottomTabBar
+        allowedPortals={allowedPortals}
+        portal={portal}
+        setPortal={setPortal}
+        isArabic={isArabic}
+      />
 
       {isWarRoomOpen ? (
         <SovereignCommandBridge
@@ -91,6 +122,8 @@ export function ShellFrame({
           isDemoMode={Boolean(isDemoMode)}
           event={event}
           drivers={drivers ?? []}
+          session={session}
+          data={data}
           tasks={tasks ?? []}
         />
       ) : null}

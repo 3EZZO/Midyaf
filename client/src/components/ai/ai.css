@@ -1,0 +1,124 @@
+/* Streamed assistant Markdown. Logical properties so Arabic lists indent on
+   the correct side; sizes never drop below text-xs (12px). */
+.ai-md {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ai-md > * + * {
+  margin-block-start: 0.5rem;
+}
+.ai-md p {
+  margin: 0;
+}
+.ai-md strong {
+  font-weight: 700;
+  color: rgb(var(--ink));
+}
+.ai-md em {
+  font-style: normal;
+  color: rgb(var(--gold-300));
+}
+.ai-md a {
+  color: rgb(var(--gold-300));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ai-md h1,
+.ai-md h2,
+.ai-md h3,
+.ai-md h4 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgb(var(--ink));
+  margin-block-start: 0.75rem;
+}
+.ai-md ul,
+.ai-md ol {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+.ai-md ul {
+  list-style: disc;
+}
+.ai-md ol {
+  list-style: decimal;
+}
+.ai-md li + li {
+  margin-block-start: 0.2rem;
+}
+.ai-md li::marker {
+  color: rgb(var(--gold-500));
+}
+.ai-md code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgb(var(--surface-4));
+  color: rgb(var(--gold-100));
+}
+.ai-md pre {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(var(--surface-1));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+}
+.ai-md pre code {
+  padding: 0;
+  background: transparent;
+}
+.ai-md blockquote {
+  margin: 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid rgb(var(--gold-500));
+  color: rgb(var(--ink-muted));
+}
+.ai-md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.ai-md th,
+.ai-md td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: start;
+}
+.ai-md th {
+  color: rgb(var(--ink-muted));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ai-md hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Streaming caret: a state indicator (text is still arriving), not decoration. */
+.ai-caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 1em;
+  margin-inline-start: 0.1em;
+  vertical-align: -0.15em;
+  background: rgb(var(--gold-500));
+  animation: ai-caret 0.9s steps(2, jump-none) infinite;
+}
+@keyframes ai-caret {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-caret::after {
+    animation: none;
+    opacity: 0.7;
+  }
+}

@@ -8,7 +8,12 @@ const client = env.OPENAI_API_KEY
 export type ChatInput = {
   message: string;
   language?: string;
-  persona?: "Saud" | "Noura" | "Saif & Munirah" | "Ops Manager" | "Supply Chain AI";
+  persona?:
+    | "Saud"
+    | "Noura"
+    | "Saif & Munirah"
+    | "Ops Manager"
+    | "Supply Chain AI";
   context?: unknown;
 };
 
@@ -89,12 +94,155 @@ export async function chatGuide(input: ChatInput): Promise<ChatReply> {
   }
 }
 
+export type ChatStreamMeta = {
+  persona: string;
+  toolIntent?: string;
+  actions?: ChatReplyAction[];
+  data?: unknown;
+  /** "openai" when tokens come from the model, "local" when the deterministic reply is replayed. */
+  source: "openai" | "local";
+};
+
+export type ChatStreamEvent =
+  | { type: "meta"; meta: ChatStreamMeta }
+  | { type: "delta"; delta: string }
+  | { type: "done"; content: string };
+
+/**
+ * Streaming twin of `chatGuide`. Yields one `meta` event first (actions and
+ * widgets are known before the first token), then text deltas, then `done`
+ * with the full text. Without an API key — or when the query hits one of the
+ * scripted scenarios — the deterministic reply is replayed in short chunks so
+ * the client sees the same shape either way. The four non-streaming calls
+ * above are untouched.
+ */
+export async function* streamChatCompletion(
+  input: ChatInput,
+  signal?: AbortSignal
+): AsyncGenerator<ChatStreamEvent, void, undefined> {
+  const persona = input.persona ?? "Noura";
+  const language = input.language ?? "en";
+  const resolved = resolveSmartQuery(input.message, language, persona);
+  const toolIntent = resolved.toolIntent ?? inferToolIntent(input.message);
+
+  const replayLocal = async function* (): AsyncGenerator<
+    ChatStreamEvent,
+    void,
+    undefined
+  > {
+    yield {
+      type: "meta",
+      meta: {
+        persona,
+        toolIntent,
+        actions: resolved.actions,
+        data: resolved.data,
+        source: "local"
+      }
+    };
+    for (const delta of chunkText(resolved.content)) {
+      if (signal?.aborted) return;
+      yield { type: "delta", delta };
+    }
+    yield { type: "done", content: resolved.content };
+  };
+
+  if (resolved.matched || !client) {
+    yield* replayLocal();
+    return;
+  }
+
+  const system = [
+    `You are ${persona}, Midyaf's world-class hospitality and operational AI for Riyadh.`,
+    "Answer with practical, executive-grade Gulf hospitality and logistics recommendations.",
+    "Use short Markdown: a lead sentence, then bullet points; no headings above level 3, no HTML.",
+    "Respect Saudi cultural context and user privacy.",
+    `Respond in ${language}.`
+  ].join(" ");
+
+  type Chunk = { choices: Array<{ delta?: { content?: string | null } }> };
+  let stream: AsyncIterable<Chunk>;
+  try {
+    stream = await client.chat.completions.create(
+      {
+        model: env.OPENAI_MODEL,
+        stream: true,
+        temperature: 0.4,
+        messages: [
+          { role: "system", content: system },
+          {
+            role: "user",
+            content: JSON.stringify({
+              message: input.message,
+              context: input.context ?? {}
+            })
+          }
+        ]
+      },
+      { signal }
+    );
+  } catch {
+    yield* replayLocal();
+    return;
+  }
+
+  yield {
+    type: "meta",
+    meta: {
+      persona,
+      toolIntent,
+      actions: resolved.actions,
+      data: resolved.data,
+      source: "openai"
+    }
+  };
+  let content = "";
+  try {
+    for await (const chunk of stream) {
+      if (signal?.aborted) return;
+      const delta = chunk.choices[0]?.delta?.content ?? "";
+      if (!delta) continue;
+      content += delta;
+      yield { type: "delta", delta };
+    }
+  } catch {
+    // A mid-stream failure leaves a clean partial; the client keeps what it has.
+    if (!content) {
+      for (const delta of chunkText(resolved.content))
+        yield { type: "delta", delta };
+      content = resolved.content;
+    }
+  }
+  yield { type: "done", content };
+}
+
+/** Word-sized chunks (a few words each) so a replayed reply still reads as typed. */
+function chunkText(text: string, wordsPerChunk = 2): string[] {
+  const parts = text.split(/(\s+)/);
+  const chunks: string[] = [];
+  let current = "";
+  let words = 0;
+  for (const part of parts) {
+    current += part;
+    if (part.trim()) words++;
+    if (words >= wordsPerChunk) {
+      chunks.push(current);
+      current = "";
+      words = 0;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 export async function smartAssistant(
   query: string,
   language: string,
   context?: unknown
 ) {
-  const normLang = (language || "en").toLowerCase().startsWith("ar") ? "ar" : "en";
+  const normLang = (language || "en").toLowerCase().startsWith("ar")
+    ? "ar"
+    : "en";
   const resolved = resolveSmartQuery(query, normLang, "Smart Assistant");
 
   if (resolved.matched || !client) {
@@ -150,34 +298,54 @@ export async function executeSmartAction(
     case "command_center_divert_vans":
       return {
         ok: true,
-        message: "5 executive vans successfully diverted from Terminal 1 to KKIA Terminal 2. Drivers notified via mobile app.",
-        messageAr: "تم تحويل 5 حافلات تنفيذية بنجاح من الصالة 1 إلى الصالة 2 بمطار الملك خالد. تم إشعار السائقين عبر التطبيق.",
-        data: { divertedCount: 5, targetTerminal: "Terminal 2", status: "EN_ROUTE" }
+        message:
+          "5 executive vans successfully diverted from Terminal 1 to KKIA Terminal 2. Drivers notified via mobile app.",
+        messageAr:
+          "تم تحويل 5 حافلات تنفيذية بنجاح من الصالة 1 إلى الصالة 2 بمطار الملك خالد. تم إشعار السائقين عبر التطبيق.",
+        data: {
+          divertedCount: 5,
+          targetTerminal: "Terminal 2",
+          status: "EN_ROUTE"
+        }
       };
 
     case "send_vendor_sms":
     case "send_vendor_message":
       return {
         ok: true,
-        message: "Priority SMS dispatched to Al-Faisal Lighting & AV Lead (+966 55 432 1098). Driver acknowledged and is en route on King Fahd Rd (ETA 10 mins).",
-        messageAr: "تم إرسال تنبيه SMS عاجل لمدير فريق شركة الفيصل (+966 55 432 1098). أكد السائق الاستلام وتواجده على طريق الملك فهد (الوصول خلال 10 دقائق).",
-        data: { recipient: "+966 55 432 1098", vendor: "Al-Faisal Lighting & AV", status: "DELIVERED" }
+        message:
+          "Priority SMS dispatched to Al-Faisal Lighting & AV Lead (+966 55 432 1098). Driver acknowledged and is en route on King Fahd Rd (ETA 10 mins).",
+        messageAr:
+          "تم إرسال تنبيه SMS عاجل لمدير فريق شركة الفيصل (+966 55 432 1098). أكد السائق الاستلام وتواجده على طريق الملك فهد (الوصول خلال 10 دقائق).",
+        data: {
+          recipient: "+966 55 432 1098",
+          vendor: "Al-Faisal Lighting & AV",
+          status: "DELIVERED"
+        }
       };
 
     case "confirm_dispatch_staff":
       return {
         ok: true,
-        message: "2 standby baristas and replenishment cart dispatched to Hall B Executive Lounge. Acknowledged by Najd Hospitality.",
-        messageAr: "تم إرسال 2 باريستا وعربة تموين فوراً إلى استراحة كبار الشخصيات بالقاعة (ب). تم تأكيد الاستلام من شركة نجد.",
-        data: { staffAssigned: 2, location: "Hall B Executive Lounge", status: "DISPATCHED" }
+        message:
+          "2 standby baristas and replenishment cart dispatched to Hall B Executive Lounge. Acknowledged by Najd Hospitality.",
+        messageAr:
+          "تم إرسال 2 باريستا وعربة تموين فوراً إلى استراحة كبار الشخصيات بالقاعة (ب). تم تأكيد الاستلام من شركة نجد.",
+        data: {
+          staffAssigned: 2,
+          location: "Hall B Executive Lounge",
+          status: "DISPATCHED"
+        }
       };
 
     case "track_driver":
     case "track_driver_khaled":
       return {
         ok: true,
-        message: "Live telemetry connected: Capt. Sultan Al-Otaibi (Mercedes Maybach S680 · Plate KSA 9119) is staged at KKIA Terminal 2 VIP Curb Gate 2.",
-        messageAr: "تم الاتصال بالرادار المباشر: الكابتن سلطان العتيبي (مرسيدس مايباخ S680 · لوحة أ د ن 9119) متوقف عند رصيف كبار الشخصيات بوابة 2.",
+        message:
+          "Live telemetry connected: Capt. Sultan Al-Otaibi (Mercedes Maybach S680 · Plate KSA 9119) is staged at KKIA Terminal 2 VIP Curb Gate 2.",
+        messageAr:
+          "تم الاتصال بالرادار المباشر: الكابتن سلطان العتيبي (مرسيدس مايباخ S680 · لوحة أ د ن 9119) متوقف عند رصيف كبار الشخصيات بوابة 2.",
         data: {
           driverName: "Capt. Sultan Al-Otaibi",
           vehicle: "Mercedes Maybach S680",
@@ -193,17 +361,29 @@ export async function executeSmartAction(
     case "notify_butler":
       return {
         ok: true,
-        message: "The Ritz-Carlton Head Butler notified. Royal Suite amenities and Taif Rose Gahwa re-confirmed for H.E. Yasir Al-Rumayyan.",
-        messageAr: "تم إشعار رئيس الخدم في فندق الريتز-كارلتون. تم تأكيد تجهيزات الجناح الملكي والقهوة بورد الطائف لمعالي ياسر الرميان.",
-        data: { hotel: "The Ritz-Carlton Riyadh", suite: "Royal Suite 1", status: "PREPARED" }
+        message:
+          "The Ritz-Carlton Head Butler notified. Royal Suite amenities and Taif Rose Gahwa re-confirmed for H.E. Yasir Al-Rumayyan.",
+        messageAr:
+          "تم إشعار رئيس الخدم في فندق الريتز-كارلتون. تم تأكيد تجهيزات الجناح الملكي والقهوة بورد الطائف لمعالي ياسر الرميان.",
+        data: {
+          hotel: "The Ritz-Carlton Riyadh",
+          suite: "Royal Suite 1",
+          status: "PREPARED"
+        }
       };
 
     case "reserve_dining":
       return {
         ok: true,
-        message: "VIP Table Reserved at Bujairi Terrace (Maiz Restaurant) for 20:30 tonight. Confirmation Code: #BT-7749.",
-        messageAr: "تم تأكيد حجز طاولة كبار الشخصيات في مطل البجيري (مطعم ميز) الليلة الساعة 20:30. رمز الحجز: #BT-7749.",
-        data: { venue: "Maiz Restaurant, Bujairi Terrace", time: "20:30", bookingCode: "BT-7749" }
+        message:
+          "VIP Table Reserved at Bujairi Terrace (Maiz Restaurant) for 20:30 tonight. Confirmation Code: #BT-7749.",
+        messageAr:
+          "تم تأكيد حجز طاولة كبار الشخصيات في مطل البجيري (مطعم ميز) الليلة الساعة 20:30. رمز الحجز: #BT-7749.",
+        data: {
+          venue: "Maiz Restaurant, Bujairi Terrace",
+          time: "20:30",
+          bookingCode: "BT-7749"
+        }
       };
 
     default:
@@ -291,16 +471,22 @@ export async function generatePostEventReport(input?: unknown) {
       "صباح اليوم التالي لانتهاء الفعالية، قام النظام بجمع وتحليل بيانات المراقبة الشاملة. بلغت نسبة رضا كبار الشخصيات 96% مع انسيابية كاملة في عمليات الاستقبال والتسكين في فندقي ماندريان أورينتيل والدرعية.",
     keyFindings: [
       {
-        finding: "Drivers spent 40% of their time sitting idle at the hotel yesterday afternoon.",
-        findingAr: "أمضى السائقون 40% من وقتهم في حالة انتظار ونشاط خامل عند الفندق بعد ظهر أمس."
+        finding:
+          "Drivers spent 40% of their time sitting idle at the hotel yesterday afternoon.",
+        findingAr:
+          "أمضى السائقون 40% من وقتهم في حالة انتظار ونشاط خامل عند الفندق بعد ظهر أمس."
       },
       {
-        finding: "If we group guests together more efficiently next year, we can cut fleet costs by 25% without making anyone wait longer.",
-        findingAr: "إذا قمنا بتجميع الضيوف ضمن دفعات أكثر كفاءة في العام القادم، يمكننا خفض تكاليف الأسطول بنسبة 25% دون زيادة وقت الانتظار لأي ضيف."
+        finding:
+          "If we group guests together more efficiently next year, we can cut fleet costs by 25% without making anyone wait longer.",
+        findingAr:
+          "إذا قمنا بتجميع الضيوف ضمن دفعات أكثر كفاءة في العام القادم، يمكننا خفض تكاليف الأسطول بنسبة 25% دون زيادة وقت الانتظار لأي ضيف."
       },
       {
-        finding: "Long wait times (averaging 18 minutes) at Terminal 2 between 14:00 and 15:30 directly caused lower satisfaction scores at hotel check-in desks.",
-        findingAr: "أدت أوقات الانتظار الطويلة (بمتوسط 18 دقيقة) في الصالة 2 بين الساعة 14:00 و 15:30 بشكل مباشر إلى انخفاض تقييمات الرضا عند مكاتب الاستقبال في الفنادق."
+        finding:
+          "Long wait times (averaging 18 minutes) at Terminal 2 between 14:00 and 15:30 directly caused lower satisfaction scores at hotel check-in desks.",
+        findingAr:
+          "أدت أوقات الانتظار الطويلة (بمتوسط 18 دقيقة) في الصالة 2 بين الساعة 14:00 و 15:30 بشكل مباشر إلى انخفاض تقييمات الرضا عند مكاتب الاستقبال في الفنادق."
       }
     ],
     metrics: {
@@ -313,15 +499,18 @@ export async function generatePostEventReport(input?: unknown) {
     actionPlan: [
       {
         step: "Implement dynamic buffer pooling at King Khalid International Airport (KKIA) Terminal 2.",
-        stepAr: "تطبيق التوزيع المرن للحافلات في مطار الملك خالد الدولي - الصالة 2."
+        stepAr:
+          "تطبيق التوزيع المرن للحافلات في مطار الملك خالد الدولي - الصالة 2."
       },
       {
         step: "Enable automated shuttle batching for arrivals within 20-minute windows.",
-        stepAr: "تفعيل التجميع التلقائي للرحلات الواصلة ضمن نوافذ زمنية مدتها 20 دقيقة."
+        stepAr:
+          "تفعيل التجميع التلقائي للرحلات الواصلة ضمن نوافذ زمنية مدتها 20 دقيقة."
       },
       {
         step: "Pre-clear security and dietary manifests for Diriyah Bujairi Terrace 24 hours in advance.",
-        stepAr: "التصريح المسبق للقوائم الأمنية والغذائية لمطاعم المطل في الدرعية قبل 24 ساعة."
+        stepAr:
+          "التصريح المسبق للقوائم الأمنية والغذائية لمطاعم المطل في الدرعية قبل 24 ساعة."
       }
     ]
   };
@@ -851,23 +1040,44 @@ function deterministicChat(
   persona: string,
   message: string,
   language: string
-): { matched: boolean; content: string; toolIntent?: string; actions?: ChatReplyAction[] } {
+): {
+  matched: boolean;
+  content: string;
+  toolIntent?: string;
+  actions?: ChatReplyAction[];
+} {
   return resolveSmartQuery(message, language, persona);
 }
 
 function inferToolIntent(message: string): string {
   const lower = message.toLowerCase();
 
-  if (lower.includes("missing") || lower.includes("hall a") || lower.includes("vendor")) {
+  if (
+    lower.includes("missing") ||
+    lower.includes("hall a") ||
+    lower.includes("vendor")
+  ) {
     return "vendor_geofence_check";
   }
-  if (lower.includes("keynote") || lower.includes("shuttle") || lower.includes("traffic")) {
+  if (
+    lower.includes("keynote") ||
+    lower.includes("shuttle") ||
+    lower.includes("traffic")
+  ) {
     return "concierge_schedule_check";
   }
-  if (lower.includes("khaled") || lower.includes("gmc") || lower.includes("exit 4")) {
+  if (
+    lower.includes("khaled") ||
+    lower.includes("gmc") ||
+    lower.includes("exit 4")
+  ) {
     return "driver_touchdown_match";
   }
-  if (lower.includes("coffee") || lower.includes("hall b") || lower.includes("pastries")) {
+  if (
+    lower.includes("coffee") ||
+    lower.includes("hall b") ||
+    lower.includes("pastries")
+  ) {
     return "vendor_task_dispatch";
   }
   if (lower.includes("book") || lower.includes("reserve")) {

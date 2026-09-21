@@ -10,7 +10,8 @@ import {
   getCommandCenterInsights,
   planEvent,
   verifyDocument,
-  smartAssistant
+  smartAssistant,
+  streamChatCompletion
 } from "../services/ai.js";
 
 const router = Router();
@@ -33,22 +34,71 @@ router.post(
   })
 );
 
+const chatBody = z.object({
+  message: z.string().min(1),
+  language: z.string().default("en"),
+  persona: z
+    .enum(["Saud", "Noura", "Saif & Munirah", "Ops Manager", "Supply Chain AI"])
+    .default("Saif & Munirah"),
+  context: z.unknown().optional()
+});
+
 router.post(
   "/chat",
   asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        message: z.string().min(1),
-        language: z.string().default("en"),
-        persona: z
-          .enum(["Saud", "Noura", "Saif & Munirah", "Ops Manager", "Supply Chain AI"])
-          .default("Saif & Munirah"),
-        context: z.unknown().optional()
-      })
-      .parse(req.body);
+    const body = chatBody.parse(req.body);
 
     const reply = await chatGuide(body);
     res.json({ reply });
+  })
+);
+
+/**
+ * Server-sent events twin of POST /chat. Frames:
+ *   event: meta   data: {persona, toolIntent, actions, data, source}
+ *   data: {"delta": "..."}                        (repeated)
+ *   event: done   data: {"content": "<full text>"}
+ * Headers are flushed before the first token so proxies (Render, nginx)
+ * cannot buffer the stream; a client disconnect aborts the upstream call.
+ */
+router.post(
+  "/chat/stream",
+  asyncHandler(async (req, res) => {
+    const body = chatBody.parse(req.body);
+
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    // `res` closes when the client goes away; `req` "close" fires as soon as
+    // the JSON body has been read, which would abort every stream at once.
+    const controller = new AbortController();
+    res.on("close", () => {
+      if (!res.writableEnded) controller.abort();
+    });
+
+    const send = (event: string | null, payload: unknown) => {
+      if (res.writableEnded || controller.signal.aborted) return;
+      if (event) res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    try {
+      for await (const evt of streamChatCompletion(body, controller.signal)) {
+        if (evt.type === "meta") send("meta", evt.meta);
+        else if (evt.type === "delta") send(null, { delta: evt.delta });
+        else send("done", { content: evt.content });
+      }
+    } catch (error) {
+      send("error", {
+        message: error instanceof Error ? error.message : "stream_failed"
+      });
+    } finally {
+      if (!res.writableEnded) res.end();
+    }
   })
 );
 

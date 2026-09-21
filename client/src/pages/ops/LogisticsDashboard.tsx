@@ -1,41 +1,76 @@
 // Logistics command dashboard.
 // Extracted verbatim from OperationsPortals.tsx (Phase 1 split).
 import { useEffect, useState } from "react";
-import { BriefcaseBusiness, Car, CheckCircle2, ClipboardCheck, FileText, Key, Plane, ShieldCheck, Sparkles, Users, Radio, Send, AlertTriangle, BarChart2, Coffee, Shield } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Car,
+  ClipboardCheck,
+  FileText,
+  Sparkles,
+  Users,
+  AlertTriangle,
+  Shield
+} from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { MetricCard } from "../../components/MetricCard";
 import { LogisticsMetricModal } from "../../components/LogisticsMetricModal";
 import { useTacticalToast } from "../../components/TacticalToast";
 import { RiyadhMap } from "../../components/map";
 import { Section } from "../../components/Section";
-import { localAiReply } from "../../components/AiPanel";
+import { AiPanel } from "../../components/AiPanel";
 import { DashboardJumpDock } from "../../components/DashboardJumpDock";
 import { apiFetch } from "../../lib/api";
 import { DEMO_HOTSPOTS } from "../../lib/demo/data";
 import type { DemoHotspot } from "../../lib/demo/data";
 import type { PortalProps } from "../types";
 import type { Driver, FileAssetType, Task } from "@shared/domain";
-import { AuditLogPanel, DeliveryLog, Field, FileAssetList, FileUploadButton, MiniStat, PortalHero, RouteLine, canConfirmReports, canManageOperations, canManageVendorWorkflow, latestFileAsset, uploadAcceptByType, useOpsText } from "./shared";
-import { AirportExpressSection, HospitalityRidersSection } from "./RiderSections";
+import {
+  AuditLogPanel,
+  DeliveryLog,
+  Field,
+  FileAssetList,
+  FileUploadButton,
+  MiniStat,
+  PortalHero,
+  RouteLine,
+  canConfirmReports,
+  canManageOperations,
+  canManageVendorWorkflow,
+  latestFileAsset,
+  uploadAcceptByType,
+  useOpsText
+} from "./shared";
+import {
+  AirportExpressSection,
+  HospitalityRidersSection
+} from "./RiderSections";
 import { TaskAssignmentBoard } from "./TaskAssignmentBoard";
 import { OperationsSetup } from "./OperationsSetup";
 import { PlanPhases } from "./PlanPhases";
 
-function LiveCommandCenterSection({ session }: { session?: PortalProps["session"] }) {
+function LiveCommandCenterSection({
+  session
+}: {
+  session?: PortalProps["session"];
+}) {
   const ui = useOpsText();
   const toast = useTacticalToast();
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    apiFetch<any>("/operations/live-command-center", session.accessToken).then((res) => {
-      if (res.ok) setData(res);
-    });
+    apiFetch<any>("/operations/live-command-center", session.accessToken).then(
+      (res) => {
+        if (res.ok) setData(res);
+      }
+    );
   }, [session?.accessToken]);
 
   async function handleDivert() {
     if (!data?.activeAlert?.actionEndpoint || !session?.accessToken) return;
-    await apiFetch<any>(data.activeAlert.actionEndpoint, session.accessToken, { method: "POST" });
+    await apiFetch<any>(data.activeAlert.actionEndpoint, session.accessToken, {
+      method: "POST"
+    });
     toast.success(ui.l("Fleet successfully diverted."));
     setData({ ...data, activeAlert: null });
   }
@@ -50,8 +85,10 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
           <div className="flex items-center gap-2 text-amber-800 font-bold mb-2">
             <Sparkles size={18} /> {ui.l(data.activeAlert.title)}
           </div>
-          <p className="text-amber-900 mb-3">{ui.l(data.activeAlert.message)}</p>
-          <button 
+          <p className="text-amber-900 mb-3">
+            {ui.l(data.activeAlert.message)}
+          </p>
+          <button
             onClick={handleDivert}
             className="bg-amber-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-amber-700 transition"
           >
@@ -61,462 +98,23 @@ function LiveCommandCenterSection({ session }: { session?: PortalProps["session"
       )}
       <div className="grid sm:grid-cols-3 gap-4">
         {data.flaggedTasks?.map((task: any) => (
-          <div key={task.id} className="rounded border border-red-100 bg-red-50 p-3 text-sm">
+          <div
+            key={task.id}
+            className="rounded border border-red-100 bg-red-50 p-3 text-sm"
+          >
             <div className="font-bold text-red-700 flex items-center gap-1.5">
               <AlertTriangle size={14} className="text-red-600 shrink-0" />
-              <span>{ui.l("At Risk")}: {task.ownerName}</span>
+              <span>
+                {ui.l("At Risk")}: {task.ownerName}
+              </span>
             </div>
             <div className="text-red-600 mt-1">{ui.l(task.reason)}</div>
-            <div className="text-red-800 font-medium mt-2 text-xs">{ui.l("Recommendation")}: {ui.l(task.recommendedAction)}</div>
+            <div className="text-red-800 font-medium mt-2 text-xs">
+              {ui.l("Recommendation")}: {ui.l(task.recommendedAction)}
+            </div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function renderOpsChipIcon(iconType: string) {
-  switch (iconType) {
-    case "alert":
-      return <AlertTriangle size={12} className="text-amber-400 shrink-0" />;
-    case "shield":
-      return <ShieldCheck size={12} className="text-emerald-400 shrink-0" />;
-    case "plane":
-      return <Plane size={12} className="text-cyan-400 shrink-0" />;
-    case "clipboard":
-      return <ClipboardCheck size={12} className="text-midyaf-gold shrink-0" />;
-    case "coffee":
-      return <Coffee size={12} className="text-amber-400 shrink-0" />;
-    case "chart":
-      return <BarChart2 size={12} className="text-purple-400 shrink-0" />;
-    default:
-      return <Sparkles size={12} className="text-midyaf-gold shrink-0" />;
-  }
-}
-
-function SmartAssistantSection({
-  session,
-  data,
-  refreshData
-}: {
-  session?: PortalProps["session"];
-  data?: PortalProps["data"];
-  refreshData?: () => Promise<void>;
-}) {
-  const ui = useOpsText();
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<
-    Array<{
-      id: string;
-      author: "user" | "ai";
-      message: string;
-      actions?: any[];
-      executedActionId?: string;
-      widget?: any;
-    }>
-  >([
-    {
-      id: "welcome-op",
-      author: "ai",
-      message: ui.isArabic
-        ? "أهلاً بك في منصة مِضياف الذكية لإدارة العمليات الميدانية (FII 2027). أتابع تدفق الأسطول، الحضور الجغرافي للموردين بالقاعة أ، تنبيهات وصول المطار، والخزنة الأمنية الثلاثية. كيف يمكنني مساعدتك اليوم؟"
-        : "Welcome to the Midyaf AI Operations Brain for Future Investment Initiative 2027 (FII). I monitor fleet telemetry, vendor geofencing, flight arrivals, and the Triple-Key Security Vault. How can I assist you?",
-      actions: [
-        {
-          label: "Check Missing Vendors",
-          labelAr: "فحص الموردين المتأخرين",
-          actionId: "send_vendor_sms"
-        },
-        {
-          label: "Check Triple-Key Vault",
-          labelAr: "فحص الخزنة الثلاثية",
-          actionId: "scroll_to_vault"
-        },
-        {
-          label: "Terminal 2 Flight Surge",
-          labelAr: "تنبيه ازدحام الصالة 2",
-          actionId: "divert_fleet"
-        }
-      ]
-    }
-  ]);
-
-  const quickChips = [
-    { en: "Which vendors are missing from Hall A right now?", ar: "الموردين المتأخرين بالقاعة أ", icon: "alert" },
-    { en: "Triple-Key Security Vault status & sealed bids", ar: "حالة الخزنة الثلاثية والعروض المشفرة", icon: "shield" },
-    { en: "Terminal 2 flight surge & fleet capacity", ar: "تنبيه ازدحام الصالة 2 وتحويل الحافلات", icon: "plane" },
-    { en: "VIP Hospitality Riders & room status", ar: "مذكرات الضيافة الملكية في الريتز", icon: "clipboard" },
-    { en: "Crowd surge at Hall B coffee station", ar: "ازدحام محطة القهوة قاعة ب", icon: "coffee" },
-    { en: "Automated post-event analytics & savings", ar: "تقرير الوفورات والتحليل الذكي", icon: "chart" }
-  ];
-
-  async function handleExecuteAction(messageId: string, action: any) {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId ? { ...msg, executedActionId: action.actionId } : msg
-      )
-    );
-
-    if (action.actionId === "divert_fleet" || action.actionId === "command_center_divert_vans") {
-      if (session?.accessToken) {
-        try {
-          await apiFetch("/operations/divert-fleet", session.accessToken, { method: "POST" });
-          if (refreshData) await refreshData();
-        } catch {
-          // Continue with fallback simulation
-        }
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم بنجاح: تم تحويل 5 حافلات تنفيذية فوراً من الصالة 1 إلى الصالة 2 بمطار الملك خالد الدولي. تم تحديث غرفة العمليات وتوجيه السائقين."
-            : "Action Executed: 5 executive vans successfully diverted from Terminal 1 to KKIA Terminal 2. Drivers notified via mobile telemetry and operations updated."
-        }
-      ]);
-      return;
-    }
-
-    if (action.actionId === "scroll_to_vault") {
-      const el = document.getElementById("triple-key-vault");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-        el.classList.add("ring-4", "ring-emerald-400");
-        setTimeout(() => el.classList.remove("ring-4", "ring-emerald-400"), 3000);
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم نقلك مباشرة إلى لوحة الخزنة الثلاثية لمكافحة الفساد وتدقيق العروض المختومة."
-            : "Navigated directly to the Triple-Key Anti-Corruption Security Vault."
-        }
-      ]);
-      return;
-    }
-
-    if (action.actionId === "inspect_riders") {
-      const el = document.getElementById("hospitality-riders");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-        el.classList.add("ring-4", "ring-amber-400");
-        setTimeout(() => el.classList.remove("ring-4", "ring-amber-400"), 3000);
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم نقلك إلى قسم مذكرات الضيافة الملكية (VIP Riders)."
-            : "Navigated to VIP Hospitality Riders section."
-        }
-      ]);
-      return;
-    }
-
-    if (action.actionId === "view_airport") {
-      const el = document.getElementById("airport-express");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-        el.classList.add("ring-4", "ring-amber-400");
-        setTimeout(() => el.classList.remove("ring-4", "ring-amber-400"), 3000);
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم نقلك إلى قائمة رحلات الاستقبال بمطار الملك خالد."
-            : "Navigated to Airport Express flight arrivals manifest."
-        }
-      ]);
-      return;
-    }
-
-    if (action.actionId === "generate_report") {
-      let reportData: any = null;
-      if (session?.accessToken) {
-        try {
-          const res = await apiFetch<any>("/ai/post-event-report", session.accessToken, { method: "POST" });
-          reportData = res?.report;
-        } catch {
-          // fallback
-        }
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم توليد التقرير التنفيذي الذكي لما بعد الفعالية بنجاح:"
-            : "Automated Executive Post-Event Report successfully generated:",
-          widget: {
-            type: "report",
-            title: reportData?.title || "Executive Post-Event Telemetry Analysis",
-            metrics: reportData?.metrics || {
-              totalGuestsServed: 420,
-              averagePickupWaitMinutes: 4.2,
-              fleetIdlePercentage: 40,
-              estimatedCostSavingsSAR: 145000,
-              npsScore: 88
-            }
-          }
-        }
-      ]);
-      return;
-    }
-
-    if (action.actionId === "track_driver" || action.actionId === "track_driver_khaled") {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: ui.isArabic
-            ? "تم الاتصال بالرادار المباشر: الكابتن سلطان العتيبي (مرسيدس مايباخ S680 · لوحة أ د ن 9119) متوقف أمام رصيف كبار الشخصيات بوابة 2."
-            : "Live telemetry connected: Capt. Sultan Al-Otaibi (Mercedes Maybach S680 · Plate KSA 9119) is staged at KKIA Terminal 2 VIP Curb Gate 2.",
-          widget: {
-            type: "driver",
-            driverName: "Capt. Sultan Al-Otaibi",
-            vehicle: "Mercedes Maybach S680",
-            plate: "KSA 9119",
-            status: ui.p("Staged at VIP Curb Gate 2", "متوقف عند رصيف كبار الشخصيات بوابة 2"),
-            speed: "0 km/h · A/C 20°C",
-            coords: "24.9576° N, 46.6988° E"
-          }
-        }
-      ]);
-      return;
-    }
-
-    if (session?.accessToken) {
-      try {
-        await apiFetch("/ai/execute-action", session.accessToken, {
-          method: "POST",
-          body: JSON.stringify({ actionId: action.actionId })
-        });
-      } catch {
-        // fallback
-      }
-    }
-
-    const defaultConfirmation = ui.isArabic
-      ? `تم تنفيذ الإجراء (${action.labelAr || action.label}) بنجاح وتوثيقه في سجل النظام.`
-      : `Action executed (${action.label}) and logged in Midyaf event stream.`;
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        author: "ai",
-        message: defaultConfirmation
-      }
-    ]);
-  }
-
-  async function handleSend(text?: string) {
-    const q = (text || query).trim();
-    if (!q || loading) return;
-
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), author: "user", message: q }
-    ]);
-    if (!text) setQuery("");
-    setLoading(true);
-
-    try {
-      if (!session?.accessToken) {
-        throw new Error("No session");
-      }
-      const res = await apiFetch<any>("/ai/assistant", session.accessToken, {
-        method: "POST",
-        body: JSON.stringify({ query: q, language: ui.isArabic ? "ar" : "en" })
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: res.reply.message,
-          actions: res.reply.actions,
-          data: res.reply.data
-        }
-      ]);
-    } catch {
-      // Offline / fallback dynamic intelligence
-      const fallback = localAiReply(q, ui.isArabic ? "ar" : "en", "Smart Assistant");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          author: "ai",
-          message: fallback.body,
-          actions: fallback.actions
-        }
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 text-white shadow-sm rounded-lg p-5 sm:p-6 border border-emerald-500/30">
-      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-500/20 text-emerald-400 p-3 rounded-xl ring-1 ring-emerald-500/40 shadow-inner">
-            <Sparkles size={22} className="animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">
-                {ui.l("Midyaf Autonomous Operations Brain")}
-              </h3>
-              <Badge tone="green">
-                <Radio size={12} className="animate-ping inline me-1" />
-                {ui.l("Live Active")}
-              </Badge>
-            </div>
-            <p className="text-xs text-emerald-300/70 mt-0.5">
-              {ui.l("FII 2027 Telemetry · Multi-Party Security Vault · Dynamic Fleet Routing")}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Chat Stream */}
-      <div className="max-h-80 space-y-3 overflow-y-auto p-4 rounded-xl bg-slate-950/60 border border-emerald-500/20 backdrop-blur-sm mb-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className="space-y-2">
-            <div
-              className={`p-3 rounded-xl text-sm leading-relaxed ${
-                msg.author === "user"
-                  ? "ms-auto max-w-[85%] bg-emerald-600/90 text-white shadow-sm"
-                  : "max-w-[92%] bg-slate-900/90 border border-emerald-500/20 text-emerald-50 shadow-sm"
-              }`}
-            >
-              <div className="whitespace-pre-line">{msg.message}</div>
-
-              {msg.widget && msg.widget.type === "report" && (
-                <div className="mt-3 rounded-xl bg-slate-950 p-3.5 border border-amber-500/30 text-white">
-                  <div className="text-xs font-bold text-amber-300 mb-2 border-b border-white/10 pb-1">
-                    {msg.widget.title}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div className="rounded bg-white/5 p-2 border border-white/10">
-                      <div className="text-base font-black text-emerald-400">{msg.widget.metrics.totalGuestsServed}</div>
-                      <div className="text-xs text-slate-400">{ui.p("VIPs Served", "الضيوف المخدومين")}</div>
-                    </div>
-                    <div className="rounded bg-white/5 p-2 border border-white/10">
-                      <div className="text-base font-black text-amber-400">{msg.widget.metrics.npsScore}</div>
-                      <div className="text-xs text-slate-400">{ui.p("NPS Score", "مؤشر الرضا")}</div>
-                    </div>
-                    <div className="rounded bg-white/5 p-2 border border-white/10">
-                      <div className="text-base font-black text-cyan-400">SAR {msg.widget.metrics.estimatedCostSavingsSAR.toLocaleString()}</div>
-                      <div className="text-xs text-slate-400">{ui.p("Fleet Savings", "وفورات الأسطول")}</div>
-                    </div>
-                    <div className="rounded bg-white/5 p-2 border border-white/10">
-                      <div className="text-base font-black text-purple-400">-{msg.widget.metrics.fleetIdlePercentage}%</div>
-                      <div className="text-xs text-slate-400">{ui.p("Idle Time Cut", "خفض الهدر")}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {msg.widget && msg.widget.type === "driver" && (
-                <div className="mt-3 rounded-xl bg-slate-950 p-3.5 border border-emerald-500/40 text-white">
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-2 border-b border-emerald-500/20 pb-1">
-                    <span className="flex items-center gap-1"><Radio size={14} className="animate-pulse" /> {msg.widget.vehicle}</span>
-                    <span className="font-mono text-xs text-amber-300">{msg.widget.plate}</span>
-                  </div>
-                  <div className="text-xs text-slate-300">
-                    <div>{ui.p("Chauffeur", "السائق")}: <strong className="text-white">{msg.widget.driverName}</strong></div>
-                    <div>{ui.p("Status", "الحالة")}: <span className="text-emerald-300">{msg.widget.status} ({msg.widget.speed})</span></div>
-                    <div className="text-xs font-mono text-slate-400 mt-1">{msg.widget.coords}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {msg.author === "ai" && msg.actions && msg.actions.length > 0 && (
-              <div className="flex flex-wrap gap-2 ps-2">
-                {msg.actions.map((act) => {
-                  const isDone = msg.executedActionId === act.actionId;
-                  return (
-                    <button
-                      key={act.actionId}
-                      disabled={isDone}
-                      onClick={() => void handleExecuteAction(msg.id, act)}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition shadow-sm ${
-                        isDone
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-default"
-                          : "bg-amber-500 hover:bg-amber-400 text-slate-950 hover:scale-105 active:scale-95 cursor-pointer shadow-amber-500/20"
-                      }`}
-                    >
-                      {isDone ? <CheckCircle2 size={13} /> : <Sparkles size={13} />}
-                      {ui.isArabic ? act.labelAr : act.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-        {loading && (
-          <div className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/20 max-w-[85%] text-xs text-emerald-300 flex items-center gap-2 animate-pulse">
-            <Sparkles size={14} />
-            <span>{ui.l("Midyaf AI Brain is evaluating operational telemetry...")}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Suggested Prompt Chips */}
-      <div className="mb-3 overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-          <span className="text-emerald-400/80 font-bold shrink-0 flex items-center gap-1">
-            <Sparkles size={12} className="text-midyaf-gold" />
-            <span>{ui.p("Quick Prompts:", "مقترحات سريعة:")}</span>
-          </span>
-          {quickChips.map((chip, idx) => (
-            <button
-              key={idx}
-              type="button"
-              disabled={loading}
-              onClick={() => void handleSend(ui.p(chip.en, chip.ar))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 border border-emerald-500/30 px-3 py-1 text-emerald-200 text-xs transition cursor-pointer hover:border-amber-400 hover:text-amber-300"
-            >
-              {renderOpsChipIcon(chip.icon)}
-              <span>{ui.p(chip.en, chip.ar)}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Input bar */}
-      <form onSubmit={(e) => { e.preventDefault(); void handleSend(); }} className="flex gap-2">
-        <input 
-          className="flex-1 bg-slate-950/80 border border-emerald-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-          placeholder={ui.l("Ask about vendors in Hall A, triple-key vault, flight surges, riders...")}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-40 flex items-center gap-1.5 shadow-md"
-        >
-          <Send size={15} />
-          <span>{loading ? ui.l("Analyzing...") : ui.l("Ask AI")}</span>
-        </button>
-      </form>
     </div>
   );
 }
@@ -525,7 +123,12 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
   const ui = useOpsText();
 
   return (
-    <Section title={ui.p("Live Summit Hotspots & Telemetry Radar", "رادار المواقع الحية وعمليات التتبع التكتيكية")}>
+    <Section
+      title={ui.p(
+        "Live Summit Hotspots & Telemetry Radar",
+        "رادار المواقع الحية وعمليات التتبع التكتيكية"
+      )}
+    >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {hotspots.map((spot) => (
           <div
@@ -546,14 +149,18 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
 
             <div className="mt-3 flex items-center justify-between text-xs border-t border-white/5 pt-2.5 dark:border-slate-800">
               <div>
-                <span className="text-slate-400">{ui.p("Fleet:", "الأسطول:")} </span>
+                <span className="text-slate-400">
+                  {ui.p("Fleet:", "الأسطول:")}{" "}
+                </span>
                 <span className="font-bold text-midyaf-pearl dark:text-midyaf-gold">
                   {spot.activeFleet} {ui.p("Vehicles", "مركبات")}
                 </span>
               </div>
               {spot.vipGuestsCount > 0 && (
                 <div>
-                  <span className="text-slate-400">{ui.p("VIPs:", "كبار الشخصيات:")} </span>
+                  <span className="text-slate-400">
+                    {ui.p("VIPs:", "كبار الشخصيات:")}{" "}
+                  </span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
                     {spot.vipGuestsCount} {ui.p("Guests", "ضيوف")}
                   </span>
@@ -599,7 +206,9 @@ export function LogisticsDashboard({
   const canManageVendors = canManageVendorWorkflow(session);
   const canConfirmReport = canConfirmReports(session);
   const [uploadingAsset, setUploadingAsset] = useState<string | null>(null);
-  const [activeMetricModal, setActiveMetricModal] = useState<"visitors" | "tasks" | "contracts" | "commission" | "reports" | null>(null);
+  const [activeMetricModal, setActiveMetricModal] = useState<
+    "visitors" | "tasks" | "contracts" | "commission" | "reports" | null
+  >(null);
   const totalCommission = data.vendorQuotes.reduce(
     (sum, quote) => sum + Number(quote.commissionAmount),
     0
@@ -685,11 +294,21 @@ export function LogisticsDashboard({
   return (
     <div className="space-y-4">
       <PortalHero
-        badge={ui.isArabic ? "لوحة العمليات والتحكم الميداني" : "Operations Dashboard"}
-        title={ui.isArabic ? "لوحة العمليات والتحكم الميداني الموحد" : "Unified Operations & Field Command Dashboard"}
-        body={ui.isArabic
-          ? "المركز التشغيلي الميداني لإدارة الفعاليات: رادار الوصول، خريطة الأسطول، توزيع المهام، وتفويج الضيوف والخدمات الميدانية (تنفيذ تشغيلي حصراً بدون بيانات مالية)."
-          : "Operational command center for event delivery: live radar, fleet map, task dispatch, and guest logistics (strictly operational execution, zero financial data)."}
+        badge={
+          ui.isArabic
+            ? "لوحة العمليات والتحكم الميداني"
+            : "Operations Dashboard"
+        }
+        title={
+          ui.isArabic
+            ? "لوحة العمليات والتحكم الميداني الموحد"
+            : "Unified Operations & Field Command Dashboard"
+        }
+        body={
+          ui.isArabic
+            ? "المركز التشغيلي الميداني لإدارة الفعاليات: رادار الوصول، خريطة الأسطول، توزيع المهام، وتفويج الضيوف والخدمات الميدانية (تنفيذ تشغيلي حصراً بدون بيانات مالية)."
+            : "Operational command center for event delivery: live radar, fleet map, task dispatch, and guest logistics (strictly operational execution, zero financial data)."
+        }
       />
 
       <DashboardJumpDock isArabic={ui.isArabic} isDemoMode={isDemoMode} />
@@ -698,20 +317,37 @@ export function LogisticsDashboard({
         <>
           <LiveCommandCenterSection session={session} />
           <div id="section-smart-assistant">
-            <SmartAssistantSection session={session} data={data} refreshData={refreshData} />
+            <AiPanel
+              persona="Ops Manager"
+              session={session}
+              data={data}
+              isDemoMode={isDemoMode}
+              refreshData={refreshData}
+            />
           </div>
         </>
       )}
 
-      <HospitalityRidersSection data={data} session={session} refreshData={refreshData} />
-      <AirportExpressSection data={data} session={session} refreshData={refreshData} />
+      <HospitalityRidersSection
+        data={data}
+        session={session}
+        refreshData={refreshData}
+      />
+      <AirportExpressSection
+        data={data}
+        session={session}
+        refreshData={refreshData}
+      />
       {isDemoMode && (
         <div id="section-hotspots-radar">
           <LiveSummitHotspotsRadar hotspots={DEMO_HOTSPOTS} />
         </div>
       )}
 
-      <div id="section-metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        id="section-metrics"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         <MetricCard
           label={ui.l("Visitors")}
           value={data.activityIntakes[0].visitorCount}
@@ -729,7 +365,9 @@ export function LogisticsDashboard({
         <MetricCard
           label={ui.isArabic ? "الكباتن بالخدمة" : "Active Captains"}
           value={data.drivers.length}
-          detail={ui.isArabic ? "جاهزون للتفويج والمواكب" : "Ready for VIP dispatch"}
+          detail={
+            ui.isArabic ? "جاهزون للتفويج والمواكب" : "Ready for VIP dispatch"
+          }
           icon={<Car size={17} />}
           onClick={() => setActiveMetricModal("tasks")}
         />
@@ -811,7 +449,9 @@ export function LogisticsDashboard({
                   className="mb-3 text-midyaf-pearl"
                   size={18}
                 />
-                <p className="font-semibold text-slate-900 dark:text-white">{ui.l(role)}</p>
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  {ui.l(role)}
+                </p>
                 <p className="mt-1 text-xs text-slate-500">{ui.l(scope)}</p>
               </div>
             ))}
@@ -875,7 +515,11 @@ export function LogisticsDashboard({
                         onUpload={(file) =>
                           void handleGuestAssetUpload(
                             guest,
-                            type as "VISA" | "TICKET" | "GUEST_PHOTO" | "PROMO_VIDEO",
+                            type as
+                              | "VISA"
+                              | "TICKET"
+                              | "GUEST_PHOTO"
+                              | "PROMO_VIDEO",
                             file
                           )
                         }

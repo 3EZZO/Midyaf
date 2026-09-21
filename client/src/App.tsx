@@ -510,6 +510,7 @@ export function App() {
       isDemoMode={isDemoMode}
       realtimeLog={realtimeLog}
       event={data.events[0]}
+      data={data}
       drivers={data.drivers}
       tasks={data.events[0]?.tasks ?? []}
       isWarRoomOpen={isWarRoomOpen}

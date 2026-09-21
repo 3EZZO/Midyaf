@@ -8,7 +8,7 @@ import {
 import { Activity } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CONCENTRIC_GEOFENCES } from "@shared/constants";
-import type { Driver, Event, Task } from "@shared/domain";
+import type { Driver, Event, MidyafData, Session, Task } from "@shared/domain";
 import { cn } from "../../lib/cn";
 import { DEMO_CONVOYS } from "../../lib/demo/data";
 import { getDirector } from "../../lib/demo/director";
@@ -16,6 +16,7 @@ import { useDirectorState } from "../../lib/demo/useDemoDirector";
 import { isArabicLanguage } from "../../lib/localize";
 import { driverRingPosition, slaSample } from "../../lib/metrics";
 import { tacticalAudio } from "../../lib/tacticalAudio";
+import { AiBriefingCard } from "../ai/AiBriefingCard";
 import { Heartbeat } from "../charts";
 import { RiyadhMap } from "../map";
 import { ActTitleCard } from "./ActTitleCard";
@@ -37,6 +38,9 @@ export type SovereignCommandBridgeProps = {
   event?: Event;
   drivers: Driver[];
   tasks: Task[];
+  /** For the streamed briefing: the bearer token and the snapshot it is grounded in. */
+  session?: Session;
+  data?: MidyafData;
 };
 
 /**
@@ -52,7 +56,9 @@ export function SovereignCommandBridge({
   isDemoMode,
   event,
   drivers,
-  tasks
+  tasks,
+  session,
+  data
 }: SovereignCommandBridgeProps) {
   const { i18n } = useTranslation();
   const isArabic = isArabicLanguage(i18n.language);
@@ -205,6 +211,15 @@ export function SovereignCommandBridge({
               onSelectDriver={(driver) => setSelectedDriverId(driver.id)}
               className="flex-1"
             />
+            {/* Leaflet panes sit at z-400/1000; the briefing floats above them at the map's bottom-start. */}
+            <div className="pointer-events-none absolute inset-3 z-[1100] flex items-end">
+              <AiBriefingCard
+                isArabic={isArabic}
+                session={session}
+                data={data}
+                isDemoMode={isDemoMode}
+              />
+            </div>
           </div>
           <OccupancyStrip isArabic={isArabic} drivers={drivers} />
         </section>
