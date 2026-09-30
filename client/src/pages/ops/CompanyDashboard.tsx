@@ -6,7 +6,7 @@ import { Badge } from "../../components/Badge";
 import { useTacticalToast } from "../../components/TacticalToast";
 import { Section } from "../../components/Section";
 import { IconTabNav } from "../../components/ui/IconTabNav";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, downloadReportPdf } from "../../lib/api";
 import type { PortalProps } from "../types";
 import type { ClientPermissionConfig, Task } from "@shared/domain";
 import { DEFAULT_CLIENT_CONFIG } from "@shared/constants";
@@ -122,21 +122,16 @@ export function CompanyDashboard({
 
     setIsDownloadingReport(true);
     try {
-      const response = await fetch(`/api/company-reports/${report.id}/pdf`, {
-        headers: { Authorization: `Bearer ${session.accessToken}` }
-      });
-
-      if (!response.ok) {
-        throw new Error("Report download failed");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `midyaf-report-${report.id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await downloadReportPdf(
+        report.id,
+        session.accessToken,
+        ui.isArabic ? "ar" : "en"
+      );
+    } catch {
+      toast.alert(
+        ui.isArabic ? "تعذر تنزيل التقرير" : "Report download failed",
+        ui.isArabic ? "أعد المحاولة بعد لحظات" : "Try again in a moment"
+      );
     } finally {
       setIsDownloadingReport(false);
     }

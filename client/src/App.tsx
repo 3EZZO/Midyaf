@@ -52,7 +52,15 @@ import type {
   TaskCreateInput,
   UserCreateInput
 } from "./pages/types";
-import { ApiError, apiFetch, apiUploadFile, getBootstrap, login, refreshSession } from "./lib/api";
+import {
+  ApiError,
+  apiFetch,
+  apiUploadFile,
+  downloadReportPdf,
+  getBootstrap,
+  login,
+  refreshSession
+} from "./lib/api";
 import { SocketContext, useSocket } from "./lib/useSocket";
 import {
   isArabicLanguage,
@@ -396,7 +404,8 @@ export function App() {
       updateTaskStatus,
       shareDriverLocation,
       createBooking,
-      uploadFile
+      uploadFile,
+      downloadReport
     }),
     [data, session, isDemoMode]
   );
@@ -1018,6 +1027,24 @@ export function App() {
     }
   }
 
+  async function downloadReport(reportId: string) {
+    const activeSession = requireSession();
+    // Read the language at click time: portalProps is memoised without it.
+    const arabic = isArabicLanguage(i18n.language);
+    try {
+      await downloadReportPdf(
+        reportId,
+        activeSession.accessToken,
+        arabic ? "ar" : "en"
+      );
+    } catch {
+      toast.alert(
+        arabic ? "تعذر تنزيل التقرير" : "Report download failed",
+        arabic ? "أعد المحاولة بعد لحظات" : "Try again in a moment"
+      );
+    }
+  }
+
   async function shareDriverLocation(driverId: string) {
     const currentData = requireData();
     const activeSession = requireSession();
@@ -1142,9 +1169,7 @@ function renderPortal(
           isDemoMode={props.isDemoMode ?? false}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
-            if (report) {
-              window.open(`/api/company-reports/${report.id}/pdf`, "_blank");
-            }
+            if (report) void props.downloadReport(report.id);
           }}
         />
       );
@@ -1158,9 +1183,7 @@ function renderPortal(
           onToggleDemo={props.canTriggerSimulation ? props.toggleDemoMode : undefined}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
-            if (report) {
-              window.open(`/api/company-reports/${report.id}/pdf`, "_blank");
-            }
+            if (report) void props.downloadReport(report.id);
           }}
         />
       );

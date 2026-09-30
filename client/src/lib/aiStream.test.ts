@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { streamAiChat, streamAiReply, streamLocalReply } from "./aiStream";
+import {
+  AI_FIRST_FRAME_TIMEOUT_MS,
+  AI_STALL_TIMEOUT_MS,
+  streamAiChat,
+  streamAiReply,
+  streamLocalReply
+} from "./aiStream";
 
 /** A Response whose body emits the given SSE frames in the given byte chunks. */
 function sseResponse(chunks: string[], status = 200): Response {
@@ -149,5 +155,71 @@ describe("streamAiReply", () => {
     const result = await streamAiReply("tok", body, { onDelta: () => {} });
     expect(result.text).toBe("half ");
     expect(result.meta).toBeNull();
+  });
+
+  it("gives up on a server that never answers and replays the local reply", async () => {
+    vi.useFakeTimers();
+    // A stalled venue link: the request neither resolves nor fails until aborted.
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError"))
+          );
+        })
+    );
+    let text = "";
+    const p = streamAiReply("tok", body, { onDelta: (_d, t) => (text = t) });
+    await vi.advanceTimersByTimeAsync(AI_FIRST_FRAME_TIMEOUT_MS - 100);
+    expect(text).toBe("");
+    await vi.runAllTimersAsync();
+    const result = await p;
+    expect(result.meta?.source).toBe("local");
+    expect(result.aborted).toBe(false);
+    expect(result.text.length).toBeGreaterThan(20);
+  });
+
+  it("cuts a stream that goes quiet and keeps the partial", async () => {
+    vi.useFakeTimers();
+    const encoder = new TextEncoder();
+    let pulls = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        // First read delivers text; the second never settles (a stalled link).
+        if (pulls++ === 0)
+          controller.enqueue(encoder.encode('data: {"delta":"half "}\n\n'));
+        else return new Promise<void>(() => {});
+      }
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, { status: 200 })
+    );
+    const p = streamAiReply("tok", body, { onDelta: () => {} });
+    await vi.advanceTimersByTimeAsync(AI_STALL_TIMEOUT_MS + 100);
+    const result = await p;
+    expect(result.text).toBe("half ");
+    expect(result.aborted).toBe(false);
+  });
+
+  it("reports a caller abort as aborted, not as a fallback", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError"))
+          );
+        })
+    );
+    const controller = new AbortController();
+    const p = streamAiReply(
+      "tok",
+      body,
+      { onDelta: () => {} },
+      controller.signal
+    );
+    controller.abort();
+    const result = await p;
+    expect(result.aborted).toBe(true);
+    expect(result.text).toBe("");
   });
 });

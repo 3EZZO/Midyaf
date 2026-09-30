@@ -38,6 +38,19 @@ export default defineConfig({
         // Keep the demo alive on venue Wi-Fi: map tiles and fonts are served
         // from cache once a rehearsal has warmed them.
         // Hosts must match components/map/constants.ts TILE_LAYERS.
+        // The default glob is js/css/html only; the self-hosted fonts and
+        // brand images must be precached too or they vanish offline.
+        globPatterns: ["**/*.{js,css,html,woff2,png,jpeg,svg,ico,webmanifest}"],
+        globIgnores: [
+          "**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*"
+        ],
+        // Server routes are never the SPA: a navigation to a report PDF or an
+        // upload must reach the network, not the cached index.html.
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/uploads\//,
+          /^\/socket\.io\//
+        ],
         runtimeCaching: [
           {
             // World_Imagery (server.) and the Dark Gray fallback (services.)

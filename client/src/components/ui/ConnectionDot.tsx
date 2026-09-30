@@ -12,6 +12,11 @@ const meta: Record<SocketStatus, { color: string; en: string; ar: string; pulse?
   offline: { color: "bg-danger", en: "Offline", ar: "غير متصل بالخادم" }
 };
 
+/** Human label for a socket status (shared with the top-bar ticker). */
+export function connectionLabel(status: SocketStatus, isArabic: boolean) {
+  return isArabic ? meta[status].ar : meta[status].en;
+}
+
 /** Live-connection indicator. Reads the single socket's status from context. */
 export function ConnectionDot({ showLabel = false, className }: { showLabel?: boolean; className?: string }) {
   const { status } = useSocketContext();

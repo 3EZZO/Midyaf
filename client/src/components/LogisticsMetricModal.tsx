@@ -31,6 +31,7 @@ import { KpiTile } from "./ui/KpiTile";
 import { AreaTrend } from "./charts/AreaTrend";
 import { tacticalAudio } from "../lib/tacticalAudio";
 import { useTacticalToast } from "./TacticalToast";
+import { downloadReportPdf } from "../lib/api";
 import { Badge } from "./Badge";
 
 interface LogisticsMetricModalProps {
@@ -943,14 +944,24 @@ export function LogisticsMetricModal({
                 <button
                   type="button"
                   onClick={() => {
-                    
+                    const reportId = data.companyReports[0]?.id;
+                    if (!reportId || !session) {
+                      toast.info(
+                        isArabic ? "لا يوجد تقرير معتمد بعد" : "No confirmed report yet",
+                        isArabic ? "يصدر التقرير بعد اعتماد مدير اللوجستيات" : "Reports are issued after logistics manager confirmation"
+                      );
+                      return;
+                    }
                     toast.success(
                       isArabic ? "جاري تصدير التقرير التنفيذي الرسمي" : "Exporting Executive Report",
                       isArabic ? "صيغة PDF معتمدة وموثقة" : "Official Certified PDF"
                     );
-                    const reportId = data.companyReports[0]?.id || "r-1";
-                    const tokenParam = session?.accessToken ? `?token=${encodeURIComponent(session.accessToken)}` : "";
-                    window.open(`/api/company-reports/${reportId}/pdf${tokenParam}`, "_blank");
+                    downloadReportPdf(reportId, session.accessToken, isArabic ? "ar" : "en").catch(() =>
+                      toast.alert(
+                        isArabic ? "تعذر تنزيل التقرير" : "Report download failed",
+                        isArabic ? "أعد المحاولة بعد لحظات" : "Try again in a moment"
+                      )
+                    );
                   }}
                   className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-midyaf-gold to-amber-600 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg hover:brightness-110 transition active:scale-95"
                 >

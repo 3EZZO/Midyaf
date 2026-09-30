@@ -106,6 +106,35 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Fetch a company report PDF with the bearer header and save it. A plain
+ * `window.open("/api/…")` would send no token (401) and, once the service
+ * worker controls the page, could be answered with the app shell instead.
+ */
+export async function downloadReportPdf(
+  reportId: string,
+  accessToken: string,
+  language: "ar" | "en"
+) {
+  const response = await fetch(
+    `${API_BASE}/company-reports/${encodeURIComponent(reportId)}/pdf?lang=${language}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!response.ok) {
+    throw new ApiError("Report download failed", response.status);
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `midyaf-report-${reportId}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoking synchronously can cancel the download in Safari.
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 /** Trade the refresh token for a fresh session; throws when it too has expired. */
 export async function refreshSession(refreshToken: string): Promise<Session> {
   const response = await fetch(`${API_BASE}/auth/refresh`, {

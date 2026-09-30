@@ -57,6 +57,8 @@ export type PortalProps = {
   shareDriverLocation: (driverId: string) => Promise<void>;
   createBooking: (serviceId: string, supplierId: string) => Promise<void>;
   uploadFile: (file: File, input: FileUploadInput) => Promise<FileAsset>;
+  /** Fetch a company report PDF with auth and save it. */
+  downloadReport: (reportId: string) => Promise<void>;
 };
 
 export type GuestInviteInput = {

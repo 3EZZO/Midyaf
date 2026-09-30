@@ -3,11 +3,12 @@ import { LogOut, Search, Shield, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { PortalKey, Role, Session } from "@shared/domain";
 import { Button, IconButton } from "../components/ui/Button";
-import { ConnectionDot } from "../components/ui/ConnectionDot";
+import { ConnectionDot, connectionLabel } from "../components/ui/ConnectionDot";
 import { Kbd } from "../components/ui/Kbd";
 import { Tooltip } from "../components/ui/Tooltip";
 import { cn } from "../lib/cn";
 import { fade } from "../lib/motion";
+import { useSocketContext } from "../lib/useSocket";
 import { portalIcons, portalMeta } from "./portalMeta";
 
 // Privileged roles are shown by title rather than personal name on shared screens.
@@ -56,6 +57,15 @@ export function TopBar({
   const meta = portalMeta[portal];
   const Icon = portalIcons[portal];
   const { name, initials } = displayNameFor(session, isArabic);
+  const { status } = useSocketContext();
+  // Without a live ticker the pill states the link honestly: it must never
+  // claim "connected" while the server is unreachable.
+  const idleText =
+    status === "connected"
+      ? isArabic
+        ? "البث المباشر متصل"
+        : "Live telemetry connected"
+      : connectionLabel(status, isArabic);
 
   return (
     <header
@@ -80,7 +90,7 @@ export function TopBar({
       <div className="hidden min-w-0 flex-1 items-center justify-center xl:flex">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
-            key={ticker ?? "idle"}
+            key={ticker ?? status}
             variants={fade}
             initial="initial"
             animate="animate"
@@ -88,7 +98,7 @@ export function TopBar({
             className="inline-flex max-w-md items-center gap-2 truncate rounded-lg border border-hairline bg-surface-2 px-3 py-1.5 text-xs text-ink-muted"
           >
             <ConnectionDot />
-            <span className="truncate">{ticker ?? (isArabic ? "البث المباشر متصل" : "Live telemetry connected")}</span>
+            <span className="truncate">{ticker ?? idleText}</span>
           </motion.span>
         </AnimatePresence>
       </div>

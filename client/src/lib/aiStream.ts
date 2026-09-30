@@ -66,6 +66,10 @@ export async function streamAiChat(
   let text = "";
   let meta: AiStreamMeta | null = null;
   let aborted = false;
+  // Cancel the read ourselves on abort rather than trusting every fetch
+  // implementation to error the body stream.
+  const cancelRead = () => void reader.cancel().catch(() => {});
+  signal?.addEventListener("abort", cancelRead, { once: true });
 
   const handleFrame = (frame: string) => {
     let event = "message";
@@ -122,15 +126,25 @@ export async function streamAiChat(
       aborted = true;
     else throw error;
   } finally {
+    signal?.removeEventListener("abort", cancelRead);
     reader.releaseLock();
   }
-  return { text, meta, aborted };
+  return { text, meta, aborted: aborted || Boolean(signal?.aborted) };
 }
 
 /**
+ * Venue Wi-Fi tends to stall rather than fail, and a stalled fetch can hang
+ * for minutes. No first frame within this window means "the server is not
+ * coming" and the local reply takes over; a stream that goes quiet this long
+ * after it started is cut and kept as a clean partial.
+ */
+export const AI_FIRST_FRAME_TIMEOUT_MS = 8_000;
+export const AI_STALL_TIMEOUT_MS = 15_000;
+
+/**
  * The one entry point the UI uses: stream from the server when there is a
- * session, otherwise (or on any transport failure before the first token)
- * replay the deterministic reply through the same handlers. Callers never
+ * session, otherwise (or on any transport failure or stall before the first
+ * token) replay the deterministic reply through the same handlers. Callers never
  * branch on where the text came from; `meta.source` records it.
  */
 export async function streamAiReply(
@@ -152,27 +166,53 @@ export async function streamAiReply(
 
   let received = "";
   let meta: AiStreamMeta | null = null;
+  // The server attempt gets its own controller so the watchdog can cut it
+  // without reporting the caller request as aborted.
+  const attempt = new AbortController();
+  const forwardAbort = () => attempt.abort();
+  signal?.addEventListener("abort", forwardAbort, { once: true });
+  let stalled = false;
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
+  const arm = (ms: number) => {
+    clearTimeout(watchdog);
+    watchdog = setTimeout(() => {
+      stalled = true;
+      attempt.abort();
+    }, ms);
+  };
+  arm(AI_FIRST_FRAME_TIMEOUT_MS);
+
+  const settle = (result: AiStreamResult) => {
+    clearTimeout(watchdog);
+    if (signal?.aborted) return { text: received, meta, aborted: true };
+    // A cut or failure after text has arrived is a clean partial, not a restart.
+    if (received) return { ...result, text: received, meta, aborted: false };
+    return stalled || result.aborted ? local() : result;
+  };
+
   try {
-    return await streamAiChat(
+    const result = await streamAiChat(
       accessToken,
       body,
       {
         onMeta: (m) => {
           meta = m;
+          arm(AI_STALL_TIMEOUT_MS);
           handlers.onMeta?.(m);
         },
         onDelta: (delta, text) => {
           received = text;
+          arm(AI_STALL_TIMEOUT_MS);
           handlers.onDelta(delta, text);
         }
       },
-      signal
+      attempt.signal
     );
+    return await settle(result);
   } catch {
-    // A failure after text has arrived is a clean partial, not a restart.
-    if (received || signal?.aborted)
-      return { text: received, meta, aborted: Boolean(signal?.aborted) };
-    return local();
+    return await settle({ text: "", meta, aborted: true });
+  } finally {
+    signal?.removeEventListener("abort", forwardAbort);
   }
 }
 
