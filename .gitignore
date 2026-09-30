@@ -38,3 +38,6 @@ prisma/migrations/
 scratch/
 test_arabic.pdf
 Midyaf_Screen_Recording_Script.pdf
+
+# Claude Code generated git worktrees (full repo checkouts; never commit)
+/.claude/worktrees/
