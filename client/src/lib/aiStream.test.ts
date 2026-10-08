@@ -158,7 +158,7 @@ describe("streamAiReply", () => {
     expect(result.aborted).toBe(false);
     expect(result.text).toBe(expected.body);
     expect(streamed).toBe(expected.body);
-    expect(result.text).toContain("الكابتن سلطان العتيبي");
+    expect(result.text).toContain("الكباتن —");
     expect(result.text).not.toMatch(/[ØÙÃÂ]|â€/);
     expect(result.meta).toEqual({
       persona: "Noura",
@@ -172,6 +172,76 @@ describe("streamAiReply", () => {
       source: "local"
     });
     expect(metas).toEqual([result.meta]);
+  });
+
+  it("forwards the briefing context into the fallback on a forced transport failure", async () => {
+    vi.useFakeTimers();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    const context = {
+      demo: false,
+      event: {
+        id: "evt-forum",
+        name: "Qassim Date Forum",
+        venue: "Buraydah Expo",
+        date: "2027-08-19",
+        status: "LIVE"
+      },
+      fleet: { total: 5, active: 2, idle: 3, offline: 0, utilisationPercent: 40 }
+    };
+    const request = {
+      message: "Track the chauffeur",
+      language: "en",
+      persona: "Noura" as const,
+      context
+    };
+    const metas: unknown[] = [];
+    const p = streamAiReply("tok", request, {
+      onMeta: (m) => metas.push(m),
+      onDelta: () => {}
+    });
+    await vi.runAllTimersAsync();
+    const result = await p;
+
+    // The server was really tried, with the same context, before falling back.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
+    expect(sent.context).toEqual(context);
+
+    const expected = localAiReply(request.message, "en", "Noura", context);
+    expect(result.text).toBe(expected.body);
+    expect(result.text).toContain("Qassim Date Forum, Buraydah Expo, 2027-08-19");
+    expect(result.text).toContain("2 active, 3 idle and 0 offline of 5 captains");
+    expect(result.text).not.toMatch(/FII|Maybach|Sultan/);
+    expect(result.meta).toEqual({
+      persona: "Noura",
+      actions: expected.actions,
+      source: "local"
+    });
+    expect(result.meta?.actions?.map((a) => a.actionId)).toEqual(["track_driver"]);
+    expect(metas).toEqual([result.meta]);
+  });
+
+  it("narrates a rehearsal snapshot locally instead of sending it to the server", async () => {
+    vi.useFakeTimers();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const context = {
+      demo: true,
+      event: { id: "evt-r", name: "Rehearsal Expo", venue: "Hall 9", date: "2027-05-01" }
+    };
+    const p = streamAiReply(
+      "tok",
+      { message: "Show the agenda", language: "ar", persona: "Noura", context },
+      { onDelta: () => {} }
+    );
+    await vi.runAllTimersAsync();
+    const result = await p;
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result.meta?.source).toBe("local");
+    expect(result.text).toContain("Rehearsal Expo");
+    expect(result.text).toContain("الجدول —");
+    expect(result.meta?.actions?.map((a) => a.actionId)).toEqual(["view_shuttle_gps"]);
   });
 
   it("keeps a clean partial when the server drops mid-stream", async () => {

@@ -199,6 +199,71 @@ describe("Director", () => {
     expect(director.getState().actElapsedMs).toBe(frozen.actElapsedMs + 5_000);
   });
 
+  it("stop forgets the run and blocks late ticks, transport and publishing", () => {
+    director.load(sovereignArrival);
+    director.seekAct(4);
+    director.play();
+    run(director, 60_000);
+    expect(director.getState().scorecardVisible).toBe(true);
+
+    let notified = 0;
+    const unsubscribe = director.subscribe(() => notified++);
+    director.stop();
+    unsubscribe();
+    expect(notified).toBe(1);
+
+    const state = director.getState();
+    expect(state.status).toBe("idle");
+    expect(state.scriptId).toBeNull();
+    expect(state.actId).toBeNull();
+    expect(state.totalElapsedMs).toBe(0);
+    expect(state.scorecardVisible).toBe(false);
+    expect(state.flights).toEqual({});
+    expect(state.landingAt).toBeNull();
+    expect(state.convoys.sultan.position).toBeNull();
+    expect(state.convoys.sultan.ring).toBe("OUTSIDE");
+    // Driver mapping comes from the workspace, not the run, so it is kept.
+    expect(state.convoys.sultan.driverId).toBe("d1");
+
+    // A frame that was already queued, or a stray control, does nothing.
+    const { events, off } = capture();
+    run(director, 30_000);
+    director.play();
+    director.next();
+    director.seekAct(2);
+    director.restart();
+    run(director, 30_000);
+    off();
+    expect(events).toEqual([]);
+    expect(director.getState().status).toBe("idle");
+  });
+
+  it("re-entry after stop starts a clean Act 1", () => {
+    director.load(sovereignArrival);
+    director.play();
+    run(director, 40_000);
+    director.stop();
+
+    const { events, off } = capture();
+    director.load(sovereignArrival);
+    director.play();
+    off();
+    const state = director.getState();
+    expect(state.status).toBe("playing");
+    expect(state.actIndex).toBe(0);
+    expect(state.actElapsedMs).toBe(0);
+    expect(state.totalElapsedMs).toBe(0);
+    expect(state.scorecardVisible).toBe(false);
+    expect(state.convoys.sultan.position).toEqual([
+      DEMO_DRIVER_ROUTES.sultan[0].lat,
+      DEMO_DRIVER_ROUTES.sultan[0].lng
+    ]);
+    // Setup replays from scratch, including the act title for the new run.
+    expect(events.some((e) => e.name === "demo:act")).toBe(true);
+    // Seeding is reset too: placing the convoy reports no ring crossing.
+    expect(events.some((e) => e.name === "geofence:transition")).toBe(false);
+  });
+
   it("ends after the last act and restarts from Act 1 on play", () => {
     const short: Script = {
       id: "s",

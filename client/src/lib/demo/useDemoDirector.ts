@@ -7,8 +7,9 @@ import {
 } from "react";
 import type { MidyafData } from "@shared/domain";
 import type { ToastApi } from "../../components/ui/Toast";
-import { liveEvents, type LiveEvent } from "../liveEvents";
+import { liveEvents, type LiveEvent, type LiveSource } from "../liveEvents";
 import { applyLiveEvent } from "../liveState";
+import { getDemoLifecycle } from "./demoLifecycle";
 import { getDirector, type Director, type DirectorState } from "./director";
 import { sovereignArrival } from "./scripts/sovereignArrival";
 
@@ -16,8 +17,10 @@ import { sovereignArrival } from "./scripts/sovereignArrival";
  * Binds the director to the workspace. Mounted once in App: it feeds the
  * director the current drivers/tasks/guests, applies every director-sourced
  * bus event to `data` through the same reducer the socket uses, and mirrors
- * ticker lines into the top-bar log. Enabling loads the storyboard and
- * starts it; disabling pauses it in place.
+ * ticker lines into the top-bar log. Enabling starts the storyboard from a
+ * clean Act 1; disabling stops and forgets the run. The bus listener stays
+ * subscribed but ignores director events unless the rehearsal that emitted
+ * them is still the live one (`DemoLifecycle`).
  */
 export function useDemoDirector({
   enabled,
@@ -32,9 +35,10 @@ export function useDemoDirector({
   setData: Dispatch<SetStateAction<MidyafData | null>>;
   isArabic: boolean;
   toast: ToastApi;
-  pushLog: (line: string) => void;
+  pushLog: (line: string, source?: LiveSource) => void;
 }): Director {
   const director = getDirector();
+  const lifecycle = getDemoLifecycle();
 
   useEffect(() => {
     director.setHooks({
@@ -59,9 +63,10 @@ export function useDemoDirector({
 
   useEffect(() => {
     if (!enabled) {
-      director.pause();
+      director.stop();
       return;
     }
+    director.stop();
     director.load(sovereignArrival);
     director.play();
     return () => director.pause();
@@ -69,8 +74,13 @@ export function useDemoDirector({
 
   const onEvent = useCallback(
     (event: LiveEvent) => {
-      if (event.source !== "director") return;
-      setData((current) => applyLiveEvent(current, event));
+      if (event.source !== "director" || !lifecycle.active) return;
+      const epoch = lifecycle.epoch;
+      // Re-checked when React applies it: an exit (or a newer rehearsal)
+      // queued in between wins, so a late event never lands on normal data.
+      setData((current) =>
+        lifecycle.isRehearsal(epoch) ? applyLiveEvent(current, event) : current
+      );
       const stamp = new Date(event.at).toLocaleTimeString(
         isArabic ? "ar-SA-u-nu-latn" : "en-SA",
         {
@@ -80,18 +90,22 @@ export function useDemoDirector({
         }
       );
       if (event.name === "demo:ticker")
-        pushLog(`${isArabic ? event.payload.ar : event.payload.en} · ${stamp}`);
+        pushLog(
+          `${isArabic ? event.payload.ar : event.payload.en} · ${stamp}`,
+          "director"
+        );
       else if (event.name === "geofence:transition") {
         const site = isArabic
           ? event.payload.geofenceNameAr
           : event.payload.geofenceNameEn;
         pushLog(
-          `${isArabic ? "النطاق الجغرافي" : "Geofence"} · ${site} · ${event.payload.currentRing} · ${stamp}`
+          `${isArabic ? "النطاق الجغرافي" : "Geofence"} · ${site} · ${event.payload.currentRing} · ${stamp}`,
+          "director"
         );
       } else if (event.name === "fleet:diverted")
-        pushLog(`${event.payload.message} · ${stamp}`);
+        pushLog(`${event.payload.message} · ${stamp}`, "director");
     },
-    [isArabic, pushLog, setData]
+    [isArabic, lifecycle, pushLog, setData]
   );
   useEffect(() => liveEvents.onAny(onEvent), [onEvent]);
 

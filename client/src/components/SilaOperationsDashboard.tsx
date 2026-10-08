@@ -1,20 +1,23 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import {
   Bot,
   CarFront,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   FileText,
   Layers,
   Mail,
   Map,
-  Send,
+  MessageSquare,
   TrendingUp
 } from "lucide-react";
 import { AiPanel } from "./AiPanel";
-import type { MidyafData, Session, TaskDelegation } from "@shared/domain";
-import { integer, shortTime } from "../lib/format";
+import type { MidyafData, Session } from "@shared/domain";
+import {
+  TASK_CARD_LIMIT,
+  eventTaskCards,
+  type EventTaskCard
+} from "../lib/eventTaskCards";
+import { integer, shortDate, shortTime } from "../lib/format";
 import {
   fleetUtilisation,
   guestFunnel,
@@ -29,7 +32,6 @@ import {
   Button,
   EmptyState,
   IconTabNav,
-  Input,
   KpiTile,
   Section,
   StatusPill,
@@ -79,95 +81,14 @@ export function SilaOperationsDashboard({
     counts.ARRIVED +
     counts.PICKED_UP;
 
-  const [replyText, setReplyText] = useState("");
-  const [clientMessages, setClientMessages] = useState(() => [
-    {
-      id: "1",
-      senderName: "Ministry of Culture (Client)",
-      senderRole: "CLIENT",
-      messageEn: "Are the VIP executive fleets staged at the Royal Terminal?",
-      messageAr: "هل سيارات كبار الشخصيات جاهزة في الصالة الملكية؟",
-      timestamp: "09:14 AM"
-    },
-    {
-      id: "2",
-      senderName: "Sila Logistics Command",
-      senderRole: "LOGISTICS_MANAGER",
-      messageEn:
-        "Yes, all 12 vehicles are staged and drivers are briefed on protocol.",
-      messageAr: "نعم، تم تجهيز جميع السيارات والسائقين بالبروتوكول.",
-      timestamp: "09:16 AM"
-    }
-  ]);
-
   const intakes = [...data.activityIntakes];
   const report = data.companyReports[0];
 
-  const [delegationTasks] = useState<TaskDelegation[]>([
-    {
-      id: "tsk-rel-1",
-      taskId: "t-101",
-      taskTitle: isArabic
-        ? "استقبال الوفد البريطاني في الصالة الملكية وتأمين الموكب"
-        : "Royal Terminal VIP Escort for UK Delegation",
-      fromRole: "LOGISTICS_MANAGER",
-      toRole: "TEAM_MEMBER",
-      assignedBy: isArabic
-        ? "سعود العتيبي (مدير الفعالية)"
-        : "Saud Al Otaibi (Event Mgr)",
-      assignedTo: isArabic
-        ? "سلطان الغامدي (قائد النقل)"
-        : "Sultan Al Ghamdi (Transport Lead)",
-      teamMemberId: "tm-001",
-      instructions: isArabic
-        ? "الانتظار في البوابة رقم 4 والتنسيق مع التشريفات الملكية فور الهبوط"
-        : "Gate 4 standby, coordinate with royal protocol",
-      priority: "HIGH",
-      deadline: "14:00",
-      status: "IN_PROGRESS",
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "tsk-rel-2",
-      taskId: "t-102",
-      taskTitle: isArabic
-        ? "تدقيق أجنحة فندق فورسيزونز وتوزيع بطاقات الضيوف الرقمية"
-        : "Inspect Four Seasons VIP Suites & Hand Over Passes",
-      fromRole: "LOGISTICS_MANAGER",
-      toRole: "TEAM_MEMBER",
-      assignedBy: isArabic
-        ? "سعود العتيبي (مدير الفعالية)"
-        : "Saud Al Otaibi (Event Mgr)",
-      assignedTo: isArabic
-        ? "فيصل الدوسري (مشرف التسكين)"
-        : "Faisal Al Dosari (Hotel Lead)",
-      teamMemberId: "tm-004",
-      instructions: isArabic
-        ? "التأكد من اكتمال باقات الضيافة والتسكين السريع للأجنحة الملكية"
-        : "Ensure swift check-in for Royal suites",
-      priority: "NORMAL",
-      deadline: "16:00",
-      status: "ASSIGNED",
-      createdAt: new Date().toISOString()
-    }
-  ]);
-
-  function handleSendClientReply(e: FormEvent) {
-    e.preventDefault();
-    if (!replyText.trim()) return;
-    setClientMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        senderName: "Sila Operations Command",
-        senderRole: "LOGISTICS_MANAGER",
-        messageEn: replyText,
-        messageAr: replyText,
-        timestamp: shortTime(new Date().toISOString())
-      }
-    ]);
-    setReplyText("");
-  }
+  // The current event's own tasks, re-derived whenever data or language changes.
+  const taskCards = useMemo(
+    () => eventTaskCards(tasks, data.drivers, isArabic),
+    [tasks, data.drivers, isArabic]
+  );
 
   const tabs = [
     {
@@ -179,8 +100,8 @@ export function SilaOperationsDashboard({
     {
       id: "delegation" as const,
       icon: Layers,
-      labelEn: "Task Delegation",
-      labelAr: "تفويض المهام"
+      labelEn: "Event Tasks",
+      labelAr: "مهام الفعالية"
     },
     {
       id: "fleet" as const,
@@ -208,7 +129,6 @@ export function SilaOperationsDashboard({
     }
   ];
 
-  const Chevron = isArabic ? ChevronLeft : ChevronRight;
   const zoneRows = byZone.map((r) => ({
     ...r,
     label:
@@ -486,61 +406,10 @@ export function SilaOperationsDashboard({
       {activeTab === "delegation" && (
         <Section
           id="section-delegation"
-          title={
-            isArabic
-              ? "تفويض المهام وسلسلة الأوامر"
-              : "Task Delegation & Command Chain"
-          }
+          title={isArabic ? "مهام الفعالية والإسناد" : "Event Tasks & Assignments"}
+          eyebrow={event?.name}
         >
-          <ul className="space-y-3">
-            {delegationTasks.map((t) => (
-              <li key={t.id}>
-                <Surface padding="sm">
-                  <div className="mb-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                    <div>
-                      <h5 className="text-sm font-semibold text-ink">
-                        {t.taskTitle}
-                      </h5>
-                      <p className="mt-1 text-xs text-ink-muted">
-                        {t.instructions}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <StatusPill
-                        status={t.priority}
-                        size="sm"
-                        showIcon={false}
-                      />
-                      {t.teamMemberId ? (
-                        <Badge tone="ok">
-                          {isArabic ? "مفوضة" : "Delegated"}
-                        </Badge>
-                      ) : (
-                        <Button size="sm">
-                          {isArabic ? "تفويض لشخص" : "Delegate"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3 text-xs text-ink-muted">
-                    <span className="font-semibold">
-                      {isArabic ? "سلسلة الأوامر:" : "Command Chain:"}
-                    </span>
-                    <Badge tone="neutral">{t.fromRole}</Badge>
-                    <Chevron className="size-3.5" aria-hidden />
-                    <Badge tone="gold">
-                      {t.teamMemberId
-                        ? t.assignedTo
-                        : isArabic
-                          ? "بانتظار التعيين"
-                          : "Pending Assignee"}
-                    </Badge>
-                    <span className="ms-auto font-tnum">{t.deadline}</span>
-                  </div>
-                </Surface>
-              </li>
-            ))}
-          </ul>
+          <EventTaskList cards={taskCards} isArabic={isArabic} />
         </Section>
       )}
 
@@ -586,8 +455,8 @@ export function SilaOperationsDashboard({
           id="section-reports"
           title={
             isArabic
-              ? "التقارير التنفيذية ومحادثة العميل"
-              : "Executive Reports & Client Chat"
+              ? "التقارير التنفيذية ورسائل العميل"
+              : "Executive Reports & Client Messages"
           }
         >
           <div className="grid gap-4 xl:grid-cols-2">
@@ -629,37 +498,8 @@ export function SilaOperationsDashboard({
               </dl>
             </Surface>
 
-            <Surface padding="sm" className="flex h-[260px] flex-col">
-              <ul className="mb-3 flex-1 space-y-3 overflow-y-auto pe-1">
-                {clientMessages.map((m) => (
-                  <li
-                    key={m.id}
-                    className={`rounded-lg p-2.5 text-sm ${m.senderRole === "CLIENT" ? "bg-surface-1" : "bg-gold-500/10"}`}
-                  >
-                    <div className="mb-1 flex justify-between text-xs text-ink-muted">
-                      <span className="font-semibold">{m.senderName}</span>
-                      <span className="font-tnum">{m.timestamp}</span>
-                    </div>
-                    <p className="text-ink">
-                      {isArabic ? m.messageAr : m.messageEn}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <form
-                onSubmit={handleSendClientReply}
-                className="flex shrink-0 gap-2"
-              >
-                <Input
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={isArabic ? "رد..." : "Reply..."}
-                  aria-label={isArabic ? "رد" : "Reply"}
-                />
-                <Button type="submit" aria-label={isArabic ? "إرسال" : "Send"}>
-                  <Send className="size-4" aria-hidden />
-                </Button>
-              </form>
+            <Surface padding="sm" className="flex flex-col justify-center">
+              <ClientMessagesEmpty isArabic={isArabic} />
             </Surface>
           </div>
         </Section>
@@ -689,5 +529,126 @@ export function SilaOperationsDashboard({
         </Section>
       )}
     </div>
+  );
+}
+
+/** The current event's tasks with honest empty/unassigned/missing states. */
+export function EventTaskList({
+  cards,
+  isArabic
+}: {
+  cards: EventTaskCard[];
+  isArabic: boolean;
+}) {
+  if (!cards.length)
+    return (
+      <EmptyState
+        compact
+        icon={<Layers className="size-4" aria-hidden />}
+        title={
+          isArabic ? "لا توجد مهام لهذه الفعالية بعد" : "No tasks for this event yet"
+        }
+      />
+    );
+
+  const shown = cards.slice(0, TASK_CARD_LIMIT);
+  const locale = isArabic ? "ar" : "en";
+  const missing = isArabic ? "غير محدد" : "Not set";
+
+  return (
+    <>
+      <ul className="space-y-3">
+        {shown.map((card) => {
+          const assignee =
+            card.assignment.kind === "captain" || card.assignment.kind === "owner"
+              ? card.assignment.name
+              : card.assignment.kind === "captain_unnamed"
+                ? isArabic
+                  ? "كابتن مُسند (الاسم غير متاح)"
+                  : "Captain assigned (name not available)"
+                : isArabic
+                  ? "غير مسندة"
+                  : "Unassigned";
+          const timeLabel = card.time
+            ? `${
+                card.timeKind === "deadline"
+                  ? isArabic
+                    ? "الموعد النهائي"
+                    : "Deadline"
+                  : isArabic
+                    ? "الموعد المجدول"
+                    : "Scheduled"
+              } · ${shortDate(card.time, locale)} ${shortTime(card.time, locale)}`
+            : isArabic
+              ? "لا يوجد موعد محدد"
+              : "No time set";
+          return (
+            <li key={card.id}>
+              <Surface padding="sm">
+                <div className="mb-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div className="min-w-0">
+                    <h5 className="text-sm font-semibold text-ink">
+                      {card.title}
+                    </h5>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {`${card.pickup ?? missing} → ${card.dropoff ?? missing}`}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {card.isVip ? <Badge tone="gold">VIP</Badge> : null}
+                    <StatusPill status={card.status} size="sm" />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3 text-xs text-ink-muted">
+                  <span className="font-semibold">
+                    {card.assignment.kind === "owner"
+                      ? isArabic
+                        ? "المسؤول:"
+                        : "Owner:"
+                      : isArabic
+                        ? "الكابتن:"
+                        : "Captain:"}
+                  </span>
+                  <Badge
+                    tone={card.assignment.kind === "unassigned" ? "warn" : "neutral"}
+                  >
+                    {assignee}
+                  </Badge>
+                  {card.guestName ? (
+                    <span>
+                      {isArabic ? "الضيف:" : "Guest:"} {card.guestName}
+                    </span>
+                  ) : null}
+                  <span className="ms-auto font-tnum">{timeLabel}</span>
+                </div>
+              </Surface>
+            </li>
+          );
+        })}
+      </ul>
+      {cards.length > shown.length ? (
+        <p className="mt-3 text-xs text-ink-faint">
+          {isArabic
+            ? `عرض ${integer(shown.length)} من ${integer(cards.length)} مهمة`
+            : `Showing ${integer(shown.length)} of ${integer(cards.length)} tasks`}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** No client messaging is connected; say so instead of showing sample chat. */
+export function ClientMessagesEmpty({ isArabic }: { isArabic: boolean }) {
+  return (
+    <EmptyState
+      compact
+      icon={<MessageSquare className="size-4" aria-hidden />}
+      title={isArabic ? "لا توجد رسائل من العميل" : "No client messages"}
+      description={
+        isArabic
+          ? "مراسلة العميل غير مفعّلة في هذه المساحة."
+          : "Client messaging is not connected in this workspace."
+      }
+    />
   );
 }

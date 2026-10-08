@@ -207,6 +207,47 @@ const emptyConvoy = (key: DemoDriverKey): ConvoySnapshot => ({
   siteCode: null
 });
 
+function freshConvoys(): Record<DemoDriverKey, ConvoyRuntime> {
+  return Object.fromEntries(
+    DEMO_DRIVER_KEYS.map((key) => [
+      key,
+      {
+        key,
+        position: null,
+        speedKmh: 0,
+        location: null,
+        motion: null,
+        ring: "OUTSIDE",
+        siteCode: null,
+        seeded: false
+      }
+    ])
+  ) as Record<DemoDriverKey, ConvoyRuntime>;
+}
+
+function initialState(actEntryToken: number): DirectorState {
+  return {
+    status: "idle",
+    scriptId: null,
+    actIndex: 0,
+    actCount: 0,
+    actId: null,
+    actTitle: null,
+    actSubtitle: null,
+    actElapsedMs: 0,
+    actDurationMs: 0,
+    totalElapsedMs: 0,
+    totalDurationMs: 0,
+    convoys: Object.fromEntries(
+      DEMO_DRIVER_KEYS.map((k) => [k, emptyConvoy(k)])
+    ) as Record<DemoDriverKey, ConvoySnapshot>,
+    flights: {},
+    landingAt: null,
+    scorecardVisible: false,
+    actEntryToken
+  };
+}
+
 const RING_ORDER: Ring[] = [
   "OUTSIDE",
   "OUTER_APPROACH",
@@ -230,41 +271,8 @@ export class Director {
 
   constructor(hooks: DirectorHooks = {}) {
     this.hooks = hooks;
-    this.convoys = Object.fromEntries(
-      DEMO_DRIVER_KEYS.map((key) => [
-        key,
-        {
-          key,
-          position: null,
-          speedKmh: 0,
-          location: null,
-          motion: null,
-          ring: "OUTSIDE",
-          siteCode: null,
-          seeded: false
-        }
-      ])
-    ) as Record<DemoDriverKey, ConvoyRuntime>;
-    this.state = {
-      status: "idle",
-      scriptId: null,
-      actIndex: 0,
-      actCount: 0,
-      actId: null,
-      actTitle: null,
-      actSubtitle: null,
-      actElapsedMs: 0,
-      actDurationMs: 0,
-      totalElapsedMs: 0,
-      totalDurationMs: 0,
-      convoys: Object.fromEntries(
-        DEMO_DRIVER_KEYS.map((k) => [k, emptyConvoy(k)])
-      ) as Record<DemoDriverKey, ConvoySnapshot>,
-      flights: {},
-      landingAt: null,
-      scorecardVisible: false,
-      actEntryToken: 0
-    };
+    this.convoys = freshConvoys();
+    this.state = initialState(0);
   }
 
   // ── Store API ──────────────────────────────────────────────────────────
@@ -372,6 +380,25 @@ export class Director {
     if (this.state.status !== "playing") this.play();
   }
 
+  /**
+   * Leave the rehearsal: stop the clock synchronously and forget the run —
+   * script, act, convoys, flights, T-minus and scorecard. Until the next
+   * `load`, ticks and transport calls are no-ops and nothing is published,
+   * so a frame already queued cannot write after the exit.
+   */
+  stop() {
+    this.stopClock();
+    this.script = null;
+    this.actElapsed = 0;
+    this.firedBeats = 0;
+    this.convoys = freshConvoys();
+    const convoys = initialState(0).convoys;
+    for (const key of DEMO_DRIVER_KEYS)
+      convoys[key] = { ...convoys[key], driverId: this.driverId(key) };
+    this.state = { ...initialState(this.state.actEntryToken), convoys };
+    this.listeners.forEach((fn) => fn());
+  }
+
   dispose() {
     this.stopClock();
     this.listeners.clear();
@@ -476,6 +503,8 @@ export class Director {
   }
 
   private emit<K extends LiveEventName>(name: K, payload: LiveEventPayload<K>) {
+    // A stopped director has no script and publishes nothing.
+    if (!this.script) return;
     liveEvents.emit(name, payload, "director");
   }
 

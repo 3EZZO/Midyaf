@@ -73,6 +73,16 @@ import {
   pickText
 } from "./lib/localize";
 import { useDemoDirector } from "./lib/demo/useDemoDirector";
+import { getDirector } from "./lib/demo/director";
+import {
+  appendLog,
+  enterRehearsal,
+  getDemoLifecycle,
+  leaveRehearsal,
+  withoutDirectorLog,
+  type LogEntry
+} from "./lib/demo/demoLifecycle";
+import { liveEvents, type LiveSource } from "./lib/liveEvents";
 import { exportPlanAsPdf, sharePlanLink } from "./lib/planExport";
 import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
@@ -115,15 +125,23 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [realtimeLog, setRealtimeLog] = useState<string[]>([]);
+  const [realtimeLog, setRealtimeLog] = useState<LogEntry[]>([]);
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
   const allowedPortals = session ? portalsByRole[session.user.role] : [];
   const eventId = data?.events[0]?.id;
+  // Flipped synchronously on demo toggle/sign-out; gates late async writes.
+  const demoLifecycle = getDemoLifecycle();
 
+  // Lines are tagged by source so leaving a rehearsal removes only its own.
   const pushLog = useCallback(
-    (line: string) => setRealtimeLog((current) => [line, ...current.slice(0, 4)]),
+    (line: string, source: LiveSource = "socket") =>
+      setRealtimeLog((current) => appendLog(current, line, source)),
     []
+  );
+  const tickerLines = useMemo(
+    () => realtimeLog.map((entry) => entry.line),
+    [realtimeLog]
   );
 
   // The scripted demo director drives the same event bus as the socket; it
@@ -150,15 +168,19 @@ export function App() {
   /** Full demo mode: swaps in virtual telemetry and unlocks the War Room. */
   function toggleDemoMode() {
     if (!canTriggerSimulation) return;
-    if (isDemoMode) {
-      // Deactivate demo mode: the director pauses itself; restore normal database data
+    if (demoLifecycle.active) {
+      // Deactivate demo mode in one synchronous step: stop the director,
+      // drop its history and log lines, close the War Room and show the
+      // clean snapshot now; the refresh then replaces it with fresh data.
+      leaveRehearsal({ lifecycle: demoLifecycle, director, events: liveEvents });
+      setRealtimeLog(withoutDirectorLog);
       setIsDemoMode(false);
       setIsWarRoomOpen(false);
       if (normalDataRef.current) {
         setData(normalDataRef.current);
       }
       void refreshData();
-      
+
       toast.info(
         isArabic ? "تم إيقاف الوضع التجريبي" : "Demo Mode Disengaged",
         isArabic
@@ -170,6 +192,8 @@ export function App() {
       if (data) {
         normalDataRef.current = data;
       }
+      enterRehearsal({ lifecycle: demoLifecycle, director, events: liveEvents });
+      setRealtimeLog(withoutDirectorLog);
       setIsDemoMode(true);
 
       toast.success(
@@ -537,7 +561,7 @@ export function App() {
       portal={portal}
       setPortal={setPortal}
       isDemoMode={isDemoMode}
-      realtimeLog={realtimeLog}
+      realtimeLog={tickerLines}
       event={data.events[0]}
       data={data}
       drivers={data.drivers}
@@ -588,6 +612,15 @@ export function App() {
     window.localStorage.removeItem(sessionStorageKey);
     sessionRef.current = null;
     socketRecovery.reset();
+    // No rehearsal, snapshot or event history may outlive the session.
+    // Only stable refs/singletons here: socket recovery calls a first-render copy.
+    leaveRehearsal(
+      { lifecycle: getDemoLifecycle(), director: getDirector(), events: liveEvents },
+      { forgetAllHistory: true }
+    );
+    normalDataRef.current = null;
+    setIsDemoMode(false);
+    setIsWarRoomOpen(false);
     setSession(null);
     setData(null);
     setRealtimeLog([]);
@@ -597,13 +630,17 @@ export function App() {
     // A load belongs to one session. After a logout, an account switch or a
     // refresh, its late result must not touch the newer session's state.
     const isCurrent = () => sessionRef.current === activeSession;
+    // A rehearsal that is running, or starts or ends meanwhile, keeps its
+    // display; the load still refreshes the normal snapshot unless a load
+    // started after it has already written (shared with refreshData).
+    const ticket = demoLifecycle.ticket();
     setIsLoading(true);
     setLoadError(null);
 
     // Instant offline cache restore
     try {
       const cached = window.sessionStorage.getItem(`midyaf_data_${activeSession.user.id}`);
-      if (cached) {
+      if (cached && ticket.canShow()) {
         setData(JSON.parse(cached));
       }
     } catch {
@@ -613,7 +650,8 @@ export function App() {
     try {
       const fresh = await getBootstrap(activeSession.accessToken);
       if (!isCurrent()) return;
-      setData(fresh);
+      if (!ticket.claim()) return;
+      if (ticket.canShow()) setData(fresh);
       normalDataRef.current = fresh;
       try {
         window.sessionStorage.setItem(
@@ -661,6 +699,9 @@ export function App() {
 
   async function refreshData() {
     const activeSession = requireSession();
+    // Read from the lifecycle, not the render-time `isDemoMode` this closure
+    // captured: a demo toggle while the request is in flight must win.
+    const ticket = demoLifecycle.ticket();
     try {
       // Socket events and actions trigger this; a reply that arrives after a
       // logout or account switch must not replace the newer workspace.
@@ -669,10 +710,12 @@ export function App() {
         () => sessionRef.current,
         () => getBootstrap(activeSession.accessToken),
         (fresh) => {
-          setData(fresh);
-          if (!isDemoMode) {
-            normalDataRef.current = fresh;
-          }
+          // An older response settling after a newer load wrote is dropped.
+          if (!ticket.claim()) return;
+          // Bootstrap is always approved server data: keep the normal
+          // snapshot fresh, but never paint over an active rehearsal.
+          normalDataRef.current = fresh;
+          if (ticket.canShow()) setData(fresh);
           try {
             window.sessionStorage.setItem(
               `midyaf_data_${activeSession.user.id}`,

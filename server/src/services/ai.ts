@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { env } from "../env.js";
+import { narrateEventScenario } from "../../../shared/eventNarration.js";
 
 const client = env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: env.OPENAI_API_KEY })
@@ -36,7 +37,12 @@ export async function chatGuide(input: ChatInput): Promise<ChatReply> {
   const isArabic = language.startsWith("ar");
 
   // First check if the user query directly triggers one of Osama Morad's exact PDF scenarios
-  const exactMatch = deterministicChat(persona, input.message, language);
+  const exactMatch = deterministicChat(
+    persona,
+    input.message,
+    language,
+    input.context
+  );
   if (exactMatch.matched) {
     return {
       persona,
@@ -122,7 +128,12 @@ export async function* streamChatCompletion(
 ): AsyncGenerator<ChatStreamEvent, void, undefined> {
   const persona = input.persona ?? "Noura";
   const language = input.language ?? "en";
-  const resolved = resolveSmartQuery(input.message, language, persona);
+  const resolved = resolveSmartQuery(
+    input.message,
+    language,
+    persona,
+    input.context
+  );
   const toolIntent = resolved.toolIntent ?? inferToolIntent(input.message);
 
   const replayLocal = async function* (): AsyncGenerator<
@@ -243,7 +254,12 @@ export async function smartAssistant(
   const normLang = (language || "en").toLowerCase().startsWith("ar")
     ? "ar"
     : "en";
-  const resolved = resolveSmartQuery(query, normLang, "Smart Assistant");
+  const resolved = resolveSmartQuery(
+    query,
+    normLang,
+    "Smart Assistant",
+    context
+  );
 
   if (resolved.matched || !client) {
     return {
@@ -622,10 +638,17 @@ export async function analyzeSuppliers(offers: unknown) {
   }
 }
 
+/**
+ * Scripted scenario matching. The reply body is narrated from `context`
+ * (only the context the route already authorized: an operator's briefing
+ * snapshot, the fixed synthetic demo context, or validated references), so
+ * it names the current event or says what is unavailable.
+ */
 export function resolveSmartQuery(
   query: string,
   language: string,
-  persona: string = "Smart Assistant"
+  persona: string = "Smart Assistant",
+  context?: unknown
 ): {
   matched: boolean;
   content: string;
@@ -635,6 +658,41 @@ export function resolveSmartQuery(
 } {
   const isArabic = (language || "en").toLowerCase().startsWith("ar");
   const lower = (query || "").toLowerCase();
+  const say = (scenario: Parameters<typeof narrateEventScenario>[0]) =>
+    `${persona}: ${narrateEventScenario(scenario, context, isArabic)}`;
+  // Default hospitality replies
+  const welcome = () => ({
+    matched: false,
+    content: say("welcome"),
+    actions: [
+      {
+        label: "Check Missing Vendors",
+        labelAr: "فحص الموردين المتأخرين",
+        actionId: "send_vendor_sms"
+      },
+      {
+        label: "Check Security Vault",
+        labelAr: "فحص الخزنة الثلاثية",
+        actionId: "scroll_to_vault"
+      },
+      {
+        label: "Flight Arrivals Surge",
+        labelAr: "تنبيه وصول المطار",
+        actionId: "divert_fleet"
+      },
+      {
+        label: "Where is my Driver?",
+        labelAr: "أين سائقي؟",
+        actionId: "track_driver"
+      }
+    ]
+  });
+
+  // 0. Situation briefing: the snapshot summary, unmatched like any open
+  // question ("on-time" would otherwise match the schedule scenario).
+  if (lower.includes("situation") || lower.includes("وضع العملية")) {
+    return welcome();
+  }
 
   // 1. Missing vendors geofence check (PDF Page 4)
   if (
@@ -653,9 +711,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: تنبيه فحص التواجد الجغرافي للموردين: فريق الصوتيات والمرئيات (شركة الفيصل للحلول الصوتية) فقط هو المتأخر عن القاعة (أ) حالياً. يوضح نظام الـ GPS أن شاحنة المعدات عالقة في ازدحام طريق الملك فهد وتبعد حوالي 10-12 دقيقة. جميع الموردين الآخرين (6 موردين) متواجدون في مواقعهم المخصصة.`
-        : `${persona}: Vendor Geofence Alert: Only the AV team (Al-Faisal Lighting & AV) is missing from Hall A right now. Real-time GPS telemetry shows their equipment truck is navigating heavy traffic on King Fahd Rd (~10–12 minutes away). All other 6 registered event vendors are checked in at their designated bays.`,
+      content: say("vendors"),
       toolIntent: "vendor_geofence_check",
       actions: [
         {
@@ -694,9 +750,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: خزنة مِضياف الأمنية الثلاثية لمكافحة تسريب العروض نَشِطة حالياً لمبادرة مستقبل الاستثمار 2027 (FII). عروض الأسعار المقدمة من فندق الريتز-كارلتون (1,250,000 ر.س) والأسطول الملكي (450,000 ر.س) مشفرة ومختومة بالكامل. يتطلب فتحها تفعيل 3 مفاتيح أمنية في آن واحد (2 من صلة + 1 من مدقق مِضياف) خلال نافذة 5 دقائق لمنع أي تسريب للموردين المفضلين.`
-        : `${persona}: Midyaf Triple-Key Anti-Corruption Security Vault is ACTIVE for Future Investment Initiative 2027 (FII). Vendor bids from The Ritz-Carlton (SAR 1,250,000) and Royal Fleet VIP (SAR 450,000) remain cryptographically sealed. Viewing unsealed quotations requires simultaneous authentication from 2 Sila Organizers and 1 Midyaf Independent Auditor within a strict 5-minute window.`,
+      content: say("vault"),
       toolIntent: "vault_status_check",
       actions: [
         {
@@ -732,9 +786,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: تنبيه غرفة العمليات المباشرة: 3 رحلات دولية (SV102 من لندن، EK817 من دبي، QR1164 من الدوحة) هبطت في نفس التوقيت بمطار الملك خالد الدولي - الصالة 2. يوجد 40 ضيفاً بحاجة لنقل فوري إلى مقر الإقامة، بينما يتوفر 15 حافلة فقط في الصالة 2. يتوفر 8 حافلات في وضع الاستعداد بالصالة 1 يمكن تحويلها فوراً.`
-        : `${persona}: Live Command Center Alert: 3 international flights (SV102 from London, EK817 from Dubai, QR1164 from Doha) touched down simultaneously at KKIA Terminal 2. 40 VIP delegates require immediate curbside pickup, but only 15 vans are staged there. Terminal 1 currently has 8 idle standby vans ready for immediate reallocation.`,
+      content: say("arrivals"),
       toolIntent: "airport_flight_surge",
       actions: [
         {
@@ -751,7 +803,7 @@ export function resolveSmartQuery(
     };
   }
 
-  // 4. VIP Hospitality & Hotel Riders (FII 2027)
+  // 4. VIP Hospitality & Hotel Riders
   if (
     lower.includes("rider") ||
     lower.includes("hospitality") ||
@@ -774,9 +826,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: مذكرات الضيافة الملكية (VIP Riders) معتمدة في فندق الريتز-كارلتون الرياض: 1) معالي ياسر الرميان (الجناح الملكي 1: قهوة سعودية بورد الطائف، تمر سكري فاخر، وجبات حلال خالية من الغلوتين)؛ 2) سارة التويجري (جناح تنفيذي 204: وسائد ريش متماسكة، دهن عود ملكي معتق)؛ 3) طارق منصور (غرفة ديلوكس 310: قهوة بدون كافيين ومياه فوارة). تم تأكيد كافة التجهيزات مع فريق الاستقبال.`
-        : `${persona}: VIP Hospitality Riders Verified at The Ritz-Carlton Riyadh: 1) H.E. Yasir Al-Rumayyan (Royal Suite 1: Taif Rose Gahwa, Sukkari Dates, Strictly Halal & Gluten-Free dietary rider); 2) Sarah Al-Tuwaijri (Executive Suite 204: Firm Feather Pillow, Royal Arabian Oud amenities); 3) Tariq Mansoor (Deluxe King 310: Decaf Saudi Gahwa, Sparkling Water). All riders pre-cleared by Midyaf Protocol.`,
+      content: say("hospitality"),
       toolIntent: "hospitality_rider_check",
       actions: [
         {
@@ -819,9 +869,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: السائق التنفيذي المخصص: الكابتن سلطان العتيبي بانتظارك عند رصيف كبار الشخصيات بوابة 2 بالصالة 2 في سيارة مرسيدس مايباخ S680 سوداء (لوحة: أ د ن 9119). التصريح الأمني: مرافقة تنفيذية #819. مكيف السيارة مضبوط على 20° مئوية مع ماء ورد طائفي ومناشف باردة. يمكنك التوجه للسيارة مباشرة دون الحاجة للاتصال.`
-        : `${persona}: Assigned VIP Chauffeur: Captain Sultan Al-Otaibi is waiting at KKIA Terminal 2 VIP Curb Gate 2 in an all-black Mercedes Maybach S680 (Plate: KSA 9119). Security clearance: Executive Escort #819. In-cabin climate set to 20°C with cold Taif rose water ready. You can walk straight to the vehicle without phone calls.`,
+      content: say("driver"),
       toolIntent: "driver_touchdown_match",
       actions: [
         {
@@ -857,9 +905,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: جدول مبادرة مستقبل الاستثمار 2027 اليوم: \n• 08:30 - إفطار واستقبال كبار الشخصيات (بهو الريتز-كارلتون) \n• 10:00 - الكلمة الافتتاحية: 'الآفاق الاقتصادية القادمة' (مركز المؤتمرات KAICC قاعة 1) \n• 13:00 - غداء قادة الأعمال الدوليين \n• 20:00 - العشاء الملكي الاحتفالي (مطل البجيري - الدرعية التاريخية). \n[تنبيه مروري]: يستغرق الانتقال إلى الدرعية حوالي 35 دقيقة بسبب ذروة المساء، وتنطلق حافلات الضيوف من بهو الفندق في تمام 19:15.`
-        : `${persona}: FII 2027 Schedule & Travel Advisory: \n• 08:30 - VIP Networking Breakfast (The Ritz-Carlton Lobby) \n• 10:00 - Opening Keynote: 'The Next Economic Horizon' (KAICC Plenary Hall 1) \n• 13:00 - Global Leaders Networking Luncheon \n• 20:00 - Royal Gala Dinner (Diriyah Bujairi Terrace). \n[Traffic Advisory]: Transit to Diriyah will take ~35 minutes during evening peak. Executive lobby shuttles depart promptly at 19:15.`,
+      content: say("schedule"),
       toolIntent: "fii_schedule_check",
       actions: [
         {
@@ -893,9 +939,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: تنبيه تموين عاجل: حساسات الحركة في استراحة كبار الشخصيات بالقاعة (ب) تسجل ازدحاماً بنسبة 85% بعد انتهاء الجلسة الصباحية. انخفض مخزون القهوة والمخبوزات الفاخرة إلى 18%. يوصى بإرسال 2 باريستا إضافيين وعربة إعادة تعبئة فوراً لتفادي أي انقطاع.`
-        : `${persona}: Urgent Catering Alert: Footfall monitors at Hall B Executive Lounge report an 85% capacity surge following the morning panel. Artisan pastries and premium Gahwa beans have dropped to 18% inventory. Immediate dispatch of 2 standby baristas and a replenishment cart recommended.`,
+      content: say("catering"),
       toolIntent: "catering_restock_dispatch",
       actions: [
         {
@@ -930,9 +974,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: ملخص تقرير ما بعد الفعالية الذكي: بلغت نسبة رضا كبار الشخصيات 96% (مؤشر NPS 88). أبرز المكاسب التشغيلية: جدولة رحلات الوصول في مطار الملك خالد ألغت أوقات انتظار الرصيف وخفّضت هدر الأسطول بنسبة 40%، محققة وفراً مالياً قدره 145,000 ريال سعودي.`
-        : `${persona}: Automated Post-Event Intelligence Summary: Overall VIP satisfaction reached 96% (NPS 88). Key operational efficiency: Intelligent flight batching at KKIA Terminal 2 eliminated 18-minute curb wait times and cut idle vehicle duration by 40%, delivering SAR 145,000 in direct fleet cost savings.`,
+      content: say("report"),
       toolIntent: "post_event_analytics",
       actions: [
         {
@@ -961,9 +1003,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: بيانات شبكة كبار الشخصيات المشفرة: \n• اسم الشبكة: Midyaf-VIP-5G \n• كلمة المرور: SaudiVision2030! \n• التغطية: قاعات مركز المؤتمرات، أجنحة واستراحات الريتز-كارلتون. سرعة تتجاوز 450 ميغابت مع أولوية اتصال مخصصة.`
-        : `${persona}: VIP Encrypted Network Credentials: \n• Network (SSID): Midyaf-VIP-5G \n• Passphrase: SaudiVision2030! \n• Coverage: KAICC Plenary Halls, Ritz-Carlton Royal Lounges & Media Suite. Dedicated 450 Mbps fiber uplink with encrypted channel.`,
+      content: say("network"),
       toolIntent: "vip_lounge_wifi",
       actions: [
         {
@@ -991,9 +1031,7 @@ export function resolveSmartQuery(
   ) {
     return {
       matched: true,
-      content: isArabic
-        ? `${persona}: توصية العشاء الفاخر في الرياض: مطل البجيري في الدرعية التاريخية يضم نخبة من أرقى المطاعم العالمية المطلة على حي الطريف التاريخي المسجل باليونسكو. المطاعم الموصى بها: مطعم ميز (المطبخ السعودي الفاخر) أو هاكاسان. أنصح بالتحرك في تمام 19:15 لتفادي الذروة المرورية.`
-        : `${persona}: VIP Riyadh Dining Recommendation: Bujairi Terrace in Historic Diriyah offers premier gastronomy overlooking the UNESCO World Heritage site of At-Turaif. Top recommendations: Maiz (refined Saudi dining) or Hakkasan. Recommended departure time is 19:15 to bypass corridor congestion.`,
+      content: say("dining"),
       toolIntent: "diriyah_dining_reserve",
       actions: [
         {
@@ -1005,48 +1043,21 @@ export function resolveSmartQuery(
     };
   }
 
-  // Default hospitality replies
-  return {
-    matched: false,
-    content: isArabic
-      ? `${persona}: أهلاً بك في منصة مِضياف الذكية لإدارة العمليات والضيافة في الرياض. أتابع حالياً فعاليات مبادرة مستقبل الاستثمار 2027 (FII). يمكنني مساعدتك فوراً في: فحص الموردين بالقاعة أ، التحقق من الخزنة الثلاثية، تنبيهات وصول المطار، مذكرات الضيافة، وتتبع السائقين.`
-      : `${persona}: Welcome to Midyaf AI Operations Brain. I am actively monitoring telemetry for Future Investment Initiative 2027 (FII). I can help with real-time vendor geofencing, the Triple-Key Security Vault, Terminal 2 flight surges, VIP hospitality riders, and driver tracking.`,
-    actions: [
-      {
-        label: "Check Missing Vendors",
-        labelAr: "فحص الموردين المتأخرين",
-        actionId: "send_vendor_sms"
-      },
-      {
-        label: "Check Security Vault",
-        labelAr: "فحص الخزنة الثلاثية",
-        actionId: "scroll_to_vault"
-      },
-      {
-        label: "Flight Arrivals Surge",
-        labelAr: "تنبيه وصول المطار",
-        actionId: "divert_fleet"
-      },
-      {
-        label: "Where is my Driver?",
-        labelAr: "أين سائقي؟",
-        actionId: "track_driver"
-      }
-    ]
-  };
+  return welcome();
 }
 
 function deterministicChat(
   persona: string,
   message: string,
-  language: string
+  language: string,
+  context?: unknown
 ): {
   matched: boolean;
   content: string;
   toolIntent?: string;
   actions?: ChatReplyAction[];
 } {
-  return resolveSmartQuery(message, language, persona);
+  return resolveSmartQuery(message, language, persona, context);
 }
 
 function inferToolIntent(message: string): string {

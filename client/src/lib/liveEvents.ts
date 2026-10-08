@@ -108,6 +108,19 @@ export const liveEvents = {
     history = [];
     historyVersion++;
     historyListeners.forEach((fn) => fn());
+  },
+
+  /**
+   * Forget one source's history (leaving a rehearsal drops the director's
+   * events and keeps the socket's). Event listeners are not called — nothing
+   * new happened — but history subscribers re-render.
+   */
+  clearSource(source: LiveSource) {
+    const kept = history.filter((event) => event.source !== source);
+    if (kept.length === history.length) return;
+    history = kept;
+    historyVersion++;
+    historyListeners.forEach((fn) => fn());
   }
 };
 

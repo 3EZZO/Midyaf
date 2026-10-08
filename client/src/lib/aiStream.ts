@@ -142,10 +142,24 @@ export const AI_FIRST_FRAME_TIMEOUT_MS = 8_000;
 export const AI_STALL_TIMEOUT_MS = 15_000;
 
 /**
+ * A rehearsal snapshot (`demo: true`). The server deliberately swaps it for
+ * a fixed synthetic context, so its reply could not name the current event;
+ * the already-scoped snapshot is narrated locally instead.
+ */
+export function isRehearsalContext(context: unknown): boolean {
+  return (
+    typeof context === "object" &&
+    context !== null &&
+    (context as { demo?: unknown }).demo === true
+  );
+}
+
+/**
  * The one entry point the UI uses: stream from the server when there is a
  * session, otherwise (or on any transport failure or stall before the first
- * token) replay the deterministic reply through the same handlers. Callers never
- * branch on where the text came from; `meta.source` records it.
+ * token, or for a rehearsal snapshot) replay the deterministic reply, narrated
+ * from the same `context`, through the same handlers. Callers never branch on
+ * where the text came from; `meta.source` records it.
  */
 export async function streamAiReply(
   accessToken: string | undefined,
@@ -154,7 +168,12 @@ export async function streamAiReply(
   signal?: AbortSignal
 ): Promise<AiStreamResult> {
   const local = () => {
-    const reply = localAiReply(body.message, body.language, body.persona);
+    const reply = localAiReply(
+      body.message,
+      body.language,
+      body.persona,
+      body.context
+    );
     return streamLocalReply(
       reply.body,
       { persona: body.persona, actions: reply.actions, source: "local" },
@@ -162,7 +181,7 @@ export async function streamAiReply(
       signal
     );
   };
-  if (!accessToken) return local();
+  if (!accessToken || isRehearsalContext(body.context)) return local();
 
   let received = "";
   let meta: AiStreamMeta | null = null;
