@@ -1,14 +1,15 @@
 import { Briefcase, Building2, Car, Crown, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 
 /**
- * One-click demo logins. Only listed on the login screen when demo personas
- * are enabled (?demo=1 or VITE_DEMO_PERSONAS=true); the password is never
- * rendered. Labels are the original bilingual copy from the fast-access grid.
+ * Demo persona shortcuts for the login screen. Only listed when demo personas
+ * are enabled (?demo=1 or VITE_DEMO_PERSONAS=true). T-02: a persona carries no
+ * password and grants no access; choosing one fills the email field only, and
+ * the user still types the account's password and submits normally.
+ * Labels are the original bilingual copy from the fast-access grid.
  */
 export type DemoPersona = {
   id: string;
   email: string;
-  password: string;
   icon: LucideIcon;
   titleEn: string;
   titleAr: string;
@@ -16,13 +17,10 @@ export type DemoPersona = {
   subtitleAr: string;
 };
 
-const PASSWORD = "Midyaf@2026";
-
 export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "admin",
     email: "admin@midyaf.local",
-    password: PASSWORD,
     icon: Crown,
     titleEn: "Midyaf Owner (Admin)",
     titleAr: "مالك مضياف (الإدارة المالية)",
@@ -32,7 +30,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "company",
     email: "company@midyaf.local",
-    password: PASSWORD,
     icon: Building2,
     titleEn: "Sila Organizer",
     titleAr: "شركة صلة (المنظم)",
@@ -42,7 +39,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "logistics",
     email: "organizer@midyaf.local",
-    password: PASSWORD,
     icon: Briefcase,
     titleEn: "Logistics Manager",
     titleAr: "مدير اللوجستيات",
@@ -52,7 +48,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "event",
     email: "event.lead@sila.com",
-    password: PASSWORD,
     icon: Users,
     titleEn: "Event / Activity Mgr",
     titleAr: "مدير الفعالية / النشاط",
@@ -62,7 +57,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "client",
     email: "client.vip@tourism.gov.sa",
-    password: PASSWORD,
     icon: ShieldCheck,
     titleEn: "Client Portal (VIP)",
     titleAr: "بوابة العميل (السياحة)",
@@ -72,7 +66,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "captain",
     email: "driver@midyaf.local",
-    password: PASSWORD,
     icon: Car,
     titleEn: "Fleet Captain",
     titleAr: "كابتن الأسطول",
@@ -82,7 +75,6 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "guest",
     email: "guest.vip@midyaf.local",
-    password: PASSWORD,
     icon: Star,
     titleEn: "VIP Guest",
     titleAr: "ضيف VIP",
@@ -103,4 +95,17 @@ export function demoPersonasEnabled(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Applies a persona shortcut to the login form: the email is filled and any
+ * previously typed password is cleared. It cannot sign in; submitting the
+ * form with an entered password is still required.
+ */
+export function selectPersona(
+  persona: Pick<DemoPersona, "email">,
+  form: { setEmail: (email: string) => void; setPassword: (password: string) => void }
+) {
+  form.setEmail(persona.email);
+  form.setPassword("");
 }

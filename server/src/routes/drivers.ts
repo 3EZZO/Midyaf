@@ -8,6 +8,11 @@ import { prisma } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { asyncHandler, requireEntity } from "../utils/http.js";
 import { inferRiyadhZone } from "../utils/riyadh.js";
+import {
+  driverResponseOmit,
+  safeGuestRelation,
+  safeUserRelation
+} from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
 import { recordAuditLog } from "../services/auditLog.js";
 
@@ -28,6 +33,7 @@ router.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const drivers = await prisma.driver.findMany({
       where: buildDriverVisibilityWhere(req.user!),
+      omit: driverResponseOmit,
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
         tasks: {
@@ -100,7 +106,8 @@ router.post(
         shiftEnd: body.shiftEnd,
         status: DriverStatus.AVAILABLE
       },
-      include: { user: true }
+      omit: driverResponseOmit,
+      include: { user: safeUserRelation }
     });
 
     await recordAuditLog({
@@ -132,7 +139,8 @@ router.put(
             { id: req.params.id },
             buildDriverLocationUpdateWhere(req.user!) ?? {}
           ]
-        }
+        },
+        omit: driverResponseOmit
       }),
       "Driver not found"
     );
@@ -147,6 +155,7 @@ router.put(
         lastLocationAt: new Date(),
         status: DriverStatus.EN_ROUTE
       },
+      omit: driverResponseOmit,
       include: {
         user: { select: { id: true, name: true, phone: true } }
       }
@@ -198,7 +207,7 @@ router.get(
       },
       include: {
         event: true,
-        guest: { include: { user: true } }
+        guest: safeGuestRelation
       },
       orderBy: { scheduledAt: "asc" }
     });

@@ -28,7 +28,7 @@ import ridersRouter from "./routes/riders.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
-import { geofenceEngine } from "./services/geofenceEngine.js";
+import { configureRealtime } from "./services/socketAuthorization.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -72,119 +72,8 @@ app.use("/api", operationsRouter);
 app.use("/api", uploadsRouter);
 app.use("/api", communicationsRouter);
 
-io.on("connection", (socket) => {
-  socket.on("event:join", (eventId: string) => {
-    socket.join(`event:${eventId}`);
-  });
-
-  socket.on("user:join", (userId: string) => {
-    socket.join(`user:${userId}`);
-  });
-
-  socket.on("driver:join", (driverId: string) => {
-    socket.join(`driver:${driverId}`);
-  });
-
-  socket.on("organizer:join", () => {
-    socket.join("organizers");
-  });
-
-  const processTelemetryIngestion = (res: NonNullable<ReturnType<typeof telemetryBuffer.ingest>>) => {
-    const eventRoom = res.frame.eventId ? `event:${res.frame.eventId}` : "organizers";
-
-    // Broadcast compact telemetry stream to war room & live clients
-    io.to(eventRoom).emit("driver:telemetry_stream", res.packed);
-    io.to("organizers").emit("driver:telemetry_stream", res.packed);
-
-    // If significant movement or status change, broadcast formatted payload
-    if (res.shouldBroadcast) {
-      const formatted = {
-        driverId: res.frame.driverId,
-        lat: res.frame.lat,
-        lng: res.frame.lng,
-        speed: res.frame.speed,
-        heading: res.frame.heading,
-        altitude: res.frame.altitude,
-        accuracy: res.frame.accuracy,
-        status: res.frame.status,
-        eventId: res.frame.eventId,
-        timestamp: new Date(res.frame.timestamp).toISOString()
-      };
-      io.to(eventRoom).emit("driver:location_update", formatted);
-      io.to("organizers").emit("driver:location_update", formatted);
-    }
-
-    // Evaluate concentric geofences in-memory (< 1ms)
-    const transitions = geofenceEngine.evaluateTelemetry({
-      driverId: res.frame.driverId,
-      lat: res.frame.lat,
-      lng: res.frame.lng,
-      speed: res.frame.speed,
-      heading: res.frame.heading,
-      eventId: res.frame.eventId
-    });
-
-    if (transitions.length > 0) {
-      for (const tr of transitions) {
-        io.to(eventRoom).emit("geofence:transition", tr);
-        io.to("organizers").emit("geofence:transition", tr);
-        io.to(`driver:${res.frame.driverId}`).emit("geofence:transition", tr);
-      }
-    }
-  };
-
-  socket.on("driver:location_update", (payload) => {
-    const res = telemetryBuffer.ingest(payload);
-    if (!res) return;
-    processTelemetryIngestion(res);
-  });
-
-  socket.on("driver:telemetry_stream", (packedPayload) => {
-    const res = telemetryBuffer.ingest(packedPayload);
-    if (!res) return;
-    processTelemetryIngestion(res);
-  });
-
-
-  socket.on("user:location_update", (payload) => {
-    io.to("organizers").emit("user:location_update", payload);
-    if (payload?.eventId) {
-      io.to(`event:${payload.eventId}`).emit("user:location_update", payload);
-    }
-    if (payload?.driverId && typeof payload?.lat === "number" && typeof payload?.lng === "number") {
-      telemetryBuffer.ingest({
-        driverId: payload.driverId,
-        lat: payload.lat,
-        lng: payload.lng,
-        speed: payload.speed || 0,
-        heading: payload.heading || 0,
-        eventId: payload.eventId
-      });
-    }
-  });
-
-  socket.on("task:status_change", (payload) => {
-    if (payload?.eventId) {
-      io.to(`event:${payload.eventId}`).emit("task:status_change", payload);
-    }
-
-    if (payload?.guestUserId) {
-      io.to(`user:${payload.guestUserId}`).emit("task:status_change", payload);
-    }
-  });
-
-  socket.on("guest:arrived", (payload) => {
-    if (payload?.eventId) {
-      io.to(`event:${payload.eventId}`).emit("guest:arrived", payload);
-    }
-  });
-
-  socket.on("alert:delay", (payload) => {
-    if (payload?.eventId) {
-      io.to(`event:${payload.eventId}`).emit("alert:delay", payload);
-    }
-  });
-});
+// Handshake authentication and authorized rooms/telemetry (T-09).
+configureRealtime(io);
 
 if (env.NODE_ENV === "production") {
   const clientDist = path.resolve(process.cwd(), "client/dist");
@@ -242,22 +131,7 @@ app.use(
 
 const stopDelayMonitor = startDelayMonitor(io);
 
-
-  // Temporary fix for corrupted Arabic database records
-  try {
-    await prisma.activityIntake.updateMany({
-      where: { activityName: { contains: "?" } },
-      data: { 
-        activityName: "برنامج ضيوف قمة القيادة السيادية",
-        activityPlace: "فندق الريتز كارلتون بالرياض"
-      }
-    });
-    console.log("Fixed corrupted Arabic records in database.");
-  } catch (err) {
-    console.error("Failed to fix records:", err);
-  }
-
-  server.listen(env.PORT, () => {
+server.listen(env.PORT, () => {
   console.log(`Midyaf API listening on http://localhost:${env.PORT}`);
   console.log("Socket.IO realtime layer ready.");
 });

@@ -1,5 +1,10 @@
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { assertSeedAllowed } from "../server/src/utils/seedSafety.js";
+
+// T-01: this script deletes every table. Refuse (before any client exists)
+// unless NODE_ENV is development/test and ALLOW_DESTRUCTIVE_SEED=true.
+assertSeedAllowed(process.env);
 
 const prisma = new PrismaClient();
 

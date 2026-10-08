@@ -61,7 +61,13 @@ import {
   login,
   refreshSession
 } from "./lib/api";
-import { SocketContext, useSocket } from "./lib/useSocket";
+import {
+  SocketContext,
+  createSocketAuthRecovery,
+  loadForSession,
+  refreshSessionIfCurrent,
+  useSocket
+} from "./lib/useSocket";
 import {
   isArabicLanguage,
   localizeText,
@@ -297,9 +303,30 @@ export function App() {
     [director, isDemoMode]
   );
 
+  // The socket handshake carries the access token (T-09). When the server
+  // rejects it, refresh once per recovery episode; a new token reconnects
+  // through sessionKey, and a dead refresh token signs out. sessionRef is
+  // updated synchronously on login/logout/refresh so a stale refresh result
+  // can never restore or replace a session that changed meanwhile.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const socketRecovery = useMemo(
+    () =>
+      createSocketAuthRecovery<Session>({
+        getSession: () => sessionRef.current,
+        refresh: refreshSession,
+        install: installSession,
+        signOut: () => handleLogout()
+      }),
+    []
+  );
+
   const { socket, status: socketStatus } = useSocket({
     enabled: Boolean(session && data),
     sessionKey: session?.accessToken ?? null,
+    accessToken: session?.accessToken ?? null,
+    onAuthError: socketRecovery.onAuthError,
+    onConnect: socketRecovery.onConnected,
     eventId,
     userId: session?.user.id,
     joinOrganizers: portal === "coordinator",
@@ -554,6 +581,8 @@ export function App() {
     try {
       const nextSession = await login(email, password);
       storeSession(nextSession);
+      sessionRef.current = nextSession;
+      socketRecovery.reset();
       setSession(nextSession);
       setPortal(portalsByRole[nextSession.user.role][0]);
     } catch (error) {
@@ -563,14 +592,25 @@ export function App() {
     }
   }
 
+  function installSession(next: Session) {
+    sessionRef.current = next;
+    storeSession(next);
+    setSession(next);
+  }
+
   function handleLogout() {
     window.localStorage.removeItem(sessionStorageKey);
+    sessionRef.current = null;
+    socketRecovery.reset();
     setSession(null);
     setData(null);
     setRealtimeLog([]);
   }
 
   async function loadSessionData(activeSession: Session) {
+    // A load belongs to one session. After a logout, an account switch or a
+    // refresh, its late result must not touch the newer session's state.
+    const isCurrent = () => sessionRef.current === activeSession;
     setIsLoading(true);
     setLoadError(null);
 
@@ -586,6 +626,7 @@ export function App() {
 
     try {
       const fresh = await getBootstrap(activeSession.accessToken);
+      if (!isCurrent()) return;
       setData(fresh);
       normalDataRef.current = fresh;
       try {
@@ -597,24 +638,24 @@ export function App() {
         // Ignore cache write error
       }
     } catch (error) {
+      if (!isCurrent()) return;
       // An expired access token is not a load failure: trade the refresh
-      // token for a new session and try once more; if that fails too, the
-      // session is gone and the login screen is the honest answer.
+      // token for a new session (its new access token re-runs the session
+      // effect, which reloads); if that fails too, the session is gone and
+      // the login screen is the honest answer. Stale outcomes are dropped.
       if (error instanceof ApiError && error.status === 401) {
-        try {
-          const next = await refreshSession(activeSession.refreshToken);
-          storeSession(next);
-          // The new access token re-runs the session effect, which reloads.
-          setSession(next);
-          return;
-        } catch {
-          // The refresh token is gone too — fall through to logout.
-        }
-        handleLogout();
-        toast.info(
-          isArabic ? "انتهت الجلسة" : "Session expired",
-          isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
-        );
+        await refreshSessionIfCurrent(activeSession, {
+          getSession: () => sessionRef.current,
+          refresh: refreshSession,
+          install: installSession,
+          signOut: () => {
+            handleLogout();
+            toast.info(
+              isArabic ? "انتهت الجلسة" : "Session expired",
+              isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
+            );
+          }
+        });
         return;
       }
       // If cached data is present, do not disrupt the UI with a blocking error
@@ -627,26 +668,35 @@ export function App() {
         return curr;
       });
     } finally {
-      setIsLoading(false);
+      // A newer session's load owns the spinner; after a logout nothing does.
+      if (isCurrent() || sessionRef.current === null) setIsLoading(false);
     }
   }
 
   async function refreshData() {
     const activeSession = requireSession();
     try {
-      const fresh = await getBootstrap(activeSession.accessToken);
-      setData(fresh);
-      if (!isDemoMode) {
-        normalDataRef.current = fresh;
-      }
-      try {
-        window.sessionStorage.setItem(
-          `midyaf_data_${activeSession.user.id}`,
-          JSON.stringify(fresh)
-        );
-      } catch {
-        // Ignore
-      }
+      // Socket events and actions trigger this; a reply that arrives after a
+      // logout or account switch must not replace the newer workspace.
+      await loadForSession(
+        activeSession,
+        () => sessionRef.current,
+        () => getBootstrap(activeSession.accessToken),
+        (fresh) => {
+          setData(fresh);
+          if (!isDemoMode) {
+            normalDataRef.current = fresh;
+          }
+          try {
+            window.sessionStorage.setItem(
+              `midyaf_data_${activeSession.user.id}`,
+              JSON.stringify(fresh)
+            );
+          } catch {
+            // Ignore
+          }
+        }
+      );
     } catch {
       // Optimistic state preserved
     }

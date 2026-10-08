@@ -20,6 +20,12 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { RIYADH_CENTER, sortDriversByDistance } from "../utils/riyadh.js";
+import {
+  safeDriverRelation,
+  safeGuestRelation,
+  safeUserRelation,
+  type SafeUser
+} from "../utils/safeResponse.js";
 import { recordAuditLog } from "../services/auditLog.js";
 
 const router = Router();
@@ -57,7 +63,7 @@ const bulkGuestSchema = guestInviteSchema.extend({
 
 type GuestInviteInput = z.infer<typeof guestInviteSchema>;
 type BulkGuestInput = z.infer<typeof bulkGuestSchema>;
-type GuestWithUser = Guest & { user: User };
+type GuestWithUser = Guest & { user: SafeUser };
 type ImportedGuest = {
   guest: GuestWithUser;
   input: BulkGuestInput;
@@ -151,13 +157,13 @@ router.get(
         },
         guests: {
           where: buildGuestVisibilityWhere(req.user!),
-          include: { user: true }
+          include: { user: safeUserRelation }
         },
         tasks: {
           where: buildTaskVisibilityWhere(req.user!),
           include: {
-            driver: { include: { user: true } },
-            guest: { include: { user: true } }
+            driver: safeDriverRelation,
+            guest: safeGuestRelation
           },
           orderBy: { scheduledAt: "asc" }
         },
@@ -247,7 +253,7 @@ router.get(
       where: {
         AND: [{ eventId: req.params.id }, guestVisibilityWhere ?? {}]
       },
-      include: { user: true },
+      include: { user: safeUserRelation },
       orderBy: [{ isVIP: "desc" }, { createdAt: "asc" }]
     });
 
@@ -516,7 +522,7 @@ async function upsertGuestWithJourney(
         .slice(0, 8)
         .toUpperCase()}`
     },
-    include: { user: true }
+    include: { user: safeUserRelation }
   });
 
   await prisma.notification.create({
@@ -691,8 +697,8 @@ async function createArrivalTask({
     },
     include: {
       event: true,
-      driver: { include: { user: true } },
-      guest: { include: { user: true } }
+      driver: safeDriverRelation,
+      guest: safeGuestRelation
     }
   });
 

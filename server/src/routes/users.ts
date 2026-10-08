@@ -106,10 +106,6 @@ router.put(
       })
       .parse(req.body);
 
-    if (body.role) {
-      assertCanAssignRole(req.user!.role, body.role);
-    }
-
     const existingUser = requireEntity(
       await prisma.user.findUnique({
         where: { id: req.params.id },
@@ -117,6 +113,10 @@ router.put(
       }),
       "User not found"
     );
+
+    // Authorize against the stored target before hashing, updating or auditing,
+    // so a payload that omits `role` cannot bypass the privileged-target check.
+    assertCanEditUser(req.user!, existingUser, body);
 
     const user = await prisma.user.update({
       where: { id: req.params.id },
@@ -141,12 +141,42 @@ router.put(
       entityId: user.id,
       before: existingUser,
       after: user,
-      metadata: { roleChanged: existingUser.role !== user.role }
+      metadata: {
+        roleChanged: existingUser.role !== user.role,
+        passwordChanged: body.password !== undefined,
+        selfEdit: req.user!.id === existingUser.id
+      }
     });
 
     res.json({ user });
   })
 );
+
+const superAdminOnlyRoles: Role[] = [Role.SUPER_ADMIN, Role.LOGISTICS_MANAGER];
+
+function assertCanEditUser(
+  actor: { id: string; role: Role },
+  target: { id: string; role: Role },
+  changes: { role?: Role; password?: string }
+) {
+  if (actor.role === Role.SUPER_ADMIN) {
+    return;
+  }
+
+  const isSelf = actor.id === target.id;
+
+  if (!isSelf && superAdminOnlyRoles.includes(target.role)) {
+    throw new HttpError(403, "Only a super admin can edit this account");
+  }
+
+  if (!isSelf && changes.password !== undefined) {
+    throw new HttpError(403, "Only a super admin can change another user's password");
+  }
+
+  if (changes.role !== undefined && changes.role !== target.role) {
+    assertCanAssignRole(actor.role, changes.role);
+  }
+}
 
 function assertCanAssignRole(actorRole: Role, targetRole: Role) {
   if (actorRole === Role.SUPER_ADMIN) {

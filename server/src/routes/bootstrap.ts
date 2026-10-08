@@ -5,6 +5,13 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/http.js";
 import { RIYADH_CENTER, RIYADH_ZONES } from "../utils/riyadh.js";
+import {
+  driverResponseOmit,
+  safeDriverRelation,
+  safeGuestRelation,
+  safeUserRelation,
+  stripSensitiveFields
+} from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
 
 const router = Router();
@@ -178,12 +185,12 @@ router.get(
         where: eventWhere,
         include: {
           city: true,
-          guests: { where: eventGuestWhere, include: { user: true, hospitalityRider: true } },
+          guests: { where: eventGuestWhere, include: { user: safeUserRelation, hospitalityRider: true } },
           tasks: {
             where: eventTaskWhere,
             include: {
-              driver: { include: { user: true } },
-              guest: { include: { user: true } }
+              driver: safeDriverRelation,
+              guest: safeGuestRelation
             }
           },
           bookings: {
@@ -199,8 +206,9 @@ router.get(
       }),
       prisma.driver.findMany({
         where: driverWhere,
+        omit: driverResponseOmit,
         include: {
-          user: true,
+          user: safeUserRelation,
           tasks: {
             where: driverTaskWhere,
             orderBy: { scheduledAt: "asc" }
@@ -357,7 +365,13 @@ router.get(
       companyReports,
       fileAssets,
       notifications,
-      auditLogs,
+      // Snapshots written before T-03 can still hold sensitive keys.
+      auditLogs: auditLogs.map((entry) => ({
+        ...entry,
+        beforeData: stripSensitiveFields(entry.beforeData),
+        afterData: stripSensitiveFields(entry.afterData),
+        metadata: stripSensitiveFields(entry.metadata)
+      })),
       hospitalityRiders
     });
   })

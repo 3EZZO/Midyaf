@@ -1,5 +1,6 @@
 import type { Server } from "socket.io";
 import { prisma } from "../db.js";
+import { safeDriverRelation, safeGuestRelation } from "../utils/safeResponse.js";
 
 export function startDelayMonitor(io: Server) {
   const interval = setInterval(() => {
@@ -23,8 +24,8 @@ async function scanForDelayedDrivers(io: Server) {
     },
     include: {
       event: true,
-      driver: { include: { user: true } },
-      guest: { include: { user: true } }
+      driver: safeDriverRelation,
+      guest: safeGuestRelation
     },
     take: 20
   });

@@ -11,6 +11,12 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { sendNotification } from "../services/notificationDelivery.js";
 import type { AuthRequest } from "../types/auth.js";
+import {
+  safeDriverRelation,
+  safeGuestRelation,
+  safeUserRelation,
+  safeUserSelect
+} from "../utils/safeResponse.js";
 import { recordAuditLog } from "../services/auditLog.js";
 
 const uploadRoot = path.resolve(process.cwd(), "uploads");
@@ -411,7 +417,7 @@ async function notifyCaptainsOfGuestPhoto(
       driverId: { not: null }
     },
     include: {
-      driver: { include: { user: true } }
+      driver: safeDriverRelation
     }
   });
   const drivers = uniqueBy(
@@ -457,7 +463,7 @@ async function notifyGuestsOfDriverPhoto(
       guestId: { not: null }
     },
     include: {
-      guest: { include: { user: true } }
+      guest: safeGuestRelation
     }
   });
   const guests = uniqueBy(
@@ -489,7 +495,10 @@ async function notifyGuestsOfDriverPhoto(
 
 async function getGuestRecipient(body: UploadNotificationBody) {
   if (body.userId) {
-    return prisma.user.findUnique({ where: { id: body.userId } });
+    return prisma.user.findUnique({
+      where: { id: body.userId },
+      select: safeUserSelect
+    });
   }
 
   if (!body.guestId) {
@@ -498,7 +507,7 @@ async function getGuestRecipient(body: UploadNotificationBody) {
 
   const guest = await prisma.guest.findUnique({
     where: { id: body.guestId },
-    include: { user: true }
+    include: { user: safeUserRelation }
   });
 
   return guest?.user ?? null;

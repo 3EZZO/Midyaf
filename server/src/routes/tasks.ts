@@ -7,6 +7,7 @@ import { prisma } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { RIYADH_CENTER, sortDriversByDistance } from "../utils/riyadh.js";
+import { safeDriverRelation, safeGuestRelation } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
 import { recordAuditLog } from "../services/auditLog.js";
 
@@ -40,8 +41,8 @@ router.get(
       },
       include: {
         event: true,
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       },
       orderBy: { scheduledAt: "asc" }
     });
@@ -84,8 +85,8 @@ router.post(
       },
       include: {
         event: true,
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       }
     });
 
@@ -149,8 +150,8 @@ router.put(
       },
       include: {
         event: true,
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       }
     });
 
@@ -257,8 +258,8 @@ router.put(
       },
       include: {
         event: true,
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       }
     });
 
@@ -358,8 +359,8 @@ router.get(
       },
       include: {
         event: true,
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       }
     });
 
@@ -395,8 +396,8 @@ router.post(
       where: { id: task.id },
       data: { driverId, status: TaskStatus.ASSIGNED },
       include: {
-        driver: { include: { user: true } },
-        guest: { include: { user: true } }
+        driver: safeDriverRelation,
+        guest: safeGuestRelation
       }
     });
 

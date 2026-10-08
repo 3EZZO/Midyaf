@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/http.js";
+import { stripSensitiveFields } from "../utils/safeResponse.js";
 
 const router = Router();
 const auditReadRoles = [
@@ -47,7 +48,15 @@ router.get(
       take: query.limit
     });
 
-    res.json({ auditLogs });
+    // Snapshots written before T-03 can still hold sensitive keys.
+    res.json({
+      auditLogs: auditLogs.map((entry) => ({
+        ...entry,
+        beforeData: stripSensitiveFields(entry.beforeData),
+        afterData: stripSensitiveFields(entry.afterData),
+        metadata: stripSensitiveFields(entry.metadata)
+      }))
+    });
   })
 );
 

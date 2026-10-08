@@ -87,8 +87,12 @@ export function buildBriefingContext(
     }));
 
   return {
+    // The server checks event ownership from `event.id`; for a scripted demo
+    // it swaps this snapshot for its own synthetic context instead.
+    demo: isDemoMode,
     event: event
       ? {
+          id: event.id,
           name: event.name,
           venue: event.venue,
           date: event.date,

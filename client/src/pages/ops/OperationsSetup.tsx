@@ -8,6 +8,32 @@ import type { DriverCreateInput, GuestInviteInput, SupplierCreateInput, TaskCrea
 import type { Task } from "@shared/domain";
 import { CheckboxField, DateTimeField, Field, NumberField, SelectField, assignableRoles, captainTypes, dateTimeInHours, driverZones, supplierCategories, taskTypes, useOpsText } from "./shared";
 
+/** Same minimum as the account API (`POST /users`, zod min(8)). */
+export const MIN_ACCOUNT_PASSWORD_LENGTH = 8;
+
+/**
+ * T-02: an account password must be typed explicitly. There is no bundled
+ * default; the length is checked as entered (no trimming), like the API.
+ */
+export function isAccountPasswordReady(password: string | undefined): boolean {
+  return (password ?? "").length >= MIN_ACCOUNT_PASSWORD_LENGTH;
+}
+
+export function canSubmitUserDraft(
+  draft: Pick<UserCreateInput, "name" | "email" | "password">
+): boolean {
+  return (
+    draft.name.trim().length > 0 &&
+    draft.email.trim().length > 0 &&
+    isAccountPasswordReady(draft.password)
+  );
+}
+
+/** The create-user payload always carries the entered password explicitly. */
+export function buildUserCreatePayload(draft: UserCreateInput): UserCreateInput {
+  return { ...draft, password: draft.password ?? "" };
+}
+
 export function OperationsSetup({
   data,
   event,
@@ -78,7 +104,7 @@ export function OperationsSetup({
     phone: "+9665",
     role: "COORDINATOR",
     language: "ar",
-    password: "Midyaf@2026"
+    password: ""
   });
   const [taskDraft, setTaskDraft] = useState<TaskCreateInput>({
     eventId: event.id,
@@ -195,7 +221,10 @@ export function OperationsSetup({
               }
             />
             <span className="text-xs font-semibold text-slate-500">
-              {ui.l("Temporary password")}: Midyaf@2026
+              {ui.p(
+                "Arrange the guest's sign-in details with the administrator.",
+                "يُنسَّق تسجيل دخول الضيف مع المسؤول."
+              )}
             </span>
           </div>
           <button
@@ -499,30 +528,45 @@ export function OperationsSetup({
                 }))
               }
             />
-            <Field
-              label={ui.l("Temporary password")}
-              value={userDraft.password ?? ""}
-              onChange={(value) =>
-                setUserDraft((current) => ({ ...current, password: value }))
-              }
-            />
+            <label className="block">
+              <span className="text-xs font-bold text-slate-500">
+                {ui.l("Temporary password")}
+              </span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={userDraft.password ?? ""}
+                onChange={(event) =>
+                  setUserDraft((current) => ({
+                    ...current,
+                    password: event.target.value
+                  }))
+                }
+                className="m-input rounded-xl"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                {ui.p(
+                  `Enter a password of at least ${MIN_ACCOUNT_PASSWORD_LENGTH} characters and share it with the user securely.`,
+                  `أدخل كلمة مرور لا تقل عن ${MIN_ACCOUNT_PASSWORD_LENGTH} أحرف وشاركها مع المستخدم بأمان.`
+                )}
+              </span>
+            </label>
           </div>
           <button
             onClick={() =>
               void runAction("user", async () => {
-                await createUser(userDraft);
+                await createUser(buildUserCreatePayload(userDraft));
                 setUserDraft((current) => ({
                   ...current,
                   name: "",
                   email: "",
-                  phone: "+9665"
+                  phone: "+9665",
+                  password: ""
                 }));
               })
             }
             disabled={
-              pendingAction !== null ||
-              !userDraft.name.trim() ||
-              !userDraft.email.trim()
+              pendingAction !== null || !canSubmitUserDraft(userDraft)
             }
             className="mt-4 btn-primary rounded-xl"
           >

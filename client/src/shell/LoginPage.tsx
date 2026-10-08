@@ -6,7 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
 import { entrance } from "../lib/motion";
 import { cn } from "../lib/cn";
-import { DEMO_PERSONAS, demoPersonasEnabled } from "./demoPersonas";
+import { DEMO_PERSONAS, demoPersonasEnabled, selectPersona } from "./demoPersonas";
 
 export function LoginPage({
   isArabic,
@@ -165,7 +165,12 @@ export function LoginPage({
             <div className="mt-6 border-t border-hairline pt-5">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-label text-gold-500">
                 <ShieldCheck className="size-3.5" aria-hidden />
-                {isArabic ? "الدخول القيادي السريع" : "Executive Fast Access"}
+                {isArabic ? "حسابات العرض" : "Demo accounts"}
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">
+                {isArabic
+                  ? "اختيار الحساب يملأ البريد الإلكتروني فقط. أدخل كلمة المرور ثم سجّل الدخول."
+                  : "Choosing an account fills its email only. Enter the password, then sign in."}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {DEMO_PERSONAS.map((persona) => {
@@ -175,7 +180,8 @@ export function LoginPage({
                       key={persona.id}
                       type="button"
                       disabled={isLoading}
-                      onClick={() => void onLogin(persona.email, persona.password)}
+                      // Fills the email and clears the password; never signs in.
+                      onClick={() => selectPersona(persona, { setEmail, setPassword })}
                       className={cn(
                         "flex items-center gap-2.5 rounded-lg border border-hairline bg-surface-1 p-2.5 text-start",
                         "transition-colors duration-base hover:border-gold-500/40 hover:bg-surface-3",

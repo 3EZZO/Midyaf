@@ -26,8 +26,25 @@ import {
 } from "../services/logisticsRules.js";
 import { generateReportPdf } from "../services/pdf.js";
 import { recordAuditLog } from "../services/auditLog.js";
+import {
+  safeDriverRelation,
+  safeGuestRelation,
+  safeUserRelation
+} from "../utils/safeResponse.js";
 import { telemetryBuffer } from "../services/telemetryBuffer.js";
-import { geofenceEngine } from "../services/geofenceEngine.js";
+import {
+  GeofenceEngine,
+  geofenceEngine
+} from "../services/geofenceEngine.js";
+import {
+  EVENT_OPERATOR_ROLES,
+  LEGACY_OPERATOR_ROLES,
+  assertEventOperatorAccess,
+  driverIdsAssignedToEvent,
+  isLegacyOperator,
+  resolveTelemetryScope,
+  type TelemetryScope
+} from "../utils/routeAuthorization.js";
 
 const router = Router();
 const logisticsRoles: Role[] = [
@@ -46,12 +63,38 @@ const requestCreateRoles: Role[] = [
 
 router.use(requireAuth);
 
+// T-08: live telemetry/geofence reads are limited to LM/SA (legacy global
+// policy) and an ORGANIZER for its own explicit eventId, scoped to drivers
+// that event's stored tasks assign. Scope is resolved before any cache read.
+
+const MAX_RECENT_GEOFENCE_EVENTS = 100;
+const MAX_NEARBY_RADIUS_METERS = 100_000;
+const DEMO_DRIVER_ID = "demo-driver-synthetic";
+const DEMO_DRIVER_NAME = "Demo Captain (synthetic)";
+
+function inTelemetryScope(
+  scope: TelemetryScope,
+  frame: { driverId: string; eventId?: string }
+) {
+  const { eventId, driverIds } = scope;
+  if (!eventId || !driverIds) return true;
+  return frame.eventId === eventId && driverIds.has(frame.driverId);
+}
+
+function finiteQueryNumber(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 router.get(
   "/operations/telemetry/snapshot",
+  requireRole(EVENT_OPERATOR_ROLES),
   asyncHandler(async (req: AuthRequest, res) => {
-    const eventId =
-      typeof req.query.eventId === "string" ? req.query.eventId : undefined;
-    const snapshot = telemetryBuffer.getSnapshot(eventId);
+    const scope = await resolveTelemetryScope(req.user!, req.query.eventId);
+    const snapshot = telemetryBuffer
+      .getSnapshot(scope.eventId)
+      .filter((frame) => inTelemetryScope(scope, frame));
     res.json({
       count: snapshot.length,
       snapshot,
@@ -62,6 +105,8 @@ router.get(
 
 router.get(
   "/operations/telemetry/buffer-stats",
+  // Global cache counters cannot be scoped to an event.
+  requireRole(LEGACY_OPERATOR_ROLES),
   asyncHandler(async (_req: AuthRequest, res) => {
     const stats = telemetryBuffer.getStats();
     res.json({ stats });
@@ -70,26 +115,39 @@ router.get(
 
 router.get(
   "/operations/telemetry/nearby",
+  requireRole(EVENT_OPERATOR_ROLES),
   asyncHandler(async (req: AuthRequest, res) => {
-    const lat = parseFloat(req.query.lat as string);
-    const lng = parseFloat(req.query.lng as string);
-    const radius = parseFloat(req.query.radius as string) || 5000;
-    const eventId =
-      typeof req.query.eventId === "string" ? req.query.eventId : undefined;
+    const lat = finiteQueryNumber(req.query.lat);
+    const lng = finiteQueryNumber(req.query.lng);
+    const radius =
+      req.query.radius === undefined
+        ? 5000
+        : finiteQueryNumber(req.query.radius);
 
-    if (isNaN(lat) || isNaN(lng)) {
+    if (
+      lat === undefined ||
+      lng === undefined ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lng) > 180
+    ) {
       throw new HttpError(
         400,
         "Latitude and longitude query params are required"
       );
     }
 
-    const nearby = telemetryBuffer.findDriversWithinRadius(
-      lat,
-      lng,
-      radius,
-      eventId
-    );
+    if (
+      radius === undefined ||
+      radius <= 0 ||
+      radius > MAX_NEARBY_RADIUS_METERS
+    ) {
+      throw new HttpError(400, "Radius must be between 0 and 100000 meters");
+    }
+
+    const scope = await resolveTelemetryScope(req.user!, req.query.eventId);
+    const nearby = telemetryBuffer
+      .findDriversWithinRadius(lat, lng, radius, scope.eventId)
+      .filter((match) => inTelemetryScope(scope, match.driver));
     res.json({
       origin: { lat, lng },
       radiusMeters: radius,
@@ -101,8 +159,32 @@ router.get(
 
 router.get(
   "/operations/geofences",
-  asyncHandler(async (_req: AuthRequest, res) => {
-    const geofences = geofenceEngine.getGeofences();
+  requireRole(EVENT_OPERATOR_ROLES),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const scope = await resolveTelemetryScope(req.user!, req.query.eventId);
+    const all = geofenceEngine.getGeofences();
+    // Scoped counts are recomputed from permitted drivers' states; the
+    // engine's global counts are never returned for an event scope.
+    const { driverIds } = scope;
+    const scopedStates = driverIds
+      ? [...driverIds].flatMap((id) => geofenceEngine.getDriverState(id))
+      : [];
+    const geofences = driverIds
+      ? all.map((geo) => {
+          const ringCounts = Object.fromEntries(
+            Object.keys(geo.ringCounts).map((ring) => [ring, 0])
+          ) as typeof geo.ringCounts;
+          let activeVehiclesCount = 0;
+          for (const state of scopedStates) {
+            if (state.geofenceId !== geo.id || state.currentRing === "OUTSIDE") {
+              continue;
+            }
+            ringCounts[state.currentRing] += 1;
+            activeVehiclesCount += 1;
+          }
+          return { ...geo, activeVehiclesCount, ringCounts };
+        })
+      : all;
     res.json({
       count: geofences.length,
       geofences,
@@ -113,9 +195,23 @@ router.get(
 
 router.get(
   "/operations/geofences/recent-events",
+  requireRole(EVENT_OPERATOR_ROLES),
   asyncHandler(async (req: AuthRequest, res) => {
-    const limit = parseInt(req.query.limit as string) || 50;
-    const events = geofenceEngine.getRecentEvents(limit);
+    const requested = finiteQueryNumber(req.query.limit);
+    const limit =
+      requested !== undefined && requested >= 1
+        ? Math.min(Math.floor(requested), MAX_RECENT_GEOFENCE_EVENTS)
+        : 50;
+    const scope = await resolveTelemetryScope(req.user!, req.query.eventId);
+    // History carries no event attribution: an event scope filters by the
+    // drivers currently assigned to it, before the limit is applied.
+    const { driverIds } = scope;
+    const events = driverIds
+      ? geofenceEngine
+          .getRecentEvents(MAX_RECENT_GEOFENCE_EVENTS)
+          .filter((event) => driverIds.has(event.driverId))
+          .slice(0, limit)
+      : geofenceEngine.getRecentEvents(limit);
     res.json({
       count: events.length,
       events
@@ -125,41 +221,93 @@ router.get(
 
 router.get(
   "/operations/geofences/driver/:driverId",
+  requireRole([...EVENT_OPERATOR_ROLES, Role.DRIVER]),
   asyncHandler(async (req: AuthRequest, res) => {
-    const states = geofenceEngine.getDriverState(req.params.driverId);
+    const user = req.user!;
+    const { driverId } = req.params;
+
+    if (isLegacyOperator(user) || user.role === Role.DRIVER) {
+      const driver = await prisma.driver.findUnique({
+        where: { id: driverId },
+        select: { userId: true }
+      });
+      if (user.role === Role.DRIVER && driver?.userId !== user.id) {
+        throw new HttpError(403, "Drivers can only view their own state");
+      }
+      requireEntity(driver, "Driver not found");
+    } else {
+      const eventId = req.query.eventId;
+      if (typeof eventId !== "string" || !eventId) {
+        throw new HttpError(400, "An eventId query parameter is required");
+      }
+      await assertEventOperatorAccess(user, eventId);
+      const assigned = await driverIdsAssignedToEvent(eventId);
+      if (!assigned.has(driverId)) {
+        throw new HttpError(403, "Driver is not assigned to this event");
+      }
+    }
+
+    const states = geofenceEngine.getDriverState(driverId);
     res.json({
-      driverId: req.params.driverId,
+      driverId,
       states
     });
   })
 );
 
+const simulateHandshakeSchema = z
+  .object({
+    demo: z.literal(true),
+    geofenceCode: z.string().min(1).max(64).optional()
+  })
+  .strict();
+
 router.post(
   "/operations/geofences/simulate-handshake",
+  requireRole(EVENT_OPERATOR_ROLES),
   asyncHandler(async (req: AuthRequest, res) => {
-    const driverId = (req.body?.driverId as string) || "driver-sultan";
-    const geofenceCode = (req.body?.geofenceCode as string) || "KKIA_ROYAL_T5";
-    const driverName =
-      (req.body?.driverName as string) || "Capt. Sultan Al-Otaibi";
+    // Demo-only: a strict allowlist rejects caller-chosen drivers, names and
+    // events. A fresh engine keeps the live singleton, its driver states and
+    // its transition callbacks untouched.
+    const body = simulateHandshakeSchema.parse(req.body ?? {});
+    const engine = new GeofenceEngine();
+    const geofenceCode = body.geofenceCode ?? "KKIA_ROYAL_T5";
+    const geofence = engine.getGeofenceById(geofenceCode);
+    if (!geofence) {
+      throw new HttpError(400, "Unknown geofence");
+    }
 
-    const events = geofenceEngine.simulateHandshakeSequence(
-      driverId,
-      geofenceCode,
-      driverName
+    const events = engine.simulateHandshakeSequence(
+      DEMO_DRIVER_ID,
+      geofence.code,
+      DEMO_DRIVER_NAME
     );
+
+    await recordAuditLog({
+      req,
+      action: "geofence.simulate_handshake",
+      entityType: "DRIVER",
+      entityId: DEMO_DRIVER_ID,
+      metadata: {
+        demo: true,
+        synthetic: true,
+        geofenceCode: geofence.code,
+        eventsGenerated: events.length
+      }
+    });
 
     const io = req.app.get("io");
     if (io) {
       for (const ev of events) {
-        io.to("organizers").emit("geofence:transition", ev);
-        io.emit("geofence:transition", ev);
+        io.to(`user:${req.user!.id}`).emit("geofence:transition", ev);
       }
     }
 
     res.json({
       success: true,
-      driverId,
-      geofenceCode,
+      demo: true,
+      driverId: DEMO_DRIVER_ID,
+      geofenceCode: geofence.code,
       eventsGenerated: events.length,
       events
     });
@@ -1410,7 +1558,7 @@ router.post(
         rsvpStatus: "ARRIVED",
         qrCode
       },
-      include: { user: true }
+      include: { user: safeUserRelation }
     });
 
     let assignedDriverId = body.driverId;
@@ -1438,8 +1586,8 @@ router.post(
           ownerName: `VIP WALK-IN: ${body.title ? body.title + " " : ""}${body.guestName}`
         },
         include: {
-          driver: { include: { user: true } },
-          guest: { include: { user: true } }
+          driver: safeDriverRelation,
+          guest: safeGuestRelation
         }
       });
 
@@ -1523,8 +1671,8 @@ router.get(
         status: { in: ["PENDING", "ASSIGNED", "EN_ROUTE"] }
       },
       include: {
-        guest: { include: { user: true } },
-        driver: { include: { user: true } },
+        guest: safeGuestRelation,
+        driver: safeDriverRelation,
         event: true
       },
       take: 3

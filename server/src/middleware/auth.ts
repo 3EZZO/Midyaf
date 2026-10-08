@@ -3,7 +3,7 @@ import jwt, { type JwtPayload, type SignOptions } from "jsonwebtoken";
 import type { Role, User } from "@prisma/client";
 import { env } from "../env.js";
 import { HttpError } from "../utils/http.js";
-import type { AuthRequest } from "../types/auth.js";
+import type { AuthenticatedUser, AuthRequest } from "../types/auth.js";
 
 type TokenPayload = JwtPayload & {
   sub: string;
@@ -53,16 +53,30 @@ export function requireAuth(
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as TokenPayload;
-    req.user = {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role
-    };
-    next();
+    req.user = verifyAccessToken(token);
   } catch {
     throw new HttpError(401, "Invalid or expired token");
   }
+  next();
+}
+
+/**
+ * Verifies an access token (not a refresh token) and returns the actor it
+ * names. Shared by REST and the Socket.IO handshake; throws when the token is
+ * missing claims, expired or signed with another secret.
+ */
+export function verifyAccessToken(token: string): AuthenticatedUser {
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as TokenPayload;
+
+  if (
+    typeof payload.sub !== "string" ||
+    typeof payload.email !== "string" ||
+    typeof payload.role !== "string"
+  ) {
+    throw new Error("Access token is missing required claims");
+  }
+
+  return { id: payload.sub, email: payload.email, role: payload.role };
 }
 
 export function requireRole(roles: Role[]) {
