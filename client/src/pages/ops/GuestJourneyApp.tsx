@@ -25,6 +25,7 @@ import { useLiveEvent } from "../../lib/liveEvents";
 import { driverRingPosition } from "../../lib/metrics";
 import { fade } from "../../lib/motion";
 import type { PortalProps } from "../types";
+import { CaptainPhoto } from "./CaptainPhoto";
 import {
   DeliveryLog,
   DocumentCard,
@@ -345,9 +346,13 @@ export function GuestJourneyApp({
       <div className="space-y-4">
         <Section title={ui.l("Captain and car details")}>
           <div className="flex gap-4">
-            <img
+            <CaptainPhoto
               src={driverPhoto}
-              alt={ui.l(journey.driverName)}
+              alt={
+                assignedDriver
+                  ? ui.l(assignedDriver.user.name)
+                  : ui.l(journey.driverName)
+              }
               className="size-16 shrink-0 rounded-lg object-cover"
             />
             <div className="min-w-0 flex-1">

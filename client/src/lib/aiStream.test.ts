@@ -6,6 +6,7 @@ import {
   streamAiReply,
   streamLocalReply
 } from "./aiStream";
+import { localAiReply } from "./localAiReply";
 
 /** A Response whose body emits the given SSE frames in the given byte chunks. */
 function sseResponse(chunks: string[], status = 200): Response {
@@ -136,6 +137,41 @@ describe("streamAiReply", () => {
     const result = await p;
     expect(result.meta?.source).toBe("local");
     expect(result.aborted).toBe(false);
+  });
+
+  it("falls back to readable Arabic with the scenario actions on transport failure", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new TypeError("Failed to fetch")
+    );
+    const metas: unknown[] = [];
+    let streamed = "";
+    const arabicBody = { message: "أين السائق؟", language: "ar", persona: "Noura" as const };
+    const p = streamAiReply("tok", arabicBody, {
+      onMeta: (m) => metas.push(m),
+      onDelta: (_d, t) => (streamed = t)
+    });
+    await vi.runAllTimersAsync();
+    const result = await p;
+
+    const expected = localAiReply(arabicBody.message, "ar", "Noura");
+    expect(result.aborted).toBe(false);
+    expect(result.text).toBe(expected.body);
+    expect(streamed).toBe(expected.body);
+    expect(result.text).toContain("الكابتن سلطان العتيبي");
+    expect(result.text).not.toMatch(/[ØÙÃÂ]|â€/);
+    expect(result.meta).toEqual({
+      persona: "Noura",
+      actions: [
+        {
+          label: "Track Chauffeur Live on Radar",
+          labelAr: "تتبع السائق مباشرة على الرادار",
+          actionId: "track_driver"
+        }
+      ],
+      source: "local"
+    });
+    expect(metas).toEqual([result.meta]);
   });
 
   it("keeps a clean partial when the server drops mid-stream", async () => {

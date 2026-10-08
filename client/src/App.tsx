@@ -1,7 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PORTALS } from "@shared/constants";
 import type {
   ActivityIntake,
   CoordinatorRequest,
@@ -12,7 +11,6 @@ import type {
   GuestJourney,
   MidyafData,
   PortalKey,
-  Role,
   Session,
   Task,
   TaskStatus
@@ -38,6 +36,7 @@ import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
 import { LoginPage } from "./shell/LoginPage";
+import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
 import { GuestSelfOnboarding } from "./pages/GuestSelfOnboarding";
 import type {
@@ -79,19 +78,6 @@ import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
 
 const sessionStorageKey = "midyaf.session";
-
-const portalsByRole: Record<Role, PortalKey[]> = {
-  GUEST: ["guest"],
-  DRIVER: ["captain"],
-  ORGANIZER: [...PORTALS],
-  SUPPLIER: ["company"],
-  SUPER_ADMIN: [...PORTALS],
-  COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake"],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations"],
-  EVENT_MANAGER: ["sila_operations", "coordinator"],
-  CLIENT: ["client"]
-};
 
 
 export function App() {
@@ -458,7 +444,7 @@ export function App() {
             setIsOnboarding(false);
             storeSession(nextSession);
             setSession(nextSession);
-            setPortal(portalsByRole[nextSession.user.role][0]);
+            setPortal(initialPortalForRole(nextSession.user.role));
             toast.success(
               isArabic ? "تم التسجيل بنجاح" : "Registration complete",
               isArabic ? "مرحباً بك في تطبيق الضيف" : "Welcome to your guest app"
@@ -584,7 +570,7 @@ export function App() {
       sessionRef.current = nextSession;
       socketRecovery.reset();
       setSession(nextSession);
-      setPortal(portalsByRole[nextSession.user.role][0]);
+      setPortal(initialPortalForRole(nextSession.user.role));
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : t("loginFailed"));
     } finally {
