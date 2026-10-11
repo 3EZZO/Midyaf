@@ -800,6 +800,44 @@ export type SupplierSubmissionsView = {
 };
 
 // ---------------------------------------------------------------------------
+// ADMIN-PORTALS-001 read-only Super Admin supplier workspace
+// (GET /suppliers/admin/workspaces[/:supplierId] in server/src/routes/suppliers.ts).
+// ---------------------------------------------------------------------------
+
+export type AdminSupplierDirectoryEntry = {
+  id: string;
+  name: string;
+  category: SupplierCategory;
+  /** Whether a supplier user account is linked; the account itself is never sent. */
+  accountLinked: boolean;
+};
+
+export type AdminSupplierDirectoryResponse = {
+  suppliers: AdminSupplierDirectoryEntry[];
+  /** More than the 100 listed suppliers exist. */
+  truncated: boolean;
+};
+
+/** Sealed quote metadata: never unit/total price or tax terms (D-011 pending). */
+export type AdminSupplierQuoteView = Omit<SupplierOwnQuote, "unitPrice" | "totalPrice" | "taxInclusive"> & {
+  policyPending: true;
+};
+
+export type AdminSupplierRequestView = Omit<SupplierRequestView, "ownQuote"> & {
+  quote: AdminSupplierQuoteView | null;
+};
+
+export type AdminSupplierWorkspaceView = {
+  accountLinked: boolean;
+  profile: SupplierProfileView;
+  services: SupplierServiceView[];
+  bookings: SupplierBookingView[];
+  requests: AdminSupplierRequestView[];
+  quotes: AdminSupplierQuoteView[];
+  policyPending: true;
+};
+
+// ---------------------------------------------------------------------------
 // OPS-COLLAB-001 built-in messaging (server/src/routes/messages.ts).
 // ---------------------------------------------------------------------------
 

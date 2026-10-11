@@ -101,8 +101,9 @@ export const PORTALS = [
 ] as const;
 
 /**
- * SUPPLIER-001: the supplier-only workspace. Deliberately NOT in PORTALS,
- * which organizers and super admins receive by spread.
+ * SUPPLIER-001: the supplier workspace. Deliberately NOT in PORTALS, which
+ * organizers and super admins receive by spread. ADMIN-PORTALS-001 adds it
+ * explicitly to SUPER_ADMIN only, as a read-only administrative view.
  */
 export const SUPPLIER_PORTAL = "supplier" as const;
 
