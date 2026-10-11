@@ -3,11 +3,13 @@ import type { PortalKey, Role } from "@shared/domain";
 import { initialPortalForRole, portalsByRole } from "./rolePortals";
 
 /**
- * VIS-03: only the organizer's landing page changes. Every role keeps exactly
- * the portals it could open before.
+ * VIS-03: only the organizer's landing page changes. SUPPLIER-001 gives
+ * suppliers their own workspace instead of the company dashboard, without
+ * adding it to any other role. OPS-COLLAB-001 adds the messages inbox to
+ * every role. Every other portal stays exactly as before.
  */
 
-const ALL_PORTALS: PortalKey[] = [
+const SHARED_PORTALS: PortalKey[] = [
   "admin",
   "company",
   "client",
@@ -19,23 +21,23 @@ const ALL_PORTALS: PortalKey[] = [
 ];
 
 const EXPECTED_ALLOWED: Record<Role, PortalKey[]> = {
-  GUEST: ["guest"],
-  DRIVER: ["captain"],
-  ORGANIZER: ALL_PORTALS,
-  SUPPLIER: ["company"],
-  SUPER_ADMIN: ALL_PORTALS,
-  COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake"],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations"],
-  EVENT_MANAGER: ["sila_operations", "coordinator"],
-  CLIENT: ["client"]
+  GUEST: ["guest", "messages"],
+  DRIVER: ["captain", "messages"],
+  ORGANIZER: [...SHARED_PORTALS, "messages"],
+  SUPPLIER: ["supplier", "messages"],
+  SUPER_ADMIN: [...SHARED_PORTALS, "messages"],
+  COORDINATOR: ["coordinator", "messages"],
+  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake", "messages"],
+  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations", "messages"],
+  EVENT_MANAGER: ["sila_operations", "coordinator", "messages"],
+  CLIENT: ["client", "messages"]
 };
 
 const EXPECTED_INITIAL: Record<Role, PortalKey> = {
   GUEST: "guest",
   DRIVER: "captain",
   ORGANIZER: "sila_operations",
-  SUPPLIER: "company",
+  SUPPLIER: "supplier",
   SUPER_ADMIN: "admin",
   COORDINATOR: "coordinator",
   LOGISTICS_MANAGER: "sila_operations",
@@ -50,6 +52,17 @@ describe("portalsByRole", () => {
   it("keeps the exact allowed portal list for every role", () => {
     expect(portalsByRole).toEqual(EXPECTED_ALLOWED);
     expect(Object.keys(portalsByRole).sort()).toEqual([...ROLES].sort());
+  });
+
+  it("gives the supplier workspace to suppliers only", () => {
+    for (const role of ROLES) {
+      expect(portalsByRole[role].includes("supplier")).toBe(role === "SUPPLIER");
+    }
+    expect(portalsByRole.SUPPLIER).not.toContain("company");
+  });
+
+  it("gives every role the messages inbox", () => {
+    for (const role of ROLES) expect(portalsByRole[role]).toContain("messages");
   });
 });
 

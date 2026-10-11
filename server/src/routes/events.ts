@@ -402,9 +402,9 @@ async function buildEventVisibilityWhere(
     return { tasks: { some: { driver: { userId: user.id } } } };
   }
 
-  if (user.role === Role.SUPPLIER) {
-    return { bookings: { some: { supplier: { userId: user.id } } } };
-  }
+  // SUPPLIER-001: suppliers get only opaque event references, dates and
+  // currency through /suppliers/me; raw events carry venue, brief, organizer
+  // contacts and other suppliers' bookings.
 
   if (user.role === Role.COMPANY_ORGANIZER) {
     const userProfile = await prisma.user.findUnique({
@@ -472,10 +472,6 @@ function buildBookingVisibilityWhere(
 ): Prisma.BookingWhereInput | undefined {
   if (fullAccessRoles.includes(user.role)) {
     return undefined;
-  }
-
-  if (user.role === Role.SUPPLIER) {
-    return { supplier: { userId: user.id } };
   }
 
   return { id: "__no_booking_access__" };

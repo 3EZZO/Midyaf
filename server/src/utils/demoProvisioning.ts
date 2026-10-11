@@ -1428,12 +1428,15 @@ export const BOOTSTRAP_EXPECTATIONS: Record<DemoAccountKey, (body: Body, ctx: Sh
     list(body.activityIntakes).length === 0 &&
     list(body.vendorQuotes).length === 0 &&
     list(body.suppliers).length === 0,
-  supplier: (body, ctx) =>
-    hasEvent(body, ctx) &&
-    ids(body.suppliers).length === 1 &&
-    ids(body.suppliers)[0] === ctx.supplierId &&
-    list(body.events).every((event) => list(event.bookings).every((booking) => booking.supplierId === ctx.supplierId)) &&
-    list(body.vendorQuotes).length === 0,
+  // SUPPLIER-001: the supplier bootstrap is an early, empty branch; the
+  // supplier workspace loads its own sanitized DTOs from /suppliers/me/*.
+  supplier: (body) =>
+    list(body.events).length === 0 &&
+    list(body.suppliers).length === 0 &&
+    list(body.vendorQuotes).length === 0 &&
+    list(body.activityIntakes).length === 0 &&
+    list(body.hospitalityRiders).length === 0 &&
+    list(body.users).length <= 1,
   driver: ownDriverView("driver"),
   driverTwo: ownDriverView("driverTwo"),
   guestVip: ownGuestView("guestVip", "driver"),

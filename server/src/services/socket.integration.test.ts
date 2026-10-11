@@ -189,6 +189,13 @@ describe("handshake authentication", () => {
     expect(socket.connected).toBe(true);
   });
 
+  it("refuses supplier handshakes before any room (SUPPLIER-001)", async () => {
+    const socket = open(tokenFor("usr_supplier", Role.SUPPLIER));
+    const error = (await rejected(socket)) as Error & { data?: { reason?: string } };
+    expect(error.message).toBe("unauthorized");
+    expect(error.data?.reason).toBe("role_not_permitted");
+  });
+
   it("reconnects with the latest token after a refresh", async () => {
     let token = "stale-token";
     const socket = open(() => token);
@@ -222,11 +229,9 @@ describe("room authorization", () => {
     const owner = await connectAs("usr_org", Role.ORGANIZER);
     const outsider = await connectAs("usr_org_2", Role.ORGANIZER);
     const coordinator = await connectAs("usr_coord", Role.COORDINATOR);
-    const supplier = await connectAs("usr_supplier", Role.SUPPLIER);
 
     expect(await join(lm, "event:join", "evt_1")).toEqual({ ok: true });
     expect(await join(owner, "event:join", "evt_1")).toEqual({ ok: true });
-    expect(await join(supplier, "event:join", "evt_1")).toEqual({ ok: true });
     expect(await join(outsider, "event:join", "evt_1")).toEqual({ ok: false });
     expect(await join(coordinator, "event:join", "evt_1")).toEqual({ ok: false });
 
@@ -266,8 +271,6 @@ describe("telemetry audience and client-originated events", () => {
     await join(assignedGuest, "event:join", "evt_1");
     const otherGuest = await connectAs("usr_guest_3", Role.GUEST);
     expect(await join(otherGuest, "event:join", "evt_1")).toEqual({ ok: true });
-    const supplier = await connectAs("usr_supplier", Role.SUPPLIER);
-    expect(await join(supplier, "event:join", "evt_1")).toEqual({ ok: true });
     const captain = await connectAs("usr_captain", Role.DRIVER);
 
     const feeds = {
@@ -275,8 +278,7 @@ describe("telemetry audience and client-originated events", () => {
       ownerStream: collect(owner, "driver:telemetry_stream"),
       assigned: collect(assignedGuest, "driver:location_update"),
       assignedStream: collect(assignedGuest, "driver:telemetry_stream"),
-      other: collect(otherGuest, "driver:location_update"),
-      supplier: collect(supplier, "driver:location_update")
+      other: collect(otherGuest, "driver:location_update")
     };
     captain.emit("driver:location_update", nextFrame());
 
@@ -295,7 +297,6 @@ describe("telemetry audience and client-originated events", () => {
     expect(forGuest).toMatchObject({ driverId: "drv_1" });
     expect(await feeds.assignedStream).toHaveLength(0);
     expect(await feeds.other).toHaveLength(0);
-    expect(await feeds.supplier).toHaveLength(0);
   });
 
   it("drops spoofed driver ids, telemetry from non-drivers and stale frames", async () => {

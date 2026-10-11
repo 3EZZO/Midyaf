@@ -130,6 +130,12 @@ enum CarProfile {
   MIXED
 }
 
+enum TaskHandoverKind {
+  DELEGATE
+  TRANSFER
+  RETURN
+}
+
 enum QuoteStatus {
   REQUESTED
   RECEIVED
@@ -202,6 +208,15 @@ model User {
   auditLogs       AuditLog[]     @relation("AuditActor")
   sentMessages    Message[]      @relation("SentMessages")
   receivedMessages Message[]     @relation("ReceivedMessages")
+  supplierNotes   SupplierRequestNote[] @relation("SupplierNoteAuthor")
+  responsibleTasks Task[]        @relation("TaskResponsible")
+  delegatedTasks  Task[]         @relation("TaskDelegate")
+  handoversFrom   TaskHandover[] @relation("TaskHandoverFrom")
+  handoversTo     TaskHandover[] @relation("TaskHandoverTo")
+  handoversActed  TaskHandover[] @relation("TaskHandoverActor")
+  conversationsCreated Conversation[] @relation("ConversationCreator")
+  conversationMemberships ConversationParticipant[]
+  conversationMessages ConversationMessage[]
 }
 
 model CityConfig {
@@ -328,6 +343,10 @@ model Task {
   scheduledAt     DateTime
   deadlineAt      DateTime?
   ownerName       String?
+  // OPS-COLLAB-001: the accountable operations user, and an optional
+  // temporary delegate acting on their behalf.
+  responsibleUserId String?
+  delegateUserId  String?
   completedAt     DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
@@ -335,10 +354,35 @@ model Task {
   event           Event      @relation(fields: [eventId], references: [id])
   driver          Driver?    @relation(fields: [driverId], references: [id])
   guest           Guest?     @relation(fields: [guestId], references: [id])
+  responsibleUser User?      @relation("TaskResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  delegateUser    User?      @relation("TaskDelegate", fields: [delegateUserId], references: [id], onDelete: SetNull)
+  handovers       TaskHandover[]
 
   @@index([eventId, status])
   @@index([driverId])
   @@index([guestId])
+  @@index([responsibleUserId])
+  @@index([delegateUserId])
+}
+
+/// OPS-COLLAB-001: append-only history of task delegations and transfers.
+model TaskHandover {
+  id          String           @id @default(cuid())
+  taskId      String
+  kind        TaskHandoverKind
+  fromUserId  String?
+  toUserId    String?
+  actorUserId String
+  reason      String?          @db.VarChar(500)
+  createdAt   DateTime         @default(now())
+
+  task        Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromUser    User?            @relation("TaskHandoverFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUser      User?            @relation("TaskHandoverTo", fields: [toUserId], references: [id], onDelete: SetNull)
+  actor       User             @relation("TaskHandoverActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@index([toUserId, createdAt])
 }
 
 model Supplier {
@@ -360,6 +404,8 @@ model Supplier {
   city              CityConfig?      @relation(fields: [cityId], references: [id])
   services          Service[]
   bookings          Booking[]
+  quotes            VendorQuote[]
+  requestNotes      SupplierRequestNote[]
 
   @@index([category, verified])
   @@index([sponsoredRank])
@@ -488,6 +534,8 @@ model ActivityIntake {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
+  supplierNotes      SupplierRequestNote[]
+
   @@index([eventId])
   @@index([status])
 }
@@ -526,11 +574,35 @@ model VendorQuote {
   score             Int
   status            QuoteStatus @default(REQUESTED)
   isVaultSealed     Boolean     @default(false)
+  // SUPPLIER-001: set only for a supplier's own initial submission. Legacy
+  // manual quotes stay null (no vendorName backfill).
+  supplierId        String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
+  supplier          Supplier?   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@unique([supplierId, intakeId, category])
   @@index([intakeId])
   @@index([status])
+  @@index([supplierId])
+}
+
+/// SUPPLIER-001: append-only supplier recommendation on a request.
+model SupplierRequestNote {
+  id           String         @id @default(cuid())
+  intakeId     String
+  supplierId   String
+  authorUserId String
+  text         String         @db.VarChar(2000)
+  createdAt    DateTime       @default(now())
+
+  intake       ActivityIntake @relation(fields: [intakeId], references: [id], onDelete: Restrict)
+  supplier     Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  author       User           @relation("SupplierNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([intakeId, createdAt])
+  @@index([supplierId, createdAt])
 }
 
 model VaultSession {
@@ -657,4 +729,46 @@ model FileAsset {
   @@index([guestId])
   @@index([driverId])
   @@index([eventId])
+}
+
+/// OPS-COLLAB-001: built-in messaging between platform users.
+model Conversation {
+  id            String   @id @default(cuid())
+  subject       String   @db.VarChar(150)
+  createdById   String
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  createdBy     User     @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  participants  ConversationParticipant[]
+  messages      ConversationMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model ConversationMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String       @db.VarChar(5000)
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

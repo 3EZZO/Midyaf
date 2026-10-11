@@ -18,7 +18,9 @@ export type PortalKey =
   | "intake"
   | "guest"
   | "captain"
-  | "coordinator";
+  | "coordinator"
+  | "supplier"
+  | "messages";
 
 export type DriverZone =
   | "NORTH_RIYADH"
@@ -392,6 +394,30 @@ export type Task = {
   ownerName?: string;
   driver?: Driver | null;
   guest?: Guest | null;
+  /** OPS-COLLAB-001: accountable operations user and optional delegate. */
+  responsibleUserId?: string | null;
+  delegateUserId?: string | null;
+  responsibleUser?: TaskPerson | null;
+  delegateUser?: TaskPerson | null;
+};
+
+/** Name and role only: never contact details. */
+export type TaskPerson = {
+  id: string;
+  name: string;
+  role: Role;
+};
+
+export type TaskHandoverKind = "DELEGATE" | "TRANSFER" | "RETURN";
+
+export type TaskHandoverEntry = {
+  id: string;
+  kind: TaskHandoverKind;
+  reason?: string | null;
+  createdAt: string;
+  fromUser?: TaskPerson | null;
+  toUser?: TaskPerson | null;
+  actor: TaskPerson;
 };
 
 export type Service = {
@@ -654,6 +680,155 @@ export type Session = {
   accessToken: string;
   refreshToken: string;
   user: User;
+};
+
+// ---------------------------------------------------------------------------
+// SUPPLIER-001 supplier workspace DTOs (server/src/utils/supplierPortal.ts).
+// Dedicated shapes: never cast to Event, Booking or Supplier.
+// ---------------------------------------------------------------------------
+
+export type SupplierQuoteStatus = "REQUESTED" | "RECEIVED" | "RECOMMENDED" | "APPROVED" | "REJECTED";
+export type SupplierDemandScope = "HOTEL_ROOMS" | "VEHICLES" | "TICKETS";
+export type SupplierDemandUnit = "ROOM" | "VEHICLE" | "TICKET";
+
+export type SupplierProfileView = {
+  id: string;
+  name: string;
+  category: SupplierCategory;
+  verified: boolean;
+  city: { code: string; nameEn: string; nameAr: string } | null;
+};
+
+export type SupplierServiceView = {
+  id: string;
+  name: string;
+  description: string | null;
+  unit: string;
+  available: boolean;
+  listedPrice: string;
+};
+
+export type SupplierBookingView = {
+  id: string;
+  serviceName: string;
+  serviceUnit: string;
+  quantity: number;
+  totalPrice: string;
+  status: string;
+  event: { reference: string; date: string; currency: string; timezone: string };
+};
+
+export type SupplierDashboardView = {
+  linked: boolean;
+  profile: SupplierProfileView | null;
+  services: SupplierServiceView[];
+  bookings: SupplierBookingView[];
+};
+
+export type SupplierOwnQuote = {
+  id: string;
+  requestReference: string;
+  intakeId: string;
+  category: string;
+  item: string;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  currency: string;
+  taxInclusive: true;
+  status: SupplierQuoteStatus;
+  sealed: true;
+  submittedAt: string;
+};
+
+export type SupplierNoteView = { id: string; text: string; createdAt: string };
+
+export type SupplierRequestView = {
+  intakeId: string;
+  reference: string;
+  eventCode: string;
+  category: SupplierCategory;
+  scope: SupplierDemandScope;
+  estimatedQuantity: number;
+  unit: SupplierDemandUnit;
+  isEstimate: true;
+  status: "QUOTING";
+  currency: string;
+  eventDate: string;
+  timezone: string;
+  ownQuote: SupplierOwnQuote | null;
+  notes: SupplierNoteView[];
+};
+
+export type SupplierRequestsResponse = { linked: boolean; requests: SupplierRequestView[] };
+
+export type SupplierQuotesResponse = {
+  linked: boolean;
+  quotes: SupplierOwnQuote[];
+  nextCursor: string | null;
+};
+
+/** Logistics review: origin and status only, never prices (D-011 pending). */
+export type SupplierSubmissionReview = {
+  quoteId: string;
+  source: "SUPPLIER_PORTAL";
+  supplier: { id: string; name: string; category: SupplierCategory } | null;
+  intakeId: string;
+  category: string;
+  item: string;
+  quantity: number;
+  status: SupplierQuoteStatus;
+  submittedAt: string;
+  sealed: true;
+  policyPending: true;
+};
+
+export type SupplierReviewNote = {
+  id: string;
+  supplier: { id: string; name: string };
+  author: { id: string; name: string };
+  text: string;
+  createdAt: string;
+};
+
+export type SupplierSubmissionsView = {
+  intakeId: string;
+  policyPending: boolean;
+  sealedCount: number;
+  submissions: SupplierSubmissionReview[];
+  notes: SupplierReviewNote[];
+};
+
+// ---------------------------------------------------------------------------
+// OPS-COLLAB-001 built-in messaging (server/src/routes/messages.ts).
+// ---------------------------------------------------------------------------
+
+export type MessagingContact = TaskPerson;
+
+export type ConversationSummary = {
+  id: string;
+  subject: string;
+  lastMessageAt: string;
+  participants: MessagingContact[];
+  lastMessage: { preview: string; sender: MessagingContact; createdAt: string } | null;
+  unreadCount: number;
+};
+
+export type ConversationMessageView = {
+  id: string;
+  body: string;
+  createdAt: string;
+  sender: MessagingContact;
+  mine: boolean;
+};
+
+export type ConversationThread = {
+  id: string;
+  subject: string;
+  lastMessageAt: string;
+  participants: MessagingContact[];
+  messages: ConversationMessageView[];
+  truncated: boolean;
 };
 
 export type GeofenceRingType =

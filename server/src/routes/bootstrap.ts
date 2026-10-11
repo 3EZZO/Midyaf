@@ -54,12 +54,21 @@ router.get(
   requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
     const user = req.user!;
+
+    // SUPPLIER-001: suppliers get a dedicated, early branch BEFORE any
+    // generic collection or rider query. Every restricted collection is
+    // empty; the workspace loads its own sanitized DTOs from
+    // /suppliers/me/*. Only the supplier's own identity is returned.
+    if (user.role === Role.SUPPLIER) {
+      res.json(await buildSupplierBootstrap(user.id));
+      return;
+    }
+
     const isFullAccess = fullAccessRoles.includes(user.role);
     const isCoordinator = user.role === Role.COORDINATOR;
     const isCompanyOrganizer = user.role === Role.COMPANY_ORGANIZER;
     const isGuest = user.role === Role.GUEST;
     const isDriver = user.role === Role.DRIVER;
-    const isSupplier = user.role === Role.SUPPLIER;
     const canViewAllNotifications = notificationManagerRoles.includes(
       user.role
     );
@@ -190,13 +199,14 @@ router.get(
             where: eventTaskWhere,
             include: {
               driver: safeDriverRelation,
-              guest: safeGuestRelation
+              guest: safeGuestRelation,
+              responsibleUser: taskPersonSelect,
+              delegateUser: taskPersonSelect
             }
           },
           bookings: {
-            where: isSupplier
-              ? { supplier: { userId: user.id } }
-              : isCompanyOrganizer || isGuest || isDriver
+            where:
+              isCompanyOrganizer || isGuest || isDriver
                 ? { id: "__no_booking_access__" }
                 : undefined,
             include: { supplier: true, service: true }
@@ -263,8 +273,13 @@ router.get(
         }),
         orderBy: { createdAt: "desc" }
       }),
+      // Supplier-owned submissions stay out of the raw numeric legacy array:
+      // their terms are sealed pending D-011 (see /supplier-submissions).
       isFullAccess
-        ? prisma.vendorQuote.findMany({ orderBy: { score: "desc" } })
+        ? prisma.vendorQuote.findMany({
+            where: { supplierId: null },
+            orderBy: { score: "desc" }
+          })
         : Promise.resolve([]),
       isFullAccess
         ? prisma.vendorContract.findMany({ orderBy: { updatedAt: "desc" } })
@@ -338,18 +353,7 @@ router.get(
     ]);
 
     res.json({
-      city: city ?? {
-        code: "riyadh",
-        nameEn: "Riyadh",
-        nameAr: "الرياض",
-        centerLat: RIYADH_CENTER.lat,
-        centerLng: RIYADH_CENTER.lng,
-        defaultZoom: 12,
-        timezone: "Asia/Riyadh",
-        currency: "SAR",
-        vatPercent: 15,
-        enabled: true
-      },
+      city: city ?? cityFallback(),
       zones: RIYADH_ZONES,
       events,
       drivers,
@@ -376,6 +380,71 @@ router.get(
     });
   })
 );
+
+/** Name and role only: who is accountable for, or acting on, a task. */
+const taskPersonSelect = {
+  select: { id: true, name: true, role: true }
+} as const;
+
+function cityFallback() {
+  return {
+    code: "riyadh",
+    nameEn: "Riyadh",
+    nameAr: "الرياض",
+    centerLat: RIYADH_CENTER.lat,
+    centerLng: RIYADH_CENTER.lng,
+    defaultZoom: 12,
+    timezone: "Asia/Riyadh",
+    currency: "SAR",
+    vatPercent: 15,
+    enabled: true
+  };
+}
+
+/**
+ * The whole supplier bootstrap: public city configuration, zones and the
+ * supplier's own identity. No events, suppliers, quotes, intakes, plans,
+ * contracts, users, finance, audits, notifications, files or riders.
+ */
+export async function buildSupplierBootstrap(userId: string) {
+  const [self, city] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        language: true,
+        avatar: true,
+        createdAt: true
+      }
+    }),
+    prisma.cityConfig.findUnique({ where: { code: "riyadh" } })
+  ]);
+
+  return {
+    city: city ?? cityFallback(),
+    zones: RIYADH_ZONES,
+    events: [],
+    drivers: [],
+    suppliers: [],
+    commission: [],
+    users: self ? [self] : [],
+    activityIntakes: [],
+    aiPlans: [],
+    vendorQuotes: [],
+    contracts: [],
+    guestJourneys: [],
+    coordinatorRequests: [],
+    companyReports: [],
+    fileAssets: [],
+    notifications: [],
+    auditLogs: [],
+    hospitalityRiders: []
+  };
+}
 
 function buildEventWhere({
   role,

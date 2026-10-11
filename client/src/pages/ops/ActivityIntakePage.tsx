@@ -1157,6 +1157,9 @@ export function ActivityIntakePage({
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <QuotesAndContracts
           data={data}
+          session={session}
+          intakeId={intake?.id}
+          canReviewSubmissions={canManageOperations(session)}
           canManage={canEdit}
           isDemoMode={isDemoMode}
           onApproveVendorQuote={approveVendorQuote}

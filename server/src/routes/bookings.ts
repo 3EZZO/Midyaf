@@ -100,6 +100,13 @@ router.post(
 router.get(
   "/:eventId",
   asyncHandler(async (req: AuthRequest, res) => {
+    // SUPPLIER-001: suppliers read their own bookings through the sanitized
+    // /suppliers/me/dashboard DTO; these raw rows nest event, organizer and
+    // commission fields.
+    if (req.user!.role === Role.SUPPLIER) {
+      throw new HttpError(403, "Use the supplier workspace");
+    }
+
     const bookings = await prisma.booking.findMany({
       where: {
         AND: [
@@ -143,10 +150,6 @@ export function buildBookingVisibilityWhere(
 ): Prisma.BookingWhereInput | undefined {
   if (fullAccessRoles.includes(user.role)) {
     return undefined;
-  }
-
-  if (user.role === Role.SUPPLIER) {
-    return { supplier: { userId: user.id } };
   }
 
   return { id: "__no_booking_access__" };

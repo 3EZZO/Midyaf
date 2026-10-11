@@ -64,10 +64,12 @@ const db = vi.hoisted(() => {
 
 vi.mock("../db.js", () => ({ prisma: db }));
 
+const { signTokens } = await import("../middleware/auth.js");
 const {
   ORGANIZER_ROOM_ROLES,
   TELEMETRY_MAX_AGE_MS,
   assignedGuestUserIds,
+  authenticateSocket,
   authorizeDriverTelemetry,
   canJoinRoom,
   isEventOperator,
@@ -384,5 +386,36 @@ describe("sanitizeUserLocation", () => {
     expect(sanitizeUserLocation(GUEST, { lat: "24", lng: 46 })).toBeNull();
     expect(sanitizeUserLocation(GUEST, { lat: Number.NaN, lng: 46 })).toBeNull();
     expect(sanitizeUserLocation(GUEST, null)).toBeNull();
+  });
+});
+
+describe("authenticateSocket role gate (SUPPLIER-001)", () => {
+  function handshake(user: ReturnType<typeof actor>) {
+    const socket = {
+      handshake: { auth: { token: signTokens(user).accessToken } },
+      data: {} as Record<string, unknown>
+    };
+    let outcome: (Error & { data?: { reason?: string } }) | undefined | "ok";
+    authenticateSocket(socket as never, (error?: Error) => {
+      outcome = error ?? "ok";
+    });
+    return { socket, outcome: outcome! };
+  }
+
+  it("rejects suppliers before any realtime state is attached", () => {
+    const { socket, outcome } = handshake(SUPPLIER);
+    expect(outcome).not.toBe("ok");
+    expect((outcome as Error & { data?: { reason?: string } }).data?.reason).toBe(
+      "role_not_permitted"
+    );
+    expect(socket.data.realtime).toBeUndefined();
+  });
+
+  it("still admits every other role", () => {
+    for (const user of [LM, SA, ORG, COORD, GUEST, CAPTAIN, COMPANY]) {
+      const { socket, outcome } = handshake(user);
+      expect(outcome).toBe("ok");
+      expect(socket.data.realtime).toBeDefined();
+    }
   });
 });

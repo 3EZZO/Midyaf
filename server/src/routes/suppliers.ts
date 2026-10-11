@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { Role, SupplierCategory } from "@prisma/client";
+import type { NextFunction, Response } from "express";
+import { QuoteStatus, Role, SupplierCategory } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -7,6 +8,27 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import type { AuthRequest } from "../types/auth.js";
 import { recordAuditLog } from "../services/auditLog.js";
+import {
+  MAX_SUPPLIER_PAGE_SIZE,
+  SUPPLIER_DEMO_REQUESTS,
+  computeQuoteTerms,
+  evaluateSupplierRequest,
+  lockIntake,
+  parseIdParam,
+  requestNotFound,
+  supplierListQuerySchema,
+  supplierNoteBodySchema,
+  supplierQuoteBodySchema,
+  toOwnNoteDto,
+  toOwnQuoteDto,
+  toSafeHttpError,
+  toSupplierBookingDto,
+  toSupplierProfileDto,
+  toSupplierRequestDto,
+  toSupplierServiceDto,
+  writeTransactionalAudit,
+  type AuditContext
+} from "../utils/supplierPortal.js";
 
 const router = Router();
 const fullAccessRoles: Role[] = [
@@ -19,8 +41,321 @@ type AuthUser = NonNullable<AuthRequest["user"]>;
 
 router.use(requireAuth);
 
+// ---------------------------------------------------------------------------
+// SUPPLIER-001: the supplier's own workspace. Registered before /:id. Every
+// lookup starts from Supplier.userId = the verified token subject; nothing in
+// the request can name another supplier, category or event.
+// ---------------------------------------------------------------------------
+
+const supplierOnly = requireRole([Role.SUPPLIER]);
+
+const ownEventSelect = {
+  id: true,
+  date: true,
+  currency: true,
+  timezone: true
+} as const;
+
+const ownQuoteSelect = {
+  id: true,
+  intakeId: true,
+  category: true,
+  item: true,
+  quantity: true,
+  unitPrice: true,
+  totalPrice: true,
+  status: true,
+  createdAt: true
+} as const;
+
+async function findOwnSupplier(user: AuthUser) {
+  return prisma.supplier.findUnique({
+    where: { userId: user.id },
+    select: { id: true, name: true, category: true, commissionPercent: true }
+  });
+}
+
+async function requireOwnSupplier(user: AuthUser) {
+  const supplier = await findOwnSupplier(user);
+  if (!supplier) {
+    throw new HttpError(403, "No supplier profile is linked to this account");
+  }
+  return supplier;
+}
+
+function auditContext(req: AuthRequest): AuditContext {
+  return {
+    actor: req.user!,
+    ipAddress: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null
+  };
+}
+
+router.get(
+  "/me/dashboard",
+  supplierOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const supplier = await prisma.supplier.findUnique({
+      where: { userId: req.user!.id },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        verified: true,
+        city: { select: { code: true, nameEn: true, nameAr: true } },
+        services: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            unit: true,
+            available: true,
+            price: true
+          },
+          orderBy: [{ name: "asc" }, { id: "asc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        },
+        bookings: {
+          select: {
+            id: true,
+            quantity: true,
+            totalPrice: true,
+            status: true,
+            service: { select: { name: true, unit: true } },
+            event: { select: ownEventSelect }
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        }
+      }
+    });
+
+    if (!supplier) {
+      res.json({ linked: false, profile: null, services: [], bookings: [] });
+      return;
+    }
+
+    res.json({
+      linked: true,
+      profile: toSupplierProfileDto(supplier),
+      services: supplier.services.map(toSupplierServiceDto),
+      bookings: supplier.bookings.map(toSupplierBookingDto)
+    });
+  })
+);
+
+router.get(
+  "/me/requests",
+  supplierOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const supplier = await findOwnSupplier(req.user!);
+    if (!supplier) {
+      res.json({ linked: false, requests: [] });
+      return;
+    }
+
+    const requests = [];
+    for (const entry of SUPPLIER_DEMO_REQUESTS) {
+      const intake = await prisma.activityIntake.findUnique({
+        where: { id: entry.intakeId }
+      });
+      const event = intake?.eventId
+        ? await prisma.event.findUnique({
+            where: { id: intake.eventId },
+            select: ownEventSelect
+          })
+        : null;
+      const eligible = evaluateSupplierRequest(intake, event, supplier.category);
+      if (!eligible) continue;
+
+      const [ownQuote, notes] = await Promise.all([
+        prisma.vendorQuote.findFirst({
+          where: {
+            supplierId: supplier.id,
+            intakeId: eligible.intakeId,
+            category: supplier.category
+          },
+          select: ownQuoteSelect
+        }),
+        prisma.supplierRequestNote.findMany({
+          where: { supplierId: supplier.id, intakeId: eligible.intakeId },
+          select: { id: true, text: true, createdAt: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        })
+      ]);
+      requests.push(toSupplierRequestDto(eligible, ownQuote, notes));
+    }
+
+    res.json({ linked: true, requests });
+  })
+);
+
+router.post(
+  "/me/requests/:intakeId/quotes",
+  supplierOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const intakeId = parseIdParam(req.params.intakeId);
+    const supplier = await requireOwnSupplier(req.user!);
+    const body = supplierQuoteBodySchema.parse(req.body);
+    const terms = computeQuoteTerms(body.quantity, body.unitPrice, supplier.commissionPercent);
+    const context = auditContext(req);
+
+    try {
+      const quote = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const intake = await tx.activityIntake.findUnique({ where: { id: intakeId } });
+        const event = intake?.eventId
+          ? await tx.event.findUnique({ where: { id: intake.eventId }, select: ownEventSelect })
+          : null;
+        const eligible = evaluateSupplierRequest(intake, event, supplier.category);
+        if (!eligible) throw requestNotFound();
+
+        const existing = await tx.vendorQuote.findFirst({
+          where: { supplierId: supplier.id, intakeId, category: supplier.category },
+          select: { id: true }
+        });
+        if (existing) {
+          throw new HttpError(409, "An initial quote was already submitted for this request");
+        }
+
+        const created = await tx.vendorQuote.create({
+          data: {
+            intakeId,
+            supplierId: supplier.id,
+            category: supplier.category,
+            vendorName: supplier.name,
+            item: body.item,
+            quantity: body.quantity,
+            unitPrice: terms.unitPrice,
+            totalPrice: terms.totalPrice,
+            commissionPercent: terms.commissionPercent,
+            commissionAmount: terms.commissionAmount,
+            // 0 = unassessed; no weighted evaluation exists (D-005 deferred).
+            score: 0,
+            status: QuoteStatus.RECEIVED,
+            isVaultSealed: true
+          },
+          select: ownQuoteSelect
+        });
+
+        await writeTransactionalAudit(tx, context, {
+          action: "supplier_quote.submit",
+          entityType: "VENDOR_QUOTE",
+          entityId: created.id,
+          eventId: eligible.eventId,
+          metadata: { intakeId, supplierId: supplier.id, quoteId: created.id }
+        });
+
+        return created;
+      });
+
+      res.status(201).json({ quote: toOwnQuoteDto(quote) });
+    } catch (error) {
+      throw toSafeHttpError(error);
+    }
+  })
+);
+
+router.post(
+  "/me/requests/:intakeId/notes",
+  supplierOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const intakeId = parseIdParam(req.params.intakeId);
+    const supplier = await requireOwnSupplier(req.user!);
+    const body = supplierNoteBodySchema.parse(req.body);
+    const context = auditContext(req);
+
+    try {
+      const note = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const intake = await tx.activityIntake.findUnique({ where: { id: intakeId } });
+        const event = intake?.eventId
+          ? await tx.event.findUnique({ where: { id: intake.eventId }, select: ownEventSelect })
+          : null;
+        const eligible = evaluateSupplierRequest(intake, event, supplier.category);
+        if (!eligible) throw requestNotFound();
+
+        const created = await tx.supplierRequestNote.create({
+          data: {
+            intakeId,
+            supplierId: supplier.id,
+            authorUserId: req.user!.id,
+            text: body.text
+          },
+          select: { id: true, text: true, createdAt: true }
+        });
+
+        await writeTransactionalAudit(tx, context, {
+          action: "supplier_note.append",
+          entityType: "SUPPLIER_NOTE",
+          entityId: created.id,
+          eventId: eligible.eventId,
+          metadata: { intakeId, supplierId: supplier.id, noteId: created.id }
+        });
+
+        return created;
+      });
+
+      res.status(201).json({ note: toOwnNoteDto(note) });
+    } catch (error) {
+      throw toSafeHttpError(error);
+    }
+  })
+);
+
+router.get(
+  "/me/quotes",
+  supplierOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const query = supplierListQuerySchema.parse(req.query);
+    const supplier = await findOwnSupplier(req.user!);
+    if (!supplier) {
+      res.json({ linked: false, quotes: [], nextCursor: null });
+      return;
+    }
+
+    if (query.cursor) {
+      const anchor = await prisma.vendorQuote.findFirst({
+        where: { id: query.cursor, supplierId: supplier.id },
+        select: { id: true }
+      });
+      if (!anchor) throw new HttpError(400, "Invalid cursor");
+    }
+
+    // Ownership is the stored supplierId, never a vendorName match.
+    const rows = await prisma.vendorQuote.findMany({
+      where: { supplierId: supplier.id },
+      select: ownQuoteSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {})
+    });
+    const page = rows.slice(0, query.limit);
+
+    res.json({
+      linked: true,
+      quotes: page.map(toOwnQuoteDto),
+      nextCursor: rows.length > query.limit ? page[page.length - 1]?.id ?? null : null
+    });
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Operations supplier directory. SUPPLIER accounts use /me above: the raw
+// records here carry contacts, CR numbers, commission and booked events.
+// ---------------------------------------------------------------------------
+
+function denySupplierRole(req: AuthRequest, _res: Response, next: NextFunction) {
+  if (req.user?.role === Role.SUPPLIER) {
+    throw new HttpError(403, "Use the supplier workspace");
+  }
+  next();
+}
+
 router.get(
   "/",
+  denySupplierRole,
   asyncHandler(async (req: AuthRequest, res) => {
     const query = z
       .object({
@@ -63,12 +398,8 @@ router.get(
 
 router.post(
   "/",
-  requireRole([
-    Role.SUPER_ADMIN,
-    Role.SUPPLIER,
-    Role.ORGANIZER,
-    Role.LOGISTICS_MANAGER
-  ]),
+  // Supplier self-onboarding is outside SUPPLIER-001's read-only workspace.
+  requireRole([Role.SUPER_ADMIN, Role.ORGANIZER, Role.LOGISTICS_MANAGER]),
   asyncHandler(async (req: AuthRequest, res) => {
     const body = z
       .object({
@@ -93,33 +424,19 @@ router.post(
       })
       .parse(req.body);
 
-    if (req.user!.role === Role.SUPPLIER) {
-      const existingSupplier = await prisma.supplier.findUnique({
-        where: { userId: req.user!.id },
-        select: { id: true }
-      });
-
-      if (existingSupplier) {
-        throw new HttpError(409, "Supplier profile already exists for this account");
-      }
-    }
-
     const city = await prisma.cityConfig.findUnique({
       where: { code: body.cityCode }
     });
 
     const supplier = await prisma.supplier.create({
       data: {
-        userId: req.user!.role === Role.SUPPLIER ? req.user!.id : undefined,
         name: body.name,
         category: body.category,
-        rating: req.user!.role === Role.SUPPLIER ? 0 : body.rating,
-        verified: req.user!.role === Role.SUPPLIER ? false : body.verified,
+        rating: body.rating,
+        verified: body.verified,
         crNumber: body.crNumber,
-        commissionPercent:
-          req.user!.role === Role.SUPPLIER ? 12 : body.commissionPercent,
-        sponsoredRank:
-          req.user!.role === Role.SUPPLIER ? undefined : body.sponsoredRank,
+        commissionPercent: body.commissionPercent,
+        sponsoredRank: body.sponsoredRank,
         cityId: city?.id,
         services: {
           create: body.services
@@ -146,6 +463,7 @@ router.post(
 
 router.get(
   "/:id",
+  denySupplierRole,
   asyncHandler(async (req: AuthRequest, res) => {
     const supplier = await prisma.supplier.findFirst({
       where: {
@@ -172,10 +490,6 @@ function buildSupplierVisibilityWhere(
 ): Prisma.SupplierWhereInput | undefined {
   if (fullAccessRoles.includes(user.role)) {
     return undefined;
-  }
-
-  if (user.role === Role.SUPPLIER) {
-    return { userId: user.id };
   }
 
   return { id: "__no_supplier_access__" };

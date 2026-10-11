@@ -527,8 +527,19 @@ describe("apply on an empty target", () => {
   });
 
   it("covers every model in the Prisma schema", () => {
-    expect(APPLICATION_MODELS).toHaveLength(24);
+    // 24 original models + SUPPLIER-001 (SupplierRequestNote) + OPS-COLLAB-001
+    // (TaskHandover, Conversation, ConversationParticipant, ConversationMessage).
+    expect(APPLICATION_MODELS).toHaveLength(29);
     expect(APPLICATION_MODELS).toEqual(expect.arrayContaining(["User", "Driver", "VaultSession", "FileAsset", "CaptainFeedback"]));
+    expect(APPLICATION_MODELS).toEqual(
+      expect.arrayContaining([
+        "SupplierRequestNote",
+        "TaskHandover",
+        "Conversation",
+        "ConversationParticipant",
+        "ConversationMessage"
+      ])
+    );
     expect(Object.keys(plannedCounts()).sort()).toEqual([...APPLICATION_MODELS].sort());
   });
 });
@@ -829,5 +840,13 @@ describe("verification", () => {
     ).toBe(false);
     expect(BOOTSTRAP_EXPECTATIONS.client({ events: [], activityIntakes: [], vendorQuotes: [], suppliers: [] }, ctx)).toBe(true);
     expect(BOOTSTRAP_EXPECTATIONS.coordinator({ events: [{ id: "evt" }], drivers: [{}, {}], suppliers: [{ id: "sup" }], vendorQuotes: [] }, ctx)).toBe(false);
+  });
+
+  it("expects the supplier bootstrap to be the empty SUPPLIER-001 branch", () => {
+    const empty = { events: [], suppliers: [], vendorQuotes: [], activityIntakes: [], hospitalityRiders: [], users: [{ id: "u" }] };
+    expect(BOOTSTRAP_EXPECTATIONS.supplier(empty, ctx)).toBe(true);
+    expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, events: [{ id: "evt" }] }, ctx)).toBe(false);
+    expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, suppliers: [{ id: "sup" }] }, ctx)).toBe(false);
+    expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, hospitalityRiders: [{ id: "r" }] }, ctx)).toBe(false);
   });
 });
