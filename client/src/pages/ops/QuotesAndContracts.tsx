@@ -10,14 +10,22 @@ import { DEMO_CONTRACTS } from "../../lib/demo/data";
 import type { DemoContract } from "../../lib/demo/data";
 import type { PortalProps } from "../types";
 import { MiniStat, useOpsText } from "./shared";
+import { SupplierSubmissions } from "../../components/SupplierSubmissions";
 
 export function QuotesAndContracts({
   data,
+  session,
+  intakeId,
+  canReviewSubmissions = false,
   canManage = false,
   isDemoMode = false,
   onApproveVendorQuote,
   onApproveContract
-}: Pick<PortalProps, "data"> & {
+}: Pick<PortalProps, "data" | "session"> & {
+  /** SUPPLIER-001: the intake whose supplier-portal submissions are shown. */
+  intakeId?: string;
+  /** SUPPLIER-001: logistics roles review (and may reject) supplier submissions. */
+  canReviewSubmissions?: boolean;
   canManage?: boolean;
   isDemoMode?: boolean;
   onApproveVendorQuote?: PortalProps["approveVendorQuote"];
@@ -458,6 +466,16 @@ export function QuotesAndContracts({
           );
         })}
       </div>
+      {/* SUPPLIER-001: sealed supplier-portal submissions, separate from the
+          legacy quotes and totals above. Real data only, never in rehearsal. */}
+      {!isDemoMode && canReviewSubmissions ? (
+        <SupplierSubmissions
+          intakeId={intakeId}
+          session={session}
+          isArabic={ui.isArabic}
+          canManage={canReviewSubmissions}
+        />
+      ) : null}
       {/* Certified Contracts & Procurement Hub: Strictly visible in Full Demo Mode */}
       {isDemoMode && (
         <div className="mt-8 space-y-4">

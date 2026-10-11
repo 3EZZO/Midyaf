@@ -32,7 +32,9 @@ const resources = {
         intake: "Activity Intake",
         guest: "Guest App",
         captain: "Captains App",
-        coordinator: "Coordinators"
+        coordinator: "Coordinators",
+        supplier: "Supplier Workspace",
+        messages: "Messages"
       },
       common: {
         riyadhOnly: "Operating Region: Sovereign Summit Zone",
@@ -83,7 +85,9 @@ const resources = {
         intake: "إدخال وتجهيز الفعالية",
         guest: "تطبيق الضيف والرحلة",
         captain: "تطبيق أسطول الكباتن",
-        coordinator: "تطبيق منسقي الميدان"
+        coordinator: "تطبيق منسقي الميدان",
+        supplier: "مساحة المورد",
+        messages: "الرسائل"
       },
       common: {
         riyadhOnly: "منطقة العمليات: نطاق القمة السيادية",

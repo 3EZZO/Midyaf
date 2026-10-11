@@ -1,18 +1,23 @@
-import { PORTALS } from "@shared/constants";
+import { MESSAGES_PORTAL, PORTALS, SUPPLIER_PORTAL } from "@shared/constants";
 import type { PortalKey, Role } from "@shared/domain";
 
-/** Portals each role may open in the shell. Server routes enforce access separately. */
+/**
+ * Portals each role may open in the shell. Server routes enforce access
+ * separately. Every role also has the messages inbox (OPS-COLLAB-001); only
+ * SUPPLIER gets the supplier workspace (SUPPLIER-001), which replaces the
+ * company dashboard it used to open.
+ */
 export const portalsByRole: Record<Role, PortalKey[]> = {
-  GUEST: ["guest"],
-  DRIVER: ["captain"],
-  ORGANIZER: [...PORTALS],
-  SUPPLIER: ["company"],
-  SUPER_ADMIN: [...PORTALS],
-  COORDINATOR: ["coordinator"],
-  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake"],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations"],
-  EVENT_MANAGER: ["sila_operations", "coordinator"],
-  CLIENT: ["client"]
+  GUEST: ["guest", MESSAGES_PORTAL],
+  DRIVER: ["captain", MESSAGES_PORTAL],
+  ORGANIZER: [...PORTALS, MESSAGES_PORTAL],
+  SUPPLIER: [SUPPLIER_PORTAL, MESSAGES_PORTAL],
+  SUPER_ADMIN: [...PORTALS, MESSAGES_PORTAL],
+  COORDINATOR: ["coordinator", MESSAGES_PORTAL],
+  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake", MESSAGES_PORTAL],
+  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations", MESSAGES_PORTAL],
+  EVENT_MANAGER: ["sila_operations", "coordinator", MESSAGES_PORTAL],
+  CLIENT: ["client", MESSAGES_PORTAL]
 };
 
 /**

@@ -4,6 +4,8 @@ import {
   Car,
   ClipboardList,
   Crown,
+  Mail,
+  Package,
   Radio,
   Ticket,
   Users,
@@ -20,7 +22,9 @@ export const portalIcons: Record<PortalKey, LucideIcon> = {
   intake: ClipboardList,
   guest: Ticket,
   captain: Car,
-  coordinator: Users
+  coordinator: Users,
+  supplier: Package,
+  messages: Mail
 };
 
 /** Short category shown under each portal label. */
@@ -32,7 +36,9 @@ export const portalCategory: Record<PortalKey, { en: string; ar: string }> = {
   intake: { en: "Planning", ar: "التخطيط" },
   guest: { en: "Ground", ar: "الميدان" },
   captain: { en: "Ground", ar: "الميدان" },
-  coordinator: { en: "Ground", ar: "الميدان" }
+  coordinator: { en: "Ground", ar: "الميدان" },
+  supplier: { en: "Supplier", ar: "المورد" },
+  messages: { en: "Inbox", ar: "البريد" }
 };
 
 export const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
@@ -83,5 +89,17 @@ export const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; d
     titleAr: "تطبيق المنسقين والميدان",
     descEn: "Zone supervision, guest ground protocol, incident escalation & dispatch tasks",
     descAr: "إدارة مناطق الفعالية، بروتوكول استقبال الضيوف، إرسال البلاغات وتنسيق الحركة"
+  },
+  supplier: {
+    titleEn: "Supplier Workspace",
+    titleAr: "مساحة المورد",
+    descEn: "Your profile, services and bookings, open requests for your category, sealed quotations and notes",
+    descAr: "ملفك وخدماتك وحجوزاتك، الطلبات المفتوحة لتصنيفك، عروض الأسعار المختومة والملاحظات"
+  },
+  messages: {
+    titleEn: "Messages",
+    titleAr: "الرسائل",
+    descEn: "Private conversations with the people you work with on Midyaf",
+    descAr: "محادثات خاصة مع من تعمل معهم على منصة مضياف"
   }
 };

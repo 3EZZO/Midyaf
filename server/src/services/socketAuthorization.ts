@@ -223,14 +223,24 @@ export function authenticateSocket(
     return;
   }
 
+  let user: AuthenticatedUser;
   try {
-    const user = verifyAccessToken(token);
-    const state: SocketState = { user, assignments: new Map() };
-    socket.data.realtime = state;
-    next();
+    user = verifyAccessToken(token);
   } catch {
     next(unauthorized("invalid_token"));
+    return;
   }
+
+  // SUPPLIER-001: the supplier workspace needs no realtime, and some REST
+  // routes still broadcast globally; suppliers never join any room.
+  if (user.role === Role.SUPPLIER) {
+    next(unauthorized("role_not_permitted"));
+    return;
+  }
+
+  const state: SocketState = { user, assignments: new Map() };
+  socket.data.realtime = state;
+  next();
 }
 
 /** The driver profile id owned by this actor, or null. */

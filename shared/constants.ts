@@ -100,6 +100,15 @@ export const PORTALS = [
   "coordinator"
 ] as const;
 
+/**
+ * SUPPLIER-001: the supplier-only workspace. Deliberately NOT in PORTALS,
+ * which organizers and super admins receive by spread.
+ */
+export const SUPPLIER_PORTAL = "supplier" as const;
+
+/** OPS-COLLAB-001: the built-in messages inbox every signed-in role has. */
+export const MESSAGES_PORTAL = "messages" as const;
+
 export const CONCENTRIC_GEOFENCES = [
   {
     id: "geo-kkia-royal",

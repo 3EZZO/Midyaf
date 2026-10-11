@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { randomBytes as nodeRandomBytes } from "node:crypto";
+import { createHash, randomBytes as nodeRandomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
@@ -217,7 +217,8 @@ export function assertExpectedHost(target: DemoTarget, expectedHost: string | un
 // ---------------------------------------------------------------------------
 
 export type ProvisionOptions = { apply: boolean; createSchema: boolean; expectedHost?: string };
-export type VerifyOptions = { expectedHost: string };
+export type AccountBaseline = { count: number; fingerprint: string };
+export type VerifyOptions = { expectedHost: string; accountBaseline?: AccountBaseline };
 
 function parseFlags(argv: string[], booleans: string[]) {
   const flags = new Set<string>();
@@ -264,12 +265,48 @@ export function parseProvisionArgs(argv: string[]): ProvisionOptions {
   return { apply, createSchema, expectedHost };
 }
 
+/** Explicit verification pins only; provisioning/reset never accepts these flags. */
+export function extractAccountBaselineArgs(argv: string[]) {
+  const rest: string[] = [];
+  const values = new Map<string, string>();
+  for (let i = 0; i < argv.length; i += 1) {
+    const flag = argv[i];
+    if (flag === "--expected-account-count" || flag === "--expected-account-fingerprint") {
+      const value = argv[++i];
+      if (values.has(flag) || !value || value.startsWith("--")) throw new DemoProvisioningError("args-invalid");
+      values.set(flag, value);
+    } else rest.push(flag);
+  }
+  if (!values.size) return { argv: rest };
+  const count = values.get("--expected-account-count");
+  const fingerprint = values.get("--expected-account-fingerprint");
+  if (!count || !/^[1-9][0-9]*$/.test(count) || !Number.isSafeInteger(Number(count)) ||
+      Number(count) < DEMO_ACCOUNTS.length || !fingerprint || !/^[a-f0-9]{64}$/.test(fingerprint)) {
+    throw new DemoProvisioningError("args-invalid");
+  }
+  return { argv: rest, accountBaseline: { count: Number(count), fingerprint } };
+}
+
+type BaselineUser = { id: string; email: string; role: string; passwordHash: string };
+export function accountBaselineFingerprint(users: BaselineUser[]) {
+  const canonical = [...users].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    .map(({ id, email, role, passwordHash }) => ({ id, email, role, passwordHash }));
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+export function matchesAccountBaseline(users: BaselineUser[], pin: AccountBaseline) {
+  const expected = new Map<string, string>(DEMO_ACCOUNTS.map(a => [a.email, a.role]));
+  return users.length === pin.count && accountBaselineFingerprint(users) === pin.fingerprint &&
+    DEMO_ACCOUNTS.every(a => users.some(u => u.email === a.email && u.role === a.role)) &&
+    users.every(u => expected.has(u.email) || u.role === "GUEST");
+}
+
 export function parseVerifyArgs(argv: string[]): VerifyOptions {
-  const { expectedHost } = parseFlags(argv, []);
+  const extracted = extractAccountBaselineArgs(argv);
+  const { expectedHost } = parseFlags(extracted.argv, []);
   if (!expectedHost) {
     throw new DemoProvisioningError("expected-host-required");
   }
-  return { expectedHost };
+  return { expectedHost, ...(extracted.accountBaseline ? { accountBaseline: extracted.accountBaseline } : {}) };
 }
 
 // ---------------------------------------------------------------------------
@@ -1280,7 +1317,8 @@ const BCRYPT_COST_PATTERN = new RegExp(`^\\$2[aby]\\$${BCRYPT_COST}\\$`);
 /** Read-only shape checks; passwords are compared with bcrypt and never printed. */
 export async function checkLiveShape(
   db: DemoClient,
-  bundle: CredentialBundle
+  bundle: CredentialBundle,
+  accountBaseline?: AccountBaseline
 ): Promise<{ checks: CheckResult[]; context: ShapeContext }> {
   const checks: CheckResult[] = [];
   const check = (name: string, ok: boolean) => checks.push({ name, ok });
@@ -1294,10 +1332,12 @@ export async function checkLiveShape(
     const userByEmail = new Map(users.map((user) => [user.email, user]));
     const userIdOf = (key: DemoAccountKey) => userByEmail.get(emailOf(key))?.id ?? "";
 
-    check("accounts: exactly the bundle accounts exist", users.length === bundle.accounts.length &&
+    check(accountBaseline ? "accounts: exact pinned baseline and original personas" : "accounts: exactly the bundle accounts exist", (accountBaseline ? matchesAccountBaseline(users, accountBaseline) : users.length === bundle.accounts.length) &&
       bundle.accounts.every((account) => userByEmail.get(account.email)?.role === account.role));
-    check("accounts: names are labelled synthetic", users.every((user) => /Synthetic/.test(user.name)));
-    check("accounts: bcrypt cost 12", users.every((user) => BCRYPT_COST_PATTERN.test(user.passwordHash)));
+    const originalUsers = accountBaseline ? users.filter(u => bundle.accounts.some(a => a.email === u.email)) : users;
+    if (accountBaseline) check("accounts: full identity and password baseline unchanged", accountBaselineFingerprint(users) === accountBaseline.fingerprint);
+    check("accounts: names are labelled synthetic", originalUsers.every((user) => /Synthetic/.test(user.name)));
+    check("accounts: bcrypt cost 12", originalUsers.every((user) => BCRYPT_COST_PATTERN.test(user.passwordHash)));
     let matches = 0;
     for (const account of bundle.accounts) {
       const hash = userByEmail.get(account.email)?.passwordHash;
@@ -1428,12 +1468,15 @@ export const BOOTSTRAP_EXPECTATIONS: Record<DemoAccountKey, (body: Body, ctx: Sh
     list(body.activityIntakes).length === 0 &&
     list(body.vendorQuotes).length === 0 &&
     list(body.suppliers).length === 0,
-  supplier: (body, ctx) =>
-    hasEvent(body, ctx) &&
-    ids(body.suppliers).length === 1 &&
-    ids(body.suppliers)[0] === ctx.supplierId &&
-    list(body.events).every((event) => list(event.bookings).every((booking) => booking.supplierId === ctx.supplierId)) &&
-    list(body.vendorQuotes).length === 0,
+  // SUPPLIER-001: the supplier bootstrap is an early, empty branch; the
+  // supplier workspace loads its own sanitized DTOs from /suppliers/me/*.
+  supplier: (body) =>
+    list(body.events).length === 0 &&
+    list(body.suppliers).length === 0 &&
+    list(body.vendorQuotes).length === 0 &&
+    list(body.activityIntakes).length === 0 &&
+    list(body.hospitalityRiders).length === 0 &&
+    list(body.users).length <= 1,
   driver: ownDriverView("driver"),
   driverTwo: ownDriverView("driverTwo"),
   guestVip: ownGuestView("guestVip", "driver"),
@@ -1554,7 +1597,7 @@ export async function runVerify(argv: string[], deps: VerifyDeps): Promise<{ pas
   const { db, startSmokeServer } = await guarded("database-error", () => deps.connect(target));
   let server: SmokeServer | undefined;
   try {
-    const shape = await checkLiveShape(db, bundle);
+    const shape = await checkLiveShape(db, bundle, options.accountBaseline);
     server = await guarded("smoke-server-failed", startSmokeServer);
     const http = await guarded("verification-failed", () => runHttpSmoke(server!.baseUrl, bundle, shape.context, deps.fetch));
     const checks = [...shape.checks, ...http];

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowLeftRight,
   Bot,
   CarFront,
   ClipboardList,
@@ -11,7 +12,8 @@ import {
   TrendingUp
 } from "lucide-react";
 import { AiPanel } from "./AiPanel";
-import type { MidyafData, Session } from "@shared/domain";
+import { ResponsibilityBadges, TaskHandoverDialog, canUseHandover } from "./TaskHandover";
+import type { MidyafData, Session, Task } from "@shared/domain";
 import {
   TASK_CARD_LIMIT,
   eventTaskCards,
@@ -48,7 +50,8 @@ export function SilaOperationsDashboard({
   isDemoMode,
   isArabic,
   onDownloadReport,
-  onToggleDemo
+  onToggleDemo,
+  onTasksChanged
 }: {
   data: MidyafData;
   session: Session | null;
@@ -56,8 +59,11 @@ export function SilaOperationsDashboard({
   isArabic: boolean;
   onDownloadReport?: () => void;
   onToggleDemo?: () => void;
+  /** Reload after a task handover (OPS-COLLAB-001). */
+  onTasksChanged?: () => Promise<void>;
 }) {
   const toast = useToast();
+  const [handoverTaskId, setHandoverTaskId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("intake");
   const event = data.events[0];
   const tasks = event?.tasks ?? [];
@@ -409,7 +415,31 @@ export function SilaOperationsDashboard({
           title={isArabic ? "مهام الفعالية والإسناد" : "Event Tasks & Assignments"}
           eyebrow={event?.name}
         >
-          <EventTaskList cards={taskCards} isArabic={isArabic} />
+          <EventTaskList
+            cards={taskCards}
+            isArabic={isArabic}
+            tasks={tasks}
+            onHandover={
+              session && canUseHandover(session) && !isDemoMode
+                ? (taskId) => setHandoverTaskId(taskId)
+                : undefined
+            }
+          />
+          {session ? (
+            <TaskHandoverDialog
+              task={tasks.find((task) => task.id === handoverTaskId) ?? null}
+              eventOrganizerId={event?.organizerId}
+              session={session}
+              isArabic={isArabic}
+              open={handoverTaskId !== null}
+              onOpenChange={(open) => {
+                if (!open) setHandoverTaskId(null);
+              }}
+              onChanged={async () => {
+                await onTasksChanged?.();
+              }}
+            />
+          ) : null}
         </Section>
       )}
 
@@ -535,11 +565,22 @@ export function SilaOperationsDashboard({
 /** The current event's tasks with honest empty/unassigned/missing states. */
 export function EventTaskList({
   cards,
-  isArabic
+  isArabic,
+  tasks,
+  onHandover
 }: {
   cards: EventTaskCard[];
   isArabic: boolean;
+  /** OPS-COLLAB-001: source tasks, for responsible/delegate badges. */
+  tasks?: Task[];
+  /** OPS-COLLAB-001: opens the handover dialog for a task. */
+  onHandover?: (taskId: string) => void;
 }) {
+  // (`Map` is the lucide icon in this module, so use a plain lookup.)
+  const tasksById: Record<string, Task> = Object.fromEntries(
+    (tasks ?? []).map((task) => [task.id, task])
+  );
+  const taskById = { get: (id: string): Task | undefined => tasksById[id] };
   if (!cards.length)
     return (
       <EmptyState
@@ -621,6 +662,24 @@ export function EventTaskList({
                   ) : null}
                   <span className="ms-auto font-tnum">{timeLabel}</span>
                 </div>
+                {taskById.get(card.id) || onHandover ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {taskById.get(card.id) ? (
+                      <ResponsibilityBadges task={taskById.get(card.id)!} isArabic={isArabic} />
+                    ) : null}
+                    {onHandover ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ms-auto"
+                        onClick={() => onHandover(card.id)}
+                        leadingIcon={<ArrowLeftRight className="size-3.5" aria-hidden />}
+                      >
+                        {isArabic ? "تسليم / تفويض" : "Hand over"}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
               </Surface>
             </li>
           );

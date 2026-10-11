@@ -7,6 +7,7 @@ import { Section } from "../../components/Section";
 import type { CoordinatorRequestInput, PortalProps } from "../types";
 import { DateTimeField, Field, PortalHero, RouteLine, SelectField, defaultDeadline, useOpsText } from "./shared";
 import { AirportExpressSection, HospitalityRidersSection } from "./RiderSections";
+import { MyHandoverTasks } from "../../components/TaskHandover";
 
 import { useToast } from "../../components/ui/Toast";
 export function CoordinatorsApp({
@@ -68,6 +69,16 @@ export function CoordinatorsApp({
           "Coordinators see who is coming from the airport, hotel, or venue, process guest car requests, escalate to supervisors, and submit feedback to the logistics manager."
         )}
       />
+
+      {/* OPS-COLLAB-001: tasks delegated or transferred to this coordinator. */}
+      {session ? (
+        <MyHandoverTasks
+          data={data}
+          session={session}
+          isArabic={ui.isArabic}
+          onChanged={refreshData}
+        />
+      ) : null}
 
       {/* Live Command Center AI Widget (PDF Page 3) */}
       <div className="glass-royal rounded-lg p-5 border border-amber-400/50 shadow-sm transition-all animate-fadeIn">

@@ -28,6 +28,12 @@ const ClientDashboard = lazy(() => import("./components/ClientDashboard").then((
 const SilaOperationsDashboard = lazy(() =>
   import("./components/SilaOperationsDashboard").then((m) => ({ default: m.SilaOperationsDashboard }))
 );
+const SupplierDashboard = lazy(() =>
+  import("./components/SupplierDashboard").then((m) => ({ default: m.SupplierDashboard }))
+);
+const MessagesCenter = lazy(() =>
+  import("./components/MessagesCenter").then((m) => ({ default: m.MessagesCenter }))
+);
 const DesignSystemPreview = lazy(() =>
   import("./pages/DesignSystemPreview").then((m) => ({ default: m.DesignSystemPreview }))
 );
@@ -332,7 +338,9 @@ export function App() {
   );
 
   const { socket, status: socketStatus } = useSocket({
-    enabled: Boolean(session && data),
+    // SUPPLIER-001: the supplier workspace has no realtime; the server also
+    // refuses supplier handshakes.
+    enabled: Boolean(session && data && session.user.role !== "SUPPLIER"),
     sessionKey: session?.accessToken ?? null,
     accessToken: session?.accessToken ?? null,
     onAuthError: socketRecovery.onAuthError,
@@ -1264,8 +1272,13 @@ function renderPortal(
             const report = props.data.companyReports[0];
             if (report) void props.downloadReport(report.id);
           }}
+          onTasksChanged={props.refreshData}
         />
       );
+    case "supplier":
+      return <SupplierDashboard session={props.session} isArabic={isArabic} />;
+    case "messages":
+      return <MessagesCenter session={props.session} isArabic={isArabic} />;
     case "guest":
       return <GuestJourneyApp {...props} />;
     case "captain":

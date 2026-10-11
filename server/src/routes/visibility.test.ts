@@ -43,9 +43,12 @@ describe("role-specific data visibility", () => {
     expect(buildDriverVisibilityWhere(authUser(Role.COORDINATOR))).toBeUndefined();
   });
 
-  it("limits supplier booking data to the supplier profile", () => {
+  it("keeps raw booking rows away from suppliers (SUPPLIER-001 sanitized workspace)", () => {
     expect(buildBookingVisibilityWhere(authUser(Role.SUPPLIER))).toEqual({
-      supplier: { userId: "user_1" }
+      id: "__no_booking_access__"
+    });
+    expect(buildTaskVisibilityWhere(authUser(Role.SUPPLIER))).toEqual({
+      id: "__no_task_access__"
     });
     expect(buildBookingVisibilityWhere(authUser(Role.COMPANY_ORGANIZER))).toEqual({
       id: "__no_booking_access__"
