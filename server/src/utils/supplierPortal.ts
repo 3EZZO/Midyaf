@@ -534,10 +534,16 @@ export function databaseSchemaName(url: string | undefined = process.env.DATABAS
 /**
  * Row-locks the intake for the rest of the transaction so eligibility and
  * status are re-read and written without a concurrent close or rejection
- * slipping in between.
+ * slipping in between. Routes use the server's own DATABASE_URL schema; a
+ * tool connected to another validated target passes that target's schema.
  */
-export async function lockIntake(tx: TransactionClient, intakeId: string) {
-  const table = Prisma.raw(`"${databaseSchemaName()}"."ActivityIntake"`);
+export async function lockIntake(
+  tx: TransactionClient,
+  intakeId: string,
+  schema: string = databaseSchemaName()
+) {
+  if (!IDENTIFIER.test(schema)) throw new Error("Invalid schema name");
+  const table = Prisma.raw(`"${schema}"."ActivityIntake"`);
   await tx.$queryRaw`SELECT "id" FROM ${table} WHERE "id" = ${intakeId} FOR UPDATE`;
 }
 

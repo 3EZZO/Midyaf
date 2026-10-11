@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import { Role, Prisma } from "@prisma/client";
+import { databaseSchemaName } from "../utils/supplierPortal.js";
 import type { Server } from "socket.io";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -9,6 +9,7 @@ import type { AuthRequest, AuthenticatedUser } from "../types/auth.js";
 import {
   MAX_CONTACTS,
   MAX_THREAD_MESSAGES,
+  MESSAGE_NOTIFICATION_KIND,
   MESSAGING_STAFF_ROLES,
   canMessage,
   contactQuerySchema,
@@ -18,6 +19,7 @@ import {
   countUnread,
   isMessagingStaff,
   messageCreateSchema,
+  observedReadCutoff,
   previewText
 } from "../utils/messagingPolicy.js";
 
@@ -32,6 +34,17 @@ router.use(requireAuth);
 
 const personSelect = { select: { id: true, name: true, role: true } } as const;
 const UNREAD_SCAN_LIMIT = 2000;
+// Concurrent participants may queue on the row lock over a remote database.
+// Keep that wait bounded without expiring at Prisma’s short default.
+const CONVERSATION_TRANSACTION = { maxWait: 20_000, timeout: 30_000 };
+type ThreadDb = Pick<Prisma.TransactionClient, "conversation" | "conversationParticipant">;
+
+// Readers and writers share this lock. A reply queued before a read but
+// committed afterwards receives a timestamp beyond the observed cutoff.
+async function lockConversation(tx: Prisma.TransactionClient, id: string) {
+  const schema = databaseSchemaName();
+  await tx.$queryRaw(Prisma.sql`SELECT "id" FROM ${Prisma.raw(`"${schema}"."Conversation"`)} WHERE "id" = ${id} FOR UPDATE`);
+}
 
 /** Users a stored task links this actor to (guest <-> assigned captain). */
 async function linkedCounterparts(user: AuthenticatedUser) {
@@ -225,7 +238,7 @@ router.post(
           userId: recipient.id,
           title: "New message",
           body: `${sender?.name ?? user.email}: ${body.subject}`,
-          metadata: { conversationId: created.id }
+          metadata: { kind: MESSAGE_NOTIFICATION_KIND, conversationId: created.id }
         }))
       });
 
@@ -241,11 +254,12 @@ router.get(
   "/conversations/:id",
   asyncHandler(async (req: AuthRequest, res) => {
     const membership = await requireParticipation(req.params.id, req.user!.id);
-    const thread = await loadThread(membership.conversationId, req.user!.id);
-    await prisma.conversationParticipant.update({
-      where: { id: membership.id },
-      data: { lastReadAt: new Date() }
-    });
+    const thread = await prisma.$transaction(async (tx) => {
+      await lockConversation(tx, membership.conversationId);
+      const observed = await loadThread(membership.conversationId, req.user!.id, tx);
+      await markReadUpTo(membership.id, observedReadCutoff(observed.messages), tx);
+      return observed;
+    }, CONVERSATION_TRANSACTION);
     res.json({ conversation: thread });
   })
 );
@@ -258,7 +272,12 @@ router.post(
     const body = messageCreateSchema.parse(req.body);
 
     const message = await prisma.$transaction(async (tx) => {
-      const now = new Date();
+      await lockConversation(tx, membership.conversationId);
+      const conversation = await tx.conversation.findUnique({
+        where: { id: membership.conversationId }, select: { lastMessageAt: true }
+      });
+      if (!conversation) throw new HttpError(404, "Conversation not found");
+      const now = new Date(Math.max(Date.now(), conversation.lastMessageAt.getTime() + 1));
       const created = await tx.conversationMessage.create({
         data: {
           conversationId: membership.conversationId,
@@ -272,12 +291,10 @@ router.post(
         where: { id: membership.conversationId },
         data: { lastMessageAt: now }
       });
-      await tx.conversationParticipant.update({
-        where: { id: membership.id },
-        data: { lastReadAt: now }
-      });
+      // Sending does not read: earlier incoming messages the sender has not
+      // been shown stay unread (own messages never count as unread).
       return created;
-    });
+    }, CONVERSATION_TRANSACTION);
 
     const others = await prisma.conversationParticipant.findMany({
       where: { conversationId: membership.conversationId, userId: { not: user.id } },
@@ -301,16 +318,37 @@ router.post(
   "/conversations/:id/read",
   asyncHandler(async (req: AuthRequest, res) => {
     const membership = await requireParticipation(req.params.id, req.user!.id);
-    await prisma.conversationParticipant.update({
-      where: { id: membership.id },
-      data: { lastReadAt: new Date() }
-    });
+    await prisma.$transaction(async (tx) => {
+      await lockConversation(tx, membership.conversationId);
+      const newest = await tx.conversationMessage.findFirst({
+        where: { conversationId: membership.conversationId },
+        select: { createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }]
+      });
+      await markReadUpTo(membership.id, newest?.createdAt ?? null, tx);
+    }, CONVERSATION_TRANSACTION);
     res.json({ ok: true });
   })
 );
 
-async function loadThread(conversationId: string, userId: string) {
-  const conversation = await prisma.conversation.findUnique({
+/**
+ * Moves the reader's mark forward to `cutoff` and never backwards: a slow or
+ * stale read cannot undo a newer one, and nothing after the cutoff is
+ * claimed as read.
+ */
+async function markReadUpTo(membershipId: string, cutoff: Date | null, db: ThreadDb = prisma) {
+  if (!cutoff) return;
+  await db.conversationParticipant.updateMany({
+    where: {
+      id: membershipId,
+      OR: [{ lastReadAt: null }, { lastReadAt: { lt: cutoff } }]
+    },
+    data: { lastReadAt: cutoff }
+  });
+}
+
+async function loadThread(conversationId: string, userId: string, db: ThreadDb = prisma) {
+  const conversation = await db.conversation.findUnique({
     where: { id: conversationId },
     select: {
       id: true,

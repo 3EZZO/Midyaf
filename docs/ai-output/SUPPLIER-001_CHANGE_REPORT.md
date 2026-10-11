@@ -3,7 +3,7 @@
 Author: Claude Code (interactive terminal), 2026-10-11
 Assignment: `docs/ai/tasks/SUPPLIER-001.md` (D-009, D-018, D-019, D-020). Release instruction: product owner, 2026-10-11 ("everything is approved proceed to finish commit push and open pr").
 Companion: `OPS-COLLAB-001_CHANGE_REPORT.md` (task handover and messaging, delivered in the same branch).
-State: implementation complete. Reviewer acceptance (Codex) is still pending.
+State: implementation complete. Review corrections R1, R3 (supplier side) and R6 applied on 2026-10-11 (SUPPLIER-COLLAB-R1, see "Review corrections"). Reviewer acceptance (Codex) is still pending.
 
 ## Summary
 
@@ -30,7 +30,7 @@ Suppliers get a dedicated bilingual workspace: their own profile, services and b
   - unknown and privileged fields are rejected.
 - Terms are computed in integer cents. A total above Decimal(12,2) gets 422. Commission comes only from the supplier's stored percentage within 10–15, otherwise 409.
 - DTOs carry opaque `EVT-`/`REQ-` references. The supplier's own quote DTO has no score, commission or vendor name. The logistics DTO has no price.
-- Every mutation runs in a transaction that row-locks the intake (`SELECT … FOR UPDATE`, schema taken from `DATABASE_URL`), re-checks eligibility and status, and writes a metadata-only audit in the same transaction: a failed audit rolls the mutation back.
+- Every mutation runs in a transaction that row-locks the intake (`SELECT … FOR UPDATE`) and re-checks eligibility and status. It writes a metadata-only audit in the same transaction, so a failed audit rolls the mutation back. Routes lock in the server's `DATABASE_URL` schema. The fixture CLI passes its validated target's schema explicitly (correction R1).
 
 **Supplier API (`server/src/routes/suppliers.ts`)**, SUPPLIER only, registered before `/:id`:
 - `GET /suppliers/me/dashboard`, `GET /suppliers/me/requests`, `GET /suppliers/me/quotes` (cursor-paginated, at most 100, owned by `supplierId`, never matched by `vendorName`).
@@ -53,7 +53,7 @@ Suppliers get a dedicated bilingual workspace: their own profile, services and b
 - `authorize` returns 409 for the allow-listed demo intake and for any intake with supplier-owned quotes. A full unlock unseals legacy quotes only.
 - `reset` writes an audit entry.
 - Deleting an intake that holds supplier submissions or notes returns 409.
-- New `GET /supplier-submissions?intakeId=` and `POST /supplier-submissions/:id/reject`: logistics role plus intake/event ownership; LM and SA keep the documented legacy scope. Rejection is transactional and audited (optional reason, at most 500 chars) and changes status only.
+- New `GET /supplier-submissions?intakeId=` and `POST /supplier-submissions/:id/reject`: logistics role plus intake/event ownership; LM and SA keep the documented legacy scope. Rejection is transactional and audited (optional reason, at most 500 chars) and changes status only. Intake/event authorization is checked again inside the transaction, after the intake lock (correction R6). An authorized operator can still reject after the request has closed.
 
 **Client**
 - `SupplierDashboard.tsx`: the supplier workspace (Arabic and English) with loading, error and retry, unlinked, empty, quote-form, sealed-quote and notes states. It refreshes over HTTP after each action.
@@ -98,10 +98,30 @@ The manifest extras beyond the original 33 paths (`tasks.ts`, `visibility.test.t
 | Browser / installed-PWA checks (AR/EN supplier, logistics panel, other personas, War Room) | **Not run** |
 | Live `demo:verify` / deployed checks | **Not run** (requires the SQL first, then the release) |
 
+## Review corrections (SUPPLIER-COLLAB-R1, 2026-10-11)
+
+These correct Codex review findings in `SUPPLIER-001_REVIEW.md`. The checks listed above were run at the original head `4eb6d1b`. Codex independently re-ran the full suite, `npm run check` and `npm run build` on that candidate: 850 passed and 1 skipped, and both commands passed.
+
+- **R1, fixture lock schema.** `lockIntake` now takes an explicit, identifier-validated schema. The default is still the server's `DATABASE_URL` schema, so route behaviour is unchanged. The fixture passes the validated target's schema (`midyaf`) to the lock, because the CLI parses `.env.neon.local` without loading it into `process.env`. New tests: the lock uses the target schema both when the ambient `DATABASE_URL` is absent and when it names another schema; an unsafe explicit schema is refused before any query.
+- **R6, rejection authorization under the lock.** `assertIntakeOperatorAccess` accepts the transaction client. Rejection re-runs it after `lockIntake` and before the status-only update and audit, and the audit uses the event id from that re-check. New HTTP tests: the event's organizer changes before the lock (403, nothing written); the intake is relinked to another event (403); an authorized owner can still reject after the request closed.
+- **R3, client freshness (supplier side).** `SupplierDashboard` and `SupplierSubmissions` now use small controllers built on `client/src/lib/requestGeneration.ts`. Only the latest load paints. A result for a previous intake, session or mounted instance is dropped. Mutations refresh only the scope they were sent from. Tests use deferred promises that resolve in reverse order. The messaging, handover and notification corrections (R2–R5) are in the OPS-COLLAB-001 report.
+
+Correction checks: **all Not run by Claude.** The managed worker has file tools only. Codex runs `npm run test`, `npm run check` and `npm run build`. Counted by inspection and not executed, the correction adds 2 `supplierPortal` tests, 2 `supplierDemo` tests, 3 rejection HTTP tests, 4 submissions-controller tests and 3 workspace-controller tests.
+
 ## Limits and open items
 
 - D-011 (vault key holders, approval rules) is still Pending: supplier prices cannot be revealed, approved or contracted. That is intended.
 - The demand view is a synthetic showcase exception for one allow-listed intake. It is not RFQ routing, organization isolation (D-001) or SUP-01/SUP-02 compliance.
 - The broader legacy vault defect (one operator can turn all three keys on legacy intakes) remains documented and is not redesigned here.
 - An HTTP submission/rejection smoke test against a live target needs its own reviewed mode and approval.
-- Codex has not reviewed this work. `DECISION_LOG.md` and the task board have not recorded the 2026-10-11 approval; Codex owns both.
+- Codex's independent review is in progress (`SUPPLIER-001_REVIEW.md`); acceptance is pending. The 2026-10-11 approvals are recorded as D-021 and D-022.
+
+## Codex continuation under D-023
+
+The owner approved preserving all existing accounts. Verification and optional supplier fixture commands now support an explicit paired exact count/full identity-and-password fingerprint pin, retain strict default 11-account behavior, require original persona roles and guest-only extras, and recheck the pin inside the fixture transaction. Provisioning/reset behavior is unchanged; no account or credential is altered.
+
+Actual checks by Codex: full suite 909 passed /1 skipped; npm run check passed; Prisma validate passed. Both additive SQL transactions/post-checks passed on isolated and live direct connections: 29 tables, supplier indexes 5/5 and FKs 4/4, operations new tables 4/4 and FKs 11/11. All 24 original table counts, existing identities/password hashes and both legacy quotes were preserved after DDL. Isolated SQL reruns were unchanged and Prisma migrate diff returned an empty migration. Isolated pinned fixture dry run/apply passed; supplier verifier 6 passed /0 failed; demo verifier 73 passed /0 failed. Browser/PWA checks Not run due saved site permission; live fixture remains gated on a healthy new application per the owner-approved safer order.
+
+Final scoped verification: actual PostgreSQL feature run retained 148 successful checks before a verifier expectation was corrected (legacy coordinator notification access); targeted remaining run passed 21/21, covering manager/private notification separation, all 8 concurrent replies, distinct timestamps, queued read/late-write unread correctness, delegate/return/transfer and coordinator bootstrap visibility, and unchanged account baseline. Prisma P2028 under lock contention was reproduced and corrected with bounded 20-second acquisition and 30-second conversation transaction lifetime. Final full suite again passed 909 tests /1 skipped. The historical Claude-only Not run entries above remain author attribution, not the current operator status.
+
+Final candidate: npm run test 909 passed /1 skipped (53 files passed /1 skipped), npm run check PASS, npm run build PASS (3088 modules; 57 PWA precache entries). Isolated fixture rerun created no additional quote or note. Public release scan checked 59 changed files with zero private-value matches. SQL was applied before merge; live fixture remains after healthy deployment. Installed-PWA visual checks are deferred under the owner’s explicit best-possible instruction because browser site permission remains blocked.

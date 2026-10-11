@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BedDouble,
   CalendarDays,
@@ -25,6 +25,7 @@ import type {
 } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
 import { shortDate } from "../lib/format";
+import { allCurrent, createRequestGeneration } from "../lib/requestGeneration";
 import { Badge, Button, EmptyState, Field, Input, Section, Surface, Textarea } from "./ui";
 import { PortalHero } from "./ui/PortalHero";
 
@@ -231,41 +232,95 @@ export async function loadSupplierWorkspace(accessToken: string): Promise<Suppli
   return { dashboard, requests: requests.requests, quotes: quotes.quotes };
 }
 
+/**
+ * Async rules of the workspace, independent of React: only the latest load
+ * for the current session may paint, and a mutation refreshes only the
+ * session it was sent from (`reset` on logout/account switch/unmount).
+ */
+export function createWorkspaceController(
+  api: { load: () => Promise<SupplierWorkspace> },
+  on: { ready: (value: SupplierWorkspace) => void; failed: () => void }
+) {
+  const session = createRequestGeneration();
+  const loads = createRequestGeneration();
+
+  async function load() {
+    const current = allCurrent(session.capture(), loads.begin());
+    try {
+      const value = await api.load();
+      if (current()) on.ready(value);
+    } catch {
+      if (current()) on.failed();
+    }
+  }
+
+  /** Runs a mutation, then refreshes if still in the same session. */
+  async function mutate(send: () => Promise<unknown>, refreshOnError: boolean) {
+    const sameSession = session.capture();
+    try {
+      await send();
+    } catch (error) {
+      if (refreshOnError && sameSession()) await load();
+      throw error;
+    }
+    if (sameSession()) await load();
+  }
+
+  function reset() {
+    session.invalidate();
+    loads.invalidate();
+  }
+
+  return { load, mutate, reset };
+}
+
 export function SupplierDashboard({ session, isArabic }: { session?: Session; isArabic: boolean }) {
   const [state, setState] = useState<WorkspaceState>({ status: "loading" });
   const tokenRef = useRef(session?.accessToken);
   tokenRef.current = session?.accessToken;
+  const isArabicRef = useRef(isArabic);
+  isArabicRef.current = isArabic;
   const copy = supplierCopy(isArabic);
 
-  const load = useCallback(async () => {
-    const token = tokenRef.current;
-    if (!token) return;
-    try {
-      const value = await loadSupplierWorkspace(token);
-      // A reply for an older session must not paint over the current one.
-      if (tokenRef.current === token) setState({ status: "ready", value });
-    } catch {
-      if (tokenRef.current === token) setState({ status: "error", message: copy.loadFailed });
-    }
-  }, [copy.loadFailed]);
+  const [controller] = useState(() =>
+    createWorkspaceController(
+      {
+        load: () => {
+          const token = tokenRef.current;
+          if (!token) return Promise.reject(new ApiError("Not signed in", 401));
+          return loadSupplierWorkspace(token);
+        }
+      },
+      {
+        ready: (value) => setState({ status: "ready", value }),
+        failed: () => setState({ status: "error", message: supplierCopy(isArabicRef.current).loadFailed })
+      }
+    )
+  );
 
   useEffect(() => {
+    controller.reset();
     setState({ status: "loading" });
-    void load();
-  }, [session?.accessToken]);
+    if (!session?.accessToken) return;
+    void controller.load();
+    // A reply for an older session, or after unmount, must not paint.
+    return () => controller.reset();
+  }, [session?.accessToken, controller]);
 
   async function submitQuote(intakeId: string, value: QuoteValue) {
     const token = tokenRef.current;
     if (!token) return copy.loadFailed;
     try {
-      await apiFetch(`/suppliers/me/requests/${encodeURIComponent(intakeId)}/quotes`, token, {
-        method: "POST",
-        body: JSON.stringify(value)
-      });
-      await load();
+      await controller.mutate(
+        () =>
+          apiFetch(`/suppliers/me/requests/${encodeURIComponent(intakeId)}/quotes`, token, {
+            method: "POST",
+            body: JSON.stringify(value)
+          }),
+        true
+      );
       return null;
     } catch (error) {
-      await load();
       return supplierErrorMessage(error, isArabic);
     }
   }
@@ -274,11 +329,14 @@ export function SupplierDashboard({ session, isArabic }: { session?: Session; is
     const token = tokenRef.current;
     if (!token) return copy.loadFailed;
     try {
-      await apiFetch(`/suppliers/me/requests/${encodeURIComponent(intakeId)}/notes`, token, {
-        method: "POST",
-        body: JSON.stringify({ text })
-      });
-      await load();
+      await controller.mutate(
+        () =>
+          apiFetch(`/suppliers/me/requests/${encodeURIComponent(intakeId)}/notes`, token, {
+            method: "POST",
+            body: JSON.stringify({ text })
+          }),
+        false
+      );
       return null;
     } catch (error) {
       return supplierErrorMessage(error, isArabic);
@@ -291,7 +349,7 @@ export function SupplierDashboard({ session, isArabic }: { session?: Session; is
       isArabic={isArabic}
       onRetry={() => {
         setState({ status: "loading" });
-        void load();
+        void controller.load();
       }}
       onSubmitQuote={submitQuote}
       onAddNote={addNote}

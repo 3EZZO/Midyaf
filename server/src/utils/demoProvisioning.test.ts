@@ -5,6 +5,9 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import {
+  accountBaselineFingerprint,
+  matchesAccountBaseline,
+  parseVerifyArgs,
   APPLICATION_MODELS,
   BOOTSTRAP_EXPECTATIONS,
   CREDENTIALS_FORMAT,
@@ -848,5 +851,32 @@ describe("verification", () => {
     expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, events: [{ id: "evt" }] }, ctx)).toBe(false);
     expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, suppliers: [{ id: "sup" }] }, ctx)).toBe(false);
     expect(BOOTSTRAP_EXPECTATIONS.supplier({ ...empty, hospitalityRiders: [{ id: "r" }] }, ctx)).toBe(false);
+  });
+});
+
+describe("verification-only full account baseline", () => {
+  const users = [...DEMO_ACCOUNTS.map((a, i) => ({ id: "u" + i, email: a.email, role: a.role as string, passwordHash: "hash" + i })),
+    { id: "extra1", email: "extra1@example.test", role: "GUEST", passwordHash: "hash-extra1" },
+    { id: "extra2", email: "extra2@example.test", role: "GUEST", passwordHash: "hash-extra2" }];
+  const pin = { count: users.length, fingerprint: accountBaselineFingerprint(users) };
+  const args = ["--expected-host", HOST, "--expected-account-count", String(pin.count), "--expected-account-fingerprint", pin.fingerprint];
+  it("requires a complete valid pair and does not expand provisioning", () => {
+    expect(parseVerifyArgs(args).accountBaseline).toEqual(pin);
+    expect(parseVerifyArgs(["--expected-host", HOST])).toEqual({ expectedHost: HOST });
+    for (const argv of [args.slice(0, 4), [...args.slice(0, 2), ...args.slice(4)], [...args.slice(0, 3), "0", ...args.slice(4)],
+      [...args.slice(0, 3), "13.5", ...args.slice(4)], [...args.slice(0, 5), "invalid"], [...args, ...args.slice(2, 4)]]) expect(() => parseVerifyArgs(argv)).toThrow();
+    expect(() => parseProvisionArgs(args)).toThrow();
+  });
+  it("matches exact count, persona roles, passwords and guest-only extras independent of row order", () => {
+    const before = structuredClone(users);
+    expect(matchesAccountBaseline([...users].reverse(), pin)).toBe(true);
+    expect(matchesAccountBaseline(users, { ...pin, count: 14 })).toBe(false);
+    expect(matchesAccountBaseline(users, { ...pin, fingerprint: "0".repeat(64) })).toBe(false);
+    for (const key of ["role", "passwordHash"] as const) { const altered = structuredClone(users); altered[0][key] += "changed"; expect(matchesAccountBaseline(altered, pin)).toBe(false); }
+    const altered = structuredClone(users); altered[0].role = "GUEST";
+    expect(matchesAccountBaseline(altered, { count: 13, fingerprint: accountBaselineFingerprint(altered) })).toBe(false);
+    altered[0] = users[0]; altered[12].role = "SUPER_ADMIN";
+    expect(matchesAccountBaseline(altered, { count: 13, fingerprint: accountBaselineFingerprint(altered) })).toBe(false);
+    expect(users).toEqual(before);
   });
 });

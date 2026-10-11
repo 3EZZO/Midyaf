@@ -186,6 +186,56 @@ describe("threads", () => {
     expect(after.body.unread).toBe(0);
   });
 
+  it("keeps a message that arrives while the thread loads unread", async () => {
+    const created = await startThread(actors.lm, ["usr_coord"]);
+    const id = created.body.conversation.id;
+
+    // Stored after the reader's thread query, before its read mark.
+    memory.current.beforeNext("conversationParticipant", "updateMany", () => {
+      memory.current.rows("conversationMessage").push({
+        id: "msg_late",
+        conversationId: id,
+        senderId: "usr_lm",
+        body: "Late synthetic message",
+        createdAt: new Date(Date.now() + 1000)
+      });
+    });
+    const shown = await http.get(`/api/messages/conversations/${id}`, actors.coord);
+    expect(shown.body.conversation.messages.map((m: any) => m.body)).toEqual(["Synthetic first message"]);
+
+    const after = await http.get("/api/messages/unread-count", actors.coord);
+    expect(after.body).toEqual({ unread: 1, conversations: 1 });
+  });
+
+  it("never moves the read mark backwards on a stale read", async () => {
+    const created = await startThread(actors.lm, ["usr_coord"]);
+    const id = created.body.conversation.id;
+    const mine = () =>
+      memory.current.rows("conversationParticipant").find((p) => p.conversationId === id && p.userId === "usr_coord")!;
+
+    const newer = new Date(Date.now() + 60_000);
+    mine().lastReadAt = newer;
+    expect((await http.get(`/api/messages/conversations/${id}`, actors.coord)).status).toBe(200);
+    expect((await http.post(`/api/messages/conversations/${id}/read`, actors.coord)).status).toBe(200);
+    expect(mine().lastReadAt).toEqual(newer);
+  });
+
+  it("does not mark earlier incoming messages read when the reader replies", async () => {
+    const created = await startThread(actors.lm, ["usr_coord"]);
+    const id = created.body.conversation.id;
+    await http.post(`/api/messages/conversations/${id}/messages`, actors.lm, { body: "Second" });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const reply = await http.post(`/api/messages/conversations/${id}/messages`, actors.coord, { body: "Reply without opening" });
+    expect(reply.status).toBe(201);
+    expect((await http.get("/api/messages/unread-count", actors.coord)).body).toEqual({ unread: 2, conversations: 1 });
+    expect((await http.get("/api/messages/unread-count", actors.lm)).body).toEqual({ unread: 1, conversations: 1 });
+
+    // Opening the thread shows everything, so everything shown is read.
+    await http.get(`/api/messages/conversations/${id}`, actors.coord);
+    expect((await http.get("/api/messages/unread-count", actors.coord)).body.unread).toBe(0);
+  });
+
   it("lists only the reader's own conversations, newest first", async () => {
     await startThread(actors.lm, ["usr_coord"], "First");
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -196,5 +246,23 @@ describe("threads", () => {
     const coord = await http.get("/api/messages/conversations", actors.coord);
     expect(coord.body.conversations.map((c: any) => c.subject)).toEqual(["First"]);
     expect((await http.get("/api/messages/conversations?cursor=nope", actors.coord)).status).toBe(400);
+  });
+});
+
+describe("serialized read/reply timestamps", () => {
+  it("keeps replies sent at the same wall-clock time after an observed read unread", async () => {
+    const created = await startThread(actors.lm, ["usr_coord"]), id = created.body.conversation.id;
+    const initial = new Date(created.body.conversation.lastMessageAt).getTime();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(initial);
+    try {
+      await http.get("/api/messages/conversations/" + id, actors.coord);
+      const first = await http.post("/api/messages/conversations/" + id + "/messages", actors.lm, { body: "Same clock" });
+      const second = await http.post("/api/messages/conversations/" + id + "/messages", actors.lm, { body: "Same clock again" });
+      expect(new Date(first.body.message.createdAt).getTime()).toBe(initial + 1);
+      expect(new Date(second.body.message.createdAt).getTime()).toBe(initial + 2);
+      expect((await http.get("/api/messages/unread-count", actors.coord)).body.unread).toBe(2);
+      await http.post("/api/messages/conversations/" + id + "/read", actors.coord);
+      expect((await http.get("/api/messages/unread-count", actors.coord)).body.unread).toBe(0);
+    } finally { clock.mockRestore(); }
   });
 });

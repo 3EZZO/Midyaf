@@ -476,6 +476,40 @@ describe("logistics review of supplier submissions", () => {
     expect((await http.post(`/api/supplier-submissions/${quote.id}/reject`, actors.lm)).status).toBe(409);
   });
 
+  it("re-checks event ownership under the intake lock before rejecting", async () => {
+    const quote = await submitHotelQuote();
+    // Ownership moves after the pre-transaction check, before the lock.
+    memory.current.beforeNext("$raw", "$queryRaw", () => {
+      memory.current.rows("event").find((e) => e.id === DEMO.eventId)!.organizerId = "usr_org2";
+    });
+    const response = await http.post(`/api/supplier-submissions/${quote.id}/reject`, actors.org, {
+      reason: "Synthetic reason"
+    });
+    expect(response.status).toBe(403);
+    expect(supplierQuotes()[0].status).toBe(QuoteStatus.RECEIVED);
+    expect(audits("supplier_quote.reject")).toHaveLength(0);
+  });
+
+  it("re-checks a relinked intake under the lock", async () => {
+    const quote = await submitHotelQuote();
+    memory.current.beforeNext("$raw", "$queryRaw", () => {
+      memory.current.rows("activityIntake").find((i) => i.id === DEMO.intakeId)!.eventId = "evt_other";
+    });
+    const response = await http.post(`/api/supplier-submissions/${quote.id}/reject`, actors.org);
+    expect(response.status).toBe(403);
+    expect(supplierQuotes()[0].status).toBe(QuoteStatus.RECEIVED);
+  });
+
+  it("still lets the authorized owner reject after the request closed", async () => {
+    const quote = await submitHotelQuote();
+    memory.current.rows("activityIntake").find((i) => i.id === DEMO.intakeId)!.status =
+      ActivityStatus.CONTRACTING;
+    const response = await http.post(`/api/supplier-submissions/${quote.id}/reject`, actors.org);
+    expect(response.status).toBe(200);
+    expect(supplierQuotes()[0].status).toBe(QuoteStatus.REJECTED);
+    expect(audits("supplier_quote.reject")[0]).toMatchObject({ eventId: DEMO.eventId });
+  });
+
   it("denies rejection to suppliers and non-owners, and of legacy quotes", async () => {
     const quote = await submitHotelQuote();
     expect((await http.post(`/api/supplier-submissions/${quote.id}/reject`, actors.hotel)).status).toBe(403);

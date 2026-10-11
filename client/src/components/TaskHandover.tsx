@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, History, Undo2, UserRoundCheck } from "lucide-react";
 import type {
   MidyafData,
@@ -10,6 +10,7 @@ import type {
 } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
 import { shortDate, shortTime } from "../lib/format";
+import { createRequestGeneration } from "../lib/requestGeneration";
 import { Badge, Button, Dialog, EmptyState, Field, Select, Surface, Textarea, useToast } from "./ui";
 
 /**
@@ -35,7 +36,9 @@ export function handoverOptions(
   eventOrganizerId?: string
 ) {
   const closed = task.status === "COMPLETED" || task.status === "CANCELLED";
-  if (closed || !HANDOVER_ROLES.includes(me.role)) {
+  // Organizers act only on their own events, whatever the task stores.
+  const foreignEvent = me.role === "ORGANIZER" && eventOrganizerId !== me.id;
+  if (closed || foreignEvent || !HANDOVER_ROLES.includes(me.role)) {
     return { modes: [] as HandoverMode[], canReturn: false, closed };
   }
   const manages =
@@ -299,6 +302,91 @@ export function HandoverForm({
   );
 }
 
+export type HandoverApi = {
+  candidates: (eventId: string) => Promise<TaskPerson[]>;
+  history: (taskId: string) => Promise<TaskHandoverEntry[]>;
+  submit: (path: string, body: unknown) => Promise<void>;
+};
+
+/**
+ * Async rules of the handover dialog, independent of React: people and
+ * history belong to the task (and session) the dialog was opened for, and a
+ * submission finished after the dialog moved on must not close or annotate
+ * the next one.
+ */
+export function createHandoverController(
+  api: HandoverApi,
+  on: { loaded: (candidates: TaskPerson[], history: TaskHandoverEntry[]) => void; failed: () => void }
+) {
+  const scope = createRequestGeneration();
+
+  async function open(task: { id: string; eventId: string }) {
+    const current = scope.begin();
+    try {
+      const [people, log] = await Promise.all([api.candidates(task.eventId), api.history(task.id)]);
+      if (current()) on.loaded(people, log);
+    } catch {
+      if (current()) on.failed();
+    }
+  }
+
+  /** `current` is false when the dialog closed or moved to another task meanwhile. */
+  async function submit(
+    path: string,
+    body: unknown
+  ): Promise<{ ok: true; current: boolean } | { ok: false; current: boolean; error: unknown }> {
+    const current = scope.capture();
+    try {
+      await api.submit(path, body);
+      return { ok: true, current: current() };
+    } catch (error) {
+      return { ok: false, current: current(), error };
+    }
+  }
+
+  return { open, submit, capture: () => scope.capture(), close: () => scope.invalidate() };
+}
+
+export type HandoverSubmitEffects = {
+  /** Success toast and closing the dialog. */
+  succeeded: () => void;
+  failed: (error: unknown) => void;
+  /** Clears the pending state. */
+  settled: () => void;
+  /** Reloads the caller's data; its own failures are reported elsewhere. */
+  refresh: () => Promise<void> | void;
+};
+
+/**
+ * Runs one dialog submission. Every visible effect (toast, close, error,
+ * pending reset and the data refresh) happens only if the dialog is still on
+ * the same task in the same session. After a close, task switch, logout or
+ * unmount the outcome is dropped; the next open loads fresh history.
+ */
+export async function runHandoverSubmit(
+  controller: Pick<ReturnType<typeof createHandoverController>, "submit" | "capture">,
+  path: string,
+  body: unknown,
+  effects: HandoverSubmitEffects
+) {
+  const isCurrent = controller.capture();
+  const result = await controller.submit(path, body);
+  if (!result.current || !isCurrent()) return result;
+  if (result.ok) {
+    effects.succeeded();
+    effects.settled();
+    try {
+      await effects.refresh();
+    } catch {
+      // The refresh reports its own failures; the handover itself succeeded.
+    }
+  } else {
+    effects.failed(result.error);
+    effects.settled();
+  }
+  return result;
+}
+
 export function TaskHandoverDialog({
   task,
   session,
@@ -328,51 +416,72 @@ export function TaskHandoverDialog({
     [task, session.user, eventOrganizerId]
   );
   const [draft, setDraft] = useState<HandoverDraft>({ mode: "DELEGATE", toUserId: "", reason: "" });
+  const tokenRef = useRef(session.accessToken);
+  tokenRef.current = session.accessToken;
+  const isArabicRef = useRef(isArabic);
+  isArabicRef.current = isArabic;
+
+  const [controller] = useState(() =>
+    createHandoverController(
+      {
+        candidates: async (eventId) =>
+          (
+            await apiFetch<{ candidates: TaskPerson[] }>(
+              `/tasks/handover-candidates?eventId=${encodeURIComponent(eventId)}`,
+              tokenRef.current
+            )
+          ).candidates,
+        history: async (taskId) =>
+          (
+            await apiFetch<{ handovers: TaskHandoverEntry[] }>(
+              `/tasks/${encodeURIComponent(taskId)}/handovers`,
+              tokenRef.current
+            )
+          ).handovers,
+        submit: async (path, body) => {
+          await apiFetch(path, tokenRef.current, { method: "POST", body: JSON.stringify(body) });
+        }
+      },
+      {
+        loaded: (people, log) => {
+          setCandidates(people);
+          setHistory(log);
+        },
+        failed: () =>
+          setLoadError(isArabicRef.current ? "تعذر تحميل قائمة الأشخاص" : "Could not load the people list")
+      }
+    )
+  );
 
   useEffect(() => {
-    if (!open || !task) return;
-    let active = true;
+    // Never show the previous task's people or history, even briefly.
+    setCandidates([]);
+    setHistory([]);
+    setPending(false);
+    if (!open || !task) {
+      controller.close();
+      return;
+    }
     setDraft({ mode: options.modes[0] ?? "DELEGATE", toUserId: "", reason: "" });
     setError(null);
     setLoadError(null);
-    Promise.all([
-      apiFetch<{ candidates: TaskPerson[] }>(
-        `/tasks/handover-candidates?eventId=${encodeURIComponent(task.eventId)}`,
-        session.accessToken
-      ),
-      apiFetch<{ handovers: TaskHandoverEntry[] }>(
-        `/tasks/${encodeURIComponent(task.id)}/handovers`,
-        session.accessToken
-      )
-    ])
-      .then(([people, log]) => {
-        if (!active) return;
-        setCandidates(people.candidates);
-        setHistory(log.handovers);
-      })
-      .catch(() => {
-        if (active) {
-          setLoadError(isArabic ? "تعذر تحميل قائمة الأشخاص" : "Could not load the people list");
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [open, task?.id, session.accessToken]);
+    void controller.open(task);
+    // Closing, switching task, signing out or unmounting ends this scope.
+    return () => controller.close();
+  }, [open, task?.id, session.accessToken, controller]);
 
   async function submit(path: string, body: unknown, success: string) {
     setPending(true);
     setError(null);
-    try {
-      await apiFetch(path, session.accessToken, { method: "POST", body: JSON.stringify(body) });
-      toast.success(success);
-      onOpenChange(false);
-      await onChanged();
-    } catch (failure) {
-      setError(handoverErrorMessage(failure, isArabic));
-    } finally {
-      setPending(false);
-    }
+    await runHandoverSubmit(controller, path, body, {
+      succeeded: () => {
+        toast.success(success);
+        onOpenChange(false);
+      },
+      failed: (failure) => setError(handoverErrorMessage(failure, isArabic)),
+      settled: () => setPending(false),
+      refresh: onChanged
+    });
   }
 
   if (!task) return null;

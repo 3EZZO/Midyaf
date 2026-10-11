@@ -130,7 +130,15 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
       conversation: one("conversation", "conversationId"),
       sender: one("user", "senderId")
     }
-  }
+  },
+  // Collections the generic bootstrap reads (empty in the privacy tests).
+  commissionConfig: {},
+  aiLogisticsPlan: {},
+  guestJourneyRecord: {},
+  coordinatorRequest: {},
+  companyReport: {},
+  fileAsset: {},
+  hospitalityRider: {}
 };
 
 function clone<T>(value: T): T {

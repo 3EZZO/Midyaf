@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Lock, MessageSquareText, RotateCcw, ShieldAlert, XCircle } from "lucide-react";
 import type { Session, SupplierSubmissionsView } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
 import { shortDate, shortTime } from "../lib/format";
+import { allCurrent, createRequestGeneration } from "../lib/requestGeneration";
 import { Badge, Button, EmptyState, Surface, Textarea } from "./ui";
 import { categoryLabel, quoteStatusLabel } from "./SupplierDashboard";
 
@@ -55,6 +56,55 @@ export function rejectErrorMessage(error: unknown, isArabic: boolean) {
   return status === 409 || status === 404 ? copy.unavailable : copy.rejectFailed;
 }
 
+export type SubmissionsApi = {
+  load: (intakeId: string) => Promise<SupplierSubmissionsView>;
+  reject: (quoteId: string, reason: string) => Promise<void>;
+};
+
+/**
+ * Async rules of the review panel, independent of React: results belong to
+ * the intake and session they were requested for (`open` starts a new scope,
+ * `close` ends it on logout/unmount), and only the latest load may paint.
+ */
+export function createSubmissionsController(
+  api: SubmissionsApi,
+  on: { ready: (value: SupplierSubmissionsView) => void; failed: () => void }
+) {
+  const scope = createRequestGeneration();
+  const loads = createRequestGeneration();
+  let intakeId: string | null = null;
+
+  async function load() {
+    const id = intakeId;
+    if (!id) return;
+    const current = allCurrent(scope.capture(), loads.begin());
+    try {
+      const value = await api.load(id);
+      if (current()) on.ready(value);
+    } catch {
+      if (current()) on.failed();
+    }
+  }
+
+  /** Errors propagate; the panel refreshes only if still on the same scope. */
+  async function reject(quoteId: string, reason: string) {
+    const sameScope = scope.capture();
+    try {
+      await api.reject(quoteId, reason);
+    } finally {
+      if (sameScope()) await load();
+    }
+  }
+
+  function open(id: string | null) {
+    intakeId = id;
+    scope.invalidate();
+    loads.invalidate();
+  }
+
+  return { load, reject, open, close: () => open(null) };
+}
+
 export function SupplierSubmissions({
   intakeId,
   session,
@@ -69,41 +119,57 @@ export function SupplierSubmissions({
   const [state, setState] = useState<SubmissionsState>({ status: "loading" });
   const tokenRef = useRef(session?.accessToken);
   tokenRef.current = session?.accessToken;
+  const isArabicRef = useRef(isArabic);
+  isArabicRef.current = isArabic;
   const copy = submissionsCopy(isArabic);
 
-  const load = useCallback(async () => {
-    const token = tokenRef.current;
-    if (!token || !intakeId) return;
-    try {
-      const value = await apiFetch<SupplierSubmissionsView>(
-        `/supplier-submissions?intakeId=${encodeURIComponent(intakeId)}`,
-        token
-      );
-      if (tokenRef.current === token) setState({ status: "ready", value });
-    } catch {
-      if (tokenRef.current === token) setState({ status: "error", message: copy.loadFailed });
-    }
-  }, [intakeId, copy.loadFailed]);
+  const [controller] = useState(() => {
+    const token = () => {
+      const value = tokenRef.current;
+      if (!value) throw new ApiError("Not signed in", 401);
+      return value;
+    };
+    return createSubmissionsController(
+      {
+        load: (id) =>
+          apiFetch<SupplierSubmissionsView>(
+            `/supplier-submissions?intakeId=${encodeURIComponent(id)}`,
+            token()
+          ),
+        reject: async (quoteId, reason) => {
+          await apiFetch(`/supplier-submissions/${encodeURIComponent(quoteId)}/reject`, token(), {
+            method: "POST",
+            body: JSON.stringify(reason.trim() ? { reason: reason.trim() } : {})
+          });
+        }
+      },
+      {
+        ready: (value) => setState({ status: "ready", value }),
+        failed: () =>
+          setState({ status: "error", message: submissionsCopy(isArabicRef.current).loadFailed })
+      }
+    );
+  });
 
   useEffect(() => {
     setState({ status: "loading" });
-    void load();
-  }, [intakeId, session?.accessToken]);
+    if (!intakeId || !session?.accessToken) {
+      controller.close();
+      return;
+    }
+    controller.open(intakeId);
+    void controller.load();
+    // Intake switch, logout or unmount: earlier results must not paint.
+    return () => controller.close();
+  }, [intakeId, session?.accessToken, controller]);
 
   if (!intakeId || !session) return null;
 
   async function reject(quoteId: string, reason: string) {
-    const token = tokenRef.current;
-    if (!token) return copy.rejectFailed;
     try {
-      await apiFetch(`/supplier-submissions/${encodeURIComponent(quoteId)}/reject`, token, {
-        method: "POST",
-        body: JSON.stringify(reason.trim() ? { reason: reason.trim() } : {})
-      });
-      await load();
+      await controller.reject(quoteId, reason);
       return null;
     } catch (error) {
-      await load();
       return rejectErrorMessage(error, isArabic);
     }
   }
@@ -115,7 +181,7 @@ export function SupplierSubmissions({
       canManage={canManage}
       onRetry={() => {
         setState({ status: "loading" });
-        void load();
+        void controller.load();
       }}
       onReject={reject}
     />

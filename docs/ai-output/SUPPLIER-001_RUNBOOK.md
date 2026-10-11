@@ -1,6 +1,6 @@
 # SUPPLIER-001 and OPS-COLLAB-001 release runbook
 
-Prepared: 2026-10-11 by Claude Code (interactive). Nothing in this runbook has been executed against any database or deployment.
+Prepared by Claude Code; reviewed and updated by Codex on 2026-10-11 under the product owner’s release approval. Both SQL files have passed isolated and live direct-connection post-checks. Deployment and live fixture results are recorded by the coordinator separately.
 
 ## What must happen, in order
 
@@ -12,8 +12,8 @@ The application release queries new columns and tables. Startup never changes th
 | 2 | Optional safety point: create a Neon branch or restore point of the demo production branch | Provider | Yes (provider operation) |
 | 3 | Apply `prisma/supplier-001-additive.sql` | Additive DDL | Yes (live schema) |
 | 4 | Apply `prisma/ops-collab-001-additive.sql` | Additive DDL | Yes (live schema) |
-| 5 | Optional: supplier fixture dry run, then `--apply` | 1 quote, 1 note, 2 audits | Yes (live data) |
-| 6 | Merge the pull request (Render deploys) | Release | Yes (release) |
+| 5 | Verify fixture on an isolated branch, then merge and wait for the new application to be healthy | Test fixture + release | Approved for this release |
+| 6 | Live supplier fixture dry run, then `--apply`, only after the guarded application is healthy | 1 quote, 1 note, 2 audits | Approved for this release |
 | 7 | Verify: health, `demo:verify`, `verifySupplierDemo`, browser checks | No | — |
 
 Steps 3 and 4 are backward compatible with the currently deployed code (`20a9be9`): it never selects the new nullable column or tables, and the new unique index ignores rows with a NULL `supplierId`. Applying the SQL first and deploying later is safe; the reverse order is not.
@@ -49,7 +49,7 @@ SELECT table_name FROM information_schema.tables
 -- expect 5 rows
 ```
 
-## Step 5: optional synthetic supplier fixture
+## Steps 5–6: optional synthetic supplier fixture
 
 The fixture adds exactly one sealed `RECEIVED` quote ("Synthetic supplier hotel offer", 15 × SAR 1,200, total SAR 18,000, VAT included) from the **existing** linked HOTEL supplier and one clearly synthetic recommendation note, each with a metadata-only audit entry. It creates no account, profile, service, booking, event or intake, never touches the two legacy quotes, and never confirms a plan or unlocks the vault.
 
@@ -63,15 +63,23 @@ npx tsx server/src/scripts/verifySupplierDemo.ts    --expected-host <host> --exp
 The dry run connects read-only and refuses on any of these:
 
 - the additive tables are missing;
-- the account count is not exactly 11 (an account fingerprint is printed);
+- the account count is not exactly 11 by default, or the explicit paired account baseline does not match;
 - the demo event or intake is missing, unlinked, or not `QUOTING` with HOTEL demand;
 - there is not exactly one linked HOTEL supplier;
 - the legacy quote count is not 2;
 - an existing supplier quote or note differs from the fixture.
 
-`--apply` repeats every check inside one transaction with the intake row locked. A rerun writes nothing. Output never includes the URL, credentials, emails or prices.
+`--apply` repeats every check inside one transaction with the intake row locked. A rerun writes nothing. Output never includes the URL, credentials, emails or prices. The lock always targets the validated target's `midyaf` schema. It does not read the shell's `DATABASE_URL`, so an absent or different ambient URL cannot redirect it (review correction R1).
 
-Skipping step 5 is fine: the HOTEL supplier can submit live from the portal instead.
+The product owner approved this safer sequence: SQL before merge; fixture first on an isolated branch; live fixture only after the corrected application is healthy. The previous application lacks supplier-price filtering in its bootstrap API, so inserting supplier terms before deployment would expose them.
+
+Defaults still require exactly 11 accounts. If the owner has approved preserving an existing larger baseline, pass both verification pins to the supplier dry run/apply/verifier and `demo:verify`:
+
+```bash
+--expected-account-count <approved-count> --expected-account-fingerprint <full-sha256>
+```
+
+Keep the actual fingerprint and account data in the private operator record. The fingerprint is SHA-256 of JSON users sorted by id and projected as `{id,email,role,passwordHash}`. Both pins are mandatory together; exact count and fingerprint must match, all original personas and roles must remain, and extra accounts must be GUEST. The fixture rechecks this inside its locked transaction and never writes accounts. The demo verifier checks original bundled credentials and synthetic labels, and separately checks the full preserved baseline; it does not certify extra guest names or credentials. Standalone provisioning/reset options are unchanged.
 
 ## Step 7: verification after deploy
 

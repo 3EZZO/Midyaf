@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { Role } from "@prisma/client";
 import {
   canMessage,
+  canSeeNotification,
   conversationCreateSchema,
   countUnread,
+  isPrivateMessageNotification,
   messageCreateSchema,
+  observedReadCutoff,
   previewText
 } from "./messagingPolicy.js";
 
@@ -91,5 +94,38 @@ describe("helpers", () => {
     expect(counts.get("a")).toBe(1);
     expect(counts.get("b")).toBe(1);
     expect(counts.has("z")).toBe(false);
+  });
+});
+
+describe("observedReadCutoff", () => {
+  it("is the newest message actually shown, or null", () => {
+    expect(
+      observedReadCutoff([
+        { createdAt: "2026-10-11T08:00:00.000Z" },
+        { createdAt: new Date("2026-10-11T08:05:00.000Z") },
+        { createdAt: "2026-10-11T08:01:00.000Z" }
+      ])
+    ).toEqual(new Date("2026-10-11T08:05:00.000Z"));
+    expect(observedReadCutoff([])).toBeNull();
+    expect(observedReadCutoff([{ createdAt: "not a date" }])).toBeNull();
+  });
+});
+
+describe("notification privacy", () => {
+  it("recognises marked and pre-marker message notifications only", () => {
+    expect(isPrivateMessageNotification({ metadata: { kind: "MESSAGE", conversationId: "c1" } })).toBe(true);
+    expect(isPrivateMessageNotification({ metadata: { conversationId: "c1" } })).toBe(true);
+    expect(isPrivateMessageNotification({ metadata: { kind: "MESSAGE" } })).toBe(true);
+    for (const metadata of [null, undefined, "text", ["conversationId"], { taskId: "t1", kind: "DELEGATE" }]) {
+      expect(isPrivateMessageNotification({ metadata })).toBe(false);
+    }
+  });
+
+  it("shows private messages to their recipient only and operational ones as before", () => {
+    const message = { userId: "u1", metadata: { kind: "MESSAGE", conversationId: "c1" } };
+    const operational = { userId: "u1", metadata: { taskId: "t1" } };
+    expect(canSeeNotification(message, "u1")).toBe(true);
+    expect(canSeeNotification(message, "u2")).toBe(false);
+    expect(canSeeNotification(operational, "u2")).toBe(true);
   });
 });

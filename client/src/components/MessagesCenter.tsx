@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Inbox, Mail, PenSquare, RotateCcw, Search, Send } from "lucide-react";
 import type {
   ConversationSummary,
@@ -8,6 +8,7 @@ import type {
 } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
 import { shortDate, shortTime } from "../lib/format";
+import { allCurrent, createRequestGeneration } from "../lib/requestGeneration";
 import { Badge, Button, Dialog, EmptyState, Field, Input, Surface, Textarea } from "./ui";
 import { PortalHero } from "./ui/PortalHero";
 
@@ -115,10 +116,93 @@ function isVisible() {
   return typeof document === "undefined" || document.visibilityState !== "hidden";
 }
 
+export type InboxApi = {
+  conversations: () => Promise<ConversationSummary[]>;
+  thread: (id: string) => Promise<ConversationThread>;
+  reply: (id: string, body: string) => Promise<void>;
+  start: (payload: { recipientIds: string[]; subject: string; body: string }) => Promise<ConversationThread>;
+};
+
+export type InboxCallbacks = {
+  list: (items: ConversationSummary[]) => void;
+  listFailed: () => void;
+  thread: (thread: ConversationThread) => void;
+  threadFailed: (error: unknown) => void;
+};
+
+/**
+ * The inbox's async rules, independent of React. Only the latest list load
+ * and the latest load of the CURRENTLY selected thread may paint; switching
+ * threads, signing out or unmounting (`reset`) makes everything in flight
+ * stale, and a reply or new conversation only refreshes the session it was
+ * sent from.
+ */
+export function createInboxController(api: InboxApi, on: InboxCallbacks) {
+  const session = createRequestGeneration();
+  const lists = createRequestGeneration();
+  const threads = createRequestGeneration();
+  let selected: string | null = null;
+
+  async function loadList() {
+    const current = allCurrent(session.capture(), lists.begin());
+    try {
+      const items = await api.conversations();
+      if (current()) on.list(items);
+    } catch {
+      if (current()) on.listFailed();
+    }
+  }
+
+  async function loadThread(id: string) {
+    if (id !== selected) return;
+    const current = allCurrent(session.capture(), threads.begin());
+    const stillShown = () => current() && selected === id;
+    try {
+      const thread = await api.thread(id);
+      if (stillShown()) on.thread(thread);
+    } catch (error) {
+      if (stillShown()) on.threadFailed(error);
+    }
+  }
+
+  function select(id: string | null) {
+    selected = id;
+    threads.invalidate();
+  }
+
+  /** Errors propagate to the caller; refreshes stay within the session. */
+  async function reply(id: string, body: string) {
+    const scope = session.capture();
+    await api.reply(id, body);
+    if (!scope()) return false;
+    await Promise.all([selected === id ? loadThread(id) : Promise.resolve(), loadList()]);
+    return true;
+  }
+
+  async function start(payload: Parameters<InboxApi["start"]>[0]) {
+    const scope = session.capture();
+    const thread = await api.start(payload);
+    if (!scope()) return null;
+    await loadList();
+    return scope() ? thread : null;
+  }
+
+  function reset() {
+    session.invalidate();
+    lists.invalidate();
+    threads.invalidate();
+    selected = null;
+  }
+
+  return { loadList, loadThread, select, reply, start, reset };
+}
+
 export function MessagesCenter({ session, isArabic }: { session?: Session; isArabic: boolean }) {
   const copy = messagesCopy(isArabic);
   const tokenRef = useRef(session?.accessToken);
   tokenRef.current = session?.accessToken;
+  const isArabicRef = useRef(isArabic);
+  isArabicRef.current = isArabic;
   const [list, setList] = useState<
     { status: "loading" } | { status: "error" } | { status: "ready"; items: ConversationSummary[] }
   >({ status: "loading" });
@@ -127,80 +211,97 @@ export function MessagesCenter({ session, isArabic }: { session?: Session; isAra
   const [threadError, setThreadError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const loadList = useCallback(async () => {
-    const token = tokenRef.current;
-    if (!token) return;
-    try {
-      const response = await apiFetch<{ conversations: ConversationSummary[] }>(
-        "/messages/conversations",
-        token
-      );
-      if (tokenRef.current === token) setList({ status: "ready", items: response.conversations });
-    } catch {
-      if (tokenRef.current === token) {
-        setList((current) => (current.status === "ready" ? current : { status: "error" }));
+  const [controller] = useState(() => {
+    const token = () => {
+      const value = tokenRef.current;
+      if (!value) throw new ApiError("Not signed in", 401);
+      return value;
+    };
+    return createInboxController(
+      {
+        conversations: async () =>
+          (await apiFetch<{ conversations: ConversationSummary[] }>("/messages/conversations", token()))
+            .conversations,
+        thread: async (id) =>
+          (
+            await apiFetch<{ conversation: ConversationThread }>(
+              `/messages/conversations/${encodeURIComponent(id)}`,
+              token()
+            )
+          ).conversation,
+        reply: async (id, body) => {
+          await apiFetch(`/messages/conversations/${encodeURIComponent(id)}/messages`, token(), {
+            method: "POST",
+            body: JSON.stringify({ body })
+          });
+        },
+        start: async (payload) =>
+          (
+            await apiFetch<{ conversation: ConversationThread }>("/messages/conversations", token(), {
+              method: "POST",
+              body: JSON.stringify(payload)
+            })
+          ).conversation
+      },
+      {
+        list: (items) => setList({ status: "ready", items }),
+        listFailed: () => setList((current) => (current.status === "ready" ? current : { status: "error" })),
+        thread: (loaded) => {
+          setThread(loaded);
+          setThreadError(null);
+          // Opening a thread marks what it shows as read: refresh the badge.
+          setList((current) =>
+            current.status === "ready"
+              ? {
+                  status: "ready",
+                  items: current.items.map((item) => (item.id === loaded.id ? { ...item, unreadCount: 0 } : item))
+                }
+              : current
+          );
+        },
+        threadFailed: (error) => setThreadError(sendErrorMessage(error, isArabicRef.current))
       }
-    }
-  }, []);
-
-  const loadThread = useCallback(async (id: string) => {
-    const token = tokenRef.current;
-    if (!token) return;
-    try {
-      const response = await apiFetch<{ conversation: ConversationThread }>(
-        `/messages/conversations/${encodeURIComponent(id)}`,
-        token
-      );
-      if (tokenRef.current === token) {
-        setThread(response.conversation);
-        setThreadError(null);
-        // Opening a thread marks it read: refresh the unread badges.
-        setList((current) =>
-          current.status === "ready"
-            ? {
-                status: "ready",
-                items: current.items.map((item) => (item.id === id ? { ...item, unreadCount: 0 } : item))
-              }
-            : current
-        );
-      }
-    } catch (error) {
-      if (tokenRef.current === token) setThreadError(sendErrorMessage(error, isArabic));
-    }
-  }, [isArabic]);
+    );
+  });
 
   useEffect(() => {
+    controller.reset();
     setList({ status: "loading" });
     setSelectedId(null);
     setThread(null);
-    void loadList();
+    if (!session?.accessToken) return;
+    void controller.loadList();
     const timer = window.setInterval(() => {
-      if (isVisible()) void loadList();
+      if (isVisible()) void controller.loadList();
     }, LIST_REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [session?.accessToken, loadList]);
+    return () => {
+      window.clearInterval(timer);
+      // Logout, account switch or unmount: nothing in flight may paint.
+      controller.reset();
+    };
+  }, [session?.accessToken, controller]);
 
   useEffect(() => {
-    if (!selectedId) return;
+    controller.select(selectedId);
     setThread(null);
-    void loadThread(selectedId);
+    setThreadError(null);
+    if (!selectedId) return;
+    void controller.loadThread(selectedId);
     const timer = window.setInterval(() => {
-      if (isVisible()) void loadThread(selectedId);
+      if (isVisible()) void controller.loadThread(selectedId);
     }, THREAD_REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, [selectedId, loadThread]);
+  }, [selectedId, controller]);
 
   if (!session) return null;
 
-  async function reply(body: string) {
-    const token = tokenRef.current;
-    if (!token || !selectedId) return copy.sendFailed;
+  // Only the thread that belongs to the current selection is ever shown, and
+  // a reply always goes to the thread on screen.
+  const shownThread = thread && thread.id === selectedId ? thread : null;
+
+  async function reply(threadId: string, body: string) {
     try {
-      await apiFetch(`/messages/conversations/${encodeURIComponent(selectedId)}/messages`, token, {
-        method: "POST",
-        body: JSON.stringify({ body })
-      });
-      await Promise.all([loadThread(selectedId), loadList()]);
+      await controller.reply(threadId, body);
       return null;
     } catch (error) {
       return sendErrorMessage(error, isArabic);
@@ -216,20 +317,16 @@ export function MessagesCenter({ session, isArabic }: { session?: Session; isAra
   }
 
   async function send(draft: ComposeDraft) {
-    const token = tokenRef.current;
-    if (!token) return copy.sendFailed;
     try {
-      const response = await apiFetch<{ conversation: ConversationThread }>("/messages/conversations", token, {
-        method: "POST",
-        body: JSON.stringify({
-          recipientIds: draft.recipients.map((person) => person.id),
-          subject: draft.subject.trim(),
-          body: draft.body.trim()
-        })
+      const created = await controller.start({
+        recipientIds: draft.recipients.map((person) => person.id),
+        subject: draft.subject.trim(),
+        body: draft.body.trim()
       });
-      setComposeOpen(false);
-      await loadList();
-      setSelectedId(response.conversation.id);
+      if (created) {
+        setComposeOpen(false);
+        setSelectedId(created.id);
+      }
       return null;
     } catch (error) {
       return sendErrorMessage(error, isArabic);
@@ -258,7 +355,7 @@ export function MessagesCenter({ session, isArabic }: { session?: Session; isAra
           ) : list.status === "error" ? (
             <Surface role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
               {copy.loadFailed}
-              <Button size="sm" variant="outline" onClick={() => void loadList()} leadingIcon={<RotateCcw className="size-3.5" aria-hidden />}>
+              <Button size="sm" variant="outline" onClick={() => void controller.loadList()} leadingIcon={<RotateCcw className="size-3.5" aria-hidden />}>
                 {copy.retry}
               </Button>
             </Surface>
@@ -275,13 +372,14 @@ export function MessagesCenter({ session, isArabic }: { session?: Session; isAra
 
         <div className={selectedId ? "" : "hidden lg:block"}>
           {selectedId ? (
-            thread ? (
+            shownThread ? (
               <ThreadView
-                thread={thread}
+                key={shownThread.id}
+                thread={shownThread}
                 meId={session.user.id}
                 isArabic={isArabic}
                 onBack={() => setSelectedId(null)}
-                onReply={reply}
+                onReply={(body) => reply(shownThread.id, body)}
               />
             ) : threadError ? (
               <Surface role="alert" className="text-sm text-danger">

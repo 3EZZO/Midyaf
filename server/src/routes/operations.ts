@@ -1042,7 +1042,7 @@ router.post(
     if (!target || !target.supplierId) {
       throw new HttpError(404, "Submission not found");
     }
-    const { eventId } = await assertIntakeOperatorAccess(req.user!, target.intakeId);
+    await assertIntakeOperatorAccess(req.user!, target.intakeId);
     const body = submissionRejectBodySchema.parse(req.body ?? {});
     const context = {
       actor: req.user!,
@@ -1060,6 +1060,10 @@ router.post(
         if (!current || !current.supplierId || current.intakeId !== target.intakeId) {
           throw new HttpError(404, "Submission not found");
         }
+        // Re-check the intake/event authorization under the lock: ownership
+        // may have changed since the check above. A closed request stays
+        // rejectable by an authorized operator.
+        const { eventId } = await assertIntakeOperatorAccess(req.user!, target.intakeId, tx);
         if (current.status !== QuoteStatus.RECEIVED) {
           throw new HttpError(409, "Only a received submission can be rejected");
         }
@@ -1693,12 +1697,16 @@ async function hasSupplierSealedTerms(intakeId: string) {
  * Logistics access to an existing intake: LM/SA under the documented legacy
  * scope; ORGANIZER only through a linked event it owns.
  */
-async function assertIntakeOperatorAccess(user: AuthUser, intakeId: string) {
+async function assertIntakeOperatorAccess(
+  user: AuthUser,
+  intakeId: string,
+  db: Pick<Prisma.TransactionClient, "activityIntake" | "event"> = prisma
+) {
   if (!logisticsRoles.includes(user.role)) {
     throw new HttpError(403, "Insufficient permissions");
   }
 
-  const intake = await prisma.activityIntake.findUnique({
+  const intake = await db.activityIntake.findUnique({
     where: { id: intakeId },
     select: { id: true, eventId: true }
   });
@@ -1711,7 +1719,7 @@ async function assertIntakeOperatorAccess(user: AuthUser, intakeId: string) {
   }
 
   if (user.role === Role.ORGANIZER && intake.eventId) {
-    const owned = await prisma.event.findFirst({
+    const owned = await db.event.findFirst({
       where: { id: intake.eventId, organizerId: user.id },
       select: { id: true }
     });

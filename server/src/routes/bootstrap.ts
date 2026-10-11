@@ -13,6 +13,7 @@ import {
   stripSensitiveFields
 } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
+import { loadVisibleNotifications } from "./notifications.js";
 
 const router = Router();
 const fullAccessRoles: Role[] = [
@@ -322,11 +323,12 @@ router.get(
         }),
         orderBy: { createdAt: "desc" }
       }),
-      prisma.notification.findMany({
-        where: canViewAllNotifications ? undefined : { userId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: 50
-      }),
+      // Managers keep the legacy operational feed; private-message
+      // notifications reach their recipient only.
+      loadVisibleNotifications(
+        user.id,
+        canViewAllNotifications ? undefined : { userId: user.id }
+      ),
       isFullAccess
         ? prisma.auditLog.findMany({
             include: {

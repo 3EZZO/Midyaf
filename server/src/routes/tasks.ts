@@ -18,6 +18,7 @@ import {
   handoverNotification,
   handoverReturnBodySchema,
   handoverRights,
+  handoverTaskAccess,
   isEligibleRecipient,
   planHandover,
   type HandoverPlan
@@ -62,6 +63,7 @@ router.get(
       .object({ eventId: z.string().regex(ID_PATTERN) })
       .strict()
       .parse(req.query);
+    const user = req.user!;
     const event = requireEntity(
       await prisma.event.findUnique({
         where: { id: eventId },
@@ -69,8 +71,20 @@ router.get(
       }),
       "Event not found"
     );
-    if (req.user!.role === Role.ORGANIZER && event.organizerId !== req.user!.id) {
-      throw new HttpError(403, "Event access denied");
+    // Organizers cannot learn about other organizers' events.
+    if (user.role === Role.ORGANIZER && event.organizerId !== user.id) {
+      throw new HttpError(404, "Event not found");
+    }
+    // A coordinator needs an open task in this event handed to them.
+    if (user.role === Role.COORDINATOR) {
+      const assigned = await prisma.task.count({
+        where: {
+          eventId: event.id,
+          status: { notIn: HANDOVER_CLOSED_STATUSES },
+          OR: [{ responsibleUserId: user.id }, { delegateUserId: user.id }]
+        }
+      });
+      if (assigned === 0) throw new HttpError(403, "Event access denied");
     }
 
     const candidates = await prisma.user.findMany({
@@ -98,9 +112,7 @@ router.get(
   requireRole(HANDOVER_ACTOR_ROLES),
   asyncHandler(async (req: AuthRequest, res) => {
     const task = await loadHandoverTask(req.params.id);
-    if (req.user!.role === Role.ORGANIZER && task.event.organizerId !== req.user!.id) {
-      throw new HttpError(404, "Task not found");
-    }
+    assertHandoverAccess(req.user!, task);
 
     const handovers = await prisma.taskHandover.findMany({
       where: { taskId: task.id },
@@ -127,9 +139,11 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = handoverBodySchema.parse(req.body);
     const task = await loadHandoverTask(req.params.id);
+    assertHandoverAccess(req.user!, task);
+    assertHandoverOpen(task);
     const rights = handoverRights(req.user!, task, task.event.organizerId);
     const allowed = body.mode === "DELEGATE" ? rights.canDelegate : rights.canTransfer;
-    if (!allowed) throw handoverDenied(req.user!, task);
+    if (!allowed) throw new HttpError(403, "You cannot hand over this task");
 
     const recipient = await prisma.user.findUnique({
       where: { id: body.toUserId },
@@ -151,13 +165,14 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = handoverReturnBodySchema.parse(req.body ?? {});
     const task = await loadHandoverTask(req.params.id);
-    const rights = handoverRights(req.user!, task, task.event.organizerId);
-    if (!rights.canReturn) {
-      if (!task.delegateUserId && !HANDOVER_CLOSED_STATUSES.includes(task.status)) {
-        throw new HttpError(409, "This task has no delegate to return it from");
-      }
-      throw handoverDenied(req.user!, task);
+    // Access first: only then may the closed/no-delegate state be disclosed.
+    assertHandoverAccess(req.user!, task);
+    assertHandoverOpen(task);
+    if (!task.delegateUserId) {
+      throw new HttpError(409, "This task has no delegate to return it from");
     }
+    const rights = handoverRights(req.user!, task, task.event.organizerId);
+    if (!rights.canReturn) throw new HttpError(403, "You cannot hand over this task");
 
     const plan = planHandover(req.user!, task, "RETURN");
     const result = await commitHandover(req, task, plan, body.reason);
@@ -187,15 +202,21 @@ async function loadHandoverTask(rawId: string) {
 
 type HandoverTask = Awaited<ReturnType<typeof loadHandoverTask>>;
 
-function handoverDenied(user: AuthUser, task: HandoverTask) {
+/**
+ * Shared gate of every handover endpoint, before any task state is
+ * disclosed: another organizer's task looks missing (404); an unrelated
+ * coordinator is refused (403).
+ */
+function assertHandoverAccess(user: AuthUser, task: HandoverTask) {
+  const access = handoverTaskAccess(user, task, task.event.organizerId);
+  if (access === "hidden") throw new HttpError(404, "Task not found");
+  if (access === "forbidden") throw new HttpError(403, "You cannot hand over this task");
+}
+
+function assertHandoverOpen(task: HandoverTask) {
   if (HANDOVER_CLOSED_STATUSES.includes(task.status)) {
-    return new HttpError(409, "Completed or cancelled tasks cannot be handed over");
+    throw new HttpError(409, "Completed or cancelled tasks cannot be handed over");
   }
-  // Organizers cannot learn about other organizers' tasks.
-  if (user.role === Role.ORGANIZER && task.event.organizerId !== user.id) {
-    return new HttpError(404, "Task not found");
-  }
-  return new HttpError(403, "You cannot hand over this task");
 }
 
 /**

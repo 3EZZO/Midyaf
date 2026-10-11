@@ -4,6 +4,7 @@ import type { SupplierRequestView } from "@shared/domain";
 import { ApiError } from "../lib/api";
 import {
   SupplierWorkspaceView,
+  createWorkspaceController,
   estimateLabel,
   quoteStatusLabel,
   sar,
@@ -179,5 +180,90 @@ describe("labels and errors", () => {
     expect(supplierErrorMessage(new ApiError("x", 404), false)).toMatch(/no longer open/);
     expect(supplierErrorMessage(new ApiError("x", 422), false)).toMatch(/maximum/);
     expect(supplierErrorMessage(new Error("offline"), true)).toBe("حدث خطأ. حاول مجدداً.");
+  });
+});
+
+type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void; reject: (error: unknown) => void };
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function workspaceHarness() {
+  const loads: Array<Deferred<SupplierWorkspace>> = [];
+  const painted: number[] = [];
+  let failures = 0;
+  const controller = createWorkspaceController(
+    {
+      load: () => {
+        const call = deferred<SupplierWorkspace>();
+        loads.push(call);
+        return call.promise;
+      }
+    },
+    {
+      ready: (value) => painted.push(value.quotes.length),
+      failed: () => {
+        failures += 1;
+      }
+    }
+  );
+  return { controller, loads, painted, failures: () => failures };
+}
+
+describe("createWorkspaceController", () => {
+  it("keeps the latest load when replies arrive in reverse order", async () => {
+    const { controller, loads, painted, failures } = workspaceHarness();
+    const older = controller.load();
+    const newer = controller.load();
+    loads[1].resolve({ ...workspace, quotes: [] });
+    await newer;
+    loads[0].reject(new Error("late failure"));
+    await older;
+    expect(painted).toEqual([0]);
+    expect(failures()).toBe(0);
+  });
+
+  it("drops results and skips refreshes after logout or unmount", async () => {
+    const { controller, loads, painted } = workspaceHarness();
+    const pending = controller.load();
+    const sent = deferred<void>();
+    const mutation = controller.mutate(() => sent.promise, true);
+    controller.reset();
+    loads[0].resolve(workspace);
+    sent.resolve();
+    await Promise.all([pending, mutation]);
+    expect(painted).toEqual([]);
+    expect(loads).toHaveLength(1);
+  });
+
+  it("refreshes the same session after a mutation, and after a failed quote", async () => {
+    const { controller, loads, painted } = workspaceHarness();
+    const ok = controller.mutate(async () => undefined, false);
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    loads[0].resolve(workspace);
+    await ok;
+    expect(painted).toEqual([workspace.quotes.length]);
+
+    const failing = controller.mutate(async () => {
+      throw new ApiError("x", 409);
+    }, true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(loads).toHaveLength(2);
+    loads[1].resolve(workspace);
+    await expect(failing).rejects.toMatchObject({ status: 409 });
+
+    const noteFailure = controller.mutate(async () => {
+      throw new ApiError("x", 404);
+    }, false);
+    await expect(noteFailure).rejects.toMatchObject({ status: 404 });
+    expect(loads).toHaveLength(2);
   });
 });

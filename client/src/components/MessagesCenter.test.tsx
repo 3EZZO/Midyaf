@@ -6,6 +6,7 @@ import {
   ConversationListView,
   ThreadView,
   conversationPeople,
+  createInboxController,
   roleName,
   sendErrorMessage,
   validateCompose
@@ -73,6 +74,146 @@ describe("ThreadView", () => {
     expect(html).not.toContain("<b>On it</b>");
     expect(html).toContain("Synthetic Manager (Logistics manager)");
     expect(html).toContain("You");
+  });
+});
+
+type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void; reject: (error: unknown) => void };
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/** A controller whose API calls stay pending until each test settles them. */
+function inboxHarness() {
+  const threadCalls = new Map<string, Array<Deferred<ConversationThread>>>();
+  const listCalls: Array<Deferred<ConversationSummary[]>> = [];
+  const replyCalls: Array<Deferred<void>> = [];
+  const startCalls: Array<Deferred<ConversationThread>> = [];
+  const painted = { threads: [] as string[], threadErrors: [] as string[], lists: 0, listErrors: 0 };
+  const controller = createInboxController(
+    {
+      conversations: () => {
+        const call = deferred<ConversationSummary[]>();
+        listCalls.push(call);
+        return call.promise;
+      },
+      thread: (id) => {
+        const call = deferred<ConversationThread>();
+        threadCalls.set(id, [...(threadCalls.get(id) ?? []), call]);
+        return call.promise;
+      },
+      reply: () => {
+        const call = deferred<void>();
+        replyCalls.push(call);
+        return call.promise;
+      },
+      start: () => {
+        const call = deferred<ConversationThread>();
+        startCalls.push(call);
+        return call.promise;
+      }
+    },
+    {
+      list: () => {
+        painted.lists += 1;
+      },
+      listFailed: () => {
+        painted.listErrors += 1;
+      },
+      thread: (loaded) => painted.threads.push(`${loaded.id}:${loaded.subject}`),
+      threadFailed: (error) => painted.threadErrors.push(String(error))
+    }
+  );
+  return { controller, threadCalls, listCalls, replyCalls, startCalls, painted };
+}
+
+const threadFor = (id: string, subject = id): ConversationThread => ({ ...thread, id, subject });
+
+describe("createInboxController", () => {
+  it("never paints a slow thread A over the selected thread B", async () => {
+    const { controller, threadCalls, painted } = inboxHarness();
+    controller.select("A");
+    const loadA = controller.loadThread("A");
+    controller.select("B");
+    const loadB = controller.loadThread("B");
+
+    threadCalls.get("B")![0].resolve(threadFor("B"));
+    await loadB;
+    threadCalls.get("A")![0].resolve(threadFor("A"));
+    await loadA;
+    expect(painted.threads).toEqual(["B:B"]);
+
+    // A late failure of A is equally ignored.
+    controller.select("A");
+    const failing = controller.loadThread("A");
+    controller.select("B");
+    threadCalls.get("A")![1].reject(new Error("offline"));
+    await failing;
+    expect(painted.threadErrors).toEqual([]);
+  });
+
+  it("keeps the newest poll of the same thread when replies arrive in reverse", async () => {
+    const { controller, threadCalls, painted } = inboxHarness();
+    controller.select("A");
+    const older = controller.loadThread("A");
+    const newer = controller.loadThread("A");
+    threadCalls.get("A")![1].resolve(threadFor("A", "newer"));
+    await newer;
+    threadCalls.get("A")![0].resolve(threadFor("A", "older"));
+    await older;
+    expect(painted.threads).toEqual(["A:newer"]);
+  });
+
+  it("drops list and thread results after logout or unmount", async () => {
+    const { controller, threadCalls, listCalls, painted } = inboxHarness();
+    controller.select("A");
+    const thread = controller.loadThread("A");
+    const list = controller.loadList();
+    controller.reset();
+    listCalls[0].resolve([summary]);
+    threadCalls.get("A")![0].resolve(threadFor("A"));
+    await Promise.all([list, thread]);
+    expect(painted).toMatchObject({ threads: [], lists: 0 });
+    // A thread that is no longer selected is not even requested.
+    await controller.loadThread("A");
+    expect(threadCalls.get("A")).toHaveLength(1);
+  });
+
+  it("refreshes after a reply only within the same session and selection", async () => {
+    const { controller, threadCalls, listCalls, replyCalls, painted } = inboxHarness();
+    controller.select("A");
+    const sending = controller.reply("A", "Synthetic reply");
+    controller.select("B");
+    replyCalls[0].resolve();
+    await flush();
+    // The list refreshes, but thread A is not reloaded over B.
+    expect(threadCalls.get("A")).toBeUndefined();
+    listCalls[0].resolve([summary]);
+    expect(await sending).toBe(true);
+    expect(painted.lists).toBe(1);
+
+    const afterLogout = controller.reply("B", "Another reply");
+    controller.reset();
+    replyCalls[1].resolve();
+    expect(await afterLogout).toBe(false);
+    expect(listCalls).toHaveLength(1);
+  });
+
+  it("does not open a new conversation in a session that ended", async () => {
+    const { controller, startCalls, listCalls } = inboxHarness();
+    const starting = controller.start({ recipientIds: ["usr_lm"], subject: "s", body: "b" });
+    controller.reset();
+    startCalls[0].resolve(threadFor("C"));
+    expect(await starting).toBeNull();
+    expect(listCalls).toHaveLength(0);
   });
 });
 

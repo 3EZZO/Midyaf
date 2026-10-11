@@ -7,6 +7,7 @@ import {
   databaseSchemaName,
   deriveSupplierDemand,
   evaluateSupplierRequest,
+  lockIntake,
   opaqueReference,
   supplierNoteBodySchema,
   supplierQuoteBodySchema,
@@ -256,5 +257,30 @@ describe("databaseSchemaName", () => {
     expect(databaseSchemaName("postgresql://u:p@h/db")).toBe("public");
     expect(databaseSchemaName('postgresql://u:p@h/db?schema=a"b')).toBe("public");
     expect(databaseSchemaName(undefined)).toBe("public");
+  });
+});
+
+describe("lockIntake", () => {
+  function recordingTx() {
+    const tables: string[] = [];
+    const tx = {
+      $queryRaw: async (_strings: TemplateStringsArray, ...values: unknown[]) => {
+        tables.push((values[0] as { sql: string }).sql);
+        return [];
+      }
+    };
+    return { tx: tx as never, tables };
+  }
+
+  it("locks the explicitly named schema instead of the ambient one", async () => {
+    const { tx, tables } = recordingTx();
+    await lockIntake(tx, "int_1", "midyaf");
+    expect(tables).toEqual(['"midyaf"."ActivityIntake"']);
+  });
+
+  it("refuses an unsafe explicit schema before querying", async () => {
+    const { tx, tables } = recordingTx();
+    await expect(lockIntake(tx, "int_1", 'a"b')).rejects.toThrow();
+    expect(tables).toEqual([]);
   });
 });

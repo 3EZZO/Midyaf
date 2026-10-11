@@ -10,6 +10,7 @@ import {
   runSupplierDemo,
   runSupplierDemoVerify
 } from "./supplierDemo.js";
+import { DEMO_ACCOUNTS, accountBaselineFingerprint } from "./demoProvisioning.js";
 import { SUPPLIER_DEMO_REQUESTS } from "./supplierPortal.js";
 
 /**
@@ -199,6 +200,26 @@ describe("runSupplierDemo", () => {
     expect(connected).toBe(false);
   });
 
+  it.each([
+    ["absent", undefined],
+    ["pointing at another schema", "postgresql://ambient:ambient@localhost:5432/other?schema=public"]
+  ])("locks the validated target's schema when the ambient DATABASE_URL is %s", async (_name, ambient) => {
+    const saved = process.env.DATABASE_URL;
+    if (ambient === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = ambient;
+    try {
+      await runSupplierDemo([...ARGS, "--apply"], deps());
+    } finally {
+      if (saved === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = saved;
+    }
+    const locks = memory.calls
+      .filter((call) => call.method === "$queryRaw")
+      .map((call) => (call.args.values[0] as { sql: string }).sql);
+    expect(locks).toEqual(['"midyaf"."ActivityIntake"']);
+    expect(supplierQuotes()).toHaveLength(1);
+  });
+
   it("rolls back when the audit write fails", async () => {
     memory.failNext("auditLog", "create", new Error("audit unavailable"));
     await expect(runSupplierDemo([...ARGS, "--apply"], deps())).rejects.toMatchObject({ reason: "transaction-failed" });
@@ -218,5 +239,53 @@ describe("runSupplierDemoVerify", () => {
     const after = await runSupplierDemoVerify(ARGS, deps());
     expect(after.failed).toBe(0);
     expect(lines.every((line) => !/synthetic-pass|example\.test/.test(line))).toBe(true);
+  });
+});
+
+function pinnedAccounts() {
+  const users = memory.rows("user");
+  users.splice(0, users.length, ...DEMO_ACCOUNTS.map((a, i) => ({ id: "usr_" + i, email: a.email, role: a.role, passwordHash: "synthetic-hash-" + i })),
+    ...[11, 12].map(i => ({ id: "usr_" + i, email: "extra" + i + "@example.test", role: Role.GUEST, passwordHash: "synthetic-hash-" + i })));
+  memory.rows("supplier")[0].userId = users.find(u => u.role === Role.SUPPLIER)!.id;
+  return [...ARGS, "--expected-account-count", "13", "--expected-account-fingerprint", accountBaselineFingerprint(users as any)];
+}
+describe("explicit account preservation pin", () => {
+  it("refuses additional accounts by default and malformed or incomplete pins", async () => {
+    const args = pinnedAccounts();
+    await expect(runSupplierDemo(ARGS, deps())).rejects.toMatchObject({ reason: "account-count-mismatch" });
+    for (const suffix of [["--expected-account-count", "13"], ["--expected-account-fingerprint", "a".repeat(64)],
+      ["--expected-account-count", "13.0", "--expected-account-fingerprint", "a".repeat(64)],
+      ["--expected-account-count", "13", "--expected-account-fingerprint", "bad"]]) {
+      expect(() => parseSupplierDemoArgs([...ARGS, ...suffix])).toThrow();
+    }
+    expect(parseSupplierDemoArgs(args).accountBaseline?.count).toBe(13);
+    expect(memory.mutations()).toHaveLength(0);
+  });
+  it("accepts the exact baseline read-only and applies idempotently without touching accounts", async () => {
+    const args = pinnedAccounts(), before = structuredClone(memory.rows("user"));
+    await runSupplierDemo(args, deps()); expect(memory.mutations()).toHaveLength(0);
+    expect((await runSupplierDemo([...args, "--apply"], deps())).created).toEqual({ quote: true, note: true });
+    expect((await runSupplierDemo([...args, "--apply"], deps())).created).toEqual({ quote: false, note: false });
+    expect(await runSupplierDemoVerify(args, deps())).toEqual({ passed: 6, failed: 0 });
+    expect(memory.rows("user")).toEqual(before);
+    expect(memory.mutations().filter(c => c.model === "user")).toHaveLength(0);
+  });
+  it("refuses count, fingerprint, original role/password changes and privileged extras", async () => {
+    for (const change of ["count", "fingerprint", "role", "password", "extra"]) {
+      seedDemo(); const args = pinnedAccounts();
+      if (change === "count") args[args.indexOf("13")] = "14";
+      if (change === "fingerprint") args[args.length - 1] = "0".repeat(64);
+      if (change === "role") memory.rows("user")[0].role = Role.GUEST;
+      if (change === "password") memory.rows("user")[0].passwordHash += "changed";
+      if (change === "extra") { memory.rows("user")[12].role = Role.SUPER_ADMIN; args[args.length - 1] = accountBaselineFingerprint(memory.rows("user") as any); }
+      await expect(runSupplierDemo([...args, "--apply"], deps())).rejects.toMatchObject({ reason: "account-count-mismatch" });
+      expect(memory.mutations()).toHaveLength(0);
+    }
+  });
+  it("rechecks identity/password baseline inside the write transaction", async () => {
+    const args = pinnedAccounts();
+    memory.beforeNext("$raw", "$queryRaw", () => { memory.rows("user")[12].passwordHash += "changed"; });
+    await expect(runSupplierDemo([...args, "--apply"], deps())).rejects.toMatchObject({ reason: "account-count-mismatch" });
+    expect(supplierQuotes()).toHaveLength(0); expect(memory.mutations()).toHaveLength(0);
   });
 });

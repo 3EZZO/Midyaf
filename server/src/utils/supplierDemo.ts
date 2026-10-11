@@ -9,6 +9,9 @@ import {
   assertRepositoryRoot,
   loadTargetUrl,
   validateTargetUrl,
+  extractAccountBaselineArgs,
+  matchesAccountBaseline,
+  type AccountBaseline,
   type DemoTarget
 } from "./demoProvisioning.js";
 import {
@@ -19,7 +22,7 @@ import {
 } from "./supplierPortal.js";
 
 /**
- * SUPPLIER-001 optional showcase fixture. PREPARED, NOT AUTHORIZED TO APPLY.
+ * SUPPLIER-001 optional showcase fixture; apply only with explicit operator approval.
  *
  * Adds exactly one sealed RECEIVED quote from the EXISTING linked HOTEL
  * supplier and one clearly synthetic recommendation note to the existing
@@ -84,12 +87,16 @@ export type SupplierDemoOptions = {
   apply: boolean;
   expectedHost: string;
   expectedDatabase: string;
+  accountBaseline?: AccountBaseline;
 };
 
 const HOST = /^[A-Za-z0-9.-]{1,253}$/;
 const DATABASE = /^[A-Za-z0-9_-]{1,63}$/;
 
 export function parseSupplierDemoArgs(argv: string[], allowApply = true): SupplierDemoOptions {
+  let extracted: ReturnType<typeof extractAccountBaselineArgs>;
+  try { extracted = extractAccountBaselineArgs(argv); } catch { throw new SupplierDemoError("args-invalid"); }
+  argv = extracted.argv;
   let apply = false;
   let expectedHost: string | undefined;
   let expectedDatabase: string | undefined;
@@ -118,7 +125,7 @@ export function parseSupplierDemoArgs(argv: string[], allowApply = true): Suppli
   if (!expectedHost || !HOST.test(expectedHost) || !expectedDatabase || !DATABASE.test(expectedDatabase)) {
     throw new SupplierDemoError("args-invalid");
   }
-  return { apply, expectedHost, expectedDatabase };
+  return { apply, expectedHost, expectedDatabase, ...(extracted.accountBaseline ? { accountBaseline: extracted.accountBaseline } : {}) };
 }
 
 export function resolveSupplierDemoTarget(root: string, options: SupplierDemoOptions): DemoTarget {
@@ -158,6 +165,7 @@ export const readSchemaTables: SchemaTables = async (db) => {
 
 export type SupplierDemoState = {
   accountFingerprint: string;
+  accountCount: number;
   supplierId: string;
   supplierUserId: string;
   legacyQuotes: number;
@@ -178,7 +186,7 @@ async function guarded<T>(reason: SupplierDemoFailure, work: () => Promise<T>) {
  * Read-only preflight shared by dry run, apply (inside the transaction) and
  * verification. Throws a fixed reason on any mismatch or conflict.
  */
-export async function inspectSupplierDemo(db: Db, tables: Set<string>): Promise<SupplierDemoState> {
+export async function inspectSupplierDemo(db: Db, tables: Set<string>, accountBaseline?: AccountBaseline): Promise<SupplierDemoState> {
   if (APPLICATION_MODELS.some((model) => !tables.has(model))) {
     throw new SupplierDemoError("schema-incomplete");
   }
@@ -186,10 +194,10 @@ export async function inspectSupplierDemo(db: Db, tables: Set<string>): Promise<
   const demo = SUPPLIER_DEMO_REQUESTS[0];
   return guarded("database-error", async () => {
     const users = await db.user.findMany({
-      select: { email: true, role: true },
+      select: { id: true, email: true, role: true, passwordHash: true },
       orderBy: { email: "asc" }
     });
-    if (users.length !== SUPPLIER_FIXTURE.expectedUsers) {
+    if (accountBaseline ? !matchesAccountBaseline(users, accountBaseline) : users.length !== SUPPLIER_FIXTURE.expectedUsers) {
       throw new SupplierDemoError("account-count-mismatch");
     }
     const accountFingerprint = createHash("sha256")
@@ -253,6 +261,7 @@ export async function inspectSupplierDemo(db: Db, tables: Set<string>): Promise<
 
     return {
       accountFingerprint,
+      accountCount: users.length,
       supplierId: hotel.id,
       supplierUserId,
       legacyQuotes,
@@ -262,13 +271,18 @@ export async function inspectSupplierDemo(db: Db, tables: Set<string>): Promise<
   });
 }
 
-/** The fixture writes inside one transaction; returns what was created. */
-export async function writeSupplierFixture(db: Db, tables: Set<string>, now: Date) {
+/**
+ * The fixture writes inside one transaction; returns what was created. The
+ * lock names the validated target's schema explicitly: this CLI never loads
+ * .env.neon.local into process.env, so the ambient DATABASE_URL (absent, or
+ * pointing elsewhere) must not decide which table is locked.
+ */
+export async function writeSupplierFixture(db: Db, tables: Set<string>, now: Date, schema: string, accountBaseline?: AccountBaseline) {
   const demo = SUPPLIER_DEMO_REQUESTS[0];
   try {
     return await db.$transaction(async (tx) => {
-      await lockIntake(tx, demo.intakeId);
-      const state = await inspectSupplierDemo(tx as unknown as Db, tables);
+      await lockIntake(tx, demo.intakeId, schema);
+      const state = await inspectSupplierDemo(tx as unknown as Db, tables, accountBaseline);
       const created = { quote: false, note: false };
 
       if (state.existingQuote === "absent") {
@@ -377,8 +391,8 @@ export async function runSupplierDemo(argv: string[], deps: SupplierDemoDeps) {
   const db = await deps.createClient(target.url);
   try {
     const tables = await guarded("database-error", () => (deps.schemaTables ?? readSchemaTables)(db));
-    const state = await inspectSupplierDemo(db, tables);
-    log(`preflight: accounts=${SUPPLIER_FIXTURE.expectedUsers} fingerprint=${state.accountFingerprint}`);
+    const state = await inspectSupplierDemo(db, tables, options.accountBaseline);
+    log(`preflight: accounts=${state.accountCount} fingerprint=${state.accountFingerprint}`);
     log(`preflight: legacy quotes on demo intake=${state.legacyQuotes} (unchanged)`);
     log(`preflight: fixture quote=${state.existingQuote} note=${state.existingNote}`);
 
@@ -392,7 +406,13 @@ export async function runSupplierDemo(argv: string[], deps: SupplierDemoDeps) {
       return { applied: false, created: { quote: false, note: false } };
     }
 
-    const result = await writeSupplierFixture(db, tables, (deps.now ?? (() => new Date()))());
+    const result = await writeSupplierFixture(
+      db,
+      tables,
+      (deps.now ?? (() => new Date()))(),
+      target.schema,
+      options.accountBaseline
+    );
     log(`written: quote=${result.created.quote} note=${result.created.note}`);
     log("status: applied");
     return { applied: true, created: result.created };
@@ -420,12 +440,12 @@ export async function runSupplierDemoVerify(argv: string[], deps: SupplierDemoDe
     check("schema: every application table present", APPLICATION_MODELS.every((m) => tables.has(m)));
     let state: SupplierDemoState | undefined;
     try {
-      state = await inspectSupplierDemo(db, tables);
+      state = await inspectSupplierDemo(db, tables, options.accountBaseline);
     } catch (error) {
       check(`preflight: ${describeSupplierDemoFailure(error).reason}`, false);
     }
     if (state) {
-      check("accounts: exactly 11 retained", true);
+      check(`accounts: exactly ${state.accountCount} retained${options.accountBaseline ? " (pinned baseline)" : ""}`, true);
       check("legacy quotes: exactly 2, untouched", state.legacyQuotes === 2);
       check("fixture quote: present, sealed, initial terms", state.existingQuote === "matches");
       check("fixture note: present", state.existingNote === "matches");

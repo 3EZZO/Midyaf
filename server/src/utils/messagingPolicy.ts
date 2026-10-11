@@ -114,6 +114,44 @@ export function previewText(body: string) {
   return flat.length > PREVIEW_LENGTH ? `${flat.slice(0, PREVIEW_LENGTH - 1)}…` : flat;
 }
 
+/** Marker stored in the metadata of private-message notifications. */
+export const MESSAGE_NOTIFICATION_KIND = "MESSAGE";
+
+/**
+ * Whether a notification belongs to private messaging: the new marker, or a
+ * conversation reference written before the marker existed. Such
+ * notifications carry a subject and sender, so only their recipient may see
+ * or update them; operational notifications keep their legacy visibility.
+ */
+export function isPrivateMessageNotification(notification: { metadata?: unknown }) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
+  const record = metadata as Record<string, unknown>;
+  return record.kind === MESSAGE_NOTIFICATION_KIND || record.conversationId !== undefined;
+}
+
+/** A viewer sees a notification when it is theirs or not a private message. */
+export function canSeeNotification(
+  notification: { userId: string; metadata?: unknown },
+  viewerId: string
+) {
+  return notification.userId === viewerId || !isPrivateMessageNotification(notification);
+}
+
+/**
+ * The read mark a reader may claim after being shown `messages`: the newest
+ * one actually delivered, not "now", so a message stored while the thread
+ * was loading stays unread. Null when nothing was shown.
+ */
+export function observedReadCutoff(messages: ReadonlyArray<{ createdAt: Date | string }>) {
+  let newest: Date | null = null;
+  for (const message of messages) {
+    const at = new Date(message.createdAt);
+    if (!Number.isNaN(at.getTime()) && (!newest || at > newest)) newest = at;
+  }
+  return newest;
+}
+
 /**
  * Unread messages per conversation: messages from someone else newer than
  * the reader's lastReadAt (all of them when it was never read).

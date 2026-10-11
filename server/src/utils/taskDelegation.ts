@@ -15,8 +15,9 @@ import { HttpError } from "./http.js";
  * - RETURN: the delegate hands the task back to the responsible user.
  *
  * LM/SA keep their documented legacy global scope, an ORGANIZER acts only on
- * its own events, and the current responsible user or delegate may hand over
- * their own task. This is not organization isolation (D-001).
+ * its own events, and a coordinator only on a task they are currently
+ * responsible for or delegated (see handoverTaskAccess). This is not
+ * organization isolation (D-001).
  */
 
 export const HANDOVER_CLOSED_STATUSES: TaskStatus[] = [
@@ -79,6 +80,35 @@ function isLegacyOperator(actor: AuthenticatedUser) {
   return actor.role === Role.LOGISTICS_MANAGER || actor.role === Role.SUPER_ADMIN;
 }
 
+/**
+ * Whether the handover endpoints may reveal anything about this task to
+ * this actor, decided before any closed/no-delegate state is disclosed:
+ *
+ * - "allowed": LM/SA (legacy global scope), the event's own organizer, or a
+ *   coordinator who is the task's current responsible user or delegate
+ *   (also after the task closed, for its history).
+ * - "hidden": another organizer's task; answered like a missing task (404).
+ * - "forbidden": anyone else (403).
+ *
+ * Legacy task REST/bootstrap visibility is separate and unchanged.
+ */
+export type HandoverAccess = "allowed" | "hidden" | "forbidden";
+
+export function handoverTaskAccess(
+  actor: AuthenticatedUser,
+  task: Pick<HandoverTaskState, "responsibleUserId" | "delegateUserId">,
+  eventOrganizerId: string
+): HandoverAccess {
+  if (!HANDOVER_ACTOR_ROLES.includes(actor.role)) return "forbidden";
+  if (isLegacyOperator(actor)) return "allowed";
+  if (actor.role === Role.ORGANIZER) {
+    return eventOrganizerId === actor.id ? "allowed" : "hidden";
+  }
+  return task.responsibleUserId === actor.id || task.delegateUserId === actor.id
+    ? "allowed"
+    : "forbidden";
+}
+
 /** What this actor may do with this task (before recipient checks). */
 export function handoverRights(
   actor: AuthenticatedUser,
@@ -86,7 +116,7 @@ export function handoverRights(
   eventOrganizerId: string
 ): HandoverRights {
   const none = { canDelegate: false, canTransfer: false, canReturn: false };
-  if (!HANDOVER_ACTOR_ROLES.includes(actor.role)) return none;
+  if (handoverTaskAccess(actor, task, eventOrganizerId) !== "allowed") return none;
   if (HANDOVER_CLOSED_STATUSES.includes(task.status)) return none;
 
   const manages =

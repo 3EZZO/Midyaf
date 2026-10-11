@@ -151,6 +151,22 @@ describe("POST /tasks/:id/handover", () => {
     expect(handovers()).toHaveLength(0);
   });
 
+  it("checks access before disclosing closed or no-delegate state", async () => {
+    const body = { mode: "DELEGATE", toUserId: "usr_lm" };
+    // Closed task: outsiders learn nothing about its state.
+    expect((await http.post("/api/tasks/tsk_done/handover", actors.org2, body)).status).toBe(404);
+    expect((await http.post("/api/tasks/tsk_done/handover", actors.coord2, body)).status).toBe(403);
+    expect((await http.post("/api/tasks/tsk_done/handover/return", actors.org2, {})).status).toBe(404);
+    expect((await http.post("/api/tasks/tsk_done/handover/return", actors.coord2, {})).status).toBe(403);
+    expect((await http.post("/api/tasks/tsk_done/handover", actors.coord, body)).status).toBe(409);
+    // No delegate: only people with access hear about it.
+    expect((await http.post("/api/tasks/tsk_owned/handover/return", actors.coord2, {})).status).toBe(403);
+    expect((await http.post("/api/tasks/tsk_owned/handover/return", actors.org2, {})).status).toBe(404);
+    expect((await http.post("/api/tasks/tsk_owned/handover/return", actors.org, {})).status).toBe(409);
+    expect((await http.post("/api/tasks/tsk_other/handover", actors.org, body)).status).toBe(404);
+    expect(handovers()).toHaveLength(0);
+  });
+
   it("only hands tasks to operations staff (and the event's own organizer)", async () => {
     for (const toUserId of ["usr_guest", "usr_driver", "usr_supplier", "usr_org2", "usr_missing"]) {
       const response = await http.post("/api/tasks/tsk_1/handover", actors.lm, { mode: "TRANSFER", toUserId });
@@ -213,9 +229,40 @@ describe("GET /tasks/handover-candidates and /tasks/:id/handovers", () => {
   });
 
   it("refuses other organizers' events and non-operations roles", async () => {
-    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.org2)).status).toBe(403);
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.org2)).status).toBe(404);
     expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.guest)).status).toBe(403);
     expect((await http.get("/api/tasks/handover-candidates?eventId=evt_missing", actors.lm)).status).toBe(404);
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_2", actors.lm)).status).toBe(200);
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.org)).status).toBe(200);
+  });
+
+  it("lists candidates to a coordinator only for an event with an open task handed to them", async () => {
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.coord2)).status).toBe(403);
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_2", actors.coord)).status).toBe(403);
+
+    await http.post("/api/tasks/tsk_other/handover", actors.lm, { mode: "DELEGATE", toUserId: "usr_coord2" });
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_2", actors.coord2)).status).toBe(200);
+
+    // A closed task alone does not open the event's people list.
+    taskRow("tsk_owned").status = TaskStatus.CANCELLED;
+    expect((await http.get("/api/tasks/handover-candidates?eventId=evt_1", actors.coord)).status).toBe(403);
+  });
+
+  it("shows a coordinator only the history of tasks they hold, including closed ones", async () => {
+    expect((await http.get("/api/tasks/tsk_owned/handovers", actors.coord2)).status).toBe(403);
+    expect((await http.get("/api/tasks/tsk_1/handovers", actors.coord)).status).toBe(403);
+    expect((await http.get("/api/tasks/tsk_done/handovers", actors.coord)).status).toBe(200);
+    expect((await http.get("/api/tasks/tsk_other/handovers", actors.lm)).status).toBe(200);
+    expect((await http.get("/api/tasks/tsk_other/handovers", actors.org)).status).toBe(404);
+
+    await http.post("/api/tasks/tsk_owned/handover", actors.coord, { mode: "DELEGATE", toUserId: "usr_coord2" });
+    const delegateView = await http.get("/api/tasks/tsk_owned/handovers", actors.coord2);
+    expect(delegateView.status).toBe(200);
+    expect(delegateView.body.handovers).toHaveLength(1);
+
+    await http.post("/api/tasks/tsk_owned/handover/return", actors.coord2, {});
+    expect((await http.get("/api/tasks/tsk_owned/handovers", actors.coord2)).status).toBe(403);
+    expect((await http.get("/api/tasks/tsk_missing/handovers", actors.coord)).status).toBe(404);
   });
 
   it("returns the newest-first handover history to people who can see the task", async () => {

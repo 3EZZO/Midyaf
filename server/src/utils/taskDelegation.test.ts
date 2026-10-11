@@ -3,6 +3,7 @@ import { Role, TaskHandoverKind, TaskStatus } from "@prisma/client";
 import {
   handoverBodySchema,
   handoverRights,
+  handoverTaskAccess,
   isEligibleRecipient,
   planHandover,
   type HandoverTaskState
@@ -65,6 +66,28 @@ describe("handoverRights", () => {
         canReturn: false
       });
     }
+  });
+});
+
+describe("handoverTaskAccess", () => {
+  it("allows LM/SA, the owning organizer and the current holder only", () => {
+    expect(handoverTaskAccess(LM, task(), "usr_org")).toBe("allowed");
+    expect(handoverTaskAccess(ORG, task(), "usr_org")).toBe("allowed");
+    expect(handoverTaskAccess(COORD, task({ responsibleUserId: "usr_coord" }), "usr_org")).toBe("allowed");
+    expect(handoverTaskAccess(COORD2, task({ delegateUserId: "usr_coord2" }), "usr_org")).toBe("allowed");
+    // Closed tasks keep the holder's access (history); rights stay empty.
+    const closed = task({ status: TaskStatus.COMPLETED, responsibleUserId: "usr_coord" });
+    expect(handoverTaskAccess(COORD, closed, "usr_org")).toBe("allowed");
+    expect(handoverRights(COORD, closed, "usr_org").canDelegate).toBe(false);
+  });
+
+  it("hides other organizers' tasks and forbids everyone else", () => {
+    expect(handoverTaskAccess(OTHER_ORG, task(), "usr_org")).toBe("hidden");
+    // Even a stored responsibility on a foreign event does not open it.
+    expect(handoverTaskAccess(OTHER_ORG, task({ responsibleUserId: "usr_org2" }), "usr_org")).toBe("hidden");
+    expect(handoverRights(OTHER_ORG, task({ responsibleUserId: "usr_org2" }), "usr_org").canTransfer).toBe(false);
+    expect(handoverTaskAccess(COORD, task(), "usr_org")).toBe("forbidden");
+    expect(handoverTaskAccess(GUEST, task({ responsibleUserId: "usr_guest" }), "usr_org")).toBe("forbidden");
   });
 });
 
