@@ -31,6 +31,9 @@ const SilaOperationsDashboard = lazy(() =>
 const SupplierDashboard = lazy(() =>
   import("./components/SupplierDashboard").then((m) => ({ default: m.SupplierDashboard }))
 );
+const AdminSupplierWorkspace = lazy(() =>
+  import("./components/AdminSupplierWorkspace").then((m) => ({ default: m.AdminSupplierWorkspace }))
+);
 const MessagesCenter = lazy(() =>
   import("./components/MessagesCenter").then((m) => ({ default: m.MessagesCenter }))
 );
@@ -1276,7 +1279,13 @@ function renderPortal(
         />
       );
     case "supplier":
-      return <SupplierDashboard session={props.session} isArabic={isArabic} />;
+      // ADMIN-PORTALS-001: the super admin gets a read-only administrative
+      // view of any supplier; a supplier keeps its own self-service workspace.
+      return props.session?.user.role === "SUPER_ADMIN" ? (
+        <AdminSupplierWorkspace session={props.session} isArabic={isArabic} />
+      ) : (
+        <SupplierDashboard session={props.session} isArabic={isArabic} />
+      );
     case "messages":
       return <MessagesCenter session={props.session} isArabic={isArabic} />;
     case "guest":

@@ -11,9 +11,12 @@ import { recordAuditLog } from "../services/auditLog.js";
 import {
   MAX_SUPPLIER_PAGE_SIZE,
   SUPPLIER_DEMO_REQUESTS,
+  SUPPLIER_REQUEST_CURRENCY,
   computeQuoteTerms,
   evaluateSupplierRequest,
+  idParamSchema,
   lockIntake,
+  opaqueReference,
   parseIdParam,
   requestNotFound,
   supplierListQuerySchema,
@@ -27,7 +30,10 @@ import {
   toSupplierRequestDto,
   toSupplierServiceDto,
   writeTransactionalAudit,
-  type AuditContext
+  type AuditContext,
+  type EligibleRequest,
+  type OwnNoteRow,
+  type SupplierBookingRow
 } from "../utils/supplierPortal.js";
 
 const router = Router();
@@ -337,6 +343,209 @@ router.get(
       linked: true,
       quotes: page.map(toOwnQuoteDto),
       nextCursor: rows.length > query.limit ? page[page.length - 1]?.id ?? null : null
+    });
+  })
+);
+
+// ---------------------------------------------------------------------------
+// ADMIN-PORTALS-001: read-only Super Admin view of any supplier workspace.
+// Registered before /:id. The supplier is chosen by its database id only;
+// nothing from the caller other than the verified token role grants access.
+// GETs only: no writes, no audit rows, no approval or unsealing (D-011).
+// ---------------------------------------------------------------------------
+
+const superAdminOnly = requireRole([Role.SUPER_ADMIN]);
+const noQuerySchema = z.object({}).strict();
+
+/** Quote metadata only: prices, commission and score are never selected. */
+const adminQuoteSelect = {
+  id: true,
+  intakeId: true,
+  category: true,
+  item: true,
+  quantity: true,
+  status: true,
+  createdAt: true
+} as const;
+
+type AdminQuoteRow = {
+  id: string;
+  intakeId: string;
+  category: string;
+  item: string;
+  quantity: number;
+  status: QuoteStatus;
+  createdAt: Date;
+};
+
+function toAdminQuoteDto(quote: AdminQuoteRow) {
+  return {
+    id: quote.id,
+    requestReference: opaqueReference("REQ", quote.intakeId),
+    intakeId: quote.intakeId,
+    category: quote.category,
+    item: quote.item,
+    quantity: quote.quantity,
+    currency: SUPPLIER_REQUEST_CURRENCY,
+    status: quote.status,
+    // Supplier terms stay sealed for every reader except the supplier (D-011).
+    sealed: true as const,
+    policyPending: true as const,
+    submittedAt: new Date(quote.createdAt).toISOString()
+  };
+}
+
+function toAdminRequestDto(
+  request: EligibleRequest,
+  quote: AdminQuoteRow | null,
+  notes: OwnNoteRow[]
+) {
+  return {
+    intakeId: request.intakeId,
+    reference: opaqueReference("REQ", request.intakeId),
+    eventCode: request.eventCode,
+    category: request.category,
+    scope: request.demand.scope,
+    estimatedQuantity: request.demand.estimatedQuantity,
+    unit: request.demand.unit,
+    isEstimate: true as const,
+    status: "QUOTING" as const,
+    currency: request.currency,
+    eventDate: new Date(request.eventDate).toISOString(),
+    timezone: request.timezone,
+    quote: quote ? toAdminQuoteDto(quote) : null,
+    notes: notes.map(toOwnNoteDto)
+  };
+}
+
+function parseSupplierId(value: unknown) {
+  const parsed = idParamSchema.safeParse(value);
+  if (!parsed.success) throw new HttpError(404, "Supplier not found");
+  return parsed.data;
+}
+
+/** A booking whose service or event row is missing is omitted, never filled in. */
+function hasBookingRelations(booking: SupplierBookingRow) {
+  return Boolean(booking.service && booking.event);
+}
+
+router.get(
+  "/admin/workspaces",
+  superAdminOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    noQuerySchema.parse(req.query);
+    const rows = await prisma.supplier.findMany({
+      select: { id: true, name: true, category: true, userId: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: MAX_SUPPLIER_PAGE_SIZE + 1
+    });
+
+    res.json({
+      suppliers: rows.slice(0, MAX_SUPPLIER_PAGE_SIZE).map((supplier) => ({
+        id: supplier.id,
+        name: supplier.name,
+        category: supplier.category,
+        // Link state only: the account id itself is never returned.
+        accountLinked: Boolean(supplier.userId)
+      })),
+      truncated: rows.length > MAX_SUPPLIER_PAGE_SIZE
+    });
+  })
+);
+
+router.get(
+  "/admin/workspaces/:supplierId",
+  superAdminOnly,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const supplierId = parseSupplierId(req.params.supplierId);
+    noQuerySchema.parse(req.query);
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        verified: true,
+        userId: true,
+        city: { select: { code: true, nameEn: true, nameAr: true } },
+        services: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            unit: true,
+            available: true,
+            price: true
+          },
+          orderBy: [{ name: "asc" }, { id: "asc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        },
+        bookings: {
+          select: {
+            id: true,
+            quantity: true,
+            totalPrice: true,
+            status: true,
+            service: { select: { name: true, unit: true } },
+            event: { select: ownEventSelect }
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        }
+      }
+    });
+    if (!supplier) throw new HttpError(404, "Supplier not found");
+
+    // Same allow-list and stored-category eligibility the supplier sees.
+    const requests: Array<ReturnType<typeof toAdminRequestDto>> = [];
+    for (const entry of SUPPLIER_DEMO_REQUESTS) {
+      const intake = await prisma.activityIntake.findUnique({
+        where: { id: entry.intakeId }
+      });
+      const event = intake?.eventId
+        ? await prisma.event.findUnique({
+            where: { id: intake.eventId },
+            select: ownEventSelect
+          })
+        : null;
+      const eligible = evaluateSupplierRequest(intake, event, supplier.category);
+      if (!eligible) continue;
+
+      const [quote, notes] = await Promise.all([
+        prisma.vendorQuote.findFirst({
+          where: {
+            supplierId: supplier.id,
+            intakeId: eligible.intakeId,
+            category: supplier.category
+          },
+          select: adminQuoteSelect
+        }),
+        prisma.supplierRequestNote.findMany({
+          where: { supplierId: supplier.id, intakeId: eligible.intakeId },
+          select: { id: true, text: true, createdAt: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          take: MAX_SUPPLIER_PAGE_SIZE
+        })
+      ]);
+      requests.push(toAdminRequestDto(eligible, quote, notes));
+    }
+
+    const quotes = await prisma.vendorQuote.findMany({
+      where: { supplierId: supplier.id },
+      select: adminQuoteSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: MAX_SUPPLIER_PAGE_SIZE
+    });
+
+    res.json({
+      accountLinked: Boolean(supplier.userId),
+      profile: toSupplierProfileDto(supplier),
+      services: supplier.services.map(toSupplierServiceDto),
+      bookings: supplier.bookings.filter(hasBookingRelations).map(toSupplierBookingDto),
+      requests,
+      quotes: quotes.map(toAdminQuoteDto),
+      policyPending: true
     });
   })
 );
