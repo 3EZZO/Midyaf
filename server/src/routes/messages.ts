@@ -1,3 +1,5 @@
+import { loadEventAccess, requirePermission, requirePlanApproved } from "../utils/workspacePolicy.js";
+import { EventPermission } from "@prisma/client";
 import { Router } from "express";
 import { Role, Prisma } from "@prisma/client";
 import { databaseSchemaName } from "../utils/supplierPortal.js";
@@ -68,7 +70,7 @@ async function linkedCounterparts(user: AuthenticatedUser) {
 }
 
 /** Participant check: anyone else gets the same 404 as a missing thread. */
-async function requireParticipation(conversationIdRaw: unknown, userId: string) {
+async function requireParticipation(conversationIdRaw: unknown, userId: string, req: AuthRequest) {
   const parsed = conversationIdSchema.safeParse(conversationIdRaw);
   if (!parsed.success) throw new HttpError(404, "Conversation not found");
   const membership = await prisma.conversationParticipant.findUnique({
@@ -76,7 +78,18 @@ async function requireParticipation(conversationIdRaw: unknown, userId: string) 
     select: { id: true, conversationId: true, lastReadAt: true }
   });
   if (!membership) throw new HttpError(404, "Conversation not found");
+  await guardScopedConversation(req, membership.conversationId);
   return membership;
+}
+
+async function guardScopedConversation(req: AuthRequest, id: string, db: Prisma.TransactionClient = prisma) {
+  const conversation = await db.conversation.findUnique({ where: { id }, select: { eventId: true } });
+  if (!conversation?.eventId) return;
+  const event = await db.event.findUnique({ where: { id: conversation.eventId }, select: { organizationId: true } });
+  if (!event?.organizationId) return;
+  const access = await loadEventAccess(req, conversation.eventId, db);
+  requirePlanApproved(access);
+  if (!access.guestId) requirePermission(access, EventPermission.VIEW);
 }
 
 router.get(
@@ -115,7 +128,7 @@ router.get(
     const query = conversationListQuerySchema.parse(req.query);
 
     if (query.cursor) {
-      await requireParticipation(query.cursor, user.id).catch(() => {
+      await requireParticipation(query.cursor, user.id, req).catch(() => {
         throw new HttpError(400, "Invalid cursor");
       });
     }
@@ -139,7 +152,12 @@ router.get(
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {})
     });
-    const page = rows.slice(0, query.limit);
+    const visible = [];
+    for (const row of rows) {
+      try { await guardScopedConversation(req, row.id); visible.push(row); }
+      catch (error) { if (!(error instanceof HttpError) || ![403,404,423].includes(error.status)) throw error; }
+    }
+    const page = visible.slice(0, query.limit);
 
     const readMarks = new Map<string, Date | null>();
     for (const conversation of page) {
@@ -180,7 +198,12 @@ router.get(
       orderBy: { joinedAt: "desc" },
       take: 500
     });
-    const marks = new Map(memberships.map((m) => [m.conversationId, m.lastReadAt]));
+    const visible = [];
+    for (const member of memberships) {
+      try { await guardScopedConversation(req, member.conversationId); visible.push(member); }
+      catch (error) { if (!(error instanceof HttpError) || ![403,404,423].includes(error.status)) throw error; }
+    }
+    const marks = new Map(visible.map((m) => [m.conversationId, m.lastReadAt]));
     const counts = await unreadCounts(req.user!.id, marks);
     let total = 0;
     for (const count of counts.values()) total += count;
@@ -253,9 +276,10 @@ router.post(
 router.get(
   "/conversations/:id",
   asyncHandler(async (req: AuthRequest, res) => {
-    const membership = await requireParticipation(req.params.id, req.user!.id);
+    const membership = await requireParticipation(req.params.id, req.user!.id, req);
     const thread = await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx);
       const observed = await loadThread(membership.conversationId, req.user!.id, tx);
       await markReadUpTo(membership.id, observedReadCutoff(observed.messages), tx);
       return observed;
@@ -268,11 +292,12 @@ router.post(
   "/conversations/:id/messages",
   asyncHandler(async (req: AuthRequest, res) => {
     const user = req.user!;
-    const membership = await requireParticipation(req.params.id, user.id);
+    const membership = await requireParticipation(req.params.id, user.id, req);
     const body = messageCreateSchema.parse(req.body);
 
     const message = await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx);
       const conversation = await tx.conversation.findUnique({
         where: { id: membership.conversationId }, select: { lastMessageAt: true }
       });
@@ -317,9 +342,10 @@ router.post(
 router.post(
   "/conversations/:id/read",
   asyncHandler(async (req: AuthRequest, res) => {
-    const membership = await requireParticipation(req.params.id, req.user!.id);
+    const membership = await requireParticipation(req.params.id, req.user!.id, req);
     await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx);
       const newest = await tx.conversationMessage.findFirst({
         where: { conversationId: membership.conversationId },
         select: { createdAt: true },

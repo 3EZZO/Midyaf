@@ -17,6 +17,7 @@ const db = vi.hoisted(() => {
     );
 
   return {
+    trip: { findFirst: vi.fn(async () => null) },
     event: {
       findUnique: vi.fn(async ({ where }: any) => (where.id === event.id ? event : null)),
       findFirst: vi.fn(async ({ where }: any) => (matches(where, event) ? event : null))

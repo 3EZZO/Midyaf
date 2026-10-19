@@ -31,6 +31,7 @@ export const GUEST_DETAIL_ROLES: readonly EventMemberRole[] = [
 ];
 
 export type GuestViewer = {
+  role?: EventAccess["actor"]["role"];
   userId: string;
   detailTier: boolean;
   orgAdmin: boolean;
@@ -93,7 +94,7 @@ export async function loadGuestViewer(db: GuestDb, access: EventAccess): Promise
     }
   }
 
-  return { userId: access.actor.id, detailTier, orgAdmin, grantedGuestIds, grantedGroups };
+  return { role: access.actor.role, userId: access.actor.id, detailTier, orgAdmin, grantedGuestIds, grantedGroups };
 }
 
 export function canViewGuestDetails(
@@ -144,12 +145,14 @@ export function toGuestDetailDto(row: GuestDetailRow): GuestDetailDto {
  * second query restricted to the ids this viewer may see.
  */
 export async function guestDtosFor(
-  db: Pick<Prisma.TransactionClient, "eventGuest">,
+  db: Pick<Prisma.TransactionClient, "eventGuest" | "auditLog">,
   eventId: string,
   rows: readonly GuestCodeRow[],
   viewer: GuestViewer
 ): Promise<GuestDto[]> {
   const visibleIds = rows.filter((row) => canViewGuestDetails(row, viewer)).map((row) => row.id);
+  const revealed = rows.filter(row => row.privacyMasked && visibleIds.includes(row.id));
+  if (revealed.length) await db.auditLog.create({ data: { actorUserId: viewer.userId, actorRole: viewer.role ?? null, action: "workspace.guest.private_read", entityType: "EVENT", entityId: eventId, eventId, metadata: { count: revealed.length } } });
   const details = visibleIds.length
     ? await db.eventGuest.findMany({
         where: { eventId, id: { in: visibleIds } },

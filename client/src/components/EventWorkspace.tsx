@@ -7,6 +7,7 @@ import { Section } from "./Section";
 import { EventPlanEditor } from "./EventPlanEditor";
 import { EventPermissions } from "./EventPermissions";
 import { EventVendors } from "./EventVendors";
+import { EventGuests } from "./EventGuests";
 
 export function EventWorkspace(props: WorkspaceProps) {
  const {token,eventId,isArabic: ar} = props; const [revision,refresh] = useState(0); const [tab,setTab] = useState<WorkspaceTab>('overview'); const [error,setError] = useState(''); const [notice,setNotice] = useState(''); const [busy,setBusy] = useState(false);
@@ -32,6 +33,7 @@ export function EventWorkspace(props: WorkspaceProps) {
   {tab === 'plan' && <EventPlanEditor {...props} event={event} onChange={() => refresh(n => n+1)}/>}
   {tabUnlocked(event,tab) && (tab === 'permissions' || tab === 'teams') && <EventPermissions {...props} event={event}/>}
   {tabUnlocked(event,tab) && tab === 'vendors' && <EventVendors {...props}/>}
-  {['guests','inbox','radar'].includes(tab) && <Section title={labels[tab]}><p>{ar ? 'يكتمل هذا القسم ضمن وحدة التكامل التالية' : 'This section is being integrated in the next delivery module'}</p></Section>}
+  {tab === 'guests' && <EventGuests {...props} event={event}/>}
+  {['inbox','radar'].includes(tab) && <Section title={labels[tab]}><p>{ar ? 'يكتمل هذا القسم ضمن وحدة التكامل التالية' : 'This section is being integrated in the next delivery module'}</p></Section>}
  </div>;
 }

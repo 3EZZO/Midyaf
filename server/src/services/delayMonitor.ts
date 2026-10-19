@@ -17,6 +17,7 @@ async function scanForDelayedDrivers(io: Server) {
 
   const delayedTasks = await prisma.task.findMany({
     where: {
+      event: { organizationId: null },
       status: { in: ["ASSIGNED", "ACCEPTED", "EN_ROUTE"] },
       driver: {
         OR: [{ lastLocationAt: null }, { lastLocationAt: { lt: staleBefore } }]

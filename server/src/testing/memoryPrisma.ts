@@ -58,6 +58,8 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   },
   event: {
     relations: {
+      city: one("cityConfig", "cityId"),
+      guests: many("guest", "eventId"),
       organizer: one("user", "organizerId"),
       bookings: many("booking", "eventId"),
       tasks: many("task", "eventId"),
@@ -486,6 +488,9 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
   }
 
   function projectRelation(model: string, row: Row, name: string, spec: Row) {
+    if (name === "_count") {
+      return Object.fromEntries(Object.entries(spec.select ?? {}).map(([key]) => [key, (related(model, row, key) as Row[]).length]));
+    }
     const relation = schema[model]!.relations![name]!;
     const value = related(model, row, name);
     if (relation.kind === "one") {

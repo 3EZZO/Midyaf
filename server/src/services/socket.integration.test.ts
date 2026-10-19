@@ -24,6 +24,7 @@ const db = vi.hoisted(() => {
   const invited = new Set(["usr_guest", "usr_guest_3"]);
 
   return {
+    trip: { findFirst: vi.fn<(...args: unknown[]) => Promise<{id:string}|null>>(async () => null) },
     event: {
       findUnique: vi.fn(async ({ where }: any) => events.get(where.id) ?? null),
       findFirst: vi.fn(async ({ where }: any) => {
@@ -421,5 +422,21 @@ describe("telemetry audience and client-originated events", () => {
     expect(location).toMatchObject({ userId: "usr_guest", lat: 24.8, lng: 46.7 });
     expect(location).not.toHaveProperty("driverId");
     expect(await telemetry).toHaveLength(0);
+  });
+
+  it("withholds workspace driver telemetry from legacy global and event rooms", async () => {
+    const lm=await connectAs('usr_lm',Role.LOGISTICS_MANAGER);await join(lm,'organizer:join');
+    const captain=await connectAs('usr_captain',Role.DRIVER);
+    db.trip.findFirst.mockResolvedValueOnce({id:'workspace_trip'});
+    const frames=collect(lm,'driver:telemetry_stream');const locations=collect(lm,'driver:location_update');
+    captain.emit('driver:telemetry_stream',nextFrame());
+    expect(await frames).toHaveLength(0);expect(await locations).toHaveLength(0);
+  });
+
+  it("never broadcasts a workspace guest's position through the legacy global room", async () => {
+    const lm=await connectAs('usr_lm',Role.LOGISTICS_MANAGER);await join(lm,'organizer:join');
+    const guest=await connectAs('usr_guest',Role.GUEST);
+    db.guest.findFirst.mockResolvedValueOnce({id:'workspace_guest'});
+    const locations=collect(lm,'user:location_update');guest.emit('user:location_update',{lat:24.8,lng:46.7});expect(await locations).toHaveLength(0);
   });
 });

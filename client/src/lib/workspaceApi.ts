@@ -27,3 +27,10 @@ export async function workspaceDownload(token: string, path: string, fileName: s
   const link = document.createElement("a"); link.href = url; link.download = fileName; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export type GuestImportResult = { applied: boolean; count: number; errors: Array<{row:number;message:string}>; preview: Array<{guestCode:string;fullName:string;arrivalAt:string|null;departureAt:string|null}> };
+export async function workspaceImport(token:string,eventId:string,input:{contentBase64:string;apply:boolean;defaultVip:boolean;timezone:string}):Promise<GuestImportResult> {
+ const base=import.meta.env.VITE_API_BASE_URL??'/api';
+ const response=await fetch(`${base}/workspace/events/${eventId}/guest-workbook/import`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(input)});
+ const data=await response.json();if(!response.ok&&response.status!==422)throw new Error(data?.error?.message??'Import failed');return data;
+}

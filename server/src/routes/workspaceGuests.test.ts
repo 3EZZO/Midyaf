@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import type { MemoryPrisma } from "../testing/memoryPrisma.js";
 import type { Harness } from "../testing/httpHarness.js";
+import ExcelJS from "exceljs";
+import { GUEST_COLUMNS } from "../utils/guestWorkbook.js";
 const memory = vi.hoisted(() => ({ current: undefined as unknown as MemoryPrisma }));
 vi.mock("../db.js", async () => { const { createMemoryPrisma } = await import("../testing/memoryPrisma.js"); memory.current = createMemoryPrisma(); return { prisma: memory.current.prisma }; });
 const { startHarness } = await import("../testing/httpHarness.js");
@@ -42,4 +44,29 @@ it("never leaks a protected passenger's hotel, movement, ETAs or vehicle link", 
   expect(hidden).toMatchObject({ movementWithheld: true, origin: null, destination: null, vehicleId: null, routePolyline: null });
   expect(JSON.stringify(response.body)).not.toMatch(/PRIVATE HOTEL MARKER|12\.34567|PRIVATE_POLYLINE/);
   expect(response.body.telemetry.vehicles.find((v: {id:string}) => v.id === "veh_2").position).toBeNull();
+});
+
+async function importBytes(rows: unknown[][]) {
+ const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Guests');sheet.addRow([...GUEST_COLUMNS]);for(const row of rows)sheet.addRow(row);return Buffer.from(await book.xlsx.writeBuffer()).toString('base64');
+}
+it('validates the complete workbook before an atomic import and handles duplicate retries',async()=>{
+ const path='/w/events/evt_a/guest-workbook/import',before=memory.current.rows('eventGuest').length;
+ const row=['Synthetic imported guest','+966500000002','Twin','2026-11-01T09:00','2026-11-02T12:00','0009','Jeddah','Riyadh','Riyadh','G50'];
+ const invalid=await importBytes([row,[...row.slice(0,9),'G50']]);
+ expect((await http.post(path,a.owner,{contentBase64:invalid,apply:true})).status).toBe(422);
+ expect(memory.current.rows('eventGuest')).toHaveLength(before);
+ const valid=await importBytes([row]);
+ expect((await http.post(path,a.owner,{contentBase64:valid,apply:false})).body).toMatchObject({applied:false,count:1});
+ expect(memory.current.rows('eventGuest')).toHaveLength(before);
+ const results=await Promise.all([http.post(path,a.owner,{contentBase64:valid,apply:true}),http.post(path,a.owner,{contentBase64:valid,apply:true})]);
+ expect(results.map(r=>r.status).sort()).toEqual([200,422]);expect(memory.current.rows('eventGuest')).toHaveLength(before+1);
+ expect((await http.post(path,a.cap,{contentBase64:valid,apply:true})).status).toBe(403);
+});
+it('exports only permitted workbook fields and audits authorized private reads',async()=>{
+ for(const [actor,canSee] of [[a.owner,false],[a.lm,true]] as const){
+  const response=await http.raw('/w/events/evt_a/guest-workbook/export',actor);expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('private, no-store');
+  const book=new ExcelJS.Workbook();await book.xlsx.load(new Uint8Array(response.bytes).buffer);const sheet=book.worksheets[0];let name:unknown;
+  sheet.eachRow(row=>{if(row.getCell(10).value==='G02')name=row.getCell(1).value;});expect(name).toBe(canSee?'Synthetic person G02':'');
+ }
+ expect(memory.current.rows('auditLog').some(row=>row.action==='workspace.guest.private_read')).toBe(true);
 });

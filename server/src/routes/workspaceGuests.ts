@@ -1,3 +1,4 @@
+import { guestWorkbook, parseGuestWorkbook, WORKBOOK_MAX_BYTES } from "../utils/guestWorkbook.js";
 import { z } from "zod";
 import { Router } from "express";
 import { EventPermission, Prisma } from "@prisma/client";
@@ -63,6 +64,39 @@ async function findGuest(access: EventAccess, guestIdRaw: unknown) {
   if (!guest) throw guestNotFound();
   return guest;
 }
+
+router.get("/events/:eventId/guest-workbook/template", asyncHandler(async (req: AuthRequest, res) => {
+  const access = await loadEventAccess(req, req.params.eventId); requirePermission(access, EventPermission.VIEW);
+  res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": 'attachment; filename="midyaf-guests-template.xlsx"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+  res.send(await guestWorkbook([], true));
+}));
+router.get("/events/:eventId/guest-workbook/export", asyncHandler(async (req: AuthRequest, res) => {
+  const access = await loadEventAccess(req, req.params.eventId); requirePermission(access, EventPermission.VIEW);
+  const rows = await prisma.eventGuest.findMany({ where: { eventId: access.event.id }, select: GUEST_CODE_SELECT, orderBy: { guestCode: "asc" }, take: 2001 });
+  if (rows.length > 2000) throw new HttpError(409, "Export supports up to 2000 guests per event");
+  const guests = await guestDtosFor(prisma, access.event.id, rows, await loadGuestViewer(prisma, access));
+  await writeWorkspaceAudit(prisma, req, { action: "workspace.guest.export", entityType: "EVENT", entityId: access.event.id, eventId: access.event.id, metadata: { count: guests.length } });
+  res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": 'attachment; filename="midyaf-guests.xlsx"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+  res.send(await guestWorkbook(guests));
+}));
+router.post("/events/:eventId/guest-workbook/import", asyncHandler(async (req: AuthRequest, res) => {
+  const access = await loadEventAccess(req, req.params.eventId); requirePermission(access, EventPermission.EDIT); requireNotSupport(access, "import guests"); requireEventOpen(access);
+  const body = z.object({ contentBase64: z.string().max(Math.ceil(WORKBOOK_MAX_BYTES*4/3)+4).regex(/^[A-Za-z0-9+/]+={0,2}$/), apply: z.boolean().default(false), defaultVip: z.boolean().default(false), timezone: z.string().max(60).default("Asia/Riyadh") }).strict().parse(req.body);
+  const bytes = Buffer.from(body.contentBase64,"base64");
+  const result = await prisma.$transaction(async tx => {
+    await lockRow(tx,"Event",access.event.id);
+    const existing = await tx.eventGuest.findMany({ where: { eventId: access.event.id }, select: { guestCode: true } });
+    const parsed = await parseGuestWorkbook(bytes, existing.map(row=>row.guestCode), body.defaultVip, body.timezone);
+    if(parsed.errors.length) return { applied:false, count:0, errors:parsed.errors, preview:[] };
+    if(body.apply) {
+      if(existing.length+parsed.rows.length>2000)throw new HttpError(409,"This event supports up to 2000 roster guests");
+      await tx.eventGuest.createMany({data:parsed.rows.map(row=>({...row,eventId:access.event.id}))});
+      await writeWorkspaceAudit(tx,req,{action:"workspace.guest.import",entityType:"EVENT",entityId:access.event.id,eventId:access.event.id,metadata:{count:parsed.rows.length}});
+    }
+    return {applied:body.apply,count:parsed.rows.length,errors:[],preview:parsed.rows.map(row=>({guestCode:row.guestCode,fullName:row.fullName,arrivalAt:row.arrivalAt?.toISOString()??null,departureAt:row.departureAt?.toISOString()??null}))};
+  },WORKSPACE_TRANSACTION);
+  res.status(result.errors.length?422:200).json(result);
+}));
 
 router.get(
   "/events/:eventId/guests",
@@ -207,6 +241,15 @@ router.patch(
     res.json({ guest: dto });
   })
 );
+
+router.get("/events/:eventId/guests/:guestId/privacy", asyncHandler(async (req: AuthRequest, res) => {
+  const access = await loadEventAccess(req, req.params.eventId);
+  requirePermission(access, EventPermission.EDIT); requireNotSupport(access, "manage guest privacy");
+  const guest = await findGuest(access, req.params.guestId);
+  if (!canViewGuestDetails(guest, await loadGuestViewer(prisma, access))) throw new HttpError(403, "This guest is private to you");
+  const grants = await prisma.guestPrivacyGrant.findMany({ where: { eventGuestId: guest.id }, select: { viewerUserId: true } });
+  res.json({ privacy: { masked: guest.privacyMasked, viewerUserIds: grants.map(grant => grant.viewerUserId) } });
+}));
 
 router.put(
   "/events/:eventId/guests/:guestId/privacy",
