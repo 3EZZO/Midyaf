@@ -61,6 +61,39 @@ it("retries idempotently and revokes inbox access when a member loses VIEW", asy
 
 const message={recipientUserIds:[a.sup.id],subject:"Arrival desk inquiry",body:"Check this arrival",kind:"INQUIRY",clientRequestId:"message_retry_1"};
 const policy={individualSenderIds:[a.lm.id,a.sup.id],groupSenderIds:[a.lm.id],taskReceiverIds:[a.sup.id],clientVisible:true,executiveVisible:false};
+it("replays a committed emergency dispatch after the captain and supervisors became unavailable", async () => {
+  const payload = { ...request, flow: "LM_TO_CAPTAIN_EMERGENCY", recipientUserIds: [a.cap.id], clientRequestId: "emergency_retry_1" };
+  const first = await http.post(base, a.lm, payload);
+  expect(first.status).toBe(201);
+  for (const member of memory.current.rows("eventMembership")) if (["CAPTAIN", "FLEET_SUPERVISOR"].includes(member.role)) member.available = false;
+  const retry = await http.post(base, a.lm, payload);
+  expect(retry.status).toBe(200);
+  expect(retry.body.dispatch).toMatchObject({ replayed: true, dispatchId: first.body.dispatch.dispatchId, taskId: first.body.dispatch.taskId });
+  expect(retry.body.dispatch.supervisorAlert.userId).toBe(a.sup.id);
+  expect(memory.current.rows("task")).toHaveLength(1);
+  expect(memory.current.rows("conversation").filter(c => c.messageClass === "ALERT")).toHaveLength(1);
+  // A changed payload under the same id is still refused, and an unknown id is not replayed.
+  expect((await http.post(base, a.lm, { ...payload, subject: "Changed" })).status).toBe(409);
+  expect((await http.post(base, a.lm, { ...payload, clientRequestId: "emergency_retry_2" })).status).toBe(403);
+});
+it("keeps inbox paging past conversations the caller can no longer read", async () => {
+  const conversation = (id: string, eventId: string, at: string) => {
+    memory.current.rows("conversation").push({ id, subject: `Synthetic ${id}`, createdById: a.lm.id, lastMessageAt: new Date(at), createdAt: new Date(at), eventId, messageClass: "INDIVIDUAL", dispatchFlow: null, clientVisible: false, executiveVisible: false, dedupeKey: null, requestHash: null });
+    memory.current.rows("conversationParticipant").push({ id: `cp_${id}`, conversationId: id, userId: a.sup.id, lastReadAt: null, joinedAt: new Date(at) });
+    memory.current.rows("conversationMessage").push({ id: `cm_${id}`, conversationId: id, senderId: a.lm.id, body: "Synthetic body", clientRequestId: null, createdAt: new Date(at) });
+  };
+  // Two newer threads of an event the supervisor has no access to, one readable older thread.
+  conversation("conv_hidden_1", "evt_b", "2026-10-12T10:00:00Z");
+  conversation("conv_hidden_2", "evt_b", "2026-10-12T09:00:00Z");
+  conversation("conv_visible", "evt_a", "2026-10-11T09:00:00Z");
+  const first = await http.get("/w/inbox?limit=1", a.sup);
+  expect(first.status).toBe(200);
+  expect(first.body.items).toEqual([]);
+  expect(first.body.nextCursor).toBeTruthy();
+  const second = await http.get(`/w/inbox?limit=1&cursor=${first.body.nextCursor}`, a.sup);
+  expect(second.body.items.map((item: { conversationId: string }) => item.conversationId)).toEqual(["conv_visible"]);
+  expect(second.body.nextCursor).toBe(null);
+});
 it("applies current messaging policy and distinguishes inquiry from task badges",async()=>{
   expect((await http.put("/w/events/evt_a/messaging-policy",a.lm,policy)).status).toBe(200);
   expect((await http.post("/w/events/evt_a/conversations",a.pm,message)).status).toBe(403);

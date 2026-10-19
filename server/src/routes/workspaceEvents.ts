@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
+import type { Server } from "socket.io";
 import {generateWorkspacePlan} from '../services/workspacePlanning.js';
 import {
   EventMemberRole,
@@ -8,6 +9,7 @@ import {
   EventPlanStatus,
   EventStatus,
   MembershipStatus,
+  MessageClass,
   OperationalStatus,
   Prisma,
   Role
@@ -39,6 +41,8 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
+import { loadMessageRedactions } from "../utils/guestPrivacy.js";
+import { MESSAGE_NOTIFICATION_KIND } from "../utils/messagingPolicy.js";
 import {
   ALL_PERMISSIONS,
   EVENT_PLAN_SELECT,
@@ -74,8 +78,9 @@ import {
  * - Create: organization OWNER/ADMIN of an ORGANIZER_COMPANY organization.
  * - Edit: descriptive fields need EDIT; scope fields need SCOPE, are refused
  *   once the contract is signed, and a real change atomically records an
- *   EventScopeChange, enqueues bounded in-app notifications to matching
- *   vendor members and writes the audit.
+ *   EventScopeChange, opens a bounded scoped ALERT thread (with a generic
+ *   recipient-only notification) for each matching vendor member and writes
+ *   the audit.
  * - Plans: generation is advisory (deterministic fallback, clearly labelled)
  *   or manual; only an explicit approval by an organization admin or the
  *   event's project manager makes one operational. Approval unlocks team,
@@ -113,10 +118,15 @@ const MEMBER_SELECT = {
 
 type MemberRow = Prisma.EventMembershipGetPayload<{ select: typeof MEMBER_SELECT }>;
 
-function toMemberDto(row: MemberRow): EventMemberDto {
+/**
+ * A member whose account is linked to a roster guest that is private to the
+ * viewer is labelled with the guest code only (current grants apply).
+ */
+function toMemberDto(row: MemberRow, privateLabels: ReadonlyMap<string, string>): EventMemberDto {
+  const code = privateLabels.get(row.user.id);
   return {
     id: row.id,
-    user: row.user,
+    user: code ? { id: row.user.id, name: code } : row.user,
     role: row.role,
     subteam: row.subteam,
     workScope: row.workScope,
@@ -348,8 +358,10 @@ router.patch(
       requireNotSupport(access, "change event scope");
     }
 
+    const alerts: Array<{ userId: string; conversationId: string }> = [];
     const result = await prisma
       .$transaction(async (tx) => {
+        alerts.length = 0;
         await lockRow(tx, "Event", access.event.id);
         const current = await reloadEvent(tx, access.event.id);
         if (current.operationalStatus === OperationalStatus.COMPLETED) {
@@ -388,12 +400,15 @@ router.patch(
 
         let scopeChange: { id: string; changedFields: string[]; notifiedVendors: number } | null = null;
         if (scopeChanged.length > 0) {
-          const recipients = await matchingVendorRecipients(
-            tx,
-            current.id,
-            categoriesForScopeChange(scopeChanged),
-            WORKSPACE_LIMITS.maxVendorNotifications
-          );
+          // The actor is the alert's sender, never also its recipient.
+          const recipients = (
+            await matchingVendorRecipients(
+              tx,
+              current.id,
+              categoriesForScopeChange(scopeChanged),
+              WORKSPACE_LIMITS.maxVendorNotifications
+            )
+          ).filter((userId) => userId !== access.actor.id);
           const scopeBefore = Object.fromEntries(scopeChanged.map((field) => [field, before[field] ?? null]));
           const scopeAfter = Object.fromEntries(scopeChanged.map((field) => [field, after[field] ?? null]));
           const record = await tx.eventScopeChange.create({
@@ -407,15 +422,42 @@ router.patch(
             },
             select: { id: true }
           });
-          if (recipients.length > 0) {
-            await tx.notification.createMany({
-              data: recipients.map((userId) => ({
+          // One scoped ALERT thread per vendor (vendors never see each other):
+          // the event details live in the thread, which the inbox and thread
+          // routes gate on current event access. The header notification is
+          // recipient-only and carries no tenant information.
+          const now = new Date();
+          for (const userId of recipients) {
+            const alert = await tx.conversation.create({
+              data: {
+                subject: "Event scope changed",
+                createdById: access.actor.id,
+                lastMessageAt: now,
+                eventId: current.id,
+                messageClass: MessageClass.ALERT,
+                dispatchFlow: null,
+                clientVisible: false,
+                executiveVisible: false,
+                participants: { create: [{ userId: access.actor.id, lastReadAt: now }, { userId }] },
+                messages: {
+                  create: {
+                    senderId: access.actor.id,
+                    body: `${current.name}: ${scopeChanged.join(", ")} changed before contract signature. Review your offer.`,
+                    createdAt: now
+                  }
+                }
+              },
+              select: { id: true }
+            });
+            await tx.notification.create({
+              data: {
                 userId,
                 title: "Event scope changed",
-                body: `${current.name}: ${scopeChanged.join(", ")} changed before contract signature. Review your offer.`,
-                metadata: { kind: "EVENT_SCOPE_CHANGE", eventId: current.id, scopeChangeId: record.id }
-              }))
+                body: "Open your event inbox to review the change.",
+                metadata: { kind: MESSAGE_NOTIFICATION_KIND, conversationId: alert.id, eventId: current.id, scopeChangeId: record.id }
+              }
             });
+            alerts.push({ userId, conversationId: alert.id });
           }
           scopeChange = { id: record.id, changedFields: scopeChanged, notifiedVendors: recipients.length };
         }
@@ -438,6 +480,8 @@ router.patch(
         throw toWorkspaceHttpError(error);
       });
 
+    const io = req.app.get("io") as Server | undefined;
+    for (const alert of alerts) io?.to(`user:${alert.userId}`).emit("message:new", { conversationId: alert.conversationId });
     res.json({ event: eventResponse(result.event, access), scopeChange: result.scopeChange });
   })
 );
@@ -679,7 +723,8 @@ router.get(
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: 500
     });
-    res.json({ members: members.map(toMemberDto) });
+    const labels = (await loadMessageRedactions(prisma, access)).users;
+    res.json({ members: members.map((member) => toMemberDto(member, labels)) });
   })
 );
 
@@ -702,6 +747,31 @@ async function assertRolePrerequisites(userId: string, role: EventMemberRole, db
   }
 }
 
+/**
+ * Locks the event and the actor/target memberships (and the actor's
+ * organization membership), then re-evaluates the actor inside the
+ * transaction: a grantor revoked or demoted while the request was in flight
+ * cannot still grant or change event access.
+ */
+async function lockedTeamAccess(req: AuthRequest, tx: Prisma.TransactionClient, access: EventAccess, userIds: readonly string[]) {
+  await lockRow(tx, "Event", access.event.id);
+  const members = await tx.eventMembership.findMany({
+    where: { eventId: access.event.id, userId: { in: [...new Set([access.actor.id, ...userIds])] } },
+    select: { id: true },
+    orderBy: { id: "asc" }
+  });
+  for (const member of members) await lockRow(tx, "EventMembership", member.id);
+  const organizationMember = await tx.organizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId: access.event.organizationId, userId: access.actor.id } },
+    select: { id: true }
+  });
+  if (organizationMember) await lockRow(tx, "OrganizationMembership", organizationMember.id);
+  const fresh = await loadEventAccess(req, access.event.id, tx);
+  requirePlanApproved(fresh);
+  requireEventOpen(fresh);
+  return fresh;
+}
+
 router.post(
   "/events/:eventId/members",
   asyncHandler(async (req: AuthRequest, res) => {
@@ -718,6 +788,9 @@ router.post(
 
     const member = await prisma
       .$transaction(async (tx) => {
+        const fresh = await lockedTeamAccess(req, tx, access, [target.id]);
+        assertCanGrant(fresh, body.userId, body.permissions, [body.role]);
+        await assertRolePrerequisites(target.id, body.role, tx);
         const created = await tx.eventMembership.create({
           data: {
             eventId: access.event.id,
@@ -748,7 +821,7 @@ router.post(
         throw toWorkspaceHttpError(error, "This user is already on the event team; update the membership instead");
       });
 
-    res.status(201).json({ member: toMemberDto(member) });
+    res.status(201).json({ member: toMemberDto(member, (await loadMessageRedactions(prisma, access)).users) });
   })
 );
 
@@ -773,6 +846,9 @@ router.patch(
 
     const member = await prisma
       .$transaction(async (tx) => {
+        const fresh = await lockedTeamAccess(req, tx, access, [current.userId]);
+        assertCanGrant(fresh, current.userId, [...new Set([...current.permissions, ...(body.permissions ?? [])])], [current.role, body.role ?? current.role]);
+        if (body.role && body.role !== current.role) await assertRolePrerequisites(current.userId, body.role, tx);
         const data: Prisma.EventMembershipUncheckedUpdateManyInput = { grantedById: access.actor.id };
         if (body.role !== undefined) data.role = body.role;
         if (body.subteam !== undefined) data.subteam = body.subteam;
@@ -812,7 +888,7 @@ router.patch(
         throw toWorkspaceHttpError(error);
       });
 
-    res.json({ member: toMemberDto(member) });
+    res.json({ member: toMemberDto(member, (await loadMessageRedactions(prisma, access)).users) });
   })
 );
 
@@ -841,7 +917,8 @@ router.put(
       });
       return updated;
     }, WORKSPACE_TRANSACTION);
-    res.json({ member: toMemberDto(member) });
+    // The caller's own membership: their own name is never redacted for them.
+    res.json({ member: toMemberDto(member, new Map()) });
   })
 );
 

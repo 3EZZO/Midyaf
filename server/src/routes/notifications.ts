@@ -6,7 +6,7 @@ import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
-import { canSeeNotification } from "../utils/messagingPolicy.js";
+import { canSeeNotification, opaqueLegacyScopeNotification } from "../utils/messagingPolicy.js";
 
 const router = Router();
 const notificationManagerRoles: Role[] = [
@@ -41,7 +41,7 @@ export async function loadVisibleNotifications(
       take: NOTIFICATION_SCAN_BATCH,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})
     });
-    visible.push(...rows.filter((row) => canSeeNotification(row, viewerId)));
+    visible.push(...rows.filter((row) => canSeeNotification(row, viewerId)).map(opaqueLegacyScopeNotification));
     if (rows.length < NOTIFICATION_SCAN_BATCH) break;
     cursor = rows[rows.length - 1].id;
   }
@@ -98,7 +98,7 @@ router.put(
       data: { read: true }
     });
 
-    res.json({ notification });
+    res.json({ notification: opaqueLegacyScopeNotification(notification) });
   })
 );
 

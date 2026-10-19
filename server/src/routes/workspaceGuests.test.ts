@@ -46,6 +46,66 @@ it("never leaks a protected passenger's hotel, movement, ETAs or vehicle link", 
   expect(response.body.telemetry.vehicles.find((v: {id:string}) => v.id === "veh_2").position).toBeNull();
 });
 
+const rosterRow = (id: string) => memory.current.rows("eventGuest").find(g => g.id === id)!;
+const revokeGrant = (id: string) => { const grants = memory.current.rows("guestPrivacyGrant"); grants.splice(grants.findIndex(g => g.id === id), 1); };
+it("refuses a group privacy change when a guest the actor cannot see is moved in mid-request", async () => {
+  rosterRow("eg_g01").privacyGroup = "ops";
+  // A concurrent move commits between the route's pre-checks and its transaction.
+  memory.current.beforeNext("$raw", "$queryRaw", () => { rosterRow("eg_g03").privacyGroup = "ops"; });
+  const response = await http.put("/w/events/evt_a/guest-groups/ops/privacy", a.lm, { masked: true, viewerUserIds: [a.sup.id] });
+  expect(response.status).toBe(403);
+  expect(rosterRow("eg_g01")).toMatchObject({ privacyMasked: false, privacyGroup: "ops" });
+  expect(rosterRow("eg_g03")).toMatchObject({ privacyMasked: true });
+  expect(memory.current.rows("guestPrivacyGrant").map(g => g.id).sort()).toEqual(["pg_g02_lm", "pg_press_pm"]);
+  expect(memory.current.rows("auditLog").some(r => r.action === "workspace.guest_group.privacy")).toBe(false);
+  // Without the concurrent move the same request is authorized.
+  rosterRow("eg_g03").privacyGroup = "press";
+  expect((await http.put("/w/events/evt_a/guest-groups/ops/privacy", a.lm, { masked: true, viewerUserIds: [a.sup.id] })).status).toBe(200);
+  expect(rosterRow("eg_g01").privacyMasked).toBe(true);
+});
+it.each([
+  ["grant revoked", () => revokeGrant("pg_g02_lm")],
+  ["EDIT removed", () => { memory.current.rows("eventMembership").find(m => m.id === "em_evt_a_u_lm")!.permissions = ["VIEW"]; }]
+])("re-checks current grants and role for group and guest privacy (%s in flight)", async (_label, change) => {
+  rosterRow("eg_g02").privacyGroup = "ops";
+  memory.current.beforeNext("$raw", "$queryRaw", change);
+  expect((await http.put("/w/events/evt_a/guest-groups/ops/privacy", a.lm, { masked: false, viewerUserIds: [] })).status).toBe(403);
+  expect(rosterRow("eg_g02").privacyMasked).toBe(true);
+  memory.current.seed(structuredClone(seed));
+  memory.current.beforeNext("$raw", "$queryRaw", change);
+  expect((await http.put(`${base}/eg_g02/privacy`, a.lm, { masked: false, viewerUserIds: [] })).status).toBe(403);
+  expect(rosterRow("eg_g02").privacyMasked).toBe(true);
+  expect(memory.current.rows("auditLog").some(r => String(r.action).startsWith("workspace.guest"))).toBe(false);
+});
+it("re-authorizes a guest group move under the Event and guest locks", async () => {
+  memory.current.beforeNext("$raw", "$queryRaw", () => revokeGrant("pg_press_pm"));
+  expect((await http.patch(`${base}/eg_g03`, a.pm, { privacyGroup: "ops" })).status).toBe(403);
+  expect(rosterRow("eg_g03").privacyGroup).toBe("press");
+  memory.current.seed(structuredClone(seed));
+  expect((await http.patch(`${base}/eg_g03`, a.pm, { privacyGroup: "ops" })).status).toBe(200);
+  expect(rosterRow("eg_g03").privacyGroup).toBe("ops");
+});
+it.each([
+  ["current grant revoked", "eg_g02", () => revokeGrant("pg_g02_lm")],
+  ["unmasked guest masked without a grant", "eg_g01", () => { rosterRow("eg_g01").privacyMasked = true; }],
+  ["EDIT removed", "eg_g02", () => { memory.current.rows("eventMembership").find(m => m.id === "em_evt_a_u_lm")!.permissions = ["VIEW"]; }]
+])("re-authorizes an ordinary detail edit under the Event and guest locks (%s in flight)", async (_label, id, change) => {
+  const before = { ...rosterRow(id) };
+  memory.current.beforeNext("$raw", "$queryRaw", change);
+  const response = await http.patch(`${base}/${id}`, a.lm, { fullName: "Changed in flight" });
+  expect(response.status).toBe(403);
+  expect(JSON.stringify(response.body)).not.toContain(String(before.fullName));
+  expect(rosterRow(id).fullName).toBe(before.fullName);
+  expect(memory.current.rows("auditLog").some(r => r.action === "workspace.guest.update")).toBe(false);
+});
+it("still applies an unchanged, currently granted detail edit", async () => {
+  const response = await http.patch(`${base}/eg_g02`, a.lm, { fullName: "Synthetic person G02 edited" });
+  expect(response.status).toBe(200);
+  expect(response.body.guest).toMatchObject({ id: "eg_g02", fullName: "Synthetic person G02 edited" });
+  expect(rosterRow("eg_g02").fullName).toBe("Synthetic person G02 edited");
+  expect(memory.current.rows("auditLog").filter(r => r.action === "workspace.guest.update")).toHaveLength(1);
+});
+
 async function importBytes(rows: unknown[][]) {
  const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Guests');sheet.addRow([...GUEST_COLUMNS]);for(const row of rows)sheet.addRow(row);return Buffer.from(await book.xlsx.writeBuffer()).toString('base64');
 }

@@ -65,6 +65,29 @@ async function findGuest(access: EventAccess, guestIdRaw: unknown) {
   return guest;
 }
 
+/**
+ * Privacy changes lock the Event first, then guest rows (the order used by
+ * group moves, group/guest privacy and ETA), and re-evaluate the actor's
+ * EDIT permission inside the transaction.
+ */
+async function lockedPrivacyAccess(req: AuthRequest, tx: Prisma.TransactionClient, eventId: string) {
+  await lockRow(tx, "Event", eventId);
+  const fresh = await loadEventAccess(req, eventId, tx);
+  requirePermission(fresh, EventPermission.EDIT);
+  return fresh;
+}
+
+/** The guest row as it is now, which the actor must see in detail under current grants. */
+async function currentGuestFor(tx: Prisma.TransactionClient, access: EventAccess, id: string) {
+  const row = await tx.eventGuest.findFirst({
+    where: { id, eventId: access.event.id },
+    select: { ...GUEST_CODE_SELECT, guestId: true }
+  });
+  if (!row) throw guestNotFound();
+  if (!canViewGuestDetails(row, await loadGuestViewer(tx, access))) throw new HttpError(403, "This guest is private to you");
+  return row;
+}
+
 router.get("/events/:eventId/guest-workbook/template", asyncHandler(async (req: AuthRequest, res) => {
   const access = await loadEventAccess(req, req.params.eventId); requirePermission(access, EventPermission.VIEW);
   res.set({ "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": 'attachment; filename="midyaf-guests-template.xlsx"', "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
@@ -211,9 +234,19 @@ router.patch(
       requireNotSupport(access, "change guest privacy");
     }
 
-    const updated = await prisma
+    const { row: updated, viewer: freshViewer } = await prisma
       .$transaction(async (tx) => {
+        // Every detail edit serializes with privacy changes (Event first,
+        // then the guest row) and re-authorizes against the current row,
+        // grants and permissions, so a grant revoked or a guest masked while
+        // this request waited cannot be written through.
+        const fresh = await lockedPrivacyAccess(req, tx, access.event.id);
+        requireEventOpen(fresh);
         await lockRow(tx, "EventGuest", guest.id);
+        const current = await currentGuestFor(tx, fresh, guest.id);
+        if (body.privacyGroup !== undefined && body.privacyGroup !== current.privacyGroup) {
+          requireNotSupport(fresh, "change guest privacy");
+        }
         const row = await tx.eventGuest.update({
           where: { id: guest.id },
           data: body,
@@ -227,17 +260,18 @@ router.patch(
           metadata: {
             guestCode: guest.guestCode,
             fields: Object.keys(body).join(","),
-            privacyGroupBefore: guest.privacyGroup,
+            privacyGroupBefore: current.privacyGroup,
             privacyGroupAfter: row.privacyGroup
           }
         });
-        return row;
+        // The response uses the access and grants as they were under the locks.
+        return { row, viewer: await loadGuestViewer(tx, fresh) };
       }, WORKSPACE_TRANSACTION)
       .catch((error: unknown) => {
         throw toWorkspaceHttpError(error);
       });
 
-    const [dto] = await guestDtosFor(prisma, access.event.id, [updated], await loadGuestViewer(prisma, access));
+    const [dto] = await guestDtosFor(prisma, access.event.id, [updated], freshViewer);
     res.json({ guest: dto });
   })
 );
@@ -261,11 +295,16 @@ router.put(
     const viewer = await loadGuestViewer(prisma, access);
     if (!canViewGuestDetails(guest, viewer)) throw new HttpError(403, "This guest is private to you");
     const body = guestPrivacySchema.parse(req.body);
-    const viewerIds = await validatePrivacyViewers(prisma, access.event.id, access.actor.id, body.viewerUserIds);
+    await validatePrivacyViewers(prisma, access.event.id, access.actor.id, body.viewerUserIds);
 
     const result = await prisma
       .$transaction(async (tx) => {
+        // Re-authorized under the Event and guest locks with current grants.
+        const fresh = await lockedPrivacyAccess(req, tx, access.event.id);
+        requireNotSupport(fresh, "change guest privacy");
         await lockRow(tx, "EventGuest", guest.id);
+        const current = await currentGuestFor(tx, fresh, guest.id);
+        const viewerIds = await validatePrivacyViewers(tx, access.event.id, access.actor.id, body.viewerUserIds);
         const previous = await tx.guestPrivacyGrant.findMany({
           where: { eventGuestId: guest.id },
           select: { viewerUserId: true }
@@ -287,9 +326,9 @@ router.put(
           entityType: "EVENT_GUEST",
           entityId: guest.id,
           eventId: access.event.id,
-          before: { masked: guest.privacyMasked, viewerUserIds: previous.map((grant) => grant.viewerUserId).sort() },
+          before: { masked: current.privacyMasked, viewerUserIds: previous.map((grant) => grant.viewerUserId).sort() },
           after: { masked: body.masked, viewerUserIds: [...viewerIds].sort() },
-          metadata: { guestCode: guest.guestCode }
+          metadata: { guestCode: current.guestCode }
         });
         return { masked: body.masked, viewerUserIds: [...viewerIds].sort() };
       }, WORKSPACE_TRANSACTION)
@@ -322,11 +361,28 @@ router.put(
       throw new HttpError(403, "This group contains guests that are private to you");
     }
     const body = groupPrivacySchema.parse(req.body);
-    const viewerIds = await validatePrivacyViewers(prisma, access.event.id, access.actor.id, body.viewerUserIds);
+    await validatePrivacyViewers(prisma, access.event.id, access.actor.id, body.viewerUserIds);
 
     const result = await prisma
       .$transaction(async (tx) => {
-        await lockRow(tx, "Event", access.event.id);
+        // Group moves also lock the Event first, so the members read here are
+        // the members written below. Access, grants and allowed viewers are
+        // re-evaluated as they are now; a guest moved in that the actor
+        // cannot see refuses the whole change.
+        const fresh = await lockedPrivacyAccess(req, tx, access.event.id);
+        requireNotSupport(fresh, "change guest privacy");
+        const current = await tx.eventGuest.findMany({
+          where: { eventId: access.event.id, privacyGroup: groupKey },
+          select: GUEST_CODE_SELECT,
+          orderBy: { id: "asc" }
+        });
+        if (current.length === 0) throw new HttpError(404, "Group not found");
+        for (const guest of current) await lockRow(tx, "EventGuest", guest.id);
+        const freshViewer = await loadGuestViewer(tx, fresh);
+        if (!current.every((guest) => canViewGuestDetails(guest, freshViewer))) {
+          throw new HttpError(403, "This group contains guests that are private to you");
+        }
+        const viewerIds = await validatePrivacyViewers(tx, access.event.id, access.actor.id, body.viewerUserIds);
         const where: Prisma.GuestPrivacyGrantWhereInput = { eventId: access.event.id, groupKey };
         await tx.eventGuest.updateMany({ where: { eventId: access.event.id, privacyGroup: groupKey }, data: { privacyMasked: body.masked } });
         const previous = await tx.guestPrivacyGrant.findMany({ where, select: { viewerUserId: true } });

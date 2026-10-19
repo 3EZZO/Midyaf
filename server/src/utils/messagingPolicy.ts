@@ -118,16 +118,39 @@ export function previewText(body: string) {
 export const MESSAGE_NOTIFICATION_KIND = "MESSAGE";
 
 /**
+ * Standalone vendor scope-change notifications written before scope alerts
+ * became scoped ALERT threads. Their text names a tenant event.
+ */
+export const LEGACY_SCOPE_CHANGE_KIND = "EVENT_SCOPE_CHANGE";
+
+function notificationKind(notification: { metadata?: unknown }) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  return metadata as Record<string, unknown>;
+}
+
+/**
  * Whether a notification belongs to private messaging: the new marker, or a
- * conversation reference written before the marker existed. Such
- * notifications carry a subject and sender, so only their recipient may see
- * or update them; operational notifications keep their legacy visibility.
+ * conversation reference written before the marker existed, or a legacy
+ * tenant scope-change alert. Such notifications carry a subject, sender or
+ * tenant event, so only their recipient may see or update them; operational
+ * notifications keep their legacy visibility.
  */
 export function isPrivateMessageNotification(notification: { metadata?: unknown }) {
-  const metadata = notification.metadata;
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
-  const record = metadata as Record<string, unknown>;
-  return record.kind === MESSAGE_NOTIFICATION_KIND || record.conversationId !== undefined;
+  const record = notificationKind(notification);
+  if (!record) return false;
+  return (
+    record.kind === MESSAGE_NOTIFICATION_KIND ||
+    record.kind === LEGACY_SCOPE_CHANGE_KIND ||
+    record.conversationId !== undefined
+  );
+}
+
+/** A legacy scope-change notification shows generic text only, even to its recipient. */
+export function opaqueLegacyScopeNotification<T extends { body: string; metadata?: unknown }>(notification: T): T {
+  return notificationKind(notification)?.kind === LEGACY_SCOPE_CHANGE_KIND
+    ? { ...notification, body: "Open your event inbox to review the change." }
+    : notification;
 }
 
 /** A viewer sees a notification when it is theirs or not a private message. */

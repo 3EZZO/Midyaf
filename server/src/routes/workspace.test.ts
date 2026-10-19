@@ -161,6 +161,40 @@ describe("organization members", () => {
     expect(audit.afterData).toEqual({ role: "ADMIN", status: "ACTIVE" });
   });
 
+  it("rechecks the caller's role under the owner locks, so a manager demoted mid-request changes nothing", async () => {
+    // A concurrent change commits between the route's pre-checks and its transaction.
+    memory.current.beforeNext("organizationMembership", "findMany", () => {
+      memory.current.rows("organizationMembership").find((row) => row.id === "om_admin2")!.role = "MEMBER";
+    });
+    const { status } = await http.patch("/api/workspace/organizations/org_a/members/om_member", actors.admin2, { role: "ADMIN" });
+    expect(status).toBe(403);
+    expect(memory.current.rows("organizationMembership").find((row) => row.id === "om_member")).toMatchObject({ role: "MEMBER" });
+    expect(audits("organization.member.update")).toHaveLength(0);
+  });
+
+  it("cannot let two owners remove each other: the second change sees the first", async () => {
+    memory.current.rows("organizationMembership").push({ id: "om_owner2", organizationId: "org_a", userId: "u_pm", role: "OWNER", status: "ACTIVE", createdAt: new Date("2026-10-02T00:00:00Z") });
+    // u_pm demotes u_owner and commits while u_owner's own demotion of u_pm is in flight.
+    memory.current.beforeNext("organizationMembership", "findMany", () => {
+      memory.current.rows("organizationMembership").find((row) => row.id === "om_owner")!.role = "ADMIN";
+    });
+    const { status } = await http.patch("/api/workspace/organizations/org_a/members/om_owner2", actors.owner, { role: "ADMIN" });
+    expect(status).toBe(403);
+    // The in-flight demotion of the remaining owner did not apply.
+    expect(memory.current.rows("organizationMembership").find((row) => row.id === "om_owner2")).toMatchObject({ role: "OWNER", status: "ACTIVE" });
+    expect(audits("organization.member.update")).toHaveLength(0);
+  });
+
+  it("refuses an ownership grant by an owner demoted mid-request", async () => {
+    memory.current.beforeNext("organizationMembership", "findMany", () => {
+      memory.current.rows("organizationMembership").find((row) => row.id === "om_owner")!.role = "ADMIN";
+    });
+    expect(
+      (await http.post("/api/workspace/organizations/org_a/members", actors.owner, { userId: "u_lm", role: "OWNER" })).status
+    ).toBe(403);
+    expect(memory.current.rows("organizationMembership").some((row) => row.userId === "u_lm")).toBe(false);
+  });
+
   it("never resolves a membership of another organization", async () => {
     expect(
       (await http.patch("/api/workspace/organizations/org_a/members/om_owner_b", actors.owner, { role: "ADMIN" })).status

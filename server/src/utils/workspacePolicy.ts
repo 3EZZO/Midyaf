@@ -530,8 +530,9 @@ export function categoriesForScopeChange(fields: readonly EventScopeField[]) {
 }
 
 /**
- * Active VENDOR members of this event who receive messages and belong to an
- * ACTIVE vendor organization in a matching category. Bounded by `limit`.
+ * Active VENDOR members of this event who receive messages, hold VIEW (so
+ * they can open the scoped alert thread) and belong to an ACTIVE vendor
+ * organization in a matching category. Bounded by `limit`.
  */
 export async function matchingVendorRecipients(
   tx: Prisma.TransactionClient,
@@ -541,7 +542,7 @@ export async function matchingVendorRecipients(
 ) {
   if (categories.size === 0) return [];
   const members = await tx.eventMembership.findMany({
-    where: { eventId, role: EventMemberRole.VENDOR, status: MembershipStatus.ACTIVE, canReceive: true },
+    where: { eventId, role: EventMemberRole.VENDOR, status: MembershipStatus.ACTIVE, canReceive: true, permissions: { has: EventPermission.VIEW } },
     select: {
       userId: true,
       user: {

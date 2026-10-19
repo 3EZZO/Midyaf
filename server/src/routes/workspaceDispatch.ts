@@ -229,10 +229,11 @@ router.get(
     const supervisors = DISPATCH_FLOW_SPECS[flow].emergency
       ? await availableSupervisors(access.event.id, [access.actor.id])
       : [];
+    const labels = (await loadMessageRedactions(prisma, access)).users;
     res.json({
       flow,
-      recipients: recipients.map((candidate) => ({ id: candidate.userId, name: candidate.name, eventRole: candidate.role })),
-      supervisors: supervisors.map((member) => ({ id: member.userId, name: member.user.name }))
+      recipients: recipients.map((candidate) => ({ id: candidate.userId, name: labels.get(candidate.userId) ?? candidate.name, eventRole: candidate.role })),
+      supervisors: supervisors.map((member) => ({ id: member.userId, name: labels.get(member.userId) ?? member.user.name }))
     });
   })
 );
@@ -247,6 +248,22 @@ router.post(
     const dispatchHash=createHash('sha256').update(JSON.stringify({...body,recipientUserIds:[...body.recipientUserIds].sort()})).digest('hex');
     const spec = DISPATCH_FLOW_SPECS[body.flow];
     const sender = resolveSender(access, body.flow);
+
+    // A committed dispatch replays before eligibility is re-evaluated: a retry
+    // after the captain or supervisor became unavailable must not look failed.
+    if (body.clientRequestId) {
+      const existing = await prisma.dispatchRecord.findUnique({
+        where: { senderUserId_clientRequestId: { senderUserId: access.actor.id, clientRequestId: body.clientRequestId } },
+        select: DISPATCH_SELECT
+      });
+      if (existing) {
+        if (existing.eventId !== access.event.id || existing.flow !== body.flow || existing.conversation.requestHash !== dispatchHash) {
+          throw new HttpError(409, "This request id was already used for another dispatch");
+        }
+        res.status(200).json({ dispatch: toDispatchDto(existing, true) });
+        return;
+      }
+    }
 
     const eligible = await eligibleRecipients(access, body.flow, body.recipientUserIds);
     if (eligible.length !== body.recipientUserIds.length) throw recipientsRefused();
@@ -282,13 +299,7 @@ router.post(
         requirePlanApproved(fresh);
         requireEventOpen(fresh);
         resolveSender(fresh, body.flow);
-        assertMessagingAllowed(fresh, body.recipientUserIds, Boolean(body.task));
-        const stillEligible = await eligibleRecipients(fresh, body.flow, body.recipientUserIds, tx);
-        if (stillEligible.length !== body.recipientUserIds.length) throw recipientsRefused();
-        if (captainDriverId) {
-          const captain = await tx.driver.findUnique({ where: { id: captainDriverId }, select: { active: true } });
-          if (!captain?.active) throw recipientsRefused();
-        }
+        // A concurrent identical request that committed first is replayed.
         if (body.clientRequestId) {
           const existing = await tx.dispatchRecord.findUnique({
             where: {
@@ -302,6 +313,13 @@ router.post(
             }
             return { replayed: true, record: existing };
           }
+        }
+        assertMessagingAllowed(fresh, body.recipientUserIds, Boolean(body.task));
+        const stillEligible = await eligibleRecipients(fresh, body.flow, body.recipientUserIds, tx);
+        if (stillEligible.length !== body.recipientUserIds.length) throw recipientsRefused();
+        if (captainDriverId) {
+          const captain = await tx.driver.findUnique({ where: { id: captainDriverId }, select: { active: true } });
+          if (!captain?.active) throw recipientsRefused();
         }
 
         if (supervisor) {
@@ -519,19 +537,30 @@ router.get(
     });
     const visible = [];
     const redactions=new Map<string,MessageRedactions>();
+    // Current access is evaluated once per event in this page.
+    const readable = new Map<string, boolean>();
     for (const row of rows) {
       if (!row.eventId) { visible.push(row); continue; }
-      try {
-        const access = await loadEventAccess(req, row.eventId);
-        requirePlanApproved(access);
-        if (!access.guestId) requirePermission(access, EventPermission.VIEW);
-        if(!redactions.has(row.eventId))redactions.set(row.eventId,await loadMessageRedactions(prisma,access));
-        visible.push(row);
-      } catch (error) {
-        if (!(error instanceof HttpError) || ![403, 404, 423].includes(error.status)) throw error;
+      if (!readable.has(row.eventId)) {
+        try {
+          const access = await loadEventAccess(req, row.eventId);
+          requirePlanApproved(access);
+          if (!access.guestId) requirePermission(access, EventPermission.VIEW);
+          redactions.set(row.eventId, await loadMessageRedactions(prisma, access));
+          readable.set(row.eventId, true);
+        } catch (error) {
+          if (!(error instanceof HttpError) || ![403, 404, 423].includes(error.status)) throw error;
+          readable.set(row.eventId, false);
+        }
       }
+      if (readable.get(row.eventId)) visible.push(row);
     }
     const page = visible.slice(0, query.limit);
+    // Hidden conversations must not end paging early: continue after the last
+    // returned item, or after everything scanned when the page is not full.
+    const nextCursor = rows.length > query.limit
+      ? (page.length === query.limit ? page[page.length - 1].id : rows[rows.length - 1].id)
+      : null;
     const unread = await unreadCounts(user.id,new Map(page.map(row=>[row.id,row.participants.find(participant=>participant.userId===user.id)?.lastReadAt??null])));
     const items: InboxItemDto[] = page.map((row) => redactMessagePayload({
       conversationId: row.id,
@@ -545,10 +574,7 @@ router.get(
       participants: row.participants.map((participant) => participant.user),
       preview: row.messages[0] ? previewText(row.messages[0].body) : null
     },redactions.get(row.eventId??'')??{terms:[],users:new Map()}));
-    res.json({
-      items,
-      nextCursor: rows.length > query.limit ? page[page.length - 1]?.id ?? null : null
-    });
+    res.json({ items, nextCursor });
   })
 );
 
@@ -556,7 +582,9 @@ const eventMessageSchema=z.object({recipientUserIds:z.array(z.string().regex(/^[
 router.get("/events/:eventId/message-contacts",asyncHandler(async(req:AuthRequest,res)=>{
   const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.VIEW);
   const members=await prisma.eventMembership.findMany({where:{eventId:access.event.id,status:MembershipStatus.ACTIVE,canReceive:true,permissions:{has:EventPermission.VIEW},userId:{not:access.actor.id}},select:{role:true,user:{select:{id:true,name:true}}},take:500});
-  res.json({contacts:members.map(member=>({...member.user,eventRole:member.role}))});
+  // A linked private guest's account is labelled by guest code unless currently granted.
+  const labels=(await loadMessageRedactions(prisma,access)).users;
+  res.json({contacts:members.map(member=>({id:member.user.id,name:labels.get(member.user.id)??member.user.name,eventRole:member.role}))});
 }));
 router.post("/events/:eventId/conversations",asyncHandler(async(req:AuthRequest,res)=>{
  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.VIEW);requireEventOpen(access);

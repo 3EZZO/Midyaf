@@ -138,13 +138,13 @@ async function ownDriverId(access: EventAccess) {
 }
 
 /** A driver usable in this event: active profile and ACTIVE CAPTAIN member. */
-async function assertEventCaptain(eventId: string, driverId: string) {
-  const driver = await prisma.driver.findUnique({
+async function assertEventCaptain(eventId: string, driverId: string, db: Prisma.TransactionClient = prisma) {
+  const driver = await db.driver.findUnique({
     where: { id: driverId },
     select: { id: true, userId: true, active: true }
   });
   const member = driver
-    ? await prisma.eventMembership.findUnique({
+    ? await db.eventMembership.findUnique({
         where: { eventId_userId: { eventId, userId: driver.userId } },
         select: { role: true, status: true }
       })
@@ -230,6 +230,17 @@ async function toTripDtos(eventId: string, trips: TripRow[], viewer: GuestViewer
     },
     scheduledAt: new Date(trip.scheduledAt).toISOString()
   }));
+}
+
+/** Whether any private trip of this vehicle hides its position from the viewer. */
+async function vehicleWithheld(eventId: string, vehicleId: string, viewer: GuestViewer, db: Prisma.TransactionClient = prisma) {
+  const trips = await db.trip.findMany({
+    where: { eventId, vehicleId, passengers: { some: { eventGuest: { privacyMasked: true } } } },
+    select: TRIP_SELECT,
+    take: 5001
+  });
+  if (trips.length > 5000) throw new HttpError(503, "Private-trip boundary capacity exceeded");
+  return trips.some((trip) => protectedTrip(trip, viewer));
 }
 
 function toVehicleDto(vehicle: VehicleRow, withheld: boolean): VehicleDto {
@@ -446,6 +457,30 @@ function vehicleNotFound() {
   return new HttpError(404, "Vehicle not found");
 }
 
+/**
+ * Locks the Event first (the order of the dispatch, ETA and team paths) and
+ * re-evaluates the actor's current access, plan approval and open state
+ * inside the transaction, so a membership revoked or changed while the
+ * request was in flight cannot still write fleet data.
+ */
+async function lockedTelemetryAccess(req: AuthRequest, tx: Prisma.TransactionClient, eventId: string) {
+  await lockRow(tx, "Event", eventId);
+  const current = await loadEventAccess(req, eventId, tx);
+  requirePlanApproved(current);
+  requirePermission(current, EventPermission.VIEW);
+  requireEventOpen(current);
+  return current;
+}
+
+/**
+ * Mirrors a vehicle's reported zone onto its open trips. Completed and
+ * cancelled trips keep their historical value. This is a reported
+ * observation, not a computed geofence.
+ */
+async function syncOpenTripZone(tx: Prisma.TransactionClient, eventId: string, vehicleId: string, inZone: boolean) {
+  await tx.trip.updateMany({ where: { eventId, vehicleId, status: { in: OPEN_TRIPS } }, data: { inZone } });
+}
+
 router.patch(
   "/events/:eventId/vehicles/:vehicleId",
   asyncHandler(async (req: AuthRequest, res) => {
@@ -454,43 +489,72 @@ router.patch(
     requireEventOpen(access);
     const vehicleId = parseRouteId(req.params.vehicleId, vehicleNotFound);
     const body = vehicleUpdateSchema.parse(req.body);
-    if (body.driverId) await assertEventCaptain(access.event.id, body.driverId);
 
     const vehicle = await prisma
       .$transaction(async (tx) => {
+        const current = await lockedTelemetryAccess(req, tx, access.event.id);
+        requireFleetManager(current);
+        if (body.driverId) await assertEventCaptain(current.event.id, body.driverId, tx);
         await lockRow(tx, "Vehicle", vehicleId);
-        const current = await tx.vehicle.findFirst({
-          where: { id: vehicleId, eventId: access.event.id },
-          select: { id: true, status: true, driverId: true, label: true, capacity: true }
+        const before = await tx.vehicle.findFirst({
+          where: { id: vehicleId, eventId: current.event.id },
+          select: { id: true, status: true, driverId: true, label: true, capacity: true, inZone: true }
         });
-        if (!current) throw vehicleNotFound();
+        if (!before) throw vehicleNotFound();
+        // A manual OUT_OF_ZONE report marks the vehicle out of zone; moving
+        // it to another status reports its return to the zone.
+        const inZone =
+          body.status === VehicleStatus.OUT_OF_ZONE
+            ? false
+            : body.status !== undefined && before.status === VehicleStatus.OUT_OF_ZONE
+              ? true
+              : undefined;
         const updated = await tx.vehicle.update({
-          where: { id: current.id },
+          where: { id: before.id },
           data: {
             ...(body.label !== undefined ? { label: body.label } : {}),
             ...(body.capacity !== undefined ? { capacity: body.capacity } : {}),
             ...(body.status !== undefined ? { status: body.status } : {}),
-            ...(body.driverId !== undefined ? { driverId: body.driverId } : {})
+            ...(body.driverId !== undefined ? { driverId: body.driverId } : {}),
+            ...(inZone !== undefined ? { inZone } : {})
           },
           select: VEHICLE_SELECT
         });
+        if (inZone !== undefined) await syncOpenTripZone(tx, current.event.id, before.id, inZone);
         await writeWorkspaceAudit(tx, req, {
           action: "workspace.vehicle.update",
           entityType: "VEHICLE",
-          entityId: current.id,
-          eventId: access.event.id,
-          before: current,
-          after: body
+          entityId: before.id,
+          eventId: current.event.id,
+          before,
+          after: { ...body, ...(inZone !== undefined ? { inZone } : {}) }
         });
-        return updated;
+        // The stored position of a vehicle carrying a private passenger stays
+        // withheld here exactly as in the telemetry snapshot, for the
+        // viewer's grants as they are now.
+        const withheld = await vehicleWithheld(current.event.id, updated.id, await loadGuestViewer(tx, current), tx);
+        return toVehicleDto(updated, withheld);
       }, WORKSPACE_TRANSACTION)
       .catch((error: unknown) => {
         throw toWorkspaceHttpError(error);
       });
 
-    res.json({ vehicle: toVehicleDto(vehicle, false) });
+    res.json({ vehicle });
   })
 );
+
+/** Fleet managers, or the vehicle's currently assigned captain with an active driver profile. */
+async function assertPositionReporter(access: EventAccess, vehicleDriverId: string | null, db: Prisma.TransactionClient) {
+  const manager = !access.support && access.permissions.has(EventPermission.EDIT) &&
+    (access.isOrgAdmin || hasEventRole(access, FLEET_ROLES));
+  if (manager) return;
+  const driver = hasEventRole(access, [EventMemberRole.CAPTAIN])
+    ? await db.driver.findUnique({ where: { userId: access.actor.id }, select: { id: true, active: true } })
+    : null;
+  if (!driver?.active || vehicleDriverId !== driver.id) {
+    throw new HttpError(403, "Only the assigned captain or fleet roles report this position");
+  }
+}
 
 router.post(
   "/events/:eventId/vehicles/:vehicleId/position",
@@ -500,32 +564,38 @@ router.post(
     const vehicleId = parseRouteId(req.params.vehicleId, vehicleNotFound);
     const body = vehiclePositionSchema.parse(req.body);
 
-    const vehicle = await prisma.vehicle.findFirst({
-      where: { id: vehicleId, eventId: access.event.id },
-      select: { id: true, status: true, driverId: true }
-    });
-    if (!vehicle) throw vehicleNotFound();
-    const manager = !access.support && access.permissions.has(EventPermission.EDIT) &&
-      (access.isOrgAdmin || hasEventRole(access, FLEET_ROLES));
-    if (!manager) {
-      const driverId = hasEventRole(access, [EventMemberRole.CAPTAIN]) ? await ownDriverId(access) : null;
-      if (!driverId || vehicle.driverId !== driverId) {
-        throw new HttpError(403, "Only the assigned captain or fleet roles report this position");
-      }
-    }
+    const vehicle = await prisma
+      .$transaction(async (tx) => {
+        const current = await lockedTelemetryAccess(req, tx, access.event.id);
+        await lockRow(tx, "Vehicle", vehicleId);
+        const before = await tx.vehicle.findFirst({
+          where: { id: vehicleId, eventId: current.event.id },
+          select: { id: true, status: true, driverId: true }
+        });
+        if (!before) throw vehicleNotFound();
+        // Access and the actual assignment are checked under the locks.
+        await assertPositionReporter(current, before.driverId, tx);
 
-    // Leaving the zone flags the vehicle; returning makes it available again.
-    const status = !body.inZone
-      ? VehicleStatus.OUT_OF_ZONE
-      : vehicle.status === VehicleStatus.OUT_OF_ZONE
-        ? VehicleStatus.AVAILABLE
-        : vehicle.status;
-    const updated = await prisma.vehicle.update({
-      where: { id: vehicle.id },
-      data: { lastLat: body.lat, lastLng: body.lng, lastSeenAt: new Date(), inZone: body.inZone, status },
-      select: VEHICLE_SELECT
-    });
-    res.json({ vehicle: toVehicleDto(updated, false) });
+        // Leaving the zone flags the vehicle; returning makes it available again.
+        const status = !body.inZone
+          ? VehicleStatus.OUT_OF_ZONE
+          : before.status === VehicleStatus.OUT_OF_ZONE
+            ? VehicleStatus.AVAILABLE
+            : before.status;
+        const updated = await tx.vehicle.update({
+          where: { id: before.id },
+          data: { lastLat: body.lat, lastLng: body.lng, lastSeenAt: new Date(), inZone: body.inZone, status },
+          select: VEHICLE_SELECT
+        });
+        await syncOpenTripZone(tx, current.event.id, before.id, body.inZone);
+        const withheld = await vehicleWithheld(current.event.id, updated.id, await loadGuestViewer(tx, current), tx);
+        return toVehicleDto(updated, withheld);
+      }, WORKSPACE_TRANSACTION)
+      .catch((error: unknown) => {
+        throw toWorkspaceHttpError(error);
+      });
+
+    res.json({ vehicle });
   })
 );
 
@@ -616,6 +686,14 @@ router.patch(
 
     const trip = await prisma
       .$transaction(async (tx) => {
+        // Same Event -> Trip order as the ETA refresh; the writer is re-checked as it is now.
+        const fresh = await lockedTelemetryAccess(req, tx, eventId);
+        const freshManager = !fresh.support && fresh.permissions.has(EventPermission.EDIT) &&
+          (fresh.isOrgAdmin || hasEventRole(fresh, FLEET_ROLES));
+        if (manager && !freshManager) throw new HttpError(403, "Only fleet roles and the trip's captain update trips");
+        if (!manager && !hasEventRole(fresh, [EventMemberRole.CAPTAIN])) {
+          throw new HttpError(403, "Only fleet roles and the trip's captain update trips");
+        }
         await lockRow(tx, "Trip", tripId);
         const current = await tx.trip.findFirst({
           where: { id: tripId, eventId },

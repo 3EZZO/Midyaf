@@ -15,6 +15,7 @@ import { HttpError, asyncHandler } from "../utils/http.js";
 import {
   WORKSPACE_TRANSACTION,
   isOrgAdminRole,
+  lockRow,
   organizationRoleOf,
   parseRouteId,
   toWorkspaceHttpError,
@@ -95,6 +96,25 @@ function requireOrganizationManager(access: OrganizationAccess) {
   if (!access.support && !isOrgAdminRole(access.role)) {
     throw new HttpError(403, "Only organization owners and admins can manage members");
   }
+}
+
+/**
+ * Serializes membership changes of one organization: every change first
+ * locks the active OWNER rows (there is always at least one), then re-reads
+ * the caller's role. Two owners demoting each other, or a manager demoted
+ * while its request is in flight, can no longer both commit.
+ */
+async function lockMembershipManagement(tx: Prisma.TransactionClient, access: OrganizationAccess, userId: string) {
+  const owners = await tx.organizationMembership.findMany({
+    where: { organizationId: access.organization.id, role: OrganizationRole.OWNER, status: MembershipStatus.ACTIVE },
+    select: { id: true },
+    orderBy: { id: "asc" }
+  });
+  for (const owner of owners) await lockRow(tx, "OrganizationMembership", owner.id);
+  if (access.support) return access;
+  const fresh: OrganizationAccess = { ...access, role: await organizationRoleOf(userId, access.organization.id, tx) };
+  requireOrganizationManager(fresh);
+  return fresh;
 }
 
 router.get(
@@ -217,6 +237,10 @@ router.post(
 
     const member = await prisma
       .$transaction(async (tx) => {
+        const current = await lockMembershipManagement(tx, access, user.id);
+        if (body.role === OrganizationRole.OWNER && current.role !== OrganizationRole.OWNER && !current.support) {
+          throw new HttpError(403, "Only an owner can grant ownership");
+        }
         const created = await tx.organizationMembership.create({
           data: {
             organizationId: access.organization.id,
@@ -255,6 +279,8 @@ router.patch(
 
     const member = await prisma
       .$transaction(async (tx) => {
+        const manager = await lockMembershipManagement(tx, access, user.id);
+        await lockRow(tx, "OrganizationMembership", membershipId);
         const current = await tx.organizationMembership.findFirst({
           where: { id: membershipId, organizationId: access.organization.id },
           select: { id: true, userId: true, role: true, status: true }
@@ -262,7 +288,7 @@ router.patch(
         if (!current) throw new HttpError(404, "Membership not found");
         if (current.userId === user.id) throw new HttpError(403, "You cannot change your own membership");
         const ownerInvolved = current.role === OrganizationRole.OWNER || body.role === OrganizationRole.OWNER;
-        if (ownerInvolved && access.role !== OrganizationRole.OWNER && !access.support) {
+        if (ownerInvolved && manager.role !== OrganizationRole.OWNER && !manager.support) {
           throw new HttpError(403, "Only an owner can change ownership");
         }
 
