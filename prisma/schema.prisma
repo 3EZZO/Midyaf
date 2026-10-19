@@ -188,6 +188,160 @@ enum FileAssetType {
   OTHER
 }
 
+// FULL-OVERHAUL-M2: organizations, event workspaces, onboarding, roster,
+// dispatch and telemetry. The stored login Role and legacy EventStatus are
+// unchanged; event roles below are per-event assignments, not login roles.
+
+enum OrganizationKind {
+  ORGANIZER_COMPANY
+  VENDOR
+  CLIENT
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum EventMemberRole {
+  COORDINATOR
+  PROJECT_MANAGER
+  LOGISTICS_MANAGER
+  OPERATIONS_MANAGER
+  PRODUCTION_MANAGER
+  FLEET_SUPERVISOR
+  CAPTAIN
+  CLIENT_VIEWER
+  VENDOR
+}
+
+enum EventSubteam {
+  HOTELS
+  AIRPORT
+  VENUE
+  TRANSPORT
+}
+
+enum EventPermission {
+  VIEW
+  EDIT
+  INVITE
+  SCOPE
+}
+
+enum OperationalStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+}
+
+enum PlanningMode {
+  MANUAL
+  AI
+}
+
+enum EventPlanStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+}
+
+enum EventPlanSource {
+  DETERMINISTIC_ADVISORY
+  AI_PROVIDER
+  MANUAL
+}
+
+enum OnboardingKind {
+  VENDOR
+  CLIENT
+}
+
+enum OnboardingStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CONTRACT_SIGNED
+  ACTIVE
+}
+
+enum OnboardingDocumentKind {
+  COMMERCIAL_REGISTRATION
+  TAX_CERTIFICATE
+  IDENTITY
+  SIGNED_CONTRACT
+  OTHER
+}
+
+enum MessageClass {
+  INDIVIDUAL
+  GROUP
+  ALERT
+  INQUIRY
+  TASK
+}
+
+enum TaskSource {
+  CLIENT_TASK
+  LOGISTICS_TEAM_TASK
+}
+
+enum DispatchFlow {
+  GUEST_TO_LM
+  GUEST_TO_SUPERVISOR
+  GUEST_TO_CAPTAIN
+  ORGANIZER_TO_LM
+  LM_TO_SUPERVISOR
+  LM_TO_CAPTAIN_EMERGENCY
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ASSIGNED_TO_TASK
+  WAITING
+  OUT_OF_ZONE
+}
+
+enum TripStatus {
+  SCHEDULED
+  EN_ROUTE_TO_PICKUP
+  ON_BOARD
+  COMPLETED
+  CANCELLED
+}
+
+enum EtaSource {
+  PROVIDER
+  APPROXIMATE
+  UNAVAILABLE
+}
+
+enum FlightScope {
+  EVENT
+  GENERAL
+}
+
+enum FlightStatus {
+  SCHEDULED
+  DELAYED
+  LANDED
+  DEPARTED
+  CANCELLED
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  ON_SHIFT
+  OFF_SHIFT
+}
+
 model User {
   id              String         @id @default(cuid())
   name            String
@@ -217,6 +371,28 @@ model User {
   conversationsCreated Conversation[] @relation("ConversationCreator")
   conversationMemberships ConversationParticipant[]
   conversationMessages ConversationMessage[]
+
+  // FULL-OVERHAUL-M2 back-relations.
+  organizationsCreated      Organization[]           @relation("OrganizationCreator")
+  organizationMemberships   OrganizationMembership[] @relation("OrganizationMember")
+  organizationGrants        OrganizationMembership[] @relation("OrganizationMembershipGrantor")
+  eventContractsSigned      Event[]                  @relation("EventContractSigner")
+  eventMemberships          EventMembership[]        @relation("EventMember")
+  eventMembershipGrants     EventMembership[]        @relation("EventMembershipGrantor")
+  eventPlansGenerated       EventPlan[]              @relation("EventPlanGenerator")
+  eventPlansApproved        EventPlan[]              @relation("EventPlanApprover")
+  eventScopeChanges         EventScopeChange[]       @relation("EventScopeChangeActor")
+  onboardingApplications    OnboardingApplication[]  @relation("OnboardingApplicant")
+  onboardingReviews         OnboardingApplication[]  @relation("OnboardingReviewer")
+  onboardingContractsSigned OnboardingApplication[]  @relation("OnboardingContractSigner")
+  onboardingTransitions     OnboardingTransition[]   @relation("OnboardingTransitionActor")
+  onboardingDocuments       OnboardingDocument[]     @relation("OnboardingDocumentUploader")
+  guestPrivacyViews         GuestPrivacyGrant[]      @relation("GuestPrivacyViewer")
+  guestPrivacyGrantsGiven   GuestPrivacyGrant[]      @relation("GuestPrivacyGrantor")
+  createdTasks              Task[]                   @relation("TaskCreator")
+  dispatchesSent            DispatchRecord[]         @relation("DispatchSender")
+  dispatchesReceived        DispatchRecord[]         @relation("DispatchRecipient")
+  dispatchesSupervised      DispatchRecord[]         @relation("DispatchSupervisor")
 }
 
 model CityConfig {
@@ -254,14 +430,50 @@ model Event {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
+  // FULL-OVERHAUL-M2. A null organizationId marks a legacy event, which keeps
+  // its existing (legacy route) scope and is not served by /workspace.
+  organizationId     String?
+  operationalStatus  OperationalStatus @default(PLANNING)
+  planningMode       PlanningMode      @default(MANUAL)
+  locationLabel      String?           @db.VarChar(200)
+  hotelZone          String?           @db.VarChar(120)
+  vipGuestCount      Int               @default(0)
+  regularGuestCount  Int               @default(0)
+  carCount           Int               @default(0)
+  startAt            DateTime?
+  endAt              DateTime?
+  arrivalStartAt     DateTime?
+  departureEndAt     DateTime?
+  approvedPlanId     String?           @unique
+  planApprovedAt     DateTime?
+  contractSignedAt   DateTime?
+  contractSignedById String?
+
   city        CityConfig? @relation(fields: [cityId], references: [id])
   organizer   User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
   guests      Guest[]
   tasks       Task[]
   bookings    Booking[]
 
+  organization     Organization?      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  approvedPlan     EventPlan?         @relation("EventApprovedPlan", fields: [approvedPlanId], references: [id], onDelete: SetNull)
+  contractSignedBy User?              @relation("EventContractSigner", fields: [contractSignedById], references: [id], onDelete: SetNull)
+  memberships      EventMembership[]
+  plans            EventPlan[]        @relation("EventPlans")
+  scopeChanges     EventScopeChange[]
+  rosterGuests     EventGuest[]
+  privacyGrants    GuestPrivacyGrant[]
+  conversations    Conversation[]
+  dispatches       DispatchRecord[]
+  vehicles         Vehicle[]
+  trips            Trip[]
+  flights          Flight[]
+  captainShifts    CaptainShift[]
+  densitySamples   DensitySample[]
+
   @@index([organizerId])
   @@index([status])
+  @@index([organizationId, operationalStatus])
 }
 
 model Guest {
@@ -279,6 +491,8 @@ model Guest {
   event       Event      @relation(fields: [eventId], references: [id])
   tasks       Task[]
   hospitalityRider HospitalityRider?
+  // FULL-OVERHAUL-M2: optional link from a roster record to this login guest.
+  rosterRecord EventGuest?
 
   @@unique([userId, eventId])
   @@index([eventId])
@@ -323,6 +537,9 @@ model Driver {
 
   user            User         @relation(fields: [userId], references: [id])
   tasks           Task[]
+  vehicles        Vehicle[]
+  trips           Trip[]
+  captainShifts   CaptainShift[]
 
   @@index([status, zone])
 }
@@ -347,6 +564,11 @@ model Task {
   // temporary delegate acting on their behalf.
   responsibleUserId String?
   delegateUserId  String?
+  // FULL-OVERHAUL-M2: explicit client/logistics task classification, the
+  // creating user and the dispatch thread. Null for legacy tasks.
+  source          TaskSource?
+  createdById     String?
+  conversationId  String?
   completedAt     DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
@@ -357,12 +579,18 @@ model Task {
   responsibleUser User?      @relation("TaskResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
   delegateUser    User?      @relation("TaskDelegate", fields: [delegateUserId], references: [id], onDelete: SetNull)
   handovers       TaskHandover[]
+  createdBy       User?          @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  conversation    Conversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  trip            Trip?
+  dispatch        DispatchRecord?
 
   @@index([eventId, status])
   @@index([driverId])
   @@index([guestId])
   @@index([responsibleUserId])
   @@index([delegateUserId])
+  @@index([eventId, source])
+  @@index([conversationId])
 }
 
 /// OPS-COLLAB-001: append-only history of task delegations and transfers.
@@ -739,11 +967,426 @@ model Conversation {
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
 
+  // FULL-OVERHAUL-M2 classification. Defaults keep plain messages INDIVIDUAL;
+  // visibility stays participant-only whatever these say.
+  eventId       String?
+  messageClass  MessageClass  @default(INDIVIDUAL)
+  dispatchFlow  DispatchFlow?
+
   createdBy     User     @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Cascade)
   participants  ConversationParticipant[]
   messages      ConversationMessage[]
+  event         Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  tasks         Task[]
+  dispatches    DispatchRecord[] @relation("DispatchConversation")
+  alertDispatches DispatchRecord[] @relation("DispatchAlertConversation")
 
   @@index([lastMessageAt])
+  @@index([eventId, messageClass])
+}
+
+// ---------------------------------------------------------------------------
+// FULL-OVERHAUL-M2 models
+// ---------------------------------------------------------------------------
+
+/// Tenant boundary for organizer companies, vendors and clients.
+model Organization {
+  id             String            @id @default(cuid())
+  name           String            @db.VarChar(160)
+  slug           String            @unique @db.VarChar(80)
+  kind           OrganizationKind
+  vendorCategory SupplierCategory?
+  createdById    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  createdBy              User?                    @relation("OrganizationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  memberships            OrganizationMembership[]
+  events                 Event[]
+  onboardingApplication  OnboardingApplication?
+
+  @@index([kind])
+}
+
+model OrganizationMembership {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole @default(MEMBER)
+  status         MembershipStatus @default(ACTIVE)
+  grantedById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("OrganizationMember", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy    User?        @relation("OrganizationMembershipGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, userId])
+  @@index([userId, status])
+}
+
+/// Explicit per-event assignment: event role, subteam, granular permissions,
+/// client visibility and receiver/availability controls.
+model EventMembership {
+  id            String            @id @default(cuid())
+  eventId       String
+  userId        String
+  role          EventMemberRole
+  subteam       EventSubteam?
+  workScope     String? @db.VarChar(2000)
+  permissions   EventPermission[] @default([VIEW])
+  clientVisible Boolean           @default(false)
+  canReceive    Boolean           @default(true)
+  available     Boolean           @default(true)
+  status        MembershipStatus  @default(ACTIVE)
+  grantedById   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User  @relation("EventMember", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("EventMembershipGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, userId])
+  @@index([userId, status])
+  @@index([eventId, role, status])
+}
+
+/// Versioned event plan. Advisory output is never operational until an
+/// explicit approval.
+model EventPlan {
+  id            String          @id @default(cuid())
+  eventId       String
+  version       Int
+  status        EventPlanStatus @default(DRAFT)
+  source        EventPlanSource
+  advisory      Boolean         @default(true)
+  summary       String          @db.VarChar(2000)
+  content       Json
+  generatedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  event       Event  @relation("EventPlans", fields: [eventId], references: [id], onDelete: Cascade)
+  approvedFor Event? @relation("EventApprovedPlan")
+  generatedBy User   @relation("EventPlanGenerator", fields: [generatedById], references: [id], onDelete: Restrict)
+  approvedBy  User?  @relation("EventPlanApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, version])
+  @@index([eventId, status])
+}
+
+/// Pre-contract scope edit with the number of vendor notifications enqueued.
+model EventScopeChange {
+  id                  String   @id @default(cuid())
+  eventId             String
+  actorUserId         String
+  changedFields       String[]
+  beforeData          Json
+  afterData           Json
+  notifiedVendorCount Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actor User  @relation("EventScopeChangeActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+}
+
+model OnboardingApplication {
+  id                 String            @id @default(cuid())
+  kind               OnboardingKind
+  status             OnboardingStatus  @default(SUBMITTED)
+  applicantUserId    String
+  organizationId     String?           @unique
+  companyName        String            @db.VarChar(160)
+  registrationNumber String?           @db.VarChar(60)
+  vendorCategory     SupplierCategory?
+  contactName        String            @db.VarChar(120)
+  contactEmail       String            @db.VarChar(254)
+  contactPhone       String            @db.VarChar(32)
+  city               String?           @db.VarChar(80)
+  notes              String?           @db.VarChar(2000)
+  reviewerUserId     String?
+  decisionNote       String?           @db.VarChar(1000)
+  submittedAt        DateTime          @default(now())
+  reviewStartedAt    DateTime?
+  decidedAt          DateTime?
+  contractSignedAt   DateTime?
+  contractSignedById String?
+  activatedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  applicant        User                   @relation("OnboardingApplicant", fields: [applicantUserId], references: [id], onDelete: Restrict)
+  reviewer         User?                  @relation("OnboardingReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  contractSignedBy User?                  @relation("OnboardingContractSigner", fields: [contractSignedById], references: [id], onDelete: SetNull)
+  organization     Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  documents        OnboardingDocument[]
+  transitions      OnboardingTransition[]
+
+  @@index([applicantUserId, kind])
+  @@index([status, submittedAt])
+}
+
+/// Append-only onboarding state history.
+model OnboardingTransition {
+  id            String            @id @default(cuid())
+  applicationId String
+  fromStatus    OnboardingStatus?
+  toStatus      OnboardingStatus
+  actorUserId   String
+  note          String?           @db.VarChar(1000)
+  createdAt     DateTime          @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User                  @relation("OnboardingTransitionActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+}
+
+/// Private, bounded document bytes held in the database (no public URL and
+/// no ephemeral disk). Served only to the applicant and reviewers.
+model OnboardingDocument {
+  id            String                 @id @default(cuid())
+  applicationId String
+  kind          OnboardingDocumentKind
+  fileName      String                 @db.VarChar(160)
+  mimeType      String                 @db.VarChar(100)
+  sizeBytes     Int
+  sha256        String                 @db.VarChar(64)
+  content       Bytes
+  uploadedById  String
+  createdAt     DateTime               @default(now())
+
+  application OnboardingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  uploadedBy  User                  @relation("OnboardingDocumentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+}
+
+/// Standardized event roster record (guest code G01/GV01). Optionally linked
+/// to a login Guest; imported guests need no account.
+model EventGuest {
+  locationConsent Boolean @default(false)
+  lastLat Float?
+  lastLng Float?
+  lastSeenAt DateTime?
+  id            String    @id @default(cuid())
+  eventId       String
+  guestCode     String    @db.VarChar(16)
+  isVip         Boolean   @default(false)
+  fullName      String    @db.VarChar(160)
+  contactPhone  String?   @db.VarChar(32)
+  contactEmail  String?   @db.VarChar(254)
+  roomType      String?   @db.VarChar(60)
+  hotelName     String?   @db.VarChar(160)
+  arrivalAt     DateTime?
+  departureAt   DateTime?
+  ticketNumber  String?   @db.VarChar(40)
+  originCity    String?   @db.VarChar(80)
+  arrivalCity   String?   @db.VarChar(80)
+  departureCity String?   @db.VarChar(80)
+  privacyMasked Boolean   @default(false)
+  privacyGroup  String?   @db.VarChar(40)
+  guestId       String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest         Guest?              @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  privacyGrants GuestPrivacyGrant[]
+  tripSeats     TripPassenger[]
+
+  @@unique([eventId, guestCode])
+  @@index([eventId, privacyGroup])
+}
+
+/// Allowed viewer of one masked guest (eventGuestId) or of a privacy group
+/// (groupKey); exactly one of the two is set.
+model GuestPrivacyGrant {
+  id           String   @id @default(cuid())
+  eventId      String
+  eventGuestId String?
+  groupKey     String?  @db.VarChar(40)
+  viewerUserId String
+  grantedById  String
+  createdAt    DateTime @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventGuest EventGuest? @relation(fields: [eventGuestId], references: [id], onDelete: Cascade)
+  viewer     User        @relation("GuestPrivacyViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  grantedBy  User        @relation("GuestPrivacyGrantor", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@unique([eventGuestId, viewerUserId])
+  @@unique([eventId, groupKey, viewerUserId])
+  @@index([viewerUserId])
+}
+
+/// One authorized dispatch (six flows). The thread, optional task and the
+/// emergency supervisor alert are created in the same transaction.
+model DispatchRecord {
+  id                  String       @id @default(cuid())
+  eventId             String
+  flow                DispatchFlow
+  senderUserId        String
+  senderEventRole     String       @db.VarChar(40)
+  recipientUserId     String
+  recipientCount      Int          @default(1)
+  supervisorUserId    String?
+  conversationId      String
+  alertConversationId String?
+  taskId              String?      @unique
+  emergency           Boolean      @default(false)
+  clientRequestId     String?      @db.VarChar(64)
+  createdAt           DateTime     @default(now())
+
+  event             Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sender            User          @relation("DispatchSender", fields: [senderUserId], references: [id], onDelete: Restrict)
+  recipient         User          @relation("DispatchRecipient", fields: [recipientUserId], references: [id], onDelete: Restrict)
+  supervisor        User?         @relation("DispatchSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  conversation      Conversation  @relation("DispatchConversation", fields: [conversationId], references: [id], onDelete: Cascade)
+  alertConversation Conversation? @relation("DispatchAlertConversation", fields: [alertConversationId], references: [id], onDelete: SetNull)
+  task              Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([senderUserId, clientRequestId])
+  @@index([eventId, createdAt])
+  @@index([flow])
+}
+
+model Vehicle {
+  id          String        @id @default(cuid())
+  eventId     String
+  plateNumber String        @db.VarChar(20)
+  label       String        @db.VarChar(80)
+  capacity    Int           @default(4)
+  status      VehicleStatus @default(AVAILABLE)
+  driverId    String?
+  lastLat     Float?
+  lastLng     Float?
+  lastSeenAt  DateTime?
+  inZone      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  trips  Trip[]
+
+  @@unique([eventId, plateNumber])
+  @@index([eventId, status])
+  @@index([driverId])
+}
+
+/// Trip with route, in-zone flag and the two separate ETAs (captain to
+/// guest, guest to destination). PROVIDER ETAs come only from the server.
+model Trip {
+  id                    String     @id @default(cuid())
+  eventId               String
+  vehicleId             String?
+  driverId              String?
+  taskId                String?    @unique
+  status                TripStatus @default(SCHEDULED)
+  originLabel           String     @db.VarChar(160)
+  originLat             Float?
+  originLng             Float?
+  destinationLabel      String     @db.VarChar(160)
+  destinationLat        Float?
+  destinationLng        Float?
+  routePolyline         String?    @db.VarChar(20000)
+  inZone                Boolean?
+  captainEtaMinutes     Int?
+  destinationEtaMinutes Int?
+  etaSource             EtaSource  @default(UNAVAILABLE)
+  etaUpdatedAt          DateTime?
+  scheduledAt           DateTime
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver     Driver?         @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  task       Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  passengers TripPassenger[]
+
+  @@index([eventId, status])
+  @@index([driverId, status])
+  @@index([vehicleId])
+}
+
+model TripPassenger {
+  id           String   @id @default(cuid())
+  tripId       String
+  eventGuestId String
+  createdAt    DateTime @default(now())
+
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  eventGuest EventGuest @relation(fields: [eventGuestId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, eventGuestId])
+  @@index([eventGuestId])
+}
+
+/// Event flight (eventId set) or general airport flight (eventId null).
+model Flight {
+  id              String       @id @default(cuid())
+  scope           FlightScope
+  eventId         String?
+  flightNumber    String       @db.VarChar(12)
+  airline         String?      @db.VarChar(80)
+  originCode      String       @db.VarChar(8)
+  destinationCode String       @db.VarChar(8)
+  scheduledAt     DateTime
+  estimatedAt     DateTime?
+  status          FlightStatus @default(SCHEDULED)
+  dataSource      String       @default("MANUAL") @db.VarChar(20)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, scheduledAt])
+  @@index([scope, scheduledAt])
+}
+
+model CaptainShift {
+  id        String      @id @default(cuid())
+  eventId   String
+  driverId  String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    ShiftStatus @default(SCHEDULED)
+  available Boolean     @default(true)
+  zoneLabel String?     @db.VarChar(80)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, startsAt])
+  @@index([driverId, startsAt])
+}
+
+/// Aggregate headcount per zone only; no person-level location.
+model DensitySample {
+  id         String   @id @default(cuid())
+  eventId    String
+  zoneKey    String   @db.VarChar(40)
+  capturedAt DateTime
+  headcount  Int
+  capacity   Int?
+  source     String   @default("MANUAL") @db.VarChar(20)
+  createdAt  DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, zoneKey, capturedAt])
 }
 
 model ConversationParticipant {

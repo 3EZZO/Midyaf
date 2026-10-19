@@ -2,10 +2,12 @@ import { Prisma } from "@prisma/client";
 
 /**
  * Test-only in-memory stand-in for the subset of Prisma Client used by the
- * SUPPLIER-001 and OPS-COLLAB-001 routes. It applies where/select/include/
- * orderBy/cursor/take, nested creates, compound unique keys (raising P2002)
- * and interactive transactions that roll back on error. It is deliberately
- * small: unsupported query shapes throw instead of silently matching.
+ * SUPPLIER-001, OPS-COLLAB-001 and FULL-OVERHAUL-M2 routes. It applies
+ * where/select/include/orderBy/cursor/take, nested creates, declared column
+ * defaults, compound unique keys (raising P2002) and interactive
+ * transactions that roll back on error. Undefined write fields are ignored,
+ * as in Prisma. It is deliberately small: unsupported query shapes throw
+ * instead of silently matching.
  */
 
 type Row = Record<string, any>;
@@ -22,6 +24,8 @@ export type ModelSpec = {
   relations?: Record<string, RelationSpec>;
   /** Compound unique keys; rows with a null in the key are exempt. */
   unique?: string[][];
+  /** Column defaults the database would apply on insert. */
+  defaults?: Record<string, unknown>;
 };
 
 export type MemorySchema = Record<string, ModelSpec>;
@@ -47,14 +51,38 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
     relations: {
       driverProfile: { model: "driver", kind: "one", local: "id", foreign: "userId" },
       supplierProfile: { model: "supplier", kind: "one", local: "id", foreign: "userId" },
-      guestProfiles: many("guest", "userId")
+      guestProfiles: many("guest", "userId"),
+      organizationMemberships: many("organizationMembership", "userId"),
+      eventMemberships: many("eventMembership", "userId")
     }
   },
   event: {
     relations: {
       organizer: one("user", "organizerId"),
       bookings: many("booking", "eventId"),
-      tasks: many("task", "eventId")
+      tasks: many("task", "eventId"),
+      organization: one("organization", "organizationId"),
+      memberships: many("eventMembership", "eventId"),
+      plans: many("eventPlan", "eventId")
+    },
+    unique: [["approvedPlanId"]],
+    defaults: {
+      operationalStatus: "PLANNING",
+      planningMode: "MANUAL",
+      vipGuestCount: 0,
+      regularGuestCount: 0,
+      carCount: 0,
+      organizationId: null,
+      approvedPlanId: null,
+      planApprovedAt: null,
+      contractSignedAt: null,
+      contractSignedById: null,
+      startAt: null,
+      endAt: null,
+      arrivalStartAt: null,
+      departureEndAt: null,
+      locationLabel: null,
+      hotelZone: null
     }
   },
   guest: { relations: { user: one("user", "userId"), event: one("event", "eventId") } },
@@ -138,11 +166,170 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   coordinatorRequest: {},
   companyReport: {},
   fileAsset: {},
-  hospitalityRider: {}
+  hospitalityRider: {},
+
+  // FULL-OVERHAUL-M2 models.
+  organization: {
+    relations: {
+      memberships: many("organizationMembership", "organizationId"),
+      events: many("event", "organizationId")
+    },
+    unique: [["slug"]],
+    defaults: { vendorCategory: null, createdById: null }
+  },
+  organizationMembership: {
+    relations: { organization: one("organization", "organizationId"), user: one("user", "userId") },
+    unique: [["organizationId", "userId"]],
+    defaults: { role: "MEMBER", status: "ACTIVE", grantedById: null }
+  },
+  eventMembership: {
+    relations: { event: one("event", "eventId"), user: one("user", "userId") },
+    unique: [["eventId", "userId"]],
+    defaults: {
+      subteam: null,
+    workScope: null,
+      permissions: ["VIEW"],
+      clientVisible: false,
+      canReceive: true,
+      available: true,
+      status: "ACTIVE",
+      grantedById: null
+    }
+  },
+  eventPlan: {
+    relations: {
+      event: one("event", "eventId"),
+      generatedBy: one("user", "generatedById"),
+      approvedBy: one("user", "approvedById")
+    },
+    unique: [["eventId", "version"]],
+    defaults: { status: "DRAFT", advisory: true, approvedById: null, approvedAt: null }
+  },
+  eventScopeChange: { defaults: { notifiedVendorCount: 0 } },
+  onboardingApplication: {
+    relations: {
+      applicant: one("user", "applicantUserId"),
+      documents: many("onboardingDocument", "applicationId"),
+      transitions: many("onboardingTransition", "applicationId"),
+      organization: one("organization", "organizationId")
+    },
+    unique: [["organizationId"]],
+    defaults: {
+      status: "SUBMITTED",
+      organizationId: null,
+      reviewerUserId: null,
+      decisionNote: null,
+      contractSignedAt: null,
+      contractSignedById: null,
+      activatedAt: null,
+      reviewStartedAt: null,
+      decidedAt: null
+    }
+  },
+  onboardingTransition: {
+    relations: { application: one("onboardingApplication", "applicationId"), actor: one("user", "actorUserId") },
+    defaults: { note: null }
+  },
+  onboardingDocument: { relations: { application: one("onboardingApplication", "applicationId") } },
+  eventGuest: {
+    relations: {
+      event: one("event", "eventId"),
+      guest: one("guest", "guestId"),
+      privacyGrants: many("guestPrivacyGrant", "eventGuestId"),
+      tripSeats: many("tripPassenger", "eventGuestId")
+    },
+    unique: [["eventId", "guestCode"], ["guestId"]],
+    defaults: {
+      isVip: false,
+      privacyMasked: false,
+      privacyGroup: null,
+      guestId: null,
+      contactPhone: null,
+      contactEmail: null,
+      roomType: null,
+      hotelName: null,
+      arrivalAt: null,
+      departureAt: null,
+      ticketNumber: null,
+      originCity: null,
+      arrivalCity: null,
+      departureCity: null
+    }
+  },
+  guestPrivacyGrant: {
+    relations: { eventGuest: one("eventGuest", "eventGuestId"), viewer: one("user", "viewerUserId") },
+    unique: [["eventGuestId", "viewerUserId"], ["eventId", "groupKey", "viewerUserId"]],
+    defaults: { eventGuestId: null, groupKey: null }
+  },
+  dispatchRecord: {
+    relations: {
+      task: one("task", "taskId"),
+      conversation: one("conversation", "conversationId"),
+      alertConversation: one("conversation", "alertConversationId")
+    },
+    unique: [["senderUserId", "clientRequestId"], ["taskId"]]
+  },
+  vehicle: {
+    relations: { driver: one("driver", "driverId"), event: one("event", "eventId") },
+    unique: [["eventId", "plateNumber"]],
+    defaults: {
+      status: "AVAILABLE",
+      capacity: 4,
+      inZone: true,
+      driverId: null,
+      lastLat: null,
+      lastLng: null,
+      lastSeenAt: null
+    }
+  },
+  trip: {
+    relations: {
+      driver: one("driver", "driverId"),
+      vehicle: one("vehicle", "vehicleId"),
+      task: one("task", "taskId"),
+      passengers: many("tripPassenger", "tripId")
+    },
+    unique: [["taskId"]],
+    defaults: {
+      status: "SCHEDULED",
+      etaSource: "UNAVAILABLE",
+      vehicleId: null,
+      driverId: null,
+      taskId: null,
+      routePolyline: null,
+      inZone: null,
+      captainEtaMinutes: null,
+      destinationEtaMinutes: null,
+      etaUpdatedAt: null,
+      originLat: null,
+      originLng: null,
+      destinationLat: null,
+      destinationLng: null,
+      startedAt: null,
+      completedAt: null
+    }
+  },
+  tripPassenger: {
+    relations: { trip: one("trip", "tripId"), eventGuest: one("eventGuest", "eventGuestId") },
+    unique: [["tripId", "eventGuestId"]]
+  },
+  flight: {
+    defaults: { status: "SCHEDULED", dataSource: "MANUAL", eventId: null, airline: null, estimatedAt: null }
+  },
+  captainShift: {
+    relations: { driver: one("driver", "driverId") },
+    defaults: { status: "SCHEDULED", available: true, zoneLabel: null }
+  },
+  densitySample: { defaults: { capacity: null, source: "MANUAL" } }
 };
 
 function clone<T>(value: T): T {
   return structuredClone(value);
+}
+
+/** Prisma ignores undefined fields in write data. */
+function defined(data: Row): Row {
+  return clone(Object.fromEntries(Object.entries(data ?? {}).filter(([, value]) => value !== undefined)));
 }
 
 function isObject(value: unknown): value is Row {
@@ -216,6 +403,8 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
           return operand === null ? value !== null && value !== undefined : !same(value, operand);
         case "in":
           return (operand as unknown[]).some((item) => same(value, item));
+        case "has":
+          return Array.isArray(value) && value.some(item => same(item, operand));
         case "notIn":
           return !(operand as unknown[]).some((item) => same(value, item));
         case "gt":
@@ -350,7 +539,9 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
       id: `${model}_${sequence}`,
       createdAt: now,
       updatedAt: now,
-      ...scalars
+      ...(model === "onboardingApplication" ? { submittedAt: now } : {}),
+      ...clone(schema[model]?.defaults ?? {}),
+      ...Object.fromEntries(Object.entries(scalars).filter(([, value]) => value !== undefined))
     };
     assertUnique(model, row);
     table(model).push(row);
@@ -390,6 +581,17 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
         const row = query(model, { where: args.where })[0];
         return row ? project(model, row, args) : null;
       },
+      findUniqueOrThrow: async (args: Row) => {
+        record("findUniqueOrThrow", args);
+        const row = query(model, { where: args.where })[0];
+        if (!row) {
+          throw new Prisma.PrismaClientKnownRequestError("No record was found.", {
+            code: "P2025",
+            clientVersion: "memory"
+          });
+        }
+        return project(model, row, args);
+      },
       findFirst: async (args: Row = {}) => {
         record("findFirst", args);
         const row = query(model, { ...args, take: 1 })[0];
@@ -421,7 +623,7 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
             clientVersion: "memory"
           });
         }
-        const next = { ...row, ...clone(args.data), updatedAt: new Date() };
+        const next = { ...row, ...defined(args.data), updatedAt: new Date() };
         assertUnique(model, next, row);
         Object.assign(row, next);
         return project(model, row, args);
@@ -429,7 +631,11 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
       updateMany: async (args: Row) => {
         record("updateMany", args);
         const rows = query(model, { where: args.where });
-        for (const row of rows) Object.assign(row, clone(args.data), { updatedAt: new Date() });
+        for (const row of rows) {
+          const next = { ...row, ...defined(args.data), updatedAt: new Date() };
+          assertUnique(model, next, row);
+          Object.assign(row, next);
+        }
         return { count: rows.length };
       },
       upsert: async (args: Row) => {
@@ -447,6 +653,12 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
         if (!row) throw new Error("memoryPrisma: delete target missing");
         db[model] = table(model).filter((item) => item !== row);
         return project(model, row, {});
+      },
+      deleteMany: async (args: Row = {}) => {
+        record("deleteMany", args);
+        const doomed = new Set(query(model, { where: args.where }));
+        db[model] = table(model).filter((item) => !doomed.has(item));
+        return { count: doomed.size };
       }
     };
   }
@@ -506,9 +718,212 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
     },
     mutations: () =>
       calls.filter((call) =>
-        ["create", "createMany", "update", "updateMany", "upsert", "delete"].includes(call.method)
+        ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"].includes(call.method)
       )
   };
 }
 
 export type MemoryPrisma = ReturnType<typeof createMemoryPrisma>;
+
+// ---------------------------------------------------------------------------
+// FULL-OVERHAUL-M2 test world (synthetic, shared by the workspace tests)
+// ---------------------------------------------------------------------------
+
+type TestActor = { id: string; role: "SUPER_ADMIN" | "ORGANIZER" | "COMPANY_ORGANIZER" | "LOGISTICS_MANAGER" | "COORDINATOR" | "DRIVER" | "SUPPLIER" | "GUEST" };
+
+/**
+ * Two organizer companies (A, B), two vendor organizations (hotel, car), an
+ * approved event A, an approved event B, an unapproved event A-locked and a
+ * legacy organization-less event. Event roles are assigned explicitly; the
+ * login roles are deliberately "wrong" in places (a global LM with no
+ * membership) to prove that only memberships grant access.
+ */
+export function buildWorkspaceTestWorld() {
+  const actors = {
+    sa: { id: "u_sa", role: "SUPER_ADMIN" },
+    owner: { id: "u_owner", role: "ORGANIZER" },
+    admin2: { id: "u_admin2", role: "COMPANY_ORGANIZER" },
+    orgMember: { id: "u_orgmember", role: "COMPANY_ORGANIZER" },
+    pm: { id: "u_pm", role: "COMPANY_ORGANIZER" },
+    lm: { id: "u_lm", role: "LOGISTICS_MANAGER" },
+    lmOutsider: { id: "u_lm_out", role: "LOGISTICS_MANAGER" },
+    sup: { id: "u_sup", role: "COORDINATOR" },
+    sup2: { id: "u_sup2", role: "COORDINATOR" },
+    cap: { id: "u_cap", role: "DRIVER" },
+    capB: { id: "u_cap_b", role: "DRIVER" },
+    client: { id: "u_client", role: "COMPANY_ORGANIZER" },
+    vendor: { id: "u_vendor", role: "SUPPLIER" },
+    vendorCar: { id: "u_vendor_car", role: "SUPPLIER" },
+    guest: { id: "u_guest", role: "GUEST" },
+    guestB: { id: "u_guest_b", role: "GUEST" },
+    ownerB: { id: "u_owner_b", role: "ORGANIZER" }
+  } satisfies Record<string, TestActor>;
+
+  const approvedAt = new Date("2026-10-10T08:00:00Z");
+  const event = (id: string, organizationId: string | null, organizerId: string, approvedPlanId: string | null) => ({
+    id,
+    organizationId,
+    organizerId,
+    name: `Synthetic ${id}`,
+    brief: null,
+    date: new Date("2026-11-01T06:00:00Z"),
+    venue: "Synthetic Hall",
+    venueLat: null,
+    venueLng: null,
+    locationLabel: "Synthetic district",
+    hotelZone: "Synthetic hotel zone",
+    status: "DRAFT",
+    planningMode: "MANUAL",
+    operationalStatus: "PLANNING",
+    vipGuestCount: 2,
+    regularGuestCount: 10,
+    carCount: 4,
+    startAt: new Date("2026-11-01T06:00:00Z"),
+    endAt: new Date("2026-11-03T18:00:00Z"),
+    arrivalStartAt: new Date("2026-10-31T06:00:00Z"),
+    departureEndAt: new Date("2026-11-04T18:00:00Z"),
+    approvedPlanId,
+    planApprovedAt: approvedPlanId ? approvedAt : null,
+    contractSignedAt: null,
+    contractSignedById: null,
+    timezone: "Asia/Riyadh",
+    currency: "SAR"
+  });
+
+  const member = (
+    eventId: string,
+    userId: string,
+    role: string,
+    permissions: string[],
+    extra: Record<string, unknown> = {}
+  ) => ({
+    id: `em_${eventId}_${userId}`,
+    eventId,
+    userId,
+    role,
+    subteam: null,
+    workScope: null,
+    permissions,
+    clientVisible: false,
+    canReceive: true,
+    available: true,
+    status: "ACTIVE",
+    grantedById: "u_owner",
+    updatedAt: new Date("2026-10-05T00:00:00Z"),
+    ...extra
+  });
+
+  const rosterGuest = (id: string, eventId: string, guestCode: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    eventId,
+    guestCode,
+    isVip: guestCode.startsWith("GV"),
+    fullName: `Synthetic person ${guestCode}`,
+    contactPhone: "+966500000000",
+    contactEmail: `${guestCode.toLowerCase()}@example.test`,
+    roomType: "Suite",
+    hotelName: "Synthetic Hotel",
+    arrivalAt: null,
+    departureAt: null,
+    ticketNumber: `T-${guestCode}`,
+    originCity: "Jeddah",
+    arrivalCity: "Riyadh",
+    departureCity: "Riyadh",
+    privacyMasked: false,
+    privacyGroup: null,
+    guestId: null,
+    ...extra
+  });
+
+  const seed = {
+    user: Object.values(actors).map((actor) => ({
+      id: actor.id,
+      role: actor.role,
+      name: `Name ${actor.id}`,
+      email: `${actor.id}@example.test`,
+      phone: `+966${actor.id}`,
+      passwordHash: "x"
+    })),
+    organization: [
+      { id: "org_a", name: "Synthetic Organizer A", slug: "synthetic-a", kind: "ORGANIZER_COMPANY", vendorCategory: null },
+      { id: "org_b", name: "Synthetic Organizer B", slug: "synthetic-b", kind: "ORGANIZER_COMPANY", vendorCategory: null },
+      { id: "org_vh", name: "Synthetic Hotel Vendor", slug: "synthetic-vh", kind: "VENDOR", vendorCategory: "HOTEL" },
+      { id: "org_vc", name: "Synthetic Car Vendor", slug: "synthetic-vc", kind: "VENDOR", vendorCategory: "CAR" }
+    ],
+    organizationMembership: [
+      { id: "om_owner", organizationId: "org_a", userId: "u_owner", role: "OWNER", status: "ACTIVE" },
+      { id: "om_admin2", organizationId: "org_a", userId: "u_admin2", role: "ADMIN", status: "ACTIVE" },
+      { id: "om_member", organizationId: "org_a", userId: "u_orgmember", role: "MEMBER", status: "ACTIVE" },
+      { id: "om_owner_b", organizationId: "org_b", userId: "u_owner_b", role: "OWNER", status: "ACTIVE" },
+      { id: "om_vendor", organizationId: "org_vh", userId: "u_vendor", role: "OWNER", status: "ACTIVE" },
+      { id: "om_vendor_car", organizationId: "org_vc", userId: "u_vendor_car", role: "OWNER", status: "ACTIVE" }
+    ],
+    event: [
+      event("evt_a", "org_a", "u_owner", "plan_a1"),
+      event("evt_b", "org_b", "u_owner_b", "plan_b1"),
+      event("evt_locked", "org_a", "u_owner", null),
+      event("evt_legacy", null, "u_owner", null)
+    ],
+    eventPlan: [
+      { id: "plan_a1", eventId: "evt_a", version: 1, status: "APPROVED", source: "MANUAL", advisory: false, summary: "Synthetic plan", content: {}, generatedById: "u_pm", approvedById: "u_owner", approvedAt },
+      { id: "plan_b1", eventId: "evt_b", version: 1, status: "APPROVED", source: "MANUAL", advisory: false, summary: "Synthetic plan", content: {}, generatedById: "u_owner_b", approvedById: "u_owner_b", approvedAt },
+      { id: "plan_l1", eventId: "evt_locked", version: 1, status: "DRAFT", source: "DETERMINISTIC_ADVISORY", advisory: true, summary: "Synthetic draft", content: {}, generatedById: "u_owner", approvedById: null, approvedAt: null }
+    ],
+    eventMembership: [
+      member("evt_a", "u_pm", "PROJECT_MANAGER", ["VIEW", "EDIT", "INVITE", "SCOPE"], { clientVisible: true }),
+      member("evt_a", "u_lm", "LOGISTICS_MANAGER", ["VIEW", "EDIT", "INVITE"], { clientVisible: true }),
+      member("evt_a", "u_sup", "FLEET_SUPERVISOR", ["VIEW", "EDIT"]),
+      member("evt_a", "u_sup2", "FLEET_SUPERVISOR", ["VIEW"], { available: false }),
+      member("evt_a", "u_cap", "CAPTAIN", ["VIEW"]),
+      member("evt_a", "u_client", "CLIENT_VIEWER", ["VIEW"]),
+      member("evt_a", "u_vendor", "VENDOR", ["VIEW"]),
+      member("evt_a", "u_vendor_car", "VENDOR", ["VIEW"]),
+      member("evt_b", "u_cap_b", "CAPTAIN", ["VIEW"]),
+      member("evt_b", "u_lm", "LOGISTICS_MANAGER", ["VIEW"], { status: "REVOKED" }),
+      member("evt_locked", "u_pm", "PROJECT_MANAGER", ["VIEW", "EDIT", "INVITE", "SCOPE"])
+    ],
+    driver: [
+      { id: "drv_cap", userId: "u_cap", active: true, licenseNo: "L1", nationalIdIqama: "N1" },
+      { id: "drv_cap_b", userId: "u_cap_b", active: true, licenseNo: "L2", nationalIdIqama: "N2" }
+    ],
+    guest: [
+      { id: "gst_a", userId: "u_guest", eventId: "evt_a", qrCode: "Q1", isVIP: true },
+      { id: "gst_b", userId: "u_guest_b", eventId: "evt_b", qrCode: "Q2", isVIP: false }
+    ],
+    eventGuest: [
+      rosterGuest("eg_gv01", "evt_a", "GV01", { guestId: "gst_a" }),
+      rosterGuest("eg_g01", "evt_a", "G01"),
+      rosterGuest("eg_g02", "evt_a", "G02", { privacyMasked: true }),
+      rosterGuest("eg_g03", "evt_a", "G03", { privacyMasked: true, privacyGroup: "press" }),
+      rosterGuest("eg_b01", "evt_b", "G01", { guestId: "gst_b" })
+    ],
+    guestPrivacyGrant: [
+      { id: "pg_g02_lm", eventId: "evt_a", eventGuestId: "eg_g02", groupKey: null, viewerUserId: "u_lm", grantedById: "u_owner" },
+      { id: "pg_press_pm", eventId: "evt_a", eventGuestId: null, groupKey: "press", viewerUserId: "u_pm", grantedById: "u_owner" }
+    ],
+    vehicle: [
+      { id: "veh_1", eventId: "evt_a", plateNumber: "SYN-1", label: "Synthetic sedan", capacity: 3, status: "ASSIGNED_TO_TASK", driverId: "drv_cap", lastLat: 24.7, lastLng: 46.6, lastSeenAt: null, inZone: true },
+      { id: "veh_2", eventId: "evt_a", plateNumber: "SYN-2", label: "Synthetic shuttle", capacity: 12, status: "AVAILABLE", driverId: null, lastLat: 24.71, lastLng: 46.61, lastSeenAt: null, inZone: true }
+    ],
+    trip: [
+      {
+        id: "trip_1", eventId: "evt_a", vehicleId: "veh_1", driverId: "drv_cap", taskId: null, status: "SCHEDULED",
+        originLabel: "Synthetic Hotel", originLat: null, originLng: null, destinationLabel: "Synthetic Hall",
+        destinationLat: null, destinationLng: null, routePolyline: null, inZone: true, captainEtaMinutes: null,
+        destinationEtaMinutes: null, etaSource: "UNAVAILABLE", etaUpdatedAt: null, scheduledAt: new Date("2026-11-01T05:00:00Z")
+      },
+      {
+        id: "trip_2", eventId: "evt_a", vehicleId: "veh_2", driverId: null, taskId: null, status: "SCHEDULED",
+        originLabel: "Synthetic Hotel", originLat: null, originLng: null, destinationLabel: "Synthetic Hall",
+        destinationLat: null, destinationLng: null, routePolyline: null, inZone: true, captainEtaMinutes: null,
+        destinationEtaMinutes: null, etaSource: "UNAVAILABLE", etaUpdatedAt: null, scheduledAt: new Date("2026-11-01T05:30:00Z")
+      }
+    ],
+    tripPassenger: [
+      { id: "tp_1", tripId: "trip_1", eventGuestId: "eg_gv01" },
+      { id: "tp_2", tripId: "trip_2", eventGuestId: "eg_g02" }
+    ]
+  };
+
+  return { actors, seed };
+}

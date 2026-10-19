@@ -26,7 +26,8 @@ export async function startHarness(mounts: Array<[string, Router]>) {
       emit: (event: string, payload: unknown) => emitted.push({ room, event, payload })
     })
   });
-  app.use(express.json());
+  // Same body limit as server/src/index.ts.
+  app.use(express.json({ limit: "2mb" }));
   for (const [path, router] of mounts) app.use(path, router);
   app.use((_req, _res, next) => next(new HttpError(404, "Route not found")));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
@@ -73,8 +74,27 @@ export async function startHarness(mounts: Array<[string, Router]>) {
     return { status: response.status, body: text ? JSON.parse(text) : null };
   }
 
+  /** Non-JSON download: status, headers and raw bytes. */
+  async function raw(path: string, actor?: { id: string; role: Role }) {
+    const headers: Record<string, string> = {};
+    if (actor) {
+      headers.Authorization = `Bearer ${
+        signTokens({ id: actor.id, email: `${actor.id}@example.test`, role: actor.role }).accessToken
+      }`;
+    }
+    const response = await fetch(`${base}${path}`, { headers });
+    return {
+      status: response.status,
+      headers: response.headers,
+      bytes: Buffer.from(await response.arrayBuffer())
+    };
+  }
+
   return {
     emitted,
+    raw,
+    patch: (path: string, actor?: { id: string; role: Role }, body?: unknown) =>
+      call("PATCH", path, actor, body ?? {}),
     get: (path: string, actor?: { id: string; role: Role }) => call("GET", path, actor),
     post: (path: string, actor?: { id: string; role: Role }, body?: unknown) =>
       call("POST", path, actor, body ?? {}),

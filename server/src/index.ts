@@ -26,6 +26,7 @@ import usersRouter from "./routes/users.js";
 import auditLogsRouter from "./routes/auditLogs.js";
 import ridersRouter from "./routes/riders.js";
 import messagesRouter from "./routes/messages.js";
+import workspaceRouter from "./routes/workspace.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
@@ -68,6 +69,8 @@ mount("/users", usersRouter);
 mount("/audit-logs", auditLogsRouter);
 mount("/riders", ridersRouter);
 mount("/messages", messagesRouter);
+// FULL-OVERHAUL-M2: organization/event workspace (same authenticated router).
+mount("/workspace", workspaceRouter);
 app.use("/api", bootstrapRouter);
 app.use("/", bootstrapRouter);
 app.use("/api", operationsRouter);
