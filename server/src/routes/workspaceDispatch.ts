@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import {canViewGuestDetails,GUEST_CODE_SELECT,loadGuestViewer,loadMessageRedactions,redactMessagePayload,type MessageRedactions} from '../utils/guestPrivacy.js';
 import { z } from "zod";
 import { unreadCounts } from "./messages.js";
 import { Router } from "express";
@@ -160,6 +161,11 @@ async function eligibleRecipients(access: EventAccess, flow: DispatchFlow, onlyU
     const linked = await captainsLinkedToGuest(access.event.id, access.guestId!, db);
     candidates = candidates.filter((candidate) => linked.has(candidate.userId));
   }
+  if(spec.recipientRole===EventMemberRole.CAPTAIN){
+    const drivers=await db.driver.findMany({where:{userId:{in:candidates.map(c=>c.userId)},active:true},select:{id:true,userId:true}});
+    const shifts=await db.captainShift.findMany({where:{eventId:access.event.id,driverId:{in:drivers.map(d=>d.id)}},select:{driverId:true,status:true,available:true,startsAt:true,endsAt:true},take:2000});
+    candidates=candidates.filter(candidate=>{const driver=drivers.find(d=>d.userId===candidate.userId);if(!driver)return false;const assigned=shifts.filter(s=>s.driverId===driver.id);return assigned.length===0||assigned.some(s=>s.status==='ON_SHIFT'&&s.available&&s.startsAt<=new Date()&&s.endsAt>new Date());});
+  }
   return candidates;
 }
 
@@ -191,7 +197,7 @@ const DISPATCH_SELECT = {
   supervisorUserId: true,
   taskId: true,
   task: { select: { source: true } },
-  conversation: { select: { messageClass: true } }
+  conversation: { select: { messageClass: true, requestHash:true } }
 } satisfies Prisma.DispatchRecordSelect;
 
 type DispatchRow = Prisma.DispatchRecordGetPayload<{ select: typeof DISPATCH_SELECT }>;
@@ -238,6 +244,7 @@ router.post(
     requirePlanApproved(access);
     requireEventOpen(access);
     const body = dispatchCreateSchema.parse(req.body);
+    const dispatchHash=createHash('sha256').update(JSON.stringify({...body,recipientUserIds:[...body.recipientUserIds].sort()})).digest('hex');
     const spec = DISPATCH_FLOW_SPECS[body.flow];
     const sender = resolveSender(access, body.flow);
 
@@ -290,7 +297,7 @@ router.post(
             select: DISPATCH_SELECT
           });
           if (existing) {
-            if (existing.eventId !== access.event.id || existing.flow !== body.flow) {
+            if (existing.eventId !== access.event.id || existing.flow !== body.flow || existing.conversation.requestHash!==dispatchHash) {
               throw new HttpError(409, "This request id was already used for another dispatch");
             }
             return { replayed: true, record: existing };
@@ -323,6 +330,7 @@ router.post(
             lastMessageAt: now,
             eventId: access.event.id,
             messageClass,
+            requestHash:dispatchHash,
             dispatchFlow: body.flow,
             clientVisible: body.clientVisible,
             executiveVisible: body.executiveVisible,
@@ -510,12 +518,14 @@ router.get(
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {})
     });
     const visible = [];
+    const redactions=new Map<string,MessageRedactions>();
     for (const row of rows) {
       if (!row.eventId) { visible.push(row); continue; }
       try {
         const access = await loadEventAccess(req, row.eventId);
         requirePlanApproved(access);
         if (!access.guestId) requirePermission(access, EventPermission.VIEW);
+        if(!redactions.has(row.eventId))redactions.set(row.eventId,await loadMessageRedactions(prisma,access));
         visible.push(row);
       } catch (error) {
         if (!(error instanceof HttpError) || ![403, 404, 423].includes(error.status)) throw error;
@@ -523,7 +533,7 @@ router.get(
     }
     const page = visible.slice(0, query.limit);
     const unread = await unreadCounts(user.id,new Map(page.map(row=>[row.id,row.participants.find(participant=>participant.userId===user.id)?.lastReadAt??null])));
-    const items: InboxItemDto[] = page.map((row) => ({
+    const items: InboxItemDto[] = page.map((row) => redactMessagePayload({
       conversationId: row.id,
       unreadCount: unread.get(row.id)??0,
       subject: row.subject,
@@ -534,7 +544,7 @@ router.get(
       lastMessageAt: row.lastMessageAt.toISOString(),
       participants: row.participants.map((participant) => participant.user),
       preview: row.messages[0] ? previewText(row.messages[0].body) : null
-    }));
+    },redactions.get(row.eventId??'')??{terms:[],users:new Map()}));
     res.json({
       items,
       nextCursor: rows.length > query.limit ? page[page.length - 1]?.id ?? null : null
@@ -570,6 +580,45 @@ router.post("/events/:eventId/conversations",asyncHandler(async(req:AuthRequest,
   return{id:created.id,replayed:false};
  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
  res.status(result.replayed?200:201).json({conversationId:result.id,replayed:result.replayed});
+}));
+
+const statusTransitions:Record<string,string[]>={PENDING:['ASSIGNED','ACCEPTED','CANCELLED'],ASSIGNED:['ACCEPTED','CANCELLED'],ACCEPTED:['EN_ROUTE','DELAYED','CANCELLED'],EN_ROUTE:['ARRIVED','DELAYED','CANCELLED'],ARRIVED:['PICKED_UP','COMPLETED','DELAYED'],PICKED_UP:['COMPLETED','DELAYED'],DELAYED:['EN_ROUTE','ARRIVED','CANCELLED'],COMPLETED:[],CANCELLED:[]};
+function taskManager(access:EventAccess){return !access.support&&(access.isOrgAdmin||hasEventRole(access,[EventMemberRole.LOGISTICS_MANAGER,EventMemberRole.FLEET_SUPERVISOR]))&&access.permissions.has(EventPermission.EDIT);}
+router.get('/events/:eventId/tasks',asyncHandler(async(req:AuthRequest,res)=>{
+ const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);if(!access.guestId)requirePermission(access,EventPermission.VIEW);
+ const rows=await prisma.task.findMany({where:{eventId:access.event.id,...(taskManager(access)?{}:{OR:[{createdById:access.actor.id},{responsibleUserId:access.actor.id},{driver:{userId:access.actor.id}},{guest:{userId:access.actor.id}},{conversation:{participants:{some:{userId:access.actor.id}}}}]})},select:{id:true,type:true,status:true,source:true,scheduledAt:true,pickupLocation:true,dropoffLocation:true,guestId:true,trip:{select:{passengers:{select:{eventGuest:{select:GUEST_CODE_SELECT}}}}},driver:{select:{userId:true}},responsibleUserId:true,createdById:true},orderBy:[{scheduledAt:'desc'},{id:'asc'}],take:200});
+ const guests=await prisma.eventGuest.findMany({where:{eventId:access.event.id,guestId:{in:rows.flatMap(row=>row.guestId?[row.guestId]:[])}},select:{...GUEST_CODE_SELECT,guestId:true}}),viewer=await loadGuestViewer(prisma,access);
+ res.json({tasks:rows.map(row=>{const guest=guests.find(g=>g.guestId===row.guestId),masked=Boolean(guest?.privacyMasked&&!canViewGuestDetails(guest,viewer))||Boolean(row.trip?.passengers.some(p=>p.eventGuest.privacyMasked&&!canViewGuestDetails(p.eventGuest,viewer)));const writable=taskManager(access)||(!access.support&&(row.driver?.userId===access.actor.id||row.responsibleUserId===access.actor.id));return{id:row.id,type:row.type,status:row.status,source:row.source,scheduledAt:row.scheduledAt.toISOString(),pickup:masked?null:row.pickupLocation,destination:masked?null:row.dropoffLocation,guestCode:guest?.guestCode??null,nextStatuses:writable?statusTransitions[row.status]??[]:[],canAssign:taskManager(access)};})});
+}));
+router.patch('/events/:eventId/tasks/:taskId',asyncHandler(async(req:AuthRequest,res)=>{
+ const body=z.object({status:z.nativeEnum(TaskStatus),driverUserId:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).optional()}).strict().parse(req.body);
+ const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requireEventOpen(access);
+ const task=await prisma.$transaction(async tx=>{
+  await lockRow(tx,'Event',access.event.id);await lockRow(tx,'Task',String(req.params.taskId));
+  const current=await loadEventAccess(req,access.event.id,tx);requirePlanApproved(current);requireEventOpen(current);if(current.support)throw new HttpError(403,'Support access is read-only');
+  const row=await tx.task.findFirst({where:{id:String(req.params.taskId),eventId:access.event.id},select:{id:true,status:true,driverId:true,driver:{select:{userId:true}},responsibleUserId:true,createdById:true,conversationId:true,source:true}});
+  if(!row)throw new HttpError(404,'Task not found');
+  const manager=taskManager(current);if(!manager&&row.driver?.userId!==current.actor.id&&row.responsibleUserId!==current.actor.id)throw new HttpError(403,'Only the assigned operator or fleet management updates this task');
+  if(!manager)requirePermission(current,EventPermission.VIEW);
+  if(!statusTransitions[row.status]?.includes(body.status))throw new HttpError(409,'Invalid task transition; refresh the task');
+  let driverId=row.driverId;
+  if(body.driverUserId){
+   if(!manager||body.status!==TaskStatus.ASSIGNED)throw new HttpError(403,'Only fleet management assigns a captain');
+   const captain=await tx.eventMembership.findUnique({where:{eventId_userId:{eventId:access.event.id,userId:body.driverUserId}},select:{role:true,status:true,available:true,permissions:true}});
+   const driver=await tx.driver.findUnique({where:{userId:body.driverUserId},select:{id:true,active:true}});
+   if(captain?.role!=='CAPTAIN'||captain.status!=='ACTIVE'||!captain.available||!captain.permissions.includes(EventPermission.VIEW)||!driver?.active)throw new HttpError(403,'Select an available event captain');
+   const shifts=await tx.captainShift.findMany({where:{eventId:access.event.id,driverId:driver.id},select:{status:true,available:true,startsAt:true,endsAt:true},take:100});
+   if(shifts.length&&!shifts.some(shift=>shift.status==='ON_SHIFT'&&shift.available&&shift.startsAt<=new Date()&&shift.endsAt>new Date()))throw new HttpError(409,'The captain is outside an available shift');
+   driverId=driver.id;
+   if(row.conversationId)await tx.conversationParticipant.upsert({where:{conversationId_userId:{conversationId:row.conversationId,userId:body.driverUserId}},create:{conversationId:row.conversationId,userId:body.driverUserId},update:{}});
+  }
+  if(body.status==='ASSIGNED'&&!driverId)throw new HttpError(400,'Choose a captain for assignment');
+  await tx.task.update({where:{id:row.id},data:{status:body.status,driverId}});
+  const recipients=await tx.conversationParticipant.findMany({where:{conversationId:row.conversationId??'no-thread'},select:{userId:true}});
+  await tx.notification.createMany({data:recipients.filter(p=>p.userId!==current.actor.id).map(p=>({userId:p.userId,title:'Event task updated',body:`${row.source}: ${body.status}`,metadata:{eventId:access.event.id,taskId:row.id,conversationId:row.conversationId,kind:MESSAGE_NOTIFICATION_KIND}}))});
+  await writeWorkspaceAudit(tx,req,{action:'workspace.task.status',entityType:'TASK',entityId:row.id,eventId:access.event.id,before:{status:row.status},after:{status:body.status}});
+  return{id:row.id,status:body.status};
+ },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});res.json({task});
 }));
 
 export default router;

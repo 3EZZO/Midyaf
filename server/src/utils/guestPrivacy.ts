@@ -39,6 +39,32 @@ export type GuestViewer = {
   grantedGroups: ReadonlySet<string>;
 };
 
+export type MessageRedactions={terms:Array<{text:string;code:string}>;users:Map<string,string>};
+/** Protect historical message text and user labels after a guest enables privacy. */
+export async function loadMessageRedactions(db:Prisma.TransactionClient,access:EventAccess):Promise<MessageRedactions>{
+ const viewer=await loadGuestViewer(db,access);
+ const guests=await db.eventGuest.findMany({where:{eventId:access.event.id,privacyMasked:true},select:{...GUEST_CODE_SELECT,fullName:true,hotelName:true,contactEmail:true,contactPhone:true,guest:{select:{user:{select:{id:true,name:true}}}}},take:2001});
+ if(guests.length>2000)throw new HttpError(503,'Private message boundary capacity exceeded');
+ const terms:MessageRedactions['terms']=[],users=new Map<string,string>();
+ for(const guest of guests){if(canViewGuestDetails(guest,viewer)||guest.guest?.user.id===access.actor.id)continue;
+  if(guest.guest?.user)users.set(guest.guest.user.id,guest.guestCode);
+  for(const text of [guest.fullName,guest.hotelName,guest.contactEmail,guest.contactPhone,guest.guest?.user.name])if(text&&text.trim().length>=2)terms.push({text,code:guest.guestCode});
+ }
+ terms.sort((a,b)=>b.text.length-a.text.length);return{terms,users};
+}
+export function redactMessagePayload<T>(payload:T,privacy:MessageRedactions):T{
+ const text=(value:string)=>privacy.terms.reduce((result,term)=>result.replace(new RegExp(term.text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),term.code),value);
+ function visit(value:unknown,depth:number):unknown{
+  if(depth>25)return null;
+  if(!value||typeof value!=='object'||value instanceof Date||Buffer.isBuffer(value))return value;
+  if(Array.isArray(value))return value.map(item=>visit(item,depth+1));
+  const row=Object.fromEntries(Object.entries(value).map(([key,entry])=>[key,typeof entry==='string'&&['name','subject','body','preview'].includes(key)?text(entry):visit(entry,depth+1)]));
+  if(typeof row.id==='string'&&privacy.users.has(row.id)&&'name'in row)row.name=privacy.users.get(row.id);
+  return row;
+ }
+ return visit(payload,0) as T;
+}
+
 export const GUEST_CODE_SELECT = {
   id: true,
   guestCode: true,

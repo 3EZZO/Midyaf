@@ -97,6 +97,8 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
       event: one("event", "eventId"),
       driver: one("driver", "driverId"),
       guest: one("guest", "guestId"),
+      conversation: one("conversation", "conversationId"),
+      trip: one("trip", "id", "taskId"),
       responsibleUser: one("user", "responsibleUserId"),
       delegateUser: one("user", "delegateUserId"),
       handovers: many("taskHandover", "taskId")

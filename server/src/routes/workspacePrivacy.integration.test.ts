@@ -35,3 +35,25 @@ it('checks revoked access on actual thread detail, reply and unread routes',asyn
 it('fails closed if the privacy catalog cannot be loaded',async()=>{
  memory.current.failNext('eventGuest','findMany',new Error('synthetic outage'));expect((await http.get('/legacy/events',a.sa)).status).toBe(500);
 });
+it('redacts historical inbox subjects, text and participant names after privacy is enabled',async()=>{
+ const response=await http.post('/workspace/events/evt_a/conversations',a.lm,{recipientUserIds:[a.pm.id],subject:'Synthetic person GV01 at Synthetic Hotel',body:'Synthetic person GV01 / Synthetic Hotel',clientRequestId:'privacy_message_1'});
+ expect(response.status).toBe(201);const id=response.body.conversationId;
+ const guest=memory.current.rows('eventGuest').find(g=>g.id==='eg_gv01')!;guest.privacyMasked=true;
+ const inbox=await http.get('/workspace/inbox',a.pm);expect(inbox.status).toBe(200);expect(JSON.stringify(inbox.body)).not.toContain('Synthetic person GV01');expect(JSON.stringify(inbox.body)).not.toContain('Synthetic Hotel');expect(JSON.stringify(inbox.body)).toContain('GV01');
+ const thread=await http.get(`/legacy/messages/conversations/${id}`,a.pm);expect(thread.status).toBe(200);expect(JSON.stringify(thread.body)).not.toContain('Synthetic person GV01');expect(JSON.stringify(thread.body)).not.toContain('Synthetic Hotel');
+ memory.current.rows('guestPrivacyGrant').push({id:'allow_message_owner',eventId:'evt_a',eventGuestId:guest.id,groupKey:null,viewerUserId:a.pm.id});
+ expect(JSON.stringify((await http.get(`/legacy/messages/conversations/${id}`,a.pm)).body)).toContain('Synthetic person GV01');
+});
+it('masks task movement inherited through a private trip even when task guestId is null',async()=>{
+ const created=await http.post('/workspace/events/evt_a/dispatch',a.lm,{flow:'LM_TO_SUPERVISOR',recipientUserIds:[a.sup.id],subject:'Private passenger transfer',body:'Synthetic request',task:{type:'VENUE_TRANSFER',pickupLocation:'Private hotel entrance',dropoffLocation:'Private venue'}});
+ expect(created.status).toBe(201);
+ memory.current.rows('trip').find(t=>t.id==='trip_2')!.taskId=created.body.dispatch.taskId;
+ const owner=await http.get('/workspace/events/evt_a/tasks',a.owner);expect(owner.body.tasks[0]).toMatchObject({pickup:null,destination:null});
+ const allowed=await http.get('/workspace/events/evt_a/tasks',a.lm);expect(allowed.body.tasks[0].pickup).toBe('Private hotel entrance');
+});
+it('masks a linked guest account name in scoped thread participants and senders',async()=>{
+ const guest=memory.current.rows('eventGuest').find(g=>g.id==='eg_gv01')!;guest.privacyMasked=true;
+ memory.current.rows('user').find(u=>u.id===a.guest.id)!.name='PRIVATE ACCOUNT NAME';
+ const created=await http.post('/workspace/events/evt_a/dispatch',a.guest,{flow:'GUEST_TO_LM',recipientUserIds:[a.lm.id],subject:'Pickup inquiry',body:'Hello'});expect(created.status).toBe(201);
+ const thread=await http.get(`/legacy/messages/conversations/${created.body.dispatch.conversationId}`,a.lm);expect(thread.status).toBe(200);expect(JSON.stringify(thread.body)).not.toContain('PRIVATE ACCOUNT NAME');expect(JSON.stringify(thread.body)).toContain('GV01');
+});

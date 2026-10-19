@@ -1,4 +1,6 @@
 import { Router } from "express";
+import {z} from 'zod';
+import {dualEta,type Point} from '../services/operationalProviders.js';
 import {
   EtaSource,
   EventMemberRole,
@@ -78,6 +80,22 @@ import {
 
 const router = Router();
 router.use(requireAuth);
+router.get('/events/:eventId/fleet-captains',asyncHandler(async(req:AuthRequest,res)=>{
+ const access=await loadTelemetryAccess(req,req.params.eventId);requireFleetManager(access);
+ const members=await prisma.eventMembership.findMany({where:{eventId:access.event.id,role:EventMemberRole.CAPTAIN,status:MembershipStatus.ACTIVE},select:{userId:true},take:500});
+ const captains=await prisma.driver.findMany({where:{userId:{in:members.map(m=>m.userId)},active:true},select:{id:true,user:{select:{name:true}}},take:500});
+ res.json({captains:captains.map(c=>({id:c.id,name:c.user.name}))});
+}));
+
+router.get('/events/:eventId/my-journey',asyncHandler(async(req:AuthRequest,res)=>{
+ const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);
+ if(!access.guestId)throw new HttpError(403,'This endpoint is for the event guest');
+ const guest=await prisma.eventGuest.findFirst({where:{eventId:access.event.id,guestId:access.guestId},select:GUEST_CODE_SELECT});
+ if(!guest)throw new HttpError(404,'Guest roster record not found');
+ const viewer=await loadGuestViewer(prisma,access),ownViewer={...viewer,grantedGuestIds:new Set([...viewer.grantedGuestIds,guest.id])};
+ const trips=await prisma.trip.findMany({where:{eventId:access.event.id,passengers:{some:{eventGuestId:guest.id}}},select:TRIP_SELECT,orderBy:{scheduledAt:'desc'},take:20});
+ res.json({guest:(await guestDtosFor(prisma,access.event.id,[guest],ownViewer))[0],trips:await toTripDtos(access.event.id,trips,ownViewer)});
+}));
 
 const OPEN_TRIPS: TripStatus[] = [TripStatus.SCHEDULED, TripStatus.EN_ROUTE_TO_PICKUP, TripStatus.ON_BOARD];
 
@@ -300,8 +318,9 @@ router.get(
     // Also withhold stale vehicle observations from older private trips outside the page.
     const privateTrips = await prisma.trip.findMany({
       where: { eventId, vehicleId: { not: null }, passengers: { some: { eventGuest: { privacyMasked: true } } } },
-      select: TRIP_SELECT, take: 5000
+      select: TRIP_SELECT, take: 5001
     });
+    if(privateTrips.length>5000)throw new HttpError(503,'Private-trip boundary capacity exceeded');
     for (const trip of privateTrips) if (trip.vehicleId && protectedTrip(trip, viewer)) withheld.add(trip.vehicleId);
     const latestByZone = new Map<string, (typeof density)[number]>();
     for (const sample of density) if (!latestByZone.has(sample.zoneKey)) latestByZone.set(sample.zoneKey, sample);
@@ -342,11 +361,44 @@ router.get(
         })
       ),
       density: densityDtos,
+      guests: scope === 'FULL' ? await guestDtosFor(prisma,eventId,await prisma.eventGuest.findMany({where:{eventId},select:GUEST_CODE_SELECT,take:2000}),viewer) : [],
+      observedAt: new Date().toISOString(),
+      weather: {available:false,source:'No weather feed configured',observedAt:null},
       scope
     };
     res.json({ telemetry: snapshot });
   })
 );
+
+router.post('/events/:eventId/trips/:tripId/eta',asyncHandler(async(req:AuthRequest,res)=>{
+ z.object({}).strict().parse(req.body);
+ const access=await loadTelemetryAccess(req,req.params.eventId),scope=telemetryScope(access);
+ const id=parseRouteId(req.params.tripId,()=>new HttpError(404,'Trip not found'));
+ const result=await prisma.$transaction(async tx=>{
+  await lockRow(tx,'Event',access.event.id);
+  const current=await loadEventAccess(req,access.event.id,tx);requirePlanApproved(current);const currentScope=telemetryScope(current);
+  await lockRow(tx,'Trip',id);
+  let trip=await tx.trip.findFirst({where:{id,eventId:access.event.id},select:TRIP_SELECT});
+  if(!trip||(currentScope==='CAPTAIN_SELF'&&trip.driver?.user.id!==current.actor.id))throw new HttpError(404,'Trip not found');
+  for(const guestId of trip.passengers.map(p=>p.eventGuest.id).sort())await lockRow(tx,'EventGuest',guestId);
+  trip=await tx.trip.findFirst({where:{id,eventId:access.event.id},select:TRIP_SELECT});
+  if(!trip)throw new HttpError(404,'Trip not found');
+  if(current.support)throw new HttpError(403,'Support access cannot refresh route estimates');
+  if(protectedTrip(trip,await loadGuestViewer(tx,current)))throw new HttpError(403,'Passenger privacy restricts this route');
+  const vehicle=trip.vehicleId?await tx.vehicle.findUnique({where:{id:trip.vehicleId},select:{lastLat:true,lastLng:true,lastSeenAt:true}}):null;
+  const point=(lat:number|null|undefined,lng:number|null|undefined):Point|null=>lat!=null&&lng!=null?{lat,lng}:null;
+  const captain=vehicle?.lastSeenAt&&Date.now()-vehicle.lastSeenAt.getTime()<120000?point(vehicle.lastLat,vehicle.lastLng):null;
+  const eta=await dualEta(captain,point(trip.originLat,trip.originLng),point(trip.destinationLat,trip.destinationLng));
+  const legs=[eta.captainToGuest,eta.guestToDestination];
+  const source=legs.every(leg=>leg.source==='PROVIDER')?EtaSource.PROVIDER:legs.some(leg=>leg.minutes!==null)?EtaSource.APPROXIMATE:EtaSource.UNAVAILABLE;
+  const points=eta.guestToDestination.route,count=Math.min(400,points.length);
+  const route=Array.from({length:count},(_,i)=>{const p=points[Math.round(i*(points.length-1)/Math.max(1,count-1))];return{lat:Number(p.lat.toFixed(6)),lng:Number(p.lng.toFixed(6))};});
+  await tx.trip.update({where:{id:trip.id},data:{captainEtaMinutes:eta.captainToGuest.minutes,destinationEtaMinutes:eta.guestToDestination.minutes,etaSource:source,etaUpdatedAt:new Date(),routePolyline:route.length?JSON.stringify(route):null}});
+  await writeWorkspaceAudit(tx,req,{action:'workspace.trip.eta',entityType:'TRIP',entityId:trip.id,eventId:access.event.id,metadata:{source,captainSource:legs[0].source,destinationSource:legs[1].source}});
+  return eta;
+ },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
+ res.json({eta:result});
+}));
 
 // ---------------------------------------------------------------------------
 // Vehicles

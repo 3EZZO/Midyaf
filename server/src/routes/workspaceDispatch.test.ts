@@ -89,3 +89,25 @@ it("shares only explicitly selected new conversations with client viewers",async
   expect((await http.post("/w/events/evt_a/conversations",a.lm,{...message,clientRequestId:"message_exec_1",executiveVisible:true})).status).toBe(403);
   expect((await http.post(base,a.lm,{...request,flow:"LM_TO_CAPTAIN_EMERGENCY",recipientUserIds:[a.cap.id]})).status).toBe(403);
 });
+it('refuses off-shift emergency captains and changed retry payloads',async()=>{
+ memory.current.rows('captainShift').push({id:'shift_off',eventId:'evt_a',driverId:'drv_cap',status:'OFF_SHIFT',available:true,startsAt:new Date(Date.now()-10000),endsAt:new Date(Date.now()+60000)});
+ expect((await http.post(base,a.lm,{...request,flow:'LM_TO_CAPTAIN_EMERGENCY',recipientUserIds:[a.cap.id]})).status).toBe(403);
+ const payload={...request,flow:'LM_TO_SUPERVISOR',recipientUserIds:[a.sup.id],clientRequestId:'stable_dispatch_1'};
+ expect((await http.post(base,a.lm,payload)).status).toBe(201);
+ expect((await http.post(base,a.lm,{...payload,body:'Different instruction'})).status).toBe(409);
+});
+it('routes task progress to assigned operators with atomic notifications and terminal-state protection',async()=>{
+ const created=await http.post(base,a.lm,{...request,flow:'LM_TO_SUPERVISOR',recipientUserIds:[a.sup.id]});const id=created.body.dispatch.taskId,path=`/w/events/evt_a/tasks/${id}`;
+ expect((await http.get('/w/events/evt_a/tasks',a.sup)).body.tasks[0]).toMatchObject({source:'LOGISTICS_TEAM_TASK',status:'PENDING'});
+ expect((await http.patch(path,a.capB,{status:'ACCEPTED'})).status).toBe(404);
+ expect((await http.patch(path,a.sup,{status:'ACCEPTED'})).status).toBe(200);
+ expect((await http.patch(path,a.sup,{status:'COMPLETED'})).status).toBe(409);
+ for(const status of ['EN_ROUTE','ARRIVED','COMPLETED'])expect((await http.patch(path,a.sup,{status})).status).toBe(200);
+ expect((await http.patch(path,a.sup,{status:'EN_ROUTE'})).status).toBe(409);
+ expect(memory.current.rows('auditLog').filter(row=>row.action==='workspace.task.status')).toHaveLength(4);
+});
+it('refuses emergency dispatch atomically when no supervisor is available',async()=>{
+ for(const member of memory.current.rows('eventMembership'))if(member.role==='FLEET_SUPERVISOR')member.available=false;
+ expect((await http.post(base,a.lm,{...request,flow:'LM_TO_CAPTAIN_EMERGENCY',recipientUserIds:[a.cap.id]})).status).toBe(409);
+ expect(memory.current.rows('task')).toHaveLength(0);expect(memory.current.rows('conversation')).toHaveLength(0);
+});

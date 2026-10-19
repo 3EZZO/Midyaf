@@ -15,6 +15,7 @@ const schema = z.object({
   JWT_REFRESH_TTL: z.string().default("7d"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4o"),
+  OSRM_BASE_URL: z.string().url().optional(),
   ENABLE_CITY: z
     .string()
     .default("true")

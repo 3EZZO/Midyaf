@@ -1021,6 +1021,9 @@ export type DensityDto = {
 };
 
 export type TelemetrySnapshotDto = {
+  observedAt?: string;
+  guests?: GuestDto[];
+  weather?: {available:boolean;source:string;observedAt:string|null};
   eventId: string;
   vehicles: VehicleDto[];
   trips: TripDto[];

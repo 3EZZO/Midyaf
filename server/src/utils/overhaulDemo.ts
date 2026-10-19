@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import {createHash} from 'node:crypto';
 import {
   APPLICATION_MODELS,
   DEMO_ACCOUNTS,
@@ -173,6 +174,9 @@ export type OverhaulPersona = (typeof OVERHAUL_PERSONAS)[number];
 export type PersonaIds = Record<OverhaulPersona, string> & { drivers: { driver: string; driverTwo: string } };
 
 export type OverhaulFixture = {
+  onboardingApplications: Prisma.OnboardingApplicationCreateManyInput[];
+  onboardingDocuments: Prisma.OnboardingDocumentCreateManyInput[];
+  onboardingTransitions: Prisma.OnboardingTransitionCreateManyInput[];
   organizations: Prisma.OrganizationCreateManyInput[];
   organizationMemberships: Prisma.OrganizationMembershipCreateManyInput[];
   events: Prisma.EventCreateManyInput[];
@@ -227,6 +231,7 @@ export const OVERHAUL_IDS = {
 export function buildOverhaulFixture(p: PersonaIds): OverhaulFixture {
   const ev = OVERHAUL_IDS.events;
   const f: OverhaulFixture = {
+    onboardingApplications: [],onboardingDocuments: [],onboardingTransitions: [],
     organizations: [
       { id: OVERHAUL_IDS.organizerOrg, name: "Overhaul Demo Events Co (Synthetic)", slug: "ovh2-demo-events", kind: "ORGANIZER_COMPANY", createdById: p.admin, createdAt: at("2026-09-01T08:00:00.000Z") },
       { id: OVERHAUL_IDS.vendorOrg, name: "Overhaul Demo Hotel Vendor (Synthetic)", slug: "ovh2-demo-vendor", kind: "VENDOR", vendorCategory: "HOTEL", createdById: p.admin, createdAt: at("2026-09-01T08:00:00.000Z") }
@@ -303,7 +308,7 @@ export function buildOverhaulFixture(p: PersonaIds): OverhaulFixture {
     const approvedAt = new Date(start.getTime() - 25 * 24 * 3600_000);
     if (spec.key === "active") {
       f.eventPlans.push({ id: ns(`plan_${spec.key}_v1`), eventId: id, version: 1, status: "SUPERSEDED", source: "DETERMINISTIC_ADVISORY", advisory: true, summary: advisory.summary, content: advisory.content, generatedById: p.company, createdAt: generatedAt });
-      f.eventPlans.push({ id: ns(`plan_${spec.key}_v2`), eventId: id, version: 2, status: "APPROVED", source: "MANUAL", advisory: false, summary: "Manual revision: two extra shuttles for the press group (synthetic).", content: { generator: "manual", items: [{ category: "VEHICLES", quantity: 16, note: "Two extra shuttles (synthetic)" }, { category: "HOTEL_ROOMS", quantity: 26, note: null }] }, generatedById: p.company, approvedById: p.eventLead, approvedAt, createdAt: generatedAt });
+      f.eventPlans.push({ id: ns(`plan_${spec.key}_v2`), eventId: id, version: 2, status: "APPROVED", source: "MANUAL", advisory: false, summary: "Manual revision: two extra shuttles for the press group (synthetic).", content: { generator: "manual", logistics:["Synthetic airport arrivals and venue transfers"], hotelDistribution:["26 estimated rooms across the synthetic hotel zone"], vehicleRequirements:["16 estimated vehicles; two additional press shuttles"], teamRequirements:["Project lead, logistics manager and four operational subteams"], scopeOfWork:["Airport reception, hotel transfers, venue operations and departures"], items: [{ category: "VEHICLES", quantity: 16, note: "Two extra shuttles (synthetic)" }, { category: "HOTEL_ROOMS", quantity: 26, note: null }] }, generatedById: p.company, approvedById: p.eventLead, approvedAt, createdAt: generatedAt });
       f.approvedPlans.push({ eventId: id, planId: ns(`plan_${spec.key}_v2`), approvedAt });
     } else if (spec.key === "completed") {
       f.eventPlans.push({ id: ns(`plan_${spec.key}_v1`), eventId: id, version: 1, status: "APPROVED", source: "DETERMINISTIC_ADVISORY", advisory: true, summary: advisory.summary, content: advisory.content, generatedById: p.company, approvedById: p.eventLead, approvedAt, createdAt: generatedAt });
@@ -466,10 +471,20 @@ export function buildOverhaulFixture(p: PersonaIds): OverhaulFixture {
     { id: ns("den_active_lounge"), eventId: ev.active, zoneKey: "vip-lounge", capturedAt: at("2026-10-19T08:00:00.000Z"), headcount: 3, capacity: 20, source: "MANUAL" }
   );
 
+  // Clearly synthetic executive-review examples, never real legal evidence.
+  for(const kind of ['VENDOR','CLIENT'] as const){
+    const id=ns(`onboarding_${kind.toLowerCase()}`),applicantUserId=kind==='VENDOR'?p.supplier:p.company;
+    f.onboardingApplications.push({id,kind,status:kind==='VENDOR'?'UNDER_REVIEW':'APPROVED',applicantUserId,companyName:`Synthetic ${kind} application — demonstration only`,registrationNumber:'SYNTHETIC-NOT-LEGAL',vendorCategory:kind==='VENDOR'?'HOTEL':null,contactName:'Synthetic authorized person',contactEmail:'synthetic@example.test',contactPhone:'+966500000000',city:'Riyadh',notes:'Synthetic fixture. Not a real application or legal approval.',reviewerUserId:p.admin,submittedAt:at('2026-10-18T08:00:00Z'),reviewStartedAt:at('2026-10-19T08:00:00Z')});
+    f.onboardingTransitions.push({id:ns(`onboard_${kind}_submitted`),applicationId:id,fromStatus:null,toStatus:'SUBMITTED',actorUserId:applicantUserId,note:'Synthetic demonstration request',createdAt:at('2026-10-18T08:00:00Z')},{id:ns(`onboard_${kind}_review`),applicationId:id,fromStatus:'SUBMITTED',toStatus:'UNDER_REVIEW',actorUserId:p.admin,note:'Synthetic review stage',createdAt:at('2026-10-19T08:00:00Z')});
+    if(kind==='CLIENT')f.onboardingTransitions.push({id:ns('onboard_CLIENT_approved'),applicationId:id,fromStatus:'UNDER_REVIEW',toStatus:'APPROVED',actorUserId:p.admin,note:'Synthetic demonstration status; not a legal approval',createdAt:at('2026-10-19T09:00:00Z')});
+    const bytes=Buffer.from('%PDF-1.4\nSYNTHETIC SAMPLE. NOT A REAL ID, LICENSE OR LEGAL DOCUMENT.');
+    for(const doc of ['COMMERCIAL_REGISTRATION','IDENTITY','LICENSE',...(kind==='VENDOR'?['ACTIVITY_DOCUMENT'] as const:[])] as const)f.onboardingDocuments.push({id:ns(`onboard_${kind}_${doc}`),applicationId:id,kind:doc,fileName:'synthetic-sample.pdf',mimeType:'application/pdf',sizeBytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),content:bytes,uploadedById:applicantUserId});
+  }
   return f;
 }
 
 const FIXTURE_TABLES: readonly FixtureTable[] = [
+  "onboardingApplications","onboardingDocuments","onboardingTransitions",
   "organizations",
   "organizationMemberships",
   "events",
@@ -542,6 +557,9 @@ async function countPresent(db: FixtureDb, ids: Record<FixtureTable, string[]>):
   const select = { id: true } as const;
   const where = (table: FixtureTable) => ({ id: { in: ids[table] } });
   const rows: Record<FixtureTable, Array<{ id: string }>> = {
+    onboardingApplications: await db.onboardingApplication.findMany({where:where('onboardingApplications'),select}),
+    onboardingDocuments: await db.onboardingDocument.findMany({where:where('onboardingDocuments'),select}),
+    onboardingTransitions: await db.onboardingTransition.findMany({where:where('onboardingTransitions'),select}),
     organizations: await db.organization.findMany({ where: where("organizations"), select }),
     organizationMemberships: await db.organizationMembership.findMany({ where: where("organizationMemberships"), select }),
     events: await db.event.findMany({ where: where("events"), select }),
@@ -661,6 +679,9 @@ export async function inspectOverhaul(
 
 /** Inserts the whole plan in dependency order (inside the caller's transaction). */
 export async function writeOverhaulFixture(tx: FixtureDb, fixture: OverhaulFixture) {
+  await tx.onboardingApplication.createMany({data:fixture.onboardingApplications});
+  await tx.onboardingDocument.createMany({data:fixture.onboardingDocuments});
+  await tx.onboardingTransition.createMany({data:fixture.onboardingTransitions});
   await tx.organization.createMany({ data: fixture.organizations });
   await tx.organizationMembership.createMany({ data: fixture.organizationMemberships });
   await tx.event.createMany({ data: fixture.events });

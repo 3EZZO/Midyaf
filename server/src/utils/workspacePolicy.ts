@@ -335,6 +335,7 @@ export type LockableTable =
   | "OnboardingApplication"
   | "EventGuest"
   | "Trip"
+  | "Task"
   | "Vehicle";
 
 /** Row lock for the rest of the transaction (schema from DATABASE_URL). */

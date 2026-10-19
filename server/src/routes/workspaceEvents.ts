@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
+import {generateWorkspacePlan} from '../services/workspacePlanning.js';
 import {
   EventMemberRole,
   EventPermission,
@@ -555,7 +556,7 @@ router.post(
 
         const generated =
           body.mode === "ADVISORY"
-            ? { source: EventPlanSource.DETERMINISTIC_ADVISORY, advisory: true, ...buildAdvisoryPlan(event) }
+            ? await generateWorkspacePlan(event)
             : {
                 source: EventPlanSource.MANUAL,
                 advisory: false,

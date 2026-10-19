@@ -83,6 +83,10 @@ function references(value:unknown,ids:Set<string>,depth=0):boolean {
  return Object.values(value).some(child=>references(child,ids,depth+1));
 }
 const checked=new WeakSet<object>();
+const scopedMessageResponses=new WeakSet<object>();
+/** Called only after the scoped thread router validates participation, current
+ * event access and its grant-aware privacy redactor. Lists are never exempt. */
+export function markScopedMessageResponse(req:AuthRequest){scopedMessageResponses.add(req);}
 export const legacyWorkspaceBoundary:RequestHandler=(req:AuthRequest,res,next)=>{
  if(checked.has(req)||req.path==='/health'){next();return;}
  Promise.resolve().then(async()=>{
@@ -98,7 +102,7 @@ export const legacyWorkspaceBoundary:RequestHandler=(req:AuthRequest,res,next)=>
   }
   const json=res.json.bind(res);
   const outputBoundary=/messages\/conversations\/[^/]+/.test(`${req.baseUrl}${req.path}`)?{...boundary,workspaceUsers:new Set<string>()}:boundary;
-  res.json=(body:unknown)=>json(sanitizeLegacyPayload(body,outputBoundary));
+  res.json=(body:unknown)=>json(scopedMessageResponses.has(req)?body:sanitizeLegacyPayload(body,outputBoundary));
  }).then(()=>next(),next);
 };
 

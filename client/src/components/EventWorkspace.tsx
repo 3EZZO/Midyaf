@@ -9,6 +9,7 @@ import { EventPermissions } from "./EventPermissions";
 import { EventVendors } from "./EventVendors";
 import { EventTeams } from "./EventTeams";
 import { WorkspaceInbox } from "./WorkspaceInbox";
+import {EventRadar} from './EventRadar';
 import { EventGuests } from "./EventGuests";
 
 export function EventWorkspace(props: WorkspaceProps) {
@@ -37,6 +38,6 @@ export function EventWorkspace(props: WorkspaceProps) {
   {tabUnlocked(event,tab) && tab === 'vendors' && <EventVendors {...props}/>}
   {tab === 'guests' && <EventGuests {...props} event={event}/>}
   {tabUnlocked(event,tab) && tab === 'inbox' && <WorkspaceInbox token={token} eventId={eventId} isArabic={ar}/>}
-  {['radar'].includes(tab) && <Section title={labels[tab]}><p>{ar ? 'يكتمل هذا القسم ضمن وحدة التكامل التالية' : 'This section is being integrated in the next delivery module'}</p></Section>}
+  {tabUnlocked(event,tab) && tab === 'radar' && <EventRadar key={`${token}:${event.id}`} token={token} event={event} isArabic={ar}/>}
  </div>;
 }

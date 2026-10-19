@@ -1,3 +1,4 @@
+import {OperationalEventEntry} from './EventRadar';
 import { useMemo, useState } from "react";
 import {
   ArrowLeftRight,
@@ -44,7 +45,12 @@ import { PortalHero } from "./ui/PortalHero";
 
 type Tab = "intake" | "fleet" | "contracts" | "delegation" | "reports" | "ai";
 
-export function SilaOperationsDashboard({
+export function SilaOperationsDashboard(props:Parameters<typeof LegacySilaOperationsDashboard>[0]){
+ const legacy=<LegacySilaOperationsDashboard {...props}/>;
+ if(props.isDemoMode)return legacy;
+ return <OperationalEventEntry session={props.session} isArabic={props.isArabic}>{legacy}</OperationalEventEntry>;
+}
+function LegacySilaOperationsDashboard({
   data,
   session,
   isDemoMode,

@@ -1,5 +1,7 @@
 import { assertMessagingAllowed, loadEventAccess, requirePermission, requirePlanApproved } from "../utils/workspacePolicy.js";
 import { EventPermission } from "@prisma/client";
+import {loadMessageRedactions,redactMessagePayload,type MessageRedactions} from '../utils/guestPrivacy.js';
+import {markScopedMessageResponse} from '../utils/legacyWorkspaceBoundary.js';
 import { Router } from "express";
 import { Role, Prisma } from "@prisma/client";
 import { databaseSchemaName } from "../utils/supplierPortal.js";
@@ -33,6 +35,11 @@ import {
 
 const router = Router();
 router.use(requireAuth);
+const requestPrivacy=new WeakMap<object,Map<string,MessageRedactions>>();
+router.use((req,res,next)=>{
+ const privacy=new Map<string,MessageRedactions>();requestPrivacy.set(req,privacy);
+ const send=res.json.bind(res);res.json=(body)=>{let result=body;for(const redactions of privacy.values())result=redactMessagePayload(result,redactions);return send(result);};next();
+});
 
 const personSelect = { select: { id: true, name: true, role: true } } as const;
 const UNREAD_SCAN_LIMIT = 2000;
@@ -90,6 +97,9 @@ async function guardScopedConversation(req: AuthRequest, id: string, db: Prisma.
   const access = await loadEventAccess(req, conversation.eventId, db);
   requirePlanApproved(access);
   if (!access.guestId) requirePermission(access, EventPermission.VIEW);
+  const privacy=requestPrivacy.get(req);
+  if(privacy&&(!privacy.has(conversation.eventId)||db!==prisma))privacy.set(conversation.eventId,await loadMessageRedactions(db,access));
+  if(req.params.id===id)markScopedMessageResponse(req);
   if (writing) {
     // Visibility observers do not turn an individual conversation into a group.
     assertMessagingAllowed(access, conversation.messageClass === "GROUP" ? ["recipient-one", "recipient-two"] : ["recipient"]);
