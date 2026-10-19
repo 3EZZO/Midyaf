@@ -30,9 +30,18 @@ type Deps = {
   geofences: GeofenceLayer;
   corridors: CorridorLayer;
   reducedMotion: boolean;
+  /** Told which convoy the camera is tracking (marker id), or null on overview. */
+  onFocusChange?: (markerId: string | null) => void;
 };
 
-export function createMapController({ map, markers, geofences, corridors, reducedMotion }: Deps): MapController {
+export function createMapController({
+  map,
+  markers,
+  geofences,
+  corridors,
+  reducedMotion,
+  onFocusChange
+}: Deps): MapController {
   const fly = (center: L.LatLngExpression, zoom: number) => {
     if (reducedMotion) map.setView(center, zoom, { animate: false });
     else map.flyTo(center, zoom, { duration: CAMERA_FLY_SECONDS, easeLinearity: 0.2 });
@@ -51,6 +60,7 @@ export function createMapController({ map, markers, geofences, corridors, reduce
       if (!position) return false;
       fly(position, zoom);
       markers.setSelected(driverId);
+      onFocusChange?.(driverId);
       return true;
     },
     focusSite(siteRef) {
@@ -69,6 +79,7 @@ export function createMapController({ map, markers, geofences, corridors, reduce
       const bounds = markers.bounds();
       bounds.extend(corridors.allBounds());
       markers.setSelected(null);
+      onFocusChange?.(null);
       flyBounds(bounds, OVERVIEW_MAX_ZOOM);
     },
     setCorridorState(code, state) {
