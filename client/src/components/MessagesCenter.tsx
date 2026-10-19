@@ -1,3 +1,4 @@
+import { WorkspaceInbox } from "./WorkspaceInbox";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Inbox, Mail, PenSquare, RotateCcw, Search, Send } from "lucide-react";
 import type {
@@ -197,7 +198,11 @@ export function createInboxController(api: InboxApi, on: InboxCallbacks) {
   return { loadList, loadThread, select, reply, start, reset };
 }
 
-export function MessagesCenter({ session, isArabic }: { session?: Session; isArabic: boolean }) {
+export function MessagesCenter({session,isArabic}:{session?:Session;isArabic:boolean}) {
+  if(!session)return <p>{isArabic?"سجل الدخول لعرض البريد":"Sign in to view your inbox"}</p>;
+  return <div className="space-y-5"><WorkspaceInbox key={session.accessToken} token={session.accessToken} isArabic={isArabic}/>{!session.user.onboardingKind&&<details><summary>{isArabic?"المراسلات الشخصية القديمة":"Personal messaging"}</summary><LegacyMessagesCenter session={session} isArabic={isArabic}/></details>}</div>;
+}
+function LegacyMessagesCenter({ session, isArabic }: { session?: Session; isArabic: boolean }) {
   const copy = messagesCopy(isArabic);
   const tokenRef = useRef(session?.accessToken);
   tokenRef.current = session?.accessToken;

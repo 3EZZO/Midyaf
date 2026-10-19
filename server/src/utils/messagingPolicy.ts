@@ -89,7 +89,7 @@ export const conversationCreateSchema = z
   })
   .strict();
 
-export const messageCreateSchema = z.object({ body: text(MAX_MESSAGE, true) }).strict();
+export const messageCreateSchema = z.object({ body: text(MAX_MESSAGE, true), clientRequestId:z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional() }).strict();
 
 export const conversationListQuerySchema = z
   .object({

@@ -6,7 +6,8 @@ import type { Prisma } from "@prisma/client";
  * are never returned (T-03); they stay in the database and in request input.
  */
 
-/** Every User column except `passwordHash`. */
+/** Legacy user projection: no password hash or private enrollment metadata.
+ * Enrollment flags are returned only by authenticated own-session auth APIs. */
 export const safeUserSelect = {
   id: true,
   name: true,

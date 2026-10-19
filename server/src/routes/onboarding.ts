@@ -205,7 +205,9 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const user = req.user!;
     const body = onboardingCreateSchema.parse(req.body);
-    if (!APPLICANT_ROLES[body.kind].includes(user.role)) {
+    const applicant = await prisma.user.findUnique({ where: { id:user.id }, select: { onboardingPending:true, onboardingKind:true } });
+    const pending = user.role === Role.GUEST && applicant?.onboardingPending && applicant.onboardingKind === body.kind;
+    if (!pending && !APPLICANT_ROLES[body.kind].includes(user.role)) {
       throw new HttpError(403, "Your account cannot apply for this onboarding type");
     }
 
@@ -302,6 +304,7 @@ router.post(
             status: true,
             kind: true,
             companyName: true,
+            registrationNumber: true,
             vendorCategory: true,
             applicantUserId: true,
             documents: { select: { kind: true } }
@@ -311,9 +314,9 @@ router.post(
         if (!canTransitionOnboarding(fresh.status, body.to)) {
           throw new HttpError(409, `Cannot move an application from ${fresh.status} to ${body.to}`);
         }
-        if (body.to === OnboardingStatus.APPROVED &&
-            !fresh.documents.some((document) => document.kind !== OnboardingDocumentKind.SIGNED_CONTRACT)) {
-          throw new HttpError(409, "Approval needs at least one company document");
+        if (body.to === OnboardingStatus.APPROVED) {
+          const required:OnboardingDocumentKind[]=[OnboardingDocumentKind.COMMERCIAL_REGISTRATION,OnboardingDocumentKind.IDENTITY,OnboardingDocumentKind.LICENSE,...(fresh.kind === OnboardingKind.VENDOR ? [OnboardingDocumentKind.ACTIVITY_DOCUMENT] : [])];
+          if(required.some(kind=>!fresh.documents.some(document=>document.kind===kind)))throw new HttpError(409,"Approval needs commercial registration, identity, license and the applicable activity document");
         }
         if (body.to === OnboardingStatus.CONTRACT_SIGNED &&
             !fresh.documents.some((document) => document.kind === OnboardingDocumentKind.SIGNED_CONTRACT)) {
@@ -370,6 +373,16 @@ router.post(
             },
             select: { id: true }
           });
+          await lockRow(tx,"User",fresh.applicantUserId);
+          const applicant=await tx.user.findUnique({where:{id:fresh.applicantUserId},select:{onboardingPending:true,onboardingKind:true,role:true}});
+          if(applicant?.onboardingPending) {
+            if(applicant.onboardingKind!==fresh.kind || applicant.role!==Role.GUEST)throw new HttpError(409,"Applicant account changed");
+            await tx.user.update({where:{id:fresh.applicantUserId},data:{onboardingPending:false,role:fresh.kind===OnboardingKind.VENDOR?Role.SUPPLIER:Role.COMPANY_ORGANIZER}});
+          }
+          if(fresh.kind===OnboardingKind.VENDOR) {
+            const profile=await tx.supplier.findUnique({where:{userId:fresh.applicantUserId},select:{id:true}});
+            if(!profile)await tx.supplier.create({data:{userId:fresh.applicantUserId,name:fresh.companyName,category:fresh.vendorCategory!,verified:true,crNumber:fresh.registrationNumber}});
+          }
           organizationId = organization.id;
           relations.organizationId = organization.id;
         }
@@ -490,7 +503,7 @@ router.get(
     const bytes = Buffer.from(document.content);
     res.setHeader("Content-Type", document.mimeType);
     res.setHeader("Content-Length", String(bytes.length));
-    res.setHeader("Content-Disposition", `attachment; filename="${document.fileName.replace(/["\\]/g, "_")}"`);
+    res.setHeader("Content-Disposition", `attachment; filename="document"; filename*=UTF-8''${encodeURIComponent(document.fileName)}`);
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");

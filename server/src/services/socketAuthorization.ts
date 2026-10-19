@@ -234,7 +234,7 @@ export function authenticateSocket(
 
   // SUPPLIER-001: the supplier workspace needs no realtime, and some REST
   // routes still broadcast globally; suppliers never join any room.
-  if (user.role === Role.SUPPLIER) {
+  if (user.onboardingPending || user.role === Role.SUPPLIER) {
     next(unauthorized("role_not_permitted"));
     return;
   }

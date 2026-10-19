@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
 import {
   EventMemberRole,
@@ -16,6 +17,8 @@ import {
   OPERATIONAL_STATUSES,
   WORKSPACE_LIMITS,
   canTransitionOperational,
+  eventInviteSchema,
+  messagingPolicySchema,
   eventContractSignSchema,
   eventCreateSchema,
   eventMemberCreateSchema,
@@ -41,6 +44,7 @@ import {
   WORKSPACE_EVENT_SELECT,
   WORKSPACE_TRANSACTION,
   assertCanGrant,
+  eventMessagingPolicy,
   buildAdvisoryPlan,
   categoriesForScopeChange,
   hasEventRole,
@@ -679,13 +683,17 @@ router.get(
 );
 
 /** Role prerequisites stored in the database, never taken from the request. */
-async function assertRolePrerequisites(userId: string, role: EventMemberRole) {
+async function assertRolePrerequisites(userId: string, role: EventMemberRole, db: Prisma.TransactionClient = prisma) {
+  if (role === EventMemberRole.EXECUTIVE_VIEWER) {
+    const user=await db.user.findUnique({where:{id:userId},select:{role:true}});
+    if(user?.role!==Role.SUPER_ADMIN)throw new HttpError(400,"Executive viewers need an executive account");
+  }
   if (role === EventMemberRole.CAPTAIN) {
-    const driver = await prisma.driver.findUnique({ where: { userId }, select: { id: true, active: true } });
+    const driver = await db.driver.findUnique({ where: { userId }, select: { id: true, active: true } });
     if (!driver || !driver.active) throw new HttpError(400, "A captain needs an active driver profile");
   }
   if (role === EventMemberRole.VENDOR) {
-    const vendorOrg = await prisma.organizationMembership.findFirst({
+    const vendorOrg = await db.organizationMembership.findFirst({
       where: { userId, status: MembershipStatus.ACTIVE, organization: { kind: "VENDOR" } },
       select: { id: true }
     });
@@ -700,6 +708,7 @@ router.post(
     requirePlanApproved(access);
     requireEventOpen(access);
     const body = eventMemberCreateSchema.parse(req.body);
+    if (body.role === EventMemberRole.EXECUTIVE_VIEWER && body.permissions.some(p => p !== EventPermission.VIEW)) throw new HttpError(400, "Executive viewer access is read-only");
     assertCanGrant(access, body.userId, body.permissions, [body.role]);
 
     const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true } });
@@ -756,6 +765,7 @@ router.patch(
       select: { ...MEMBER_SELECT, updatedAt: true }
     });
     if (!current) throw new HttpError(404, "Membership not found");
+    if ((body.role ?? current.role) === EventMemberRole.EXECUTIVE_VIEWER && (body.permissions ?? current.permissions).some(p => p !== EventPermission.VIEW)) throw new HttpError(400, "Executive viewer access is read-only");
     // The grantor must hold every permission involved, before and after.
     assertCanGrant(access, current.userId, [...new Set([...current.permissions, ...(body.permissions ?? [])])], [current.role, body.role ?? current.role]);
     if (body.role && body.role !== current.role) await assertRolePrerequisites(current.userId, body.role);
@@ -844,6 +854,76 @@ router.get("/events/:eventId/updates", asyncHandler(async (req: AuthRequest, res
   });
   const users = await prisma.user.findMany({ where: { id: { in: rows.flatMap(r => r.actorUserId ? [r.actorUserId] : []) } }, select: { id: true, name: true } });
   res.json({ updates: rows.map(row => ({ id: row.id, action: row.action, at: row.createdAt.toISOString(), actor: users.find(u => u.id === row.actorUserId)?.name ?? "System" })) });
+}));
+
+router.get("/events/:eventId/messaging-policy",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.VIEW);
+  res.json({policy:eventMessagingPolicy(access)});
+}));
+router.put("/events/:eventId/messaging-policy",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.EDIT);requireNotSupport(access,"change messaging policy");
+  if(!access.isOrgAdmin&&!hasEventRole(access,[EventMemberRole.LOGISTICS_MANAGER]))throw new HttpError(403,"Only the logistics manager or organization admin controls messaging");
+  const body=messagingPolicySchema.parse(req.body),ids=[...new Set([...body.individualSenderIds,...body.groupSenderIds,...body.taskReceiverIds])];
+  await prisma.$transaction(async tx=>{
+    await lockRow(tx,"Event",access.event.id);
+    const members=await tx.eventMembership.findMany({where:{eventId:access.event.id,userId:{in:ids},status:MembershipStatus.ACTIVE,permissions:{has:EventPermission.VIEW}},select:{userId:true}});
+    if(members.length!==ids.length)throw new HttpError(400,"Messaging policy users must be active event members");
+    await tx.event.update({where:{id:access.event.id},data:{messagingPolicy:body}});
+    await writeWorkspaceAudit(tx,req,{action:"workspace.messaging_policy.update",entityType:"EVENT",entityId:access.event.id,eventId:access.event.id,after:body});
+  },WORKSPACE_TRANSACTION);
+  res.json({policy:body});
+}));
+router.get("/events/:eventId/invitations",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.INVITE);
+  const invitations=await prisma.eventInvite.findMany({where:{eventId:access.event.id},select:{id:true,email:true,role:true,subteam:true,expiresAt:true,acceptedAt:true,revokedAt:true},orderBy:{createdAt:"desc"},take:200});
+  res.json({invitations});
+}));
+router.post("/events/:eventId/invitations",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requireEventOpen(access);
+  const body=eventInviteSchema.parse(req.body);
+  if(body.email===access.actor.email)throw new HttpError(403,"You cannot invite yourself");
+  const target=await prisma.user.findUnique({where:{email:body.email},select:{id:true}});
+  assertCanGrant(access,target?.id??"unregistered-invite",body.permissions,[body.role]);
+  if(body.role===EventMemberRole.EXECUTIVE_VIEWER&&body.permissions.some(permission=>permission!==EventPermission.VIEW))throw new HttpError(400,"Executive viewer access is read-only");
+  const token=randomBytes(32).toString("hex"),expiresAt=new Date(Date.now()+24*3600000);
+  const invitation=await prisma.$transaction(async tx=>{
+    const created=await tx.eventInvite.create({data:{eventId:access.event.id,email:body.email,tokenHash:createHash("sha256").update(token).digest("hex"),role:body.role,subteam:body.subteam??null,permissions:body.permissions,workScope:body.workScope??null,clientVisible:body.clientVisible??false,canReceive:body.canReceive??true,createdById:access.actor.id,expiresAt},select:{id:true,expiresAt:true}});
+    await writeWorkspaceAudit(tx,req,{action:"workspace.invitation.create",entityType:"EVENT_INVITE",entityId:created.id,eventId:access.event.id,metadata:{role:body.role}});return created;
+  },WORKSPACE_TRANSACTION);
+  res.status(201).json({invitation:{...invitation,token}});
+}));
+router.post("/events/:eventId/invitations/:inviteId/revoke",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePermission(access,EventPermission.INVITE);requirePlanApproved(access);
+  const invite=await prisma.eventInvite.findFirst({where:{id:String(req.params.inviteId),eventId:access.event.id},select:{id:true,createdById:true,role:true,permissions:true}});
+  if(!invite)throw new HttpError(404,"Invitation not found");assertCanGrant(access,invite.createdById===access.actor.id?"invitation-recipient":invite.createdById,invite.permissions,[invite.role]);
+  await prisma.$transaction(async tx=>{
+    const changed=await tx.eventInvite.updateMany({where:{id:invite.id,acceptedAt:null,revokedAt:null},data:{revokedAt:new Date()}});
+    if(changed.count!==1)throw new HttpError(409,"Invitation is no longer pending");
+    await writeWorkspaceAudit(tx,req,{action:"workspace.invitation.revoke",entityType:"EVENT_INVITE",entityId:invite.id,eventId:access.event.id});
+  },WORKSPACE_TRANSACTION);res.json({revoked:true});
+}));
+router.post("/invitations/accept",asyncHandler(async(req:AuthRequest,res)=>{
+  const {token}=z.object({token:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body),user=req.user!;
+  const accepted=await prisma.$transaction(async tx=>{
+    const invite=await tx.eventInvite.findUnique({where:{tokenHash:createHash("sha256").update(token).digest("hex")}});
+    if(!invite||invite.email!==user.email||invite.expiresAt<=new Date()||invite.acceptedAt||invite.revokedAt||invite.createdById===user.id)throw new HttpError(404,"Invitation is unavailable");
+    await lockRow(tx,"Event",invite.eventId);
+    const grantor=await tx.user.findUnique({where:{id:invite.createdById},select:{id:true,email:true,role:true}});
+    if(!grantor)throw new HttpError(404,"Invitation is unavailable");
+    const eventMember=await tx.eventMembership.findUnique({where:{eventId_userId:{eventId:invite.eventId,userId:grantor.id}},select:{id:true}});
+    if(eventMember)await lockRow(tx,"EventMembership",eventMember.id);
+    const access=await loadEventAccess(req,invite.eventId,tx,grantor);requirePlanApproved(access);requireEventOpen(access);
+    const orgMember=await tx.organizationMembership.findUnique({where:{organizationId_userId:{organizationId:access.event.organizationId,userId:grantor.id}},select:{id:true}});
+    if(orgMember)await lockRow(tx,"OrganizationMembership",orgMember.id);
+    const current=await loadEventAccess(req,invite.eventId,tx,grantor);
+    assertCanGrant(current,user.id,invite.permissions,[invite.role]);await assertRolePrerequisites(user.id,invite.role,tx);
+    if(invite.role===EventMemberRole.EXECUTIVE_VIEWER&&invite.permissions.some(permission=>permission!==EventPermission.VIEW))throw new HttpError(403,"Executive viewer access is read-only");
+    if(await tx.eventMembership.findUnique({where:{eventId_userId:{eventId:invite.eventId,userId:user.id}},select:{id:true}}))throw new HttpError(409,"You already have an event membership; ask its manager to update it");
+    const changed=await tx.eventInvite.updateMany({where:{id:invite.id,acceptedAt:null,revokedAt:null,expiresAt:{gt:new Date()}},data:{acceptedAt:new Date()}});if(changed.count!==1)throw new HttpError(409,"Invitation changed");
+    await tx.eventMembership.create({data:{eventId:invite.eventId,userId:user.id,role:invite.role,subteam:invite.subteam,permissions:invite.permissions,workScope:invite.workScope,clientVisible:invite.clientVisible,canReceive:invite.canReceive,grantedById:grantor.id}});
+    await writeWorkspaceAudit(tx,req,{action:"workspace.invitation.accept",entityType:"EVENT_INVITE",entityId:invite.id,eventId:invite.eventId});return{eventId:invite.eventId};
+  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
+  res.json(accepted);
 }));
 
 export default router;

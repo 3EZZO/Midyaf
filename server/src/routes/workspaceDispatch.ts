@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import { unreadCounts } from "./messages.js";
 import { Router } from "express";
 import type { Server } from "socket.io";
 import {
@@ -25,6 +28,8 @@ import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 import { MESSAGE_NOTIFICATION_KIND, previewText } from "../utils/messagingPolicy.js";
 import {
+  assertMessagingAllowed,
+  visibleMessageRecipients,
   ORGANIZER_SIDE_ROLES,
   WORKSPACE_TRANSACTION,
   hasEventRole,
@@ -270,6 +275,7 @@ router.post(
         requirePlanApproved(fresh);
         requireEventOpen(fresh);
         resolveSender(fresh, body.flow);
+        assertMessagingAllowed(fresh, body.recipientUserIds, Boolean(body.task));
         const stillEligible = await eligibleRecipients(fresh, body.flow, body.recipientUserIds, tx);
         if (stillEligible.length !== body.recipientUserIds.length) throw recipientsRefused();
         if (captainDriverId) {
@@ -308,6 +314,8 @@ router.post(
 
         const now = new Date();
         const messageClass = deriveMessageClass(body.flow, recipients.length, Boolean(body.task));
+        const audience=await visibleMessageRecipients(tx,fresh,body.clientVisible,body.executiveVisible);
+        const participantIds=[...new Set([access.actor.id,...recipients.map(recipient=>recipient.userId),...audience])];
         const conversation = await tx.conversation.create({
           data: {
             subject: body.subject,
@@ -316,11 +324,10 @@ router.post(
             eventId: access.event.id,
             messageClass,
             dispatchFlow: body.flow,
+            clientVisible: body.clientVisible,
+            executiveVisible: body.executiveVisible,
             participants: {
-              create: [
-                { userId: access.actor.id, lastReadAt: now },
-                ...recipients.map((recipient) => ({ userId: recipient.userId }))
-              ]
+              create: participantIds.map(userId=>({userId,...(userId===access.actor.id?{lastReadAt:now}:{})}))
             },
             messages: { create: { senderId: access.actor.id, body: body.body, createdAt: now } }
           },
@@ -484,16 +491,18 @@ router.get(
         participants: { some: { userId: user.id } },
         ...(query.eventId ? { eventId: query.eventId } : {}),
         ...(query.messageClass ? { messageClass: query.messageClass } : {}),
+        ...(query.taskSource ? { tasks: { some: { source:query.taskSource } } } : {}),
         ...(query.dispatchFlow ? { dispatchFlow: query.dispatchFlow } : {})
       },
       select: {
         id: true,
         subject: true,
+        tasks: { select: { source:true }, take:1 },
         eventId: true,
         messageClass: true,
         dispatchFlow: true,
         lastMessageAt: true,
-        participants: { select: { user: { select: { id: true, name: true, role: true } } } },
+        participants: { select: { userId:true, lastReadAt:true, user: { select: { id: true, name: true, role: true } } } },
         messages: { select: { body: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 }
       },
       orderBy: [{ lastMessageAt: "desc" }, { id: "desc" }],
@@ -513,10 +522,13 @@ router.get(
       }
     }
     const page = visible.slice(0, query.limit);
+    const unread = await unreadCounts(user.id,new Map(page.map(row=>[row.id,row.participants.find(participant=>participant.userId===user.id)?.lastReadAt??null])));
     const items: InboxItemDto[] = page.map((row) => ({
       conversationId: row.id,
+      unreadCount: unread.get(row.id)??0,
       subject: row.subject,
       eventId: row.eventId,
+      taskSource: row.tasks[0]?.source ?? (row.messageClass === MessageClass.ALERT && row.dispatchFlow === "LM_TO_CAPTAIN_EMERGENCY" ? "LOGISTICS_TEAM_TASK" : null),
       messageClass: row.messageClass,
       dispatchFlow: row.dispatchFlow,
       lastMessageAt: row.lastMessageAt.toISOString(),
@@ -529,5 +541,35 @@ router.get(
     });
   })
 );
+
+const eventMessageSchema=z.object({recipientUserIds:z.array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).min(1).max(10).refine(ids=>new Set(ids).size===ids.length),subject:z.string().trim().min(1).max(150),body:z.string().trim().min(1).max(5000),kind:z.enum(["MESSAGE","INQUIRY","ALERT"]).default("MESSAGE"),clientVisible:z.boolean().default(false),executiveVisible:z.boolean().default(false),clientRequestId:z.string().regex(/^[A-Za-z0-9_-]{8,64}$/)}).strict();
+router.get("/events/:eventId/message-contacts",asyncHandler(async(req:AuthRequest,res)=>{
+  const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.VIEW);
+  const members=await prisma.eventMembership.findMany({where:{eventId:access.event.id,status:MembershipStatus.ACTIVE,canReceive:true,permissions:{has:EventPermission.VIEW},userId:{not:access.actor.id}},select:{role:true,user:{select:{id:true,name:true}}},take:500});
+  res.json({contacts:members.map(member=>({...member.user,eventRole:member.role}))});
+}));
+router.post("/events/:eventId/conversations",asyncHandler(async(req:AuthRequest,res)=>{
+ const access=await loadEventAccess(req,req.params.eventId);requirePlanApproved(access);requirePermission(access,EventPermission.VIEW);requireEventOpen(access);
+ const body=eventMessageSchema.parse(req.body);
+ if(body.recipientUserIds.includes(access.actor.id))throw new HttpError(400,"You cannot message yourself");
+ const hash=createHash("sha256").update(JSON.stringify({...body,recipientUserIds:[...body.recipientUserIds].sort()})).digest("hex"),dedupeKey=`${access.actor.id}:${body.clientRequestId}`;
+ const result=await prisma.$transaction(async tx=>{
+  await lockRow(tx,"Event",access.event.id);
+  const members=await tx.eventMembership.findMany({where:{eventId:access.event.id,userId:{in:[access.actor.id,...body.recipientUserIds]}},select:{id:true},orderBy:{id:"asc"}});
+  for(const member of members)await lockRow(tx,"EventMembership",member.id);
+  const current=await loadEventAccess(req,access.event.id,tx);requirePlanApproved(current);requirePermission(current,EventPermission.VIEW);requireEventOpen(current);assertMessagingAllowed(current,body.recipientUserIds);
+  if(body.kind==="ALERT"&&!current.isOrgAdmin&&!hasEventRole(current,[EventMemberRole.LOGISTICS_MANAGER]))throw new HttpError(403,"Only event management sends alerts");
+  const recipients=await tx.eventMembership.findMany({where:{eventId:access.event.id,userId:{in:body.recipientUserIds},status:MembershipStatus.ACTIVE,canReceive:true,permissions:{has:EventPermission.VIEW}},select:{userId:true}});
+  if(recipients.length!==body.recipientUserIds.length)throw recipientsRefused();
+  const existing=await tx.conversation.findUnique({where:{dedupeKey},select:{id:true,eventId:true,requestHash:true}});
+  if(existing){if(existing.eventId!==access.event.id||existing.requestHash!==hash)throw new HttpError(409,"This retry id was used for different message content");return{id:existing.id,replayed:true};}
+  const audience=await visibleMessageRecipients(tx,current,body.clientVisible,body.executiveVisible),ids=[...new Set([access.actor.id,...body.recipientUserIds,...audience])],now=new Date();
+  const created=await tx.conversation.create({data:{eventId:access.event.id,subject:body.subject,createdById:access.actor.id,lastMessageAt:now,dedupeKey,requestHash:hash,clientVisible:body.clientVisible,executiveVisible:body.executiveVisible,messageClass:body.kind==="ALERT"?MessageClass.ALERT:body.kind==="INQUIRY"?MessageClass.INQUIRY:body.recipientUserIds.length>1?MessageClass.GROUP:MessageClass.INDIVIDUAL,participants:{create:ids.map(userId=>({userId,...(userId===access.actor.id?{lastReadAt:now}:{})}))},messages:{create:{senderId:access.actor.id,body:body.body,createdAt:now}}},select:{id:true}});
+  await tx.notification.createMany({data:ids.filter(id=>id!==access.actor.id).map(userId=>({userId,title:"New event message",body:body.subject,metadata:{kind:MESSAGE_NOTIFICATION_KIND,conversationId:created.id,eventId:access.event.id}}))});
+  await writeWorkspaceAudit(tx,req,{action:"workspace.conversation.create",entityType:"CONVERSATION",entityId:created.id,eventId:access.event.id,metadata:{kind:body.kind,participants:ids.length,clientVisible:body.clientVisible,executiveVisible:body.executiveVisible}});
+  return{id:created.id,replayed:false};
+ },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
+ res.status(result.replayed?200:201).json({conversationId:result.id,replayed:result.replayed});
+}));
 
 export default router;

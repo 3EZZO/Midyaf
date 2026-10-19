@@ -289,6 +289,8 @@ export type AuditLog = {
 };
 
 export type User = {
+  onboardingPending?: boolean;
+  onboardingKind?: "VENDOR" | "CLIENT" | null;
   id: string;
   name: string;
   email: string;

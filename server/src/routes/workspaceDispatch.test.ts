@@ -9,8 +9,9 @@ vi.mock("../db.js", async () => {
 const { startHarness } = await import("../testing/httpHarness.js");
 const { buildWorkspaceTestWorld } = await import("../testing/memoryPrisma.js");
 const router = (await import("./workspace.js")).default;
+const messages = (await import("./messages.js")).default;
 const { actors: a, seed } = buildWorkspaceTestWorld(); let http: Harness;
-beforeAll(async () => { http = await startHarness([["/w", router]]); });
+beforeAll(async () => { http = await startHarness([["/w", router],["/messages",messages]]); });
 afterAll(async () => { await http.close(); });
 beforeEach(() => { memory.current.seed(structuredClone(seed)); });
 const base = "/w/events/evt_a/dispatch";
@@ -56,4 +57,35 @@ it("retries idempotently and revokes inbox access when a member loses VIEW", asy
   expect((await http.get("/w/inbox", a.sup)).body.items).toHaveLength(1);
   memory.current.rows("eventMembership").find(m => m.userId === a.sup.id)!.permissions = [];
   expect((await http.get("/w/inbox", a.sup)).body.items).toHaveLength(0);
+});
+
+const message={recipientUserIds:[a.sup.id],subject:"Arrival desk inquiry",body:"Check this arrival",kind:"INQUIRY",clientRequestId:"message_retry_1"};
+const policy={individualSenderIds:[a.lm.id,a.sup.id],groupSenderIds:[a.lm.id],taskReceiverIds:[a.sup.id],clientVisible:true,executiveVisible:false};
+it("applies current messaging policy and distinguishes inquiry from task badges",async()=>{
+  expect((await http.put("/w/events/evt_a/messaging-policy",a.lm,policy)).status).toBe(200);
+  expect((await http.post("/w/events/evt_a/conversations",a.pm,message)).status).toBe(403);
+  const first=await http.post("/w/events/evt_a/conversations",a.lm,message);
+  expect(first.status).toBe(201);
+  expect((await http.post("/w/events/evt_a/conversations",a.lm,message)).body).toMatchObject({replayed:true,conversationId:first.body.conversationId});
+  expect((await http.post("/w/events/evt_a/conversations",a.lm,{...message,body:"Changed"})).status).toBe(409);
+  const inbox=await http.get("/w/inbox",a.sup);
+  expect(inbox.body.items[0]).toMatchObject({taskSource:null,messageClass:"INQUIRY",unreadCount:1});
+  const path=`/messages/conversations/${first.body.conversationId}/messages`,reply={body:"Confirmed",clientRequestId:"reply_retry_1"};
+  expect((await http.post(path,a.sup,reply)).status).toBe(201);
+  expect((await http.post(path,a.sup,reply)).status).toBe(201);
+  expect(memory.current.rows("conversationMessage")).toHaveLength(2);
+  expect((await http.post(path,a.sup,{...reply,body:"Changed"})).status).toBe(409);
+  expect((await http.put("/w/events/evt_a/messaging-policy",a.lm,{...policy,individualSenderIds:[a.lm.id]})).status).toBe(200);
+  expect((await http.post(path,a.sup,{body:"No longer allowed"})).status).toBe(403);
+  expect((await http.get(`/messages/conversations/${first.body.conversationId}`,a.sup)).status).toBe(200);
+});
+it("shares only explicitly selected new conversations with client viewers",async()=>{
+  await http.put("/w/events/evt_a/messaging-policy",a.lm,policy);
+  const privateThread=await http.post("/w/events/evt_a/conversations",a.lm,message);
+  expect((await http.get(`/messages/conversations/${privateThread.body.conversationId}`,a.client)).status).toBe(404);
+  const shared=await http.post("/w/events/evt_a/conversations",a.lm,{...message,clientRequestId:"message_shared_1",clientVisible:true});
+  expect(shared.status).toBe(201);
+  expect((await http.get(`/messages/conversations/${shared.body.conversationId}`,a.client)).status).toBe(200);
+  expect((await http.post("/w/events/evt_a/conversations",a.lm,{...message,clientRequestId:"message_exec_1",executiveVisible:true})).status).toBe(403);
+  expect((await http.post(base,a.lm,{...request,flow:"LM_TO_CAPTAIN_EMERGENCY",recipientUserIds:[a.cap.id]})).status).toBe(403);
 });

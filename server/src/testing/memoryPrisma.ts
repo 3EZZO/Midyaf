@@ -48,6 +48,8 @@ const many = (model: string, foreign: string, local = "id"): RelationSpec => ({
 /** Relations of the application models the new routes touch. */
 export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   user: {
+    unique: [["email"]],
+    defaults: { onboardingPending: false, onboardingKind: null },
     relations: {
       driverProfile: { model: "driver", kind: "one", local: "id", foreign: "userId" },
       supplierProfile: { model: "supplier", kind: "one", local: "id", foreign: "userId" },
@@ -74,6 +76,7 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
       vipGuestCount: 0,
       regularGuestCount: 0,
       carCount: 0,
+      messagingPolicy: null,
       organizationId: null,
       approvedPlanId: null,
       planApprovedAt: null,
@@ -142,10 +145,12 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   auditLog: {},
   notification: {},
   conversation: {
+    unique: [["dedupeKey"]],
     relations: {
       createdBy: one("user", "createdById"),
       participants: many("conversationParticipant", "conversationId"),
       messages: many("conversationMessage", "conversationId")
+      ,tasks: many("task", "conversationId")
     }
   },
   conversationParticipant: {
@@ -156,6 +161,7 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
     unique: [["conversationId", "userId"]]
   },
   conversationMessage: {
+    unique: [["senderId","clientRequestId"]],
     relations: {
       conversation: one("conversation", "conversationId"),
       sender: one("user", "senderId")
@@ -198,6 +204,7 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
       grantedById: null
     }
   },
+  eventInvite: { relations: { event: one("event", "eventId") }, unique: [["tokenHash"]], defaults: { acceptedAt:null, revokedAt:null, subteam:null, workScope:null, clientVisible:false, canReceive:true } },
   eventPlan: {
     relations: {
       event: one("event", "eventId"),
@@ -768,6 +775,7 @@ export function buildWorkspaceTestWorld() {
   const event = (id: string, organizationId: string | null, organizerId: string, approvedPlanId: string | null) => ({
     id,
     organizationId,
+    messagingPolicy: null,
     organizerId,
     name: `Synthetic ${id}`,
     brief: null,

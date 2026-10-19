@@ -1,4 +1,4 @@
-import { loadEventAccess, requirePermission, requirePlanApproved } from "../utils/workspacePolicy.js";
+import { assertMessagingAllowed, loadEventAccess, requirePermission, requirePlanApproved } from "../utils/workspacePolicy.js";
 import { EventPermission } from "@prisma/client";
 import { Router } from "express";
 import { Role, Prisma } from "@prisma/client";
@@ -82,14 +82,18 @@ async function requireParticipation(conversationIdRaw: unknown, userId: string, 
   return membership;
 }
 
-async function guardScopedConversation(req: AuthRequest, id: string, db: Prisma.TransactionClient = prisma) {
-  const conversation = await db.conversation.findUnique({ where: { id }, select: { eventId: true } });
+async function guardScopedConversation(req: AuthRequest, id: string, db: Prisma.TransactionClient = prisma, writing = false) {
+  const conversation = await db.conversation.findUnique({ where: { id }, select: { eventId: true, messageClass: true } });
   if (!conversation?.eventId) return;
   const event = await db.event.findUnique({ where: { id: conversation.eventId }, select: { organizationId: true } });
   if (!event?.organizationId) return;
   const access = await loadEventAccess(req, conversation.eventId, db);
   requirePlanApproved(access);
   if (!access.guestId) requirePermission(access, EventPermission.VIEW);
+  if (writing) {
+    // Visibility observers do not turn an individual conversation into a group.
+    assertMessagingAllowed(access, conversation.messageClass === "GROUP" ? ["recipient-one", "recipient-two"] : ["recipient"]);
+  }
 }
 
 router.get(
@@ -297,16 +301,24 @@ router.post(
 
     const message = await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
-      await guardScopedConversation(req, membership.conversationId, tx);
+      await guardScopedConversation(req, membership.conversationId, tx, true);
       const conversation = await tx.conversation.findUnique({
         where: { id: membership.conversationId }, select: { lastMessageAt: true }
       });
       if (!conversation) throw new HttpError(404, "Conversation not found");
+      if(body.clientRequestId) {
+        const existing=await tx.conversationMessage.findUnique({where:{senderId_clientRequestId:{senderId:user.id,clientRequestId:body.clientRequestId}},select:{id:true,conversationId:true,body:true,createdAt:true,sender:personSelect}});
+        if(existing) {
+          if(existing.conversationId!==membership.conversationId||existing.body!==body.body)throw new HttpError(409,"This retry id was used for another reply");
+          return {...existing,replayed:true};
+        }
+      }
       const now = new Date(Math.max(Date.now(), conversation.lastMessageAt.getTime() + 1));
       const created = await tx.conversationMessage.create({
         data: {
           conversationId: membership.conversationId,
           senderId: user.id,
+          clientRequestId: body.clientRequestId,
           body: body.body,
           createdAt: now
         },
@@ -318,14 +330,14 @@ router.post(
       });
       // Sending does not read: earlier incoming messages the sender has not
       // been shown stay unread (own messages never count as unread).
-      return created;
+      return {...created,replayed:false};
     }, CONVERSATION_TRANSACTION);
 
     const others = await prisma.conversationParticipant.findMany({
       where: { conversationId: membership.conversationId, userId: { not: user.id } },
       select: { userId: true }
     });
-    notifyParticipants(req, others.map((p) => p.userId), membership.conversationId);
+    if(!message.replayed)notifyParticipants(req, others.map((p) => p.userId), membership.conversationId);
 
     res.status(201).json({
       message: {
@@ -406,7 +418,7 @@ async function loadThread(conversationId: string, userId: string, db: ThreadDb =
   };
 }
 
-async function unreadCounts(userId: string, marks: Map<string, Date | null>) {
+export async function unreadCounts(userId: string, marks: Map<string, Date | null>) {
   if (marks.size === 0) return new Map<string, number>();
   const read = [...marks.values()];
   const oldest = read.some((value) => !value)

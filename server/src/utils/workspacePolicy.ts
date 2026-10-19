@@ -13,6 +13,7 @@ import type {
   EventScopeField,
   WorkspaceEventDto
 } from "../../../shared/overhaul.js";
+import { messagingPolicySchema } from "../../../shared/overhaul.js";
 import { prisma } from "../db.js";
 import { calculateShuttleVehicles, calculateVipCars } from "../services/logisticsRules.js";
 import { toAuditJson } from "../services/auditLog.js";
@@ -70,6 +71,7 @@ export const FLEET_ROLES: readonly EventMemberRole[] = [
 
 export const WORKSPACE_EVENT_SELECT = {
   id: true,
+  messagingPolicy: true,
   organizationId: true,
   organizerId: true,
   name: true,
@@ -144,8 +146,10 @@ export async function organizationRoleOf(userId: string, organizationId: string,
  * Resolves what the actor may do in one organization-bound event, or throws
  * the uniform 404. SUPER_ADMIN support access is audited before returning.
  */
-export async function loadEventAccess(req: Request, eventIdRaw: unknown, db: Prisma.TransactionClient = prisma): Promise<EventAccess> {
-  const actor = (req as AuthRequest).user;
+export async function loadEventAccess(req: Request, eventIdRaw: unknown, db: Prisma.TransactionClient = prisma, evaluatedActor?: AuthenticatedUser): Promise<EventAccess> {
+  // The optional actor is used only to revalidate a stored invitation grantor.
+  // Audits always retain the authenticated request actor, never the evaluated grantor.
+  const actor = evaluatedActor ?? (req as AuthRequest).user;
   if (!actor) throw new HttpError(401, "Authentication required");
   const eventId = parseRouteId(eventIdRaw, eventNotFound);
 
@@ -188,7 +192,8 @@ export async function loadEventAccess(req: Request, eventIdRaw: unknown, db: Pri
       action: "workspace.support_access",
       entityType: "EVENT",
       entityId: eventId,
-      eventId
+      eventId,
+      metadata: { evaluatedUserId: actor.id }
     });
   }
 
@@ -325,6 +330,7 @@ export type LockableTable =
   | "User"
   | "Event"
   | "EventMembership"
+  | "OrganizationMembership"
   | "EventPlan"
   | "OnboardingApplication"
   | "EventGuest"
@@ -583,4 +589,32 @@ export async function activeMembersWithRoles(
       user: { select: { id: true, name: true, role: true } }
     }
   });
+}
+
+export function eventMessagingPolicy(access: EventAccess) {
+  if(access.event.messagingPolicy===null || access.event.messagingPolicy===undefined)return null;
+  const parsed=messagingPolicySchema.safeParse(access.event.messagingPolicy);
+  if(!parsed.success)throw new HttpError(503,"Event messaging policy is unavailable");
+  return parsed.data;
+}
+export function assertMessagingAllowed(access:EventAccess,recipients:readonly string[],task=false) {
+  if(access.support)throw new HttpError(403,"Support access cannot send messages");
+  const policy=eventMessagingPolicy(access);
+  if(!access.isOrgAdmin && !access.guestId) {
+    requirePermission(access,EventPermission.VIEW);
+    const allowed=policy ? (recipients.length>1?policy.groupSenderIds:policy.individualSenderIds).includes(access.actor.id)
+      : recipients.length===1 || hasEventRole(access,[EventMemberRole.LOGISTICS_MANAGER]);
+    if(!allowed)throw new HttpError(403,"Event messaging policy does not allow this sender");
+  }
+  if(task&&policy&&recipients.some(id=>!policy.taskReceiverIds.includes(id)))throw new HttpError(403,"This receiver is not enabled for new tasks");
+}
+export async function visibleMessageRecipients(db:Prisma.TransactionClient,access:EventAccess,clientVisible:boolean,executiveVisible:boolean) {
+  const policy=eventMessagingPolicy(access);
+  if((clientVisible&&!policy?.clientVisible)||(executiveVisible&&!policy?.executiveVisible))throw new HttpError(403,"The requested audience is not enabled");
+  const roles:EventMemberRole[]=[];
+  if(clientVisible)roles.push(EventMemberRole.CLIENT_VIEWER);
+  if(executiveVisible)roles.push(EventMemberRole.EXECUTIVE_VIEWER);
+  if(!roles.length)return [];
+  const members=await db.eventMembership.findMany({where:{eventId:access.event.id,role:{in:roles},status:MembershipStatus.ACTIVE,permissions:{has:EventPermission.VIEW}},select:{userId:true},take:500});
+  return members.map(member=>member.userId);
 }

@@ -6,17 +6,18 @@ export function workspaceRequest<T>(token: string, path: string, body?: unknown,
 }
 
 /** Abort and invalidate old event/session requests before displaying another scope. */
-export function useWorkspaceResource<T>(token: string, path: string | null, revision = 0) {
-  const [state, setState] = useState<{ key: string; data?: T; error?: string }>({ key: "" });
-  const key = `${token}:${path}:${revision}`;
+export function useWorkspaceResource<T>(token: string, path: string | null, revision = 0, prefix = "/workspace", keepPrevious = false) {
+  const [state, setState] = useState<{ key: string; scope?: string; data?: T; error?: string; refreshing?: boolean }>({ key: "" });
+  const scope = `${token}:${prefix}:${path}`;
+  const key = `${token}:${prefix}:${path}:${revision}`;
   useEffect(() => {
     const controller = new AbortController();
-    if (path && token) workspaceRequest<T>(token, path, undefined, "GET", controller.signal)
-      .then(data => { if (!controller.signal.aborted) setState({ key, data }); })
-      .catch(error => { if (!controller.signal.aborted) setState({ key, error: error instanceof Error ? error.message : "Request failed" }); });
+    if (path && token) apiFetch<T>(`${prefix}${path}`, token, { signal: controller.signal })
+      .then(data => { if (!controller.signal.aborted) setState({ key, scope, data }); })
+      .catch(error => { if (!controller.signal.aborted) setState({ key, scope, error: error instanceof Error ? error.message : "Request failed" }); });
     return () => controller.abort();
   }, [key, token, path]);
-  return state.key === key ? state : { key };
+  return state.key === key ? state : keepPrevious && state.scope === scope && state.data ? { ...state, key, refreshing: true } : { key };
 }
 
 export async function workspaceDownload(token: string, path: string, fileName: string) {

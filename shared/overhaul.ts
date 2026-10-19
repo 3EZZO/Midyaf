@@ -19,6 +19,7 @@ export const ORGANIZATION_KINDS = ["ORGANIZER_COMPANY", "VENDOR", "CLIENT"] as c
 export const ORGANIZATION_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 export const MEMBERSHIP_STATUSES = ["ACTIVE", "REVOKED"] as const;
 export const EVENT_MEMBER_ROLES = [
+  "EXECUTIVE_VIEWER",
   "COORDINATOR",
   "PROJECT_MANAGER",
   "LOGISTICS_MANAGER",
@@ -45,6 +46,8 @@ export const ONBOARDING_STATUSES = [
   "ACTIVE"
 ] as const;
 export const ONBOARDING_DOCUMENT_KINDS = [
+  "LICENSE",
+  "ACTIVITY_DOCUMENT",
   "COMMERCIAL_REGISTRATION",
   "TAX_CERTIFICATE",
   "IDENTITY",
@@ -465,7 +468,7 @@ export const onboardingDocumentSchema = z
     fileName: z
       .string()
       .trim()
-      .regex(/^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,150}\.(pdf|png|jpe?g)$/i),
+      .regex(/^[\p{L}\p{N}][\p{L}\p{N} ._()-]{0,150}\.(pdf|png|jpe?g)$/iu),
     mimeType: z.enum(DOCUMENT_MIME_TYPES),
     contentBase64: z
       .string()
@@ -628,6 +631,8 @@ export const dispatchCreateSchema = z
     body: plainText(1, 5000, true),
     task: dispatchTaskSchema.optional(),
     supervisorUserId: idSchema.optional(),
+    clientVisible: z.boolean().default(false),
+    executiveVisible: z.boolean().default(false),
     clientRequestId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional()
   })
   .strict()
@@ -653,6 +658,7 @@ export const inboxQuerySchema = z
   .object({
     eventId: idSchema.optional(),
     messageClass: z.enum(MESSAGE_CLASSES).optional(),
+    taskSource: z.enum(TASK_SOURCES).optional(),
     dispatchFlow: z.enum(DISPATCH_FLOWS).optional(),
     cursor: idSchema.optional(),
     limit: z.coerce.number().int().min(1).max(50).default(30)
@@ -926,9 +932,11 @@ export type GuestCodeOnlyDto = { id: string; guestCode: string; isVip: boolean; 
 export type GuestDto = GuestDetailDto | GuestCodeOnlyDto;
 
 export type InboxItemDto = {
+  unreadCount: number;
   conversationId: string;
   subject: string;
   eventId: string | null;
+  taskSource: TaskSource | null;
   messageClass: MessageClass;
   dispatchFlow: DispatchFlow | null;
   lastMessageAt: string;
@@ -1021,3 +1029,10 @@ export type TelemetrySnapshotDto = {
   density: DensityDto[];
   scope: "FULL" | "CAPTAIN_SELF";
 };
+
+export const messagingPolicySchema = z.object({
+  individualSenderIds: uniqueArray(idSchema,0,500), groupSenderIds: uniqueArray(idSchema,0,500),
+  taskReceiverIds: uniqueArray(idSchema,0,500), clientVisible: z.boolean(), executiveVisible: z.boolean()
+}).strict();
+export type EventMessagingPolicy = z.infer<typeof messagingPolicySchema>;
+export const eventInviteSchema = eventMemberCreateSchema.omit({ userId:true, available:true }).extend({ email:emailSchema });

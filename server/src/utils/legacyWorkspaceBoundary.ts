@@ -8,12 +8,19 @@ import type { AuthRequest } from '../types/auth.js';
  * Legacy global-role APIs receive neither the records nor their indirect JSON references.
  * This boundary runs before legacy handlers, including downloads and AI calls.
  */
-export type LegacyBoundary = { ids: Set<string>; users: Map<string,string>; drivers: Set<string>; replacements: Map<string,string> };
+export type LegacyBoundary = { ids: Set<string>; workspaceUsers: Set<string>; users: Map<string,string>; drivers: Set<string>; replacements: Map<string,string> };
 export async function loadLegacyBoundary(): Promise<LegacyBoundary> {
  const events=await prisma.event.findMany({where:{organizationId:{not:null}},select:{id:true,organizationId:true},take:10001});
  if(events.length>10000)throw new HttpError(503,'Workspace boundary capacity exceeded');
  const eventIds=events.filter(e=>Boolean(e.organizationId)).map(e=>e.id);
- const boundary:LegacyBoundary={ids:new Set(eventIds),users:new Map(),drivers:new Set(),replacements:new Map()};
+ const [enrolled,organizations,applications,documents]=await Promise.all([
+  prisma.user.findMany({where:{onboardingKind:{not:null}},select:{id:true},take:10001}),
+  prisma.organization.findMany({select:{id:true},take:10001}),
+  prisma.onboardingApplication.findMany({select:{id:true},take:10001}),
+  prisma.onboardingDocument.findMany({select:{id:true},take:10001})
+ ]);
+ if([enrolled,organizations,applications,documents].some(rows=>rows.length>10000))throw new HttpError(503,'Workspace boundary capacity exceeded');
+ const boundary:LegacyBoundary={ids:new Set([...eventIds,...organizations.map(row=>row.id),...applications.map(row=>row.id),...documents.map(row=>row.id)]),workspaceUsers:new Set(enrolled.map(row=>row.id)),users:new Map(),drivers:new Set(),replacements:new Map()};
  if(!eventIds.length)return boundary;
  const where={eventId:{in:eventIds}},select={id:true} as const,take=10001;
  const results=await Promise.allSettled([
@@ -55,6 +62,7 @@ export function sanitizeLegacyPayload(value:unknown,boundary:LegacyBoundary):unk
   if(!node||typeof node!=='object'||node instanceof Date||Buffer.isBuffer(node))return node;
   if(Array.isArray(node))return node.map(item=>visit(item,depth+1)).filter(item=>item!==OMIT);
   const row:Record<string,unknown>=Object.fromEntries(Object.entries(node));
+  if(Object.entries(row).some(([key,ref])=>['id','userId','actorUserId'].includes(key)&&typeof ref==='string'&&boundary.workspaceUsers.has(ref)))return OMIT;
   if(Object.entries(row).some(([key,ref])=>refs.has(key)&&typeof ref==='string'&&boundary.ids.has(ref)))return OMIT;
   const userId=typeof row.id==='string'?row.id:typeof row.userId==='string'?row.userId:null;
   if(userId&&boundary.users.has(userId))return {id:userId,name:boundary.users.get(userId),email:'',phone:'',role:row.role};
@@ -80,15 +88,17 @@ export const legacyWorkspaceBoundary:RequestHandler=(req:AuthRequest,res,next)=>
  Promise.resolve().then(async()=>{
   if(!req.user)requireAuth(req,res,()=>undefined);
   const boundary=await loadLegacyBoundary();checked.add(req);
-  const protectedIds=new Set([...boundary.ids,...boundary.drivers,...[...boundary.users.keys()].filter(id=>id!==req.user!.id)]);
+  const protectedIds=new Set([...boundary.ids,...boundary.drivers,...[...boundary.users.keys(),...boundary.workspaceUsers].filter(id=>id!==req.user!.id)]);
   const pathIds=req.path.split('/').map(part=>decodeURIComponent(part));
   if(pathIds.some(id=>protectedIds.has(id))||references(req.query,protectedIds)||references(req.body,protectedIds))throw new HttpError(404,'Record not found');
+  if(boundary.workspaceUsers.has(req.user!.id)&&req.method==='POST'&&/messages\/conversations$/.test(`${req.baseUrl}${req.path}`))throw new HttpError(409,'Use the scoped event inbox');
   // Global legacy mutations and provider prompts cannot operate over new tenant data.
   if(boundary.ids.size&&req.method!=='GET'&&/(?:\/ai(?:\/|$)|divert-fleet|operations\/telemetry|operations\/geofences)/.test(`${req.baseUrl}${req.path}`)){
    throw new HttpError(409,'Use the event workspace for scoped operations');
   }
   const json=res.json.bind(res);
-  res.json=(body:unknown)=>json(sanitizeLegacyPayload(body,boundary));
+  const outputBoundary=/messages\/conversations\/[^/]+/.test(`${req.baseUrl}${req.path}`)?{...boundary,workspaceUsers:new Set<string>()}:boundary;
+  res.json=(body:unknown)=>json(sanitizeLegacyPayload(body,outputBoundary));
  }).then(()=>next(),next);
 };
 

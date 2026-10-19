@@ -7,6 +7,8 @@ import { Section } from "./Section";
 import { EventPlanEditor } from "./EventPlanEditor";
 import { EventPermissions } from "./EventPermissions";
 import { EventVendors } from "./EventVendors";
+import { EventTeams } from "./EventTeams";
+import { WorkspaceInbox } from "./WorkspaceInbox";
 import { EventGuests } from "./EventGuests";
 
 export function EventWorkspace(props: WorkspaceProps) {
@@ -31,9 +33,10 @@ export function EventWorkspace(props: WorkspaceProps) {
   </form><div className="mt-4 flex flex-wrap gap-3">{event.planApproved && event.access.permissions.includes('EDIT') && !event.access.support && event.operationalStatus !== 'COMPLETED' && <button className={workspaceButton} disabled={busy} onClick={() => void action('/status',{operationalStatus: event.operationalStatus === 'PLANNING' ? 'ACTIVE' : 'COMPLETED'})}>{event.operationalStatus === 'PLANNING' ? (ar ? 'تفعيل الفعالية' : 'Activate event') : (ar ? 'إكمال الفعالية' : 'Complete event')}</button>}{event.planApproved && !event.contractSigned && ['OWNER','ADMIN'].includes(event.access.organizationRole ?? '') && <form onSubmit={e => {e.preventDefault(); const f = new FormData(e.currentTarget); void action('/contract/sign',{confirm:true,reference:f.get('reference')});}} className="flex flex-wrap gap-2"><input required name="reference" aria-label={ar ? 'مرجع العقد الموقع' : 'Signed contract reference'} placeholder={ar ? 'مرجع العقد الموقع' : 'Signed contract reference'} className={workspaceInput}/><label><input type="checkbox" required/> {ar ? 'أؤكد توقيع العقد فعلياً وقفل النطاق' : 'I confirm the contract is signed and scope will lock'}</label><button disabled={busy} className={workspaceButton}>{ar ? 'تسجيل التوقيع' : 'Record signature'}</button></form>}</div></Section>
   <Section title={ar ? 'آخر المستجدات' : 'Latest updates'}>{updates.error && <p role="alert">{updates.error}</p>}<ul className="space-y-2">{updates.data?.updates.map(update => <li key={update.id} className="rounded border border-hairline p-3"><strong>{update.actor}</strong> · {update.action.replace('workspace.','').replaceAll('.',' ')}<time className="block text-xs text-ink-muted">{new Date(update.at).toLocaleString(ar ? 'ar-SA' : 'en-GB')}</time></li>)}</ul>{updates.data?.updates.length === 0 && <p>{ar ? 'لا مستجدات بعد' : 'No updates yet'}</p>}</Section></>}
   {tab === 'plan' && <EventPlanEditor {...props} event={event} onChange={() => refresh(n => n+1)}/>}
-  {tabUnlocked(event,tab) && (tab === 'permissions' || tab === 'teams') && <EventPermissions {...props} event={event}/>}
+  {tabUnlocked(event,tab) && (tab === 'permissions' || tab === 'teams') && <EventTeams {...props} event={event}/>}
   {tabUnlocked(event,tab) && tab === 'vendors' && <EventVendors {...props}/>}
   {tab === 'guests' && <EventGuests {...props} event={event}/>}
-  {['inbox','radar'].includes(tab) && <Section title={labels[tab]}><p>{ar ? 'يكتمل هذا القسم ضمن وحدة التكامل التالية' : 'This section is being integrated in the next delivery module'}</p></Section>}
+  {tabUnlocked(event,tab) && tab === 'inbox' && <WorkspaceInbox token={token} eventId={eventId} isArabic={ar}/>}
+  {['radar'].includes(tab) && <Section title={labels[tab]}><p>{ar ? 'يكتمل هذا القسم ضمن وحدة التكامل التالية' : 'This section is being integrated in the next delivery module'}</p></Section>}
  </div>;
 }

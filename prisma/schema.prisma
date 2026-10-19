@@ -210,6 +210,7 @@ enum MembershipStatus {
 }
 
 enum EventMemberRole {
+  EXECUTIVE_VIEWER
   COORDINATOR
   PROJECT_MANAGER
   LOGISTICS_MANAGER
@@ -273,6 +274,8 @@ enum OnboardingStatus {
 }
 
 enum OnboardingDocumentKind {
+  LICENSE
+  ACTIVITY_DOCUMENT
   COMMERCIAL_REGISTRATION
   TAX_CERTIFICATE
   IDENTITY
@@ -343,6 +346,9 @@ enum ShiftStatus {
 }
 
 model User {
+  sentEventInvites EventInvite[]
+  onboardingPending Boolean @default(false)
+  onboardingKind OnboardingKind?
   id              String         @id @default(cuid())
   name            String
   email           String         @unique
@@ -415,6 +421,8 @@ model CityConfig {
 }
 
 model Event {
+  messagingPolicy Json?
+  invitations EventInvite[]
   id          String      @id @default(cuid())
   name        String
   date        DateTime
@@ -961,6 +969,10 @@ model FileAsset {
 
 /// OPS-COLLAB-001: built-in messaging between platform users.
 model Conversation {
+  dedupeKey String? @unique @db.VarChar(191)
+  requestHash String? @db.VarChar(64)
+  clientVisible Boolean @default(false)
+  executiveVisible Boolean @default(false)
   id            String   @id @default(cuid())
   subject       String   @db.VarChar(150)
   createdById   String
@@ -1404,6 +1416,8 @@ model ConversationParticipant {
 }
 
 model ConversationMessage {
+  clientRequestId String? @db.VarChar(64)
+  @@unique([senderId,clientRequestId])
   id             String       @id @default(cuid())
   conversationId String
   senderId       String
@@ -1414,4 +1428,26 @@ model ConversationMessage {
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+/// Single-use app access invitation; token is returned once and stored only as SHA256.
+model EventInvite {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields:[eventId], references:[id], onDelete:Cascade)
+  email String @db.VarChar(254)
+  tokenHash String @unique @db.VarChar(64)
+  role EventMemberRole
+  subteam EventSubteam?
+  permissions EventPermission[]
+  workScope String? @db.VarChar(2000)
+  clientVisible Boolean @default(false)
+  canReceive Boolean @default(true)
+  createdById String
+  createdBy User @relation(fields:[createdById], references:[id], onDelete:Restrict)
+  expiresAt DateTime
+  acceptedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([eventId, expiresAt])
 }

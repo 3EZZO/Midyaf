@@ -9,6 +9,7 @@ type TokenPayload = JwtPayload & {
   sub: string;
   email: string;
   role: Role;
+  onboardingPending?: boolean;
 };
 
 const accessOptions: SignOptions = {
@@ -19,8 +20,9 @@ const refreshOptions: SignOptions = {
   expiresIn: env.JWT_REFRESH_TTL as SignOptions["expiresIn"]
 };
 
-export function signTokens(user: Pick<User, "id" | "email" | "role">) {
+export function signTokens(user: Pick<User, "id" | "email" | "role"> & { onboardingPending?: boolean }) {
   const payload = {
+    ...(user.onboardingPending ? { onboardingPending: true } : {}),
     sub: user.id,
     email: user.email,
     role: user.role
@@ -57,6 +59,10 @@ export function requireAuth(
   } catch {
     throw new HttpError(401, "Invalid or expired token");
   }
+  const pathname = req.originalUrl.split("?")[0];
+  if (req.user.onboardingPending && !/^(?:\/api)?\/(?:workspace\/onboarding(?:\/|$)|auth\/me$)/.test(pathname)) {
+    throw new HttpError(403, "Pending applicants can access only their own onboarding request");
+  }
   next();
 }
 
@@ -76,7 +82,7 @@ export function verifyAccessToken(token: string): AuthenticatedUser {
     throw new Error("Access token is missing required claims");
   }
 
-  return { id: payload.sub, email: payload.email, role: payload.role };
+  return { id: payload.sub, email: payload.email, role: payload.role, ...(payload.onboardingPending === true ? { onboardingPending: true } : {}) };
 }
 
 export function requireRole(roles: Role[]) {

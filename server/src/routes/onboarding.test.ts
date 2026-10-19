@@ -21,6 +21,8 @@ vi.mock("../db.js", async () => {
 
 const { startHarness } = await import("../testing/httpHarness.js");
 const { buildWorkspaceTestWorld } = await import("../testing/memoryPrisma.js");
+const authRouter = (await import("./auth.js")).default;
+const {verifyAccessToken} = await import("../middleware/auth.js");
 const workspaceRouter = (await import("./workspace.js")).default;
 const { decodeDocument, organizationSlug } = await import("./onboarding.js");
 
@@ -28,7 +30,7 @@ const { actors, seed } = buildWorkspaceTestWorld();
 let http: Harness;
 
 beforeAll(async () => {
-  http = await startHarness([["/api/workspace", workspaceRouter]]);
+  http = await startHarness([["/api/workspace", workspaceRouter],["/api/auth",authRouter]]);
 });
 
 afterAll(async () => {
@@ -115,7 +117,7 @@ describe("state machine", () => {
     expect((await transition(id, "UNDER_REVIEW")).status).toBe(200);
     // Approval needs a company document first.
     expect((await transition(id, "APPROVED")).status).toBe(409);
-    expect((await http.post(`${BASE}/${id}/documents`, actors.vendorCar, document("COMMERCIAL_REGISTRATION"))).status).toBe(201);
+    for(const kind of ["COMMERCIAL_REGISTRATION","IDENTITY","LICENSE","ACTIVITY_DOCUMENT"])expect((await http.post(`${BASE}/${id}/documents`, actors.vendorCar, document(kind))).status).toBe(201);
     expect((await transition(id, "APPROVED", { note: "Synthetic approval" })).status).toBe(200);
 
     // Signed state needs the explicit confirmation AND a stored signed contract.
@@ -170,7 +172,7 @@ describe("state machine", () => {
   it("rolls the whole activation back when the audit write fails", async () => {
     const id = await submitVendor();
     await transition(id, "UNDER_REVIEW");
-    await http.post(`${BASE}/${id}/documents`, actors.vendorCar, document("COMMERCIAL_REGISTRATION"));
+    for(const kind of ["COMMERCIAL_REGISTRATION","IDENTITY","LICENSE","ACTIVITY_DOCUMENT"])await http.post(`${BASE}/${id}/documents`, actors.vendorCar, document(kind));
     await transition(id, "APPROVED");
     await http.post(`${BASE}/${id}/documents`, actors.sa, document("SIGNED_CONTRACT", PDF, "contract.pdf"));
     await transition(id, "CONTRACT_SIGNED", { confirmSignedContract: true });
@@ -249,5 +251,38 @@ describe("helpers", () => {
   it("derives a stable, safe organization slug", () => {
     expect(organizationSlug("Synthetic Vendor Co!", "cmabc123XYZ")).toBe("synthetic-vendor-co-abc123xyz".slice(0, 60).replace(/-abc123xyz$/, "") + "-bc123xyz");
     expect(organizationSlug("شركة", "app_1")).toBe("org-app1");
+  });
+});
+
+describe("new applicant enrollment",()=>{
+  it.each(["VENDOR","CLIENT"])("restricts %s enrollment until documented activation",async(kind)=>{
+    const enrolled=await http.post("/api/auth/onboarding-register",undefined,{kind,name:"New synthetic applicant",email:`new_${kind.toLowerCase()}@example.test`,phone:"+966500001234",password:"Synthetic-test-password-73",language:"en"});
+    expect(enrolled.status).toBe(201);
+    expect(enrolled.body.user).toMatchObject({role:"GUEST",onboardingPending:true,onboardingKind:kind});
+    expect(enrolled.body.user).not.toHaveProperty("passwordHash");
+    expect(verifyAccessToken(enrolled.body.accessToken)).toMatchObject({onboardingPending:true});
+    const applicant={id:enrolled.body.user.id,role:"GUEST" as const,onboardingPending:true};
+    expect((await http.get("/api/workspace/events",applicant)).status).toBe(403);
+    expect((await http.post(BASE,applicant,{...vendorApplication,kind:kind==="CLIENT"?"VENDOR":"CLIENT",vendorCategory:kind==="CLIENT"?"CAR":undefined})).status).toBe(403);
+    const submitted=await http.post(BASE,applicant,{...vendorApplication,kind,...(kind==="CLIENT"?{vendorCategory:undefined}:{})});
+    expect(submitted.status).toBe(201);const id=submitted.body.application.id;
+    await transition(id,"UNDER_REVIEW");
+    expect((await transition(id,"APPROVED")).status).toBe(409);
+    for(const doc of ["COMMERCIAL_REGISTRATION","IDENTITY","LICENSE",...(kind==="VENDOR"?["ACTIVITY_DOCUMENT"]:[])])expect((await http.post(`${BASE}/${id}/documents`,applicant,document(doc))).status).toBe(201);
+    expect((await transition(id,"APPROVED")).status).toBe(200);
+    expect((await transition(id,"ACTIVE")).status).toBe(409);
+    await http.post(`${BASE}/${id}/documents`,actors.sa,document("SIGNED_CONTRACT"));
+    expect((await transition(id,"CONTRACT_SIGNED",{confirmSignedContract:true})).status).toBe(200);
+    expect((await transition(id,"ACTIVE")).status).toBe(200);
+    const user=memory.current.rows("user").find(u=>u.id===applicant.id)!;
+    expect(user).toMatchObject({onboardingPending:false,role:kind==="VENDOR"?"SUPPLIER":"COMPANY_ORGANIZER"});
+    if(kind==="VENDOR")expect(memory.current.rows("supplier").some(s=>s.userId===applicant.id)).toBe(true);
+    const refreshed=await http.post("/api/auth/refresh",undefined,{refreshToken:enrolled.body.refreshToken});
+    expect(refreshed.status).toBe(200);expect(verifyAccessToken(refreshed.body.accessToken).onboardingPending).not.toBe(true);
+    expect(refreshed.body.user.role).toBe(user.role);
+  });
+  it("does not accept self-selected privileged roles",async()=>{
+    expect((await http.post("/api/auth/onboarding-register",undefined,{kind:"VENDOR",name:"Applicant",email:"spoof@example.test",phone:"+966500001234",password:"Synthetic-test-password-73",role:"SUPER_ADMIN"})).status).toBe(400);
+    expect(memory.current.rows("user").some(u=>u.email==="spoof@example.test")).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Session } from "@shared/domain";
 import type { OrganizationDto, WorkspaceEventDto } from "@shared/overhaul";
+import { OnboardingWorkspace } from "./OnboardingWorkspace";
 import { Section } from "./Section";
 import { EventWorkspace } from "./EventWorkspace";
 import { categorizeEvents } from "../lib/workspaceWorkflow";
@@ -11,7 +12,7 @@ export const workspaceButton = "rounded-md border border-gold-500/40 bg-gold-500
 export type WorkspaceProps = { token: string; isArabic: boolean; eventId: string };
 export function OrganizerWorkspace({ session, isArabic }: { session?: Session; isArabic: boolean }) {
   if (!session) return <p>{isArabic ? "سجل الدخول لعرض فعاليات المؤسسة" : "Sign in to view organization events"}</p>;
-  return <OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} />;
+  return <div className="space-y-4"><OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} /><details><summary>{isArabic?"تسجيل الموردين والعملاء":"Vendor / client registration"}</summary><OnboardingWorkspace key={session.accessToken} session={session} isArabic={isArabic}/></details></div>;
 }
 function OrganizerContent({ token, isArabic: ar }: { token: string; isArabic: boolean }) {
   const [revision, refresh] = useState(0); const [selected, select] = useState<string | null>(null);

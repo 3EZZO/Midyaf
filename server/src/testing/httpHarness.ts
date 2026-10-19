@@ -62,7 +62,7 @@ export async function startHarness(mounts: Array<[string, Router]>) {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (actor) {
       headers.Authorization = `Bearer ${
-        signTokens({ id: actor.id, email: `${actor.id}@example.test`, role: actor.role }).accessToken
+        signTokens({ ...actor, id: actor.id, email: `${actor.id}@example.test`, role: actor.role }).accessToken
       }`;
     }
     const response = await fetch(`${base}${path}`, {

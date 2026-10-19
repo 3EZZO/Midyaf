@@ -1,3 +1,4 @@
+import { OnboardingWorkspace } from "./OnboardingWorkspace";
 import { useMemo, useState, type FormEvent } from "react";
 import {
   Banknote,
@@ -42,6 +43,7 @@ type Tab = "submitters" | "plans" | "complaints" | "activities" | "vault";
 
 export function AdminExecutiveDashboard({
   data,
+  session,
   isDemoMode,
   isArabic = true,
   onConfirmAiPlan
@@ -169,6 +171,7 @@ export function AdminExecutiveDashboard({
 
   return (
     <div className="space-y-6">
+      {session?.user.role === "SUPER_ADMIN" && !isDemoMode && <OnboardingWorkspace session={session} isArabic={isArabic}/>}
       <PortalHero
         badge={
           <span className="inline-flex items-center gap-1.5">

@@ -1,3 +1,4 @@
+import { ApplicantRegistration } from "../components/OnboardingWorkspace";
 import { useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Globe2, ShieldCheck, Sparkles } from "lucide-react";
@@ -22,6 +23,7 @@ export function LoginPage({
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const [join, setJoin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPersonas] = useState(() => demoPersonasEnabled());
@@ -32,6 +34,8 @@ export function LoginPage({
     await onLogin(email, password);
   }
 
+  if (join) return <ApplicantRegistration isArabic={isArabic} onLogin={onLogin} onBack={() => setJoin(false)}/>;
+
   const features = [
     { icon: Sparkles, label: isArabic ? "تخطيط ذكي" : "AI Planning" },
     { icon: Globe2, label: isArabic ? "عمليات مباشرة" : "Live Ops" },
@@ -40,6 +44,7 @@ export function LoginPage({
 
   return (
     <div className={cn("relative min-h-screen overflow-hidden bg-surface-1 text-ink", isArabic ? "font-arabic" : "font-english")}>
+      <button className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded border border-gold-500 bg-surface-2 px-4 py-2 text-ink" onClick={() => setJoin(true)}>{isArabic ? "تسجيل مورد / عميل منظم فعاليات" : "Register a vendor / event organizer"}</button>
       {/* Obsidian field: one slow gold horizon line. Visual only — the form is live at t=0. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgb(var(--gold-500)/0.10),transparent_60%)]" />

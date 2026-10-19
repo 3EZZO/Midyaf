@@ -56,3 +56,31 @@ it("rolls back scope change and notifications when the audit fails", async () =>
   expect(memory.current.rows("eventScopeChange")).toHaveLength(0);
   expect(memory.current.rows("notification")).toHaveLength(0);
 });
+
+const inviteBody={email:"u_guest_b@example.test",role:"COORDINATOR",subteam:"AIRPORT",permissions:["VIEW"],workScope:"Arrival desk"};
+it("stores only invitation hashes, requires the intended email and accepts once",async()=>{
+  const created=await http.post(`${base}/invitations`,a.lm,inviteBody);
+  expect(created.status).toBe(201);
+  const {token}=created.body.invitation;
+  expect(token).toMatch(/^[a-f0-9]{64}$/);
+  expect(memory.current.rows("eventInvite")[0].tokenHash).not.toBe(token);
+  expect(JSON.stringify((await http.get(`${base}/invitations`,a.lm)).body)).not.toContain(token);
+  expect((await http.post("/w/invitations/accept",a.ownerB,{token})).status).toBe(404);
+  expect((await http.post("/w/invitations/accept",a.guestB,{token})).status).toBe(200);
+  expect((await http.post("/w/invitations/accept",a.guestB,{token})).status).toBe(404);
+  expect(memory.current.rows("eventMembership").find(m=>m.eventId==="evt_a"&&m.userId===a.guestB.id)).toMatchObject({role:"COORDINATOR",subteam:"AIRPORT",workScope:"Arrival desk"});
+});
+it.each(["expiry","revoked","grantor"])("refuses %s invitations without granting membership",async(reason)=>{
+  const created=await http.post(`${base}/invitations`,a.lm,inviteBody),row=memory.current.rows("eventInvite")[0];
+  if(reason==="expiry")row.expiresAt=new Date(0);
+  if(reason==="revoked")expect((await http.post(`${base}/invitations/${row.id}/revoke`,a.lm,{})).status).toBe(200);
+  if(reason==="grantor")memory.current.rows("eventMembership").find(m=>m.userId===a.lm.id)!.status="REVOKED";
+  expect([403,404]).toContain((await http.post("/w/invitations/accept",a.guestB,{token:created.body.invitation.token})).status);
+  expect(memory.current.rows("eventMembership").some(m=>m.eventId==="evt_a"&&m.userId===a.guestB.id)).toBe(false);
+});
+it("keeps executive event invitations and direct grants read-only",async()=>{
+  expect((await http.post(`${base}/members`,a.owner,{userId:a.sa.id,role:"EXECUTIVE_VIEWER",permissions:["VIEW","EDIT"]})).status).toBe(400);
+  const created=await http.post(`${base}/members`,a.owner,{userId:a.sa.id,role:"EXECUTIVE_VIEWER",permissions:["VIEW"]});
+  expect(created.status).toBe(201);
+  expect((await http.patch(`${base}/members/${created.body.member.id}`,a.owner,{permissions:["VIEW","INVITE"]})).status).toBe(400);
+});
