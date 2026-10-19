@@ -1,0 +1,29 @@
+import { useEffect, useState } from "react";
+import { apiFetch } from "./api";
+
+export function workspaceRequest<T>(token: string, path: string, body?: unknown, method = "POST", signal?: AbortSignal) {
+  return apiFetch<T>(`/workspace${path}`, token, { method: body === undefined ? "GET" : method, signal, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+}
+
+/** Abort and invalidate old event/session requests before displaying another scope. */
+export function useWorkspaceResource<T>(token: string, path: string | null, revision = 0) {
+  const [state, setState] = useState<{ key: string; data?: T; error?: string }>({ key: "" });
+  const key = `${token}:${path}:${revision}`;
+  useEffect(() => {
+    const controller = new AbortController();
+    if (path && token) workspaceRequest<T>(token, path, undefined, "GET", controller.signal)
+      .then(data => { if (!controller.signal.aborted) setState({ key, data }); })
+      .catch(error => { if (!controller.signal.aborted) setState({ key, error: error instanceof Error ? error.message : "Request failed" }); });
+    return () => controller.abort();
+  }, [key, token, path]);
+  return state.key === key ? state : { key };
+}
+
+export async function workspaceDownload(token: string, path: string, fileName: string) {
+  const base = import.meta.env.VITE_API_BASE_URL ?? "/api";
+  const response = await fetch(`${base}/workspace${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new Error((await response.json().catch(() => null))?.error?.message ?? "Download failed");
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a"); link.href = url; link.download = fileName; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

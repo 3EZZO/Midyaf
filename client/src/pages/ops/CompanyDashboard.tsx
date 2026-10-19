@@ -1,5 +1,6 @@
 // Organizing company dashboard.
 // Extracted verbatim from OperationsPortals.tsx (Phase 1 split).
+import { OrganizerWorkspace } from "../../components/OrganizerWorkspace";
 import { useState } from "react";
 import { FileText, Key, Sparkles, Send, Download, Building2, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "../../components/Badge";
@@ -12,7 +13,12 @@ import type { ClientPermissionConfig, Task } from "@shared/domain";
 import { DEFAULT_CLIENT_CONFIG } from "@shared/constants";
 import { MiniStat, PortalHero, canSubmitCompanyUpdates, defaultDeadline, useOpsText } from "./shared";
 
-export function CompanyDashboard({
+export function CompanyDashboard(props: PortalProps) {
+  const ui = useOpsText();
+  return props.isDemoMode ? <LegacyCompanyDashboard {...props}/> : <OrganizerWorkspace session={props.session} isArabic={ui.isArabic}/>;
+}
+
+function LegacyCompanyDashboard({
   data,
   session,
   createCoordinatorRequest

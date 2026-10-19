@@ -556,7 +556,15 @@ router.post(
                 source: EventPlanSource.MANUAL,
                 advisory: false,
                 summary: body.summary,
-                content: { generator: "manual", items: body.items.map((item) => ({ ...item, note: item.note ?? null })) }
+                content: {
+                  generator: "manual",
+                  logistics: body.items.filter(item => item.category === "OTHER"),
+                  hotelDistribution: body.items.filter(item => item.category === "HOTEL_ROOMS"),
+                  vehicleRequirements: body.items.filter(item => item.category === "VEHICLES"),
+                  teamRequirements: body.items.filter(item => item.category === "STAFF"),
+                  scopeOfWork: body.items.map(item => item.note ?? item.category),
+                  items: body.items.map((item) => ({ ...item, note: item.note ?? null }))
+                }
               };
 
         const created = await tx.eventPlan.create({
@@ -825,5 +833,17 @@ router.put(
     res.json({ member: toMemberDto(member) });
   })
 );
+
+router.get("/events/:eventId/updates", asyncHandler(async (req: AuthRequest, res) => {
+  const access = await loadEventAccess(req, req.params.eventId);
+  requirePermission(access, EventPermission.VIEW);
+  const rows = await prisma.auditLog.findMany({
+    where: { eventId: access.event.id, actorRole: { not: Role.GUEST }, action: { in: ["workspace.event.create", "workspace.event.update", "workspace.event.scope_change", "workspace.event.status", "workspace.plan.generate", "workspace.plan.approve", "workspace.member.add", "workspace.member.update", "workspace.dispatch", "workspace.dispatch.emergency"] } },
+    select: { id: true, action: true, createdAt: true, actorUserId: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 50
+  });
+  const users = await prisma.user.findMany({ where: { id: { in: rows.flatMap(r => r.actorUserId ? [r.actorUserId] : []) } }, select: { id: true, name: true } });
+  res.json({ updates: rows.map(row => ({ id: row.id, action: row.action, at: row.createdAt.toISOString(), actor: users.find(u => u.id === row.actorUserId)?.name ?? "System" })) });
+}));
 
 export default router;

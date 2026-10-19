@@ -11,12 +11,12 @@ import type { PortalKey, Role } from "@shared/domain";
 export const portalsByRole: Record<Role, PortalKey[]> = {
   GUEST: ["guest", MESSAGES_PORTAL],
   DRIVER: ["captain", MESSAGES_PORTAL],
-  ORGANIZER: [...PORTALS, MESSAGES_PORTAL],
+  ORGANIZER: [...PORTALS.filter(portal => portal !== "intake"), MESSAGES_PORTAL],
   SUPPLIER: [SUPPLIER_PORTAL, MESSAGES_PORTAL],
   SUPER_ADMIN: [...PORTALS, SUPPLIER_PORTAL, MESSAGES_PORTAL],
   COORDINATOR: ["coordinator", MESSAGES_PORTAL],
-  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake", MESSAGES_PORTAL],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations", MESSAGES_PORTAL],
+  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", MESSAGES_PORTAL],
+  COMPANY_ORGANIZER: ["company", "client", "sila_operations", MESSAGES_PORTAL],
   EVENT_MANAGER: ["sila_operations", "coordinator", MESSAGES_PORTAL],
   CLIENT: ["client", MESSAGES_PORTAL]
 };
@@ -28,6 +28,6 @@ export const portalsByRole: Record<Role, PortalKey[]> = {
  * open.
  */
 export function initialPortalForRole(role: Role): PortalKey {
-  if (role === "ORGANIZER") return "sila_operations";
+  if (role === "ORGANIZER") return "company";
   return portalsByRole[role][0];
 }

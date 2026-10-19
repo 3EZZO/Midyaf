@@ -1298,7 +1298,7 @@ function renderPortal(
       return <CompanyDashboard {...props} />;
     case "intake":
     default:
-      return <ActivityIntakePage {...props} />;
+      return props.isDemoMode ? <ActivityIntakePage {...props} /> : <CompanyDashboard {...props} />;
   }
 }
 

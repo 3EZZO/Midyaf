@@ -38,12 +38,12 @@ const SHARED_PORTALS: PortalKey[] = [
 const EXPECTED_ALLOWED: Record<Role, PortalKey[]> = {
   GUEST: ["guest", "messages"],
   DRIVER: ["captain", "messages"],
-  ORGANIZER: [...SHARED_PORTALS, "messages"],
+  ORGANIZER: [...SHARED_PORTALS.filter(p => p !== "intake"), "messages"],
   SUPPLIER: ["supplier", "messages"],
   SUPER_ADMIN: [...SHARED_PORTALS, "supplier", "messages"],
   COORDINATOR: ["coordinator", "messages"],
-  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "intake", "messages"],
-  COMPANY_ORGANIZER: ["company", "client", "intake", "sila_operations", "messages"],
+  LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", "messages"],
+  COMPANY_ORGANIZER: ["company", "client", "sila_operations", "messages"],
   EVENT_MANAGER: ["sila_operations", "coordinator", "messages"],
   CLIENT: ["client", "messages"]
 };
@@ -51,7 +51,7 @@ const EXPECTED_ALLOWED: Record<Role, PortalKey[]> = {
 const EXPECTED_INITIAL: Record<Role, PortalKey> = {
   GUEST: "guest",
   DRIVER: "captain",
-  ORGANIZER: "sila_operations",
+  ORGANIZER: "company",
   SUPPLIER: "supplier",
   SUPER_ADMIN: "admin",
   COORDINATOR: "coordinator",
