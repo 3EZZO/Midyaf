@@ -15,7 +15,6 @@ export type PortalKey =
   | "company"
   | "client"
   | "sila_operations"
-  | "intake"
   | "guest"
   | "captain"
   | "coordinator"

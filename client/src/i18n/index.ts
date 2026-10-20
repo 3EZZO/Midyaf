@@ -20,7 +20,7 @@ const resources = {
       loginFailed: "Login failed",
       loadingWorkspace: "Loading your workspace...",
       workspaceLoadFailed: "Workspace could not be loaded.",
-      heroTitle: "Event logistics command center for sovereign summit activities",
+      heroTitle: "Event logistics operations center for summit activities",
       heroSubtitle:
         "From organizing-company intake to AI planning, vendor quotations, contracts, commissions, guest journeys, captains, coordinators, and confirmed reports.",
       portals: {
@@ -37,7 +37,7 @@ const resources = {
         messages: "Messages"
       },
       common: {
-        riyadhOnly: "Operating Region: Sovereign Summit Zone",
+        riyadhOnly: "Operating Region: Summit Zone",
         live: "Live",
         status: "Status",
         send: "Send",
@@ -90,7 +90,7 @@ const resources = {
         messages: "الرسائل"
       },
       common: {
-        riyadhOnly: "منطقة العمليات: نطاق القمة السيادية",
+        riyadhOnly: "منطقة العمليات: نطاق القمة",
         live: "مباشر",
         status: "الحالة",
         send: "إرسال",

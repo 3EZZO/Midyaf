@@ -2,7 +2,6 @@ import {
   Briefcase,
   Building2,
   Car,
-  ClipboardList,
   Crown,
   Mail,
   Package,
@@ -19,7 +18,6 @@ export const portalIcons: Record<PortalKey, LucideIcon> = {
   company: Building2,
   client: Briefcase,
   sila_operations: Radio,
-  intake: ClipboardList,
   guest: Ticket,
   captain: Car,
   coordinator: Users,
@@ -33,7 +31,6 @@ export const portalCategory: Record<PortalKey, { en: string; ar: string }> = {
   sila_operations: { en: "Operations", ar: "العمليات" },
   company: { en: "Organizer", ar: "المنظمة" },
   client: { en: "Client", ar: "العميل" },
-  intake: { en: "Planning", ar: "التخطيط" },
   guest: { en: "Ground", ar: "الميدان" },
   captain: { en: "Ground", ar: "الميدان" },
   coordinator: { en: "Ground", ar: "الميدان" },
@@ -43,7 +40,7 @@ export const portalCategory: Record<PortalKey, { en: string; ar: string }> = {
 
 export const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
   admin: {
-    titleEn: "Midyaf Sovereign Admin Dashboard",
+    titleEn: "Midyaf Admin Dashboard",
     titleAr: "لوحة الملاك والإدارة التنفيذية لمضياف",
     descEn: "Owners-only executive governance: submitter audit, plans approval, complaints registry & contracts",
     descAr: "خاصة بالملاك: سجل الجهات المدخلة، اعتماد الخطط، سجل الشكاوى، مؤشرات الفعاليات وخزنة العقود"
@@ -65,12 +62,6 @@ export const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; d
     titleAr: "لوحة عمليات صلة (لوجستيات وفعاليات)",
     descEn: "Unified operations command: view reports, activities, contracts & relay tasks",
     descAr: "قيادة العمليات الموحدة: متابعة التقارير، الأنشطة، العقود، وتفويض المهام"
-  },
-  intake: {
-    titleEn: "Activity Intake & Logistics Setup",
-    titleAr: "إدخال الفعالية والتجهيز اللوجستي",
-    descEn: "Event core data, guest CSV import, hotel rooms, pricing bands & supplier contracts",
-    descAr: "البيانات الأساسية، استيراد الضيوف، حجز الفنادق، نطاقات الأسعار وعقود الموردين"
   },
   guest: {
     titleEn: "Guest Hospitality Journey App",

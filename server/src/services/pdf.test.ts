@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { generateReportPdf, hasArabic, splitRuns } from "./pdf.js";
 
+/** Reads a document-info literal string, inline or through its indirect object; bounded to 256 chars. */
+function infoString(pdf: string, key: string): string | undefined {
+  const literal = "\\(((?:\\\\[\\s\\S]|[^\\\\)]){0,256})\\)";
+  const inline = new RegExp(`/${key}\\s*${literal}`).exec(pdf);
+  if (inline) return inline[1];
+  const ref = new RegExp(`/${key}\\s+(\\d+)\\s+(\\d+)\\s+R`).exec(pdf);
+  if (!ref) return undefined;
+  const obj = new RegExp(`(?:^|\\s)${ref[1]}\\s+${ref[2]}\\s+obj\\s*${literal}\\s*endobj`).exec(pdf);
+  return obj?.[1];
+}
+
 describe("splitRuns", () => {
   it("keeps a Latin plate and its digits as one LTR run inside an Arabic line", () => {
     const runs = splitRuns("الموكب ألفا · KSA 9119 · وصل");
@@ -43,7 +54,7 @@ describe("splitRuns", () => {
 describe("generateReportPdf", () => {
   it("renders an Arabic report with the embedded Plex font", async () => {
     const pdf = await generateReportPdf({
-      title: "تقرير الوصول السيادي — القمة 2027",
+      title: "تقرير وصول الفعالية — القمة 2027",
       status: "CONFIRMED",
       language: "ar",
       kpis: [
@@ -61,13 +72,27 @@ describe("generateReportPdf", () => {
 
   it("renders an English report", async () => {
     const pdf = await generateReportPdf({
-      title: "Sovereign Arrival Report",
+      title: "Event Arrival Report",
       status: "DRAFT",
       language: "en",
       kpis: [{ label: "On-time SLA", value: "98.5%" }]
     });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(20_000); // the font subset is in there
+  });
+
+  it("uses the plain Midyaf brand in the document metadata (D-028 wording)", async () => {
+    const pdf = await generateReportPdf({
+      title: "Event Arrival Report",
+      status: "DRAFT",
+      language: "en",
+      kpis: [{ label: "On-time SLA", value: "98.5%" }]
+    });
+    const text = pdf.toString("latin1");
+    // PDFKit writes each Info entry as its own object (`/Author 20 0 R`), so follow the reference.
+    expect(infoString(text, "Author")).toBe("Midyaf Operations Platform");
+    // Boolean checks so a failure never dumps the binary PDF.
+    expect(/Sovereign/i.test(text)).toBe(false);
   });
 
   it("detects Arabic script", () => {

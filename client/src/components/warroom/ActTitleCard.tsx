@@ -41,7 +41,7 @@ export function ActTitleCard({
         >
           <div className="max-w-3xl rounded-lg border border-gold-500/40 bg-surface-0/85 px-10 py-7 text-center shadow-dropdown backdrop-blur-md">
             <div className="text-xs font-bold uppercase tracking-label text-gold-500">
-              {isArabic ? "الوصول السيادي" : "Sovereign Arrival"} ·{" "}
+              {isArabic ? "وصول الفعالية" : "Event Arrival"} ·{" "}
               {state.actIndex + 1}/{state.actCount}
             </div>
             <h2 className="mt-2 text-display-md text-ink">

@@ -106,7 +106,7 @@ export function AdminExecutiveDashboard({
       hotelRooms: act.hotels?.reduce((sum, h) => sum + (h.roomsBooked || 0), 0) || act.hotelRoomsBooked || 0,
       fleetCount: act.carRentals?.reduce((sum, r) => sum + (r.fleetCount || 0), 0) || 0,
       aiPlanSummary:
-        aiPlan?.summary || (isArabic ? "خطة تشغيلية سيادية معتمدة ومجدولة بالذكاء الاصطناعي" : "Confirmed sovereign AI logistics plan")
+        aiPlan?.summary || (isArabic ? "خطة تشغيلية معتمدة ومجدولة بالذكاء الاصطناعي" : "Confirmed AI logistics plan")
     };
   });
   const filteredPlans = plansList.filter((p) => planFilter === "ALL" || p.status === planFilter);
@@ -176,7 +176,7 @@ export function AdminExecutiveDashboard({
         badge={
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck className="size-3.5" aria-hidden />
-            {isArabic ? "لوحة الملاك والإدارة التنفيذية لمضياف (سري للغاية)" : "Midyaf Sovereign Ownership & Executive Admin Dashboard"}
+            {isArabic ? "لوحة الملاك والإدارة التنفيذية لمضياف (سري للغاية)" : "Midyaf Admin Dashboard"}
           </span>
         }
         title={isArabic ? "الرقابة المالية والتنفيذية الشاملة لمنظومة مضياف" : "Executive Business Oversight, Financials & Commercial Governance"}
@@ -217,7 +217,7 @@ export function AdminExecutiveDashboard({
           label={isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
           value={kpis.marginPercent.value}
           format="percent"
-          detail={isArabic ? "ضمن النطاق السعري السيادي المستهدف" : "Within sovereign pricing target"}
+          detail={isArabic ? "ضمن النطاق السعري المستهدف" : "Within pricing target"}
           icon={<TrendingUp className="size-4" aria-hidden />}
           tone="ok"
         />

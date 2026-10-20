@@ -193,8 +193,8 @@ const CERTIFIED_CONTRACTS = [
     status: "SIGNED & EXECUTED",
     statusAr: "موقع ومعتمد رسمياً",
     seal: "SHA-256: 8f4a...d91c",
-    scope: "100 Royal & Executive Suites for Sovereign Delegations and PIF leadership.",
-    scopeAr: "100 جناح ملكي وتنفيذي للوفود السيادية وقيادات صندوق الاستثمارات العامة."
+    scope: "100 Royal & Executive Suites for official delegations and PIF leadership.",
+    scopeAr: "100 جناح ملكي وتنفيذي للوفود الرسمية وقيادات صندوق الاستثمارات العامة."
   },
   {
     id: "c-2",
@@ -398,7 +398,7 @@ export function LogisticsMetricModal({
               </span>
             </h3>
             <p className="text-xs text-slate-400 flex items-center gap-2">
-              <span>{event.name} · {isArabic ? "منطقة العمليات السيادية" : "Sovereign Operations Zone"} · {isArabic ? "مستوى الإشراف السيادي المباشر" : "Sovereign Operations Level"}</span>
+              <span>{event.name} · {isArabic ? "منطقة العمليات" : "Operations Zone"} · {isArabic ? "مستوى الإشراف المباشر" : "Operations Level"}</span>
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold uppercase tracking-wider ${
                 isDemoMode ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30" : "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30"
               }`}>
@@ -433,7 +433,7 @@ export function LogisticsMetricModal({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <KpiTile label={l("Total Attendees")} value={visitorStats.total} detail={isArabic ? "إجمالي المعتمدين" : "Accredited"} size="md" />
                 <KpiTile label={l("VIP Dignitaries")} value={visitorStats.vip} tone="gold" icon={<Crown className="size-4" aria-hidden />} detail={isArabic ? "مواكب حماية مخصصة" : "Dedicated Escorts"} />
-                <KpiTile label={l("Sovereign Delegations")} value={visitorStats.delegations} tone="info" detail={isArabic ? "وفد" : "Delegations"} />
+                <KpiTile label={l("Delegations")} value={visitorStats.delegations} tone="info" detail={isArabic ? "وفد" : "Delegations"} />
                 <KpiTile label={isArabic ? "وصلوا" : "Arrived"} value={visitorStats.arrived} tone="ok" detail={isArabic ? `من ${integer(visitorStats.total)}` : `of ${integer(visitorStats.total)}`} />
               </div>
 
@@ -656,7 +656,7 @@ export function LogisticsMetricModal({
                         </div>
                         <div>
                           <span className="text-xs text-slate-400 font-bold uppercase">{isArabic ? "منصة الوساطة والضمان" : "Platform Escrow Authority"}</span>
-                          <p className="font-bold text-purple-300 text-xs mt-0.5">{isArabic ? "حساب مضياف للضمان المالي السيادي" : "Midyaf Sovereign Escrow"}</p>
+                          <p className="font-bold text-purple-300 text-xs mt-0.5">{isArabic ? "حساب مضياف للضمان المالي" : "Midyaf Escrow"}</p>
                           <p className="text-xs text-slate-400">{isArabic ? "عمولة المنصة: " : "Platform Take: "}{inspectingContract.takeRate}</p>
                         </div>
                       </div>
@@ -679,7 +679,7 @@ export function LogisticsMetricModal({
                           <p className="text-lg font-black text-white font-mono mt-1">{isArabic ? inspectingContract.amountAr : inspectingContract.amount}</p>
                         </div>
                         <div className="rounded-lg bg-white/5 p-3.5 border border-midyaf-gold/30">
-                          <span className="text-xs text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة مضياف السيادية" : "Midyaf Platform Take"}</span>
+                          <span className="text-xs text-midyaf-gold uppercase font-bold">{isArabic ? "عمولة منصة مضياف" : "Midyaf Platform Take"}</span>
                           <p className="text-lg font-black text-midyaf-gold font-mono mt-1">{isArabic ? inspectingContract.commissionAr : inspectingContract.commission}</p>
                         </div>
                         <div className="rounded-lg bg-white/5 p-3.5 border border-emerald-500/30">
@@ -712,7 +712,7 @@ export function LogisticsMetricModal({
                             <p className="text-emerald-400 font-bold truncate">0x8f2b...c91e</p>
                           </div>
                           <div className="rounded-xl bg-black/40 p-2 border border-white/5">
-                            <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 3: الحارس السيادي" : "Key 3: Midyaf Guard"}</p>
+                            <p className="text-slate-400 font-sans">{isArabic ? "مفتاح 3: حارس مضياف" : "Key 3: Midyaf Guard"}</p>
                             <p className="text-emerald-400 font-bold truncate">0x3e1a...7d44</p>
                           </div>
                         </div>

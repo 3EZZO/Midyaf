@@ -94,7 +94,6 @@ export const PORTALS = [
   "company",
   "client",
   "sila_operations",
-  "intake",
   "guest",
   "captain",
   "coordinator"
@@ -308,8 +307,8 @@ export const SUMMIT_CORRIDORS = [
   },
   {
     code: "SOVEREIGN_FINANCIAL" as const,
-    nameEn: "Sovereign Financial Corridor (Ritz-Carlton ↔ KAFD Plenary)",
-    nameAr: "الممر المالي السيادي (الريتز-كارلتون ↔ كافد)",
+    nameEn: "Financial Corridor (Ritz-Carlton ↔ KAFD Plenary)",
+    nameAr: "الممر المالي (الريتز-كارلتون ↔ كافد)",
     color: "#38BDF8",
     points: [
       [24.6661, 46.6302],
@@ -337,7 +336,7 @@ export type CorridorState = "normal" | "closed" | "reroute";
 export const DEFAULT_COMPLAINTS = [
   {
     id: "cmp-001",
-    activityName: "Global Sovereign Investment Summit",
+    activityName: "Global Investment Summit",
     complainantName: "الوفد الدبلوماسي البريطاني (Lord Harrington)",
     complainantNameAr: "الوفد الدبلوماسي البريطاني (Lord Harrington)",
     complainantNameEn: "UK Diplomatic Delegation (Lord Harrington)",
@@ -354,7 +353,7 @@ export const DEFAULT_COMPLAINTS = [
   },
   {
     id: "cmp-002",
-    activityName: "Global Sovereign Investment Summit",
+    activityName: "Global Investment Summit",
     complainantName: "مساعد رئيس وفد سنغافورة (Dr. Chen Wei)",
     complainantNameAr: "مساعد رئيس وفد سنغافورة (Dr. Chen Wei)",
     complainantNameEn: "Singapore Delegation Assistant (Dr. Chen Wei)",
@@ -395,8 +394,8 @@ export const DEFAULT_COMPLAINTS = [
 export const DEFAULT_CLIENT_CONFIG = {
   clientId: "cli-sila-gov-2026",
   clientName: "الأستاذ / عبد الرحمن المهيدب",
-  clientEntity: "وزارة السياحة والضيافة السيادية",
-  eventTitle: "Global Sovereign Investment Summit",
+  clientEntity: "وزارة السياحة والضيافة",
+  eventTitle: "Global Investment Summit",
   shareableToken: "MIDYAF-CLIENT-SECURE-8842X",
   canViewReports: true,
   canViewScheduleAmendments: true,
@@ -482,9 +481,9 @@ export const DEFAULT_SCHEDULE_AMENDMENTS = [
     type: "VIP_AGENDA_SHIFT" as const,
     originalTime: "18:00",
     revisedTime: "17:15",
-    affectedGuests: "كافة وزراء وممثلي الصناديق السيادية (18 ضيفاً)",
-    affectedGuestsAr: "كافة وزراء وممثلي الصناديق السيادية (18 ضيفاً)",
-    affectedGuestsEn: "All Ministers & Sovereign Wealth Delegates (18 VIPs)",
+    affectedGuests: "كافة وزراء وممثلي صناديق الثروة (18 ضيفاً)",
+    affectedGuestsAr: "كافة وزراء وممثلي صناديق الثروة (18 ضيفاً)",
+    affectedGuestsEn: "All Ministers & Wealth Fund Delegates (18 VIPs)",
     status: "IN_PROGRESS" as const,
     updatedAt: "منذ 45 دقيقة"
   },

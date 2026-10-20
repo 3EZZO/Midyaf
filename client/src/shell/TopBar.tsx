@@ -13,7 +13,7 @@ import { portalIcons, portalMeta } from "./portalMeta";
 
 // Privileged roles are shown by title rather than personal name on shared screens.
 const roleDisplay: Partial<Record<Role, { en: string; ar: string; initials: string }>> = {
-  SUPER_ADMIN: { en: "Sovereign System Administrator", ar: "المشرف العام للمنظومة", initials: "SA" },
+  SUPER_ADMIN: { en: "System Administrator", ar: "المشرف العام للمنظومة", initials: "SA" },
   LOGISTICS_MANAGER: { en: "Logistics Operations Director", ar: "مدير العمليات اللوجستية", initials: "LD" }
 };
 

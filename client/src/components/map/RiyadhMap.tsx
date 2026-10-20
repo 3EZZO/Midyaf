@@ -8,7 +8,6 @@ import {
   Crosshair,
   Crown,
   LocateFixed,
-  Map as MapIcon,
   MapPin,
   Maximize2,
   Minimize2,
@@ -30,7 +29,7 @@ import { CorridorLayer } from "./CorridorLayer";
 import { GeofenceLayer } from "./GeofenceLayer";
 import { createMapController, registerMapController, type MapController } from "./MapController";
 import { MarkerRegistry, type MarkerSpec } from "./MarkerRegistry";
-import { OVERVIEW_MAX_ZOOM, type MapMode } from "./constants";
+import { DEFAULT_MAP_MODE, OVERVIEW_MAX_ZOOM, toMapMode, type MapMode, type TileHealthVerdict } from "./constants";
 import { coordinates } from "./geometry";
 import { pinScrollOrigin, useLeafletMap } from "./useLeafletMap";
 
@@ -54,12 +53,24 @@ const ZONES: { id: Zone; en: string; ar: string }[] = [
   { id: "WEST", en: "Diriyah / DQ", ar: "الدرعية / الدبلوماسي" }
 ];
 
-// Every mode is an Esri basemap (constants.ts); labels name the style, never OpenStreetMap.
+// The only two Esri basemaps (constants.ts); labels name the style, never OpenStreetMap.
 const MODES: { id: MapMode; icon: typeof Moon; en: string; ar: string }[] = [
-  { id: "dark", icon: Moon, en: "Tactical", ar: "تكتيكي" },
   { id: "satellite", icon: Satellite, en: "Satellite", ar: "قمر صناعي" },
-  { id: "standard", icon: MapIcon, en: "Street", ar: "خريطة الشوارع" }
+  { id: "dark", icon: Moon, en: "Tactical", ar: "تكتيكي" }
 ];
+
+/** Honest chrome notice when tiles fail; null while they load normally. */
+export function tileNoticeText(status: TileHealthVerdict, isArabic: boolean): string | null {
+  if (status === "fallback")
+    return isArabic
+      ? "تعذر تحميل الخريطة التكتيكية؛ تُعرض صور القمر الصناعي بدلاً منها"
+      : "Tactical tiles are unavailable; showing satellite imagery instead";
+  if (status === "degraded")
+    return isArabic
+      ? "بعض البلاطات غير متاحة؛ تظل أدوات التحكم والبيانات متاحة"
+      : "Some tiles are unavailable; controls and operational data remain available";
+  return null;
+}
 
 type VehicleStatusFilter = "ALL" | Driver["status"];
 
@@ -166,7 +177,7 @@ export function RiyadhMap({
   tasks,
   className = "",
   height = "h-[400px]",
-  defaultMode = "dark",
+  defaultMode = DEFAULT_MAP_MODE,
   selectedDriverId = null,
   onSelectDriver,
   onController
@@ -176,7 +187,7 @@ export function RiyadhMap({
   const l = useCallback((value: string | number | null | undefined) => localizeText(value, isArabic), [isArabic]);
   const reducedMotion = useReducedMotion() === true;
 
-  const [mapMode, setMapMode] = useState<MapMode>(defaultMode);
+  const [mapMode, setMapMode] = useState<MapMode>(() => toMapMode(defaultMode));
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState<FullscreenTab>("drivers");
   const [selectedZone, setSelectedZone] = useState<Zone>("ALL");
@@ -188,7 +199,8 @@ export function RiyadhMap({
   trackedMarkerRef.current = trackedDriverId ? `driver:${trackedDriverId}` : null;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const map = useLeafletMap(containerRef, mapMode, isArabic);
+  const { map, tileStatus } = useLeafletMap(containerRef, mapMode, isArabic);
+  const tileNotice = tileNoticeText(tileStatus, isArabic);
   const layersRef = useRef<Layers | null>(null);
   const [layers, setLayers] = useState<Layers | null>(null);
   const fittedEventRef = useRef<string | null>(null);
@@ -268,7 +280,7 @@ export function RiyadhMap({
         id: `venue:${event.id}`,
         tone: "venue",
         position: venue,
-        label: l(event.venue ?? "Sovereign Summit Main Venue"),
+        label: l(event.venue ?? "Summit Main Venue"),
         subtitle: l("VIP Delegation Base · Plenary Hall")
       });
     }
@@ -480,7 +492,7 @@ export function RiyadhMap({
           <StatusPill status="LIVE" size="sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold tracking-tight text-gold-500">
-              {isFullscreen ? l("Fullscreen Operational Tactical Map") : l("Sovereign Dark Tactical")}
+              {isFullscreen ? l("Fullscreen Operational Tactical Map") : l("Operations Map")}
             </p>
             <p className="font-tnum truncate text-xs text-ink-muted">
               {RIYADH.centerLat.toFixed(4)}° N, {RIYADH.centerLng.toFixed(4)}° E · {activeCount} {l("Active Fleets")} ·{" "}
@@ -587,6 +599,11 @@ export function RiyadhMap({
             onRecenter={recenterTracked}
             onRelease={releaseTracked}
           />
+        )}
+        {tileNotice && (
+          <p role="status" data-map-tile-notice={tileStatus ?? undefined} className="w-full text-xs text-warn">
+            {tileNotice}
+          </p>
         )}
       </div>
 

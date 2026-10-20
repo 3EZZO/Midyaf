@@ -1,15 +1,14 @@
 /**
- * Tile providers. Every operational base map is served by Esri ArcGIS Online
- * (keyless public tile services):
+ * Tile providers. The owner allows exactly two base maps, both Esri ArcGIS
+ * Online keyless tile services (SILA-INTAKE-002):
  *
- * - standard  → Esri World_Street_Map (the default street base)
- * - satellite → Esri World_Imagery
- * - dark      → Esri Dark Gray Canvas (+ its reference layer for labels)
+ * - satellite → Esri World_Imagery (the default)
+ * - dark      → Tactical: Esri Dark Gray Canvas (+ its reference labels)
  *
- * If the tactical base fails while online, the map falls back to Esri
- * World_Street_Map with a CSS dark filter (`map.css`). No OpenStreetMap
- * volunteer tile server is requested anywhere, including the fallback and
- * the service-worker cache (RADAR-ORGANIZER-001).
+ * If the tactical base fails while online, the map falls back to the same
+ * World_Imagery layer and the UI says so. There is no street map, and no
+ * OpenStreetMap volunteer tile server is requested anywhere, including the
+ * fallback and the service-worker cache.
  *
  * Every host here is also listed in client/vite.config.ts `runtimeCaching`.
  *
@@ -17,7 +16,17 @@
  * and the OSM volunteer servers refuse application traffic. Neither may be
  * re-added as a "reliable" provider.
  */
-export type MapMode = "dark" | "satellite" | "standard";
+export type MapMode = "satellite" | "dark";
+
+/** Display order of the map-style choices: Satellite, then Tactical. */
+export const MAP_MODES: readonly MapMode[] = ["satellite", "dark"];
+
+export const DEFAULT_MAP_MODE: MapMode = "satellite";
+
+/** Any unknown value, including the retired street mode, resolves to the default. */
+export function toMapMode(value: unknown): MapMode {
+  return MAP_MODES.includes(value as MapMode) ? (value as MapMode) : DEFAULT_MAP_MODE;
+}
 
 export type TileConfig = {
   url: string;
@@ -38,9 +47,6 @@ const ESRI_ATTRIBUTION =
 const ESRI_IMAGERY_ATTRIBUTION =
   'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, Maxar, Earthstar Geographics, and the GIS User Community';
 
-const ESRI_STREET_URL =
-  "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
-
 export const TILE_LAYERS: Record<MapMode, TileConfig> = {
   dark: {
     url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
@@ -59,30 +65,12 @@ export const TILE_LAYERS: Record<MapMode, TileConfig> = {
     maxNativeZoom: 18,
     maxZoom: 18,
     className: "map-tiles"
-  },
-  standard: {
-    url: ESRI_STREET_URL,
-    attribution: ESRI_ATTRIBUTION,
-    subdomains: "",
-    maxNativeZoom: 18,
-    maxZoom: 19,
-    className: "map-tiles"
   }
 };
 
-/** Fallback for the tactical base: Esri World_Street_Map darkened by CSS. */
-export const DARK_FALLBACK_TILES: TileConfig = {
-  url: ESRI_STREET_URL,
-  attribution: ESRI_ATTRIBUTION,
-  subdomains: "",
-  maxNativeZoom: 18,
-  maxZoom: 19,
-  className: "map-tiles map-tiles--inverted"
-};
-
-/** Per-mode fallback. Street and imagery have no second keyless provider. */
+/** Per-mode fallback: tactical falls back to the satellite imagery; satellite has none. */
 export const TILE_FALLBACKS: Partial<Record<MapMode, TileConfig>> = {
-  dark: DARK_FALLBACK_TILES
+  dark: TILE_LAYERS.satellite
 };
 
 /** Consecutive tile failures (while online) before falling back or warning. */
@@ -128,12 +116,18 @@ export function createTileHealth(
 }
 
 /**
- * Runtime caches written by earlier builds. They can hold OSM tiles or opaque
- * (status 0) error responses that a CacheFirst route would replay for 30
- * days, so they are deleted once per page load. Current names live in
- * client/vite.config.ts and are never listed here.
+ * Runtime caches written by earlier builds. They can hold OSM or Esri street
+ * tiles, or opaque (status 0) error responses that a CacheFirst route would
+ * replay for 30 days, so they are deleted once per page load. Current names
+ * live in client/vite.config.ts and are never listed here.
  */
-export const RETIRED_TILE_CACHES = ["map-tiles-osm", "map-tiles-esri", "map-tiles-carto", "map-tiles"] as const;
+export const RETIRED_TILE_CACHES = [
+  "map-tiles-osm",
+  "map-tiles-esri",
+  "map-tiles-carto",
+  "map-tiles",
+  "map-tiles-esri-v2"
+] as const;
 
 type CacheStorageLike = Pick<CacheStorage, "delete">;
 let purgeStarted: Promise<string[]> | null = null;

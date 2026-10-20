@@ -8,7 +8,8 @@ vi.mock("leaflet", () => ({ default: {} }));
 import { createMapController } from "./MapController";
 import { focusWithoutScroll, observeContainerSize, pinScrollOrigin } from "./useLeafletMap";
 import {
-  DARK_FALLBACK_TILES,
+  DEFAULT_MAP_MODE,
+  MAP_MODES,
   RETIRED_TILE_CACHES,
   TILE_FALLBACKS,
   TILE_FALLBACK_THRESHOLD,
@@ -16,6 +17,7 @@ import {
   createTileHealth,
   purgeRetiredTileCaches,
   tileLayerOptions,
+  toMapMode,
   type TileConfig
 } from "./constants";
 
@@ -24,11 +26,13 @@ import {
  * volunteer servers (403 for application traffic) and CARTO (watermarked
  * "API KEY REQUIRED") are gone from the layers, the fallback and the
  * service-worker cache, and stale caches are purged.
+ * SILA-INTAKE-002: only Satellite (default) and Tactical remain; the street
+ * map is gone, including as the tactical fallback.
  */
 describe("tile providers", () => {
   const configs: Array<[string, TileConfig]> = [
     ...Object.entries(TILE_LAYERS),
-    ["dark fallback", DARK_FALLBACK_TILES]
+    ["tactical fallback", TILE_FALLBACKS.dark!]
   ];
   const blocked = /openstreetmap\.org|basemaps\.cartocdn|cartocdn\.com|\{s\}/i;
 
@@ -43,25 +47,53 @@ describe("tile providers", () => {
     }
   });
 
-  it("uses Esri World_Street_Map for the street mode, World_Imagery for satellite, Dark Gray for tactical", () => {
-    expect(TILE_LAYERS.standard.url).toContain("/World_Street_Map/");
+  it("offers exactly Satellite then Tactical, with Satellite the default", () => {
+    expect(Object.keys(TILE_LAYERS).sort()).toEqual(["dark", "satellite"]);
+    expect([...MAP_MODES]).toEqual(["satellite", "dark"]);
+    expect(DEFAULT_MAP_MODE).toBe("satellite");
     expect(TILE_LAYERS.satellite.url).toContain("/World_Imagery/");
     expect(TILE_LAYERS.dark.url).toContain("/World_Dark_Gray_Base/");
-    expect(DARK_FALLBACK_TILES.url).toContain("/World_Street_Map/");
-    expect(DARK_FALLBACK_TILES.className).toContain("map-tiles--inverted");
-    expect(TILE_FALLBACKS).toEqual({ dark: DARK_FALLBACK_TILES });
+    expect(TILE_LAYERS.dark.labelsUrl).toContain("/World_Dark_Gray_Reference/");
+  });
+
+  it("falls back from Tactical only to the allowed satellite imagery, never a street layer", () => {
+    expect(TILE_FALLBACKS).toEqual({ dark: TILE_LAYERS.satellite });
+    expect(TILE_FALLBACKS.dark!.url).toContain("/World_Imagery/");
+    expect(TILE_FALLBACKS.satellite).toBeUndefined();
+  });
+
+  it("requests no street map anywhere in the map sources or the service worker", () => {
+    for (const file of [
+      "client/src/components/map/constants.ts",
+      "client/src/components/map/useLeafletMap.ts",
+      "client/src/components/map/RiyadhMap.tsx",
+      "client/src/components/EventRadar.tsx",
+      "client/vite.config.ts"
+    ]) {
+      const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
+      expect(source, file).not.toMatch(/World_Street_Map|map-tiles--inverted|["']standard["']/);
+    }
+  });
+
+  it("resolves a stale or unknown mode (old street preference included) to Satellite", () => {
+    expect(toMapMode("standard")).toBe("satellite");
+    expect(toMapMode(undefined)).toBe("satellite");
+    expect(toMapMode("dark")).toBe("dark");
+    expect(toMapMode("satellite")).toBe("satellite");
   });
 
   it("builds CORS tile options so only real 200 responses can be cached", () => {
-    const options = tileLayerOptions(TILE_LAYERS.standard);
-    expect(options).toMatchObject({ crossOrigin: true, subdomains: "", maxZoom: 19, maxNativeZoom: 18 });
+    const options = tileLayerOptions(TILE_LAYERS.satellite);
+    expect(options).toMatchObject({ crossOrigin: true, subdomains: "", maxZoom: 18, maxNativeZoom: 18 });
     expect(options.attribution).toContain("Esri");
   });
 
   it("keeps OpenStreetMap and CARTO out of the service-worker runtime cache", () => {
     const vite = fs.readFileSync(path.join(process.cwd(), "client/vite.config.ts"), "utf8");
     expect(vite).not.toMatch(/tile\\?\.openstreetmap|cartocdn/i);
-    expect(vite).toContain('cacheName: "map-tiles-esri-v2"');
+    // v3 replaces v2, which may still hold retired street tiles; v2 is purged at startup.
+    expect(vite).toContain('cacheName: "map-tiles-esri-v3"');
+    expect(RETIRED_TILE_CACHES).toContain("map-tiles-esri-v2");
     expect(vite).toMatch(/cacheableResponse:\s*\{\s*statuses:\s*\[200\]\s*\}/);
     expect(vite).not.toMatch(/statuses:\s*\[0/);
     expect(vite).toContain("cleanupOutdatedCaches: true");
@@ -85,12 +117,10 @@ describe("createTileHealth", () => {
     }
   });
 
-  it("reports degraded street/satellite tiles honestly instead of switching provider", () => {
-    for (const mode of ["standard", "satellite"] as const) {
-      const health = createTileHealth(mode, () => true);
-      const verdicts = Array.from({ length: TILE_FALLBACK_THRESHOLD }, () => health.onError());
-      expect(verdicts.at(-1)).toBe("degraded");
-    }
+  it("reports degraded satellite tiles honestly instead of switching provider", () => {
+    const health = createTileHealth("satellite", () => true);
+    const verdicts = Array.from({ length: TILE_FALLBACK_THRESHOLD }, () => health.onError());
+    expect(verdicts.at(-1)).toBe("degraded");
   });
 
   it("stays put offline so a warmed cache keeps serving", () => {
@@ -111,7 +141,8 @@ describe("purgeRetiredTileCaches", () => {
     };
     expect(await purgeRetiredTileCaches(storage)).toEqual(["map-tiles-osm", "map-tiles-esri"]);
     expect(asked).toEqual([...RETIRED_TILE_CACHES]);
-    expect(asked).not.toContain("map-tiles-esri-v2");
+    expect(asked).toContain("map-tiles-esri-v2");
+    expect(asked).not.toContain("map-tiles-esri-v3");
   });
 
   it("is a no-op without CacheStorage", async () => {

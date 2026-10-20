@@ -292,8 +292,8 @@ export function AirportExpressSection({
           </h1>
           <p className="text-slate-300 text-base sm:text-lg">
             {ui.p(
-              "Welcome to the Sovereign Summit. Please enter your name or delegation title for instant Chauffeur & Escort dispatch.",
-              "مرحباً بكم في القمة السيادية. يرجى إدخال الاسم أو الوفد لتجهيز سيارة الضيافة الفورية."
+              "Welcome to the Summit. Please enter your name or delegation title for instant Chauffeur & Escort dispatch.",
+              "مرحباً بكم في القمة. يرجى إدخال الاسم أو الوفد لتجهيز سيارة الضيافة الفورية."
             )}
           </p>
 

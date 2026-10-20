@@ -17,7 +17,9 @@ vi.mock("motion/react", async (importOriginal) => ({
   useReducedMotion: () => false
 }));
 
-import { RiyadhMap, TrackingHud, filterDrivers, mapShellClassName } from "./RiyadhMap";
+import fs from "node:fs";
+import path from "node:path";
+import { RiyadhMap, TrackingHud, filterDrivers, mapShellClassName, tileNoticeText } from "./RiyadhMap";
 
 /**
  * FULL-OVERHAUL-M1: the radar chrome and tracking HUD render outside
@@ -37,6 +39,12 @@ const driver = {
 
 function render(props: Partial<Parameters<typeof RiyadhMap>[0]> = {}) {
   return renderToStaticMarkup(<RiyadhMap drivers={[driver]} tasks={[]} {...props} />);
+}
+
+function mapStyleGroup(html: string) {
+  const match = html.match(/<div role="group" aria-label="Map style"[^>]*>([\s\S]*?)<\/div>/);
+  if (!match) throw new Error("missing map style group");
+  return match[1];
 }
 
 function groupClass(html: string, label: string) {
@@ -73,16 +81,32 @@ describe("RiyadhMap radar chrome", () => {
   });
 
   it("keeps the map style options named even when labels collapse to icons", () => {
-    const html = render({ defaultMode: "satellite" });
+    const html = render();
     expect(groupClass(html, "Map style")).not.toContain("hidden");
     expect(html).toMatch(/aria-pressed="false" aria-label="Tactical"/);
     expect(html).toMatch(/aria-pressed="true" aria-label="Satellite"/);
-    // RADAR-ORGANIZER-001: the street base is Esri World_Street_Map, never labelled OpenStreetMap.
-    expect(html).toMatch(/aria-pressed="false" aria-label="Street"/);
     expect(html).not.toContain("OpenStreetMap");
-    expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("Geofences");
     expect(html).toContain("Fullscreen");
+  });
+
+  // SILA-INTAKE-002: Satellite by default, and only Satellite / Tactical.
+  it("defaults to Satellite and offers exactly Satellite then Tactical", () => {
+    const html = render();
+    const labels = [...mapStyleGroup(html).matchAll(/aria-label="([^"]+)"/g)].map((m) => m[1]);
+    expect(labels).toEqual(["Satellite", "Tactical"]);
+    expect(html).not.toMatch(/aria-label="Street"/);
+    expect(render({ defaultMode: "dark" })).toMatch(/aria-pressed="true" aria-label="Tactical"/);
+  });
+
+  it("never resurrects the retired street mode from a stale value", () => {
+    const html = render({ defaultMode: "standard" as unknown as "satellite" });
+    expect(html).toMatch(/aria-pressed="true" aria-label="Satellite"/);
+    expect(mapStyleGroup(html).match(/<button/g)).toHaveLength(2);
+  });
+
+  it("shows no tile notice while tiles load normally", () => {
+    expect(render()).not.toContain("data-map-tile-notice");
   });
 
   it("puts vehicle status, map style, tracking focus, recenter and fullscreen in the chrome, ahead of the stage", () => {
@@ -124,11 +148,36 @@ describe("RiyadhMap radar chrome", () => {
     expect(groupClass(html, "تصفية حسب المنطقة")).not.toContain("hidden");
     expect(groupClass(html, "نمط الخريطة")).not.toContain("hidden");
     expect(html).toContain("كافة المسارات");
-    expect(html).toContain("خريطة الشوارع");
+    expect(html).toMatch(/aria-pressed="true" aria-label="قمر صناعي"/);
+    expect(html).toContain('aria-label="تكتيكي"');
+    expect(html).not.toContain("خريطة الشوارع");
     expect(html).toMatch(/data-map-hud="tracking" dir="rtl"/);
     expect(html).toContain('aria-label="إعادة التمركز على القافلة"');
     expect(html).toContain('aria-label="تركيز التتبع"');
     expect(html).toContain('aria-label="حالة المركبات"');
+  });
+});
+
+describe("tileNoticeText", () => {
+  it("says honestly that tactical fell back to satellite imagery", () => {
+    expect(tileNoticeText("fallback", false)).toBe("Tactical tiles are unavailable; showing satellite imagery instead");
+    expect(tileNoticeText("fallback", true)).toContain("صور القمر الصناعي");
+    expect(tileNoticeText("degraded", false)).toContain("Some tiles are unavailable");
+    expect(tileNoticeText(null, false)).toBeNull();
+    for (const text of [tileNoticeText("fallback", false), tileNoticeText("fallback", true)]) {
+      expect(text).not.toMatch(/street|الشوارع/i);
+    }
+  });
+});
+
+describe("War Room map", () => {
+  it("no longer forces the Tactical style over the Satellite default", () => {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "client/src/components/warroom/SovereignCommandBridge.tsx"),
+      "utf8"
+    );
+    expect(source).toContain("<RiyadhMap");
+    expect(source).not.toMatch(/defaultMode=/);
   });
 });
 

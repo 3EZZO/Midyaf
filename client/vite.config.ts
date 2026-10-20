@@ -14,7 +14,7 @@ export default defineConfig({
         name: "Midyaf",
         short_name: "Midyaf",
         description:
-          "AI-powered royal hospitality and sovereign event logistics command center",
+          "AI-powered royal hospitality and event logistics operations center",
         lang: "ar",
         dir: "rtl",
         start_url: "/",
@@ -55,18 +55,18 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // Every map provider is Esri: World_Imagery (server.) plus
-            // World_Street_Map and Dark Gray Canvas (services.). No
+            // Only two Esri base maps: World_Imagery (server.) and the
+            // tactical Dark Gray Canvas (services.). No street map and no
             // OpenStreetMap volunteer tile server is requested or cached.
             // Tiles load with CORS, so only real 200s are cached: an error
             // or opaque (status 0) response is never replayed from cache.
-            // The cache name is versioned; the retired "map-tiles-esri" and
-            // "map-tiles-osm" caches are deleted by the app at startup
-            // (components/map/constants.ts RETIRED_TILE_CACHES).
+            // The cache name is versioned; older caches, including
+            // "map-tiles-esri-v2" with retired street tiles, are deleted by
+            // the app at startup (components/map/constants.ts RETIRED_TILE_CACHES).
             urlPattern: /^https:\/\/(server|services)\.arcgisonline\.com\//i,
             handler: "CacheFirst",
             options: {
-              cacheName: "map-tiles-esri-v2",
+              cacheName: "map-tiles-esri-v3",
               expiration: {
                 maxEntries: 2000,
                 maxAgeSeconds: 60 * 60 * 24 * 30

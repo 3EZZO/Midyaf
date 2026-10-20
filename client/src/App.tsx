@@ -219,7 +219,7 @@ export function App() {
           : "Full Demo Mode Activated (Ctrl + Shift + D)",
         isArabic
           ? "تم تشغيل محاكاة الفعالية الافتراضية والأسطول المباشر · اضغط الآن Ctrl + Space لفتح غرفة العمليات"
-          : "Virtual event telemetry engaged · Press Ctrl + Space for Sovereign War Room"
+          : "Virtual event telemetry engaged · Press Ctrl + Space for the Operations Center"
       );
     }
   }
@@ -1307,10 +1307,9 @@ function renderPortal(
       return <CaptainsApp {...props} />;
     case "coordinator":
       return <CoordinatorsApp {...props} />;
-    // RADAR-ORGANIZER-001: "intake" is no longer a portal; an old deep link
-    // canonicalizes to the company workspace, in demo mode too.
+    // SILA-INTAKE-002: there is no standalone intake portal. Event setup is
+    // Sila → Intake or this company workspace; both embed OrganizerWorkspace.
     case "company":
-    case "intake":
     default:
       return <CompanyDashboard {...props} />;
   }

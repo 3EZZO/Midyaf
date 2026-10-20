@@ -1,10 +1,10 @@
-import {useEffect,useRef,useState,type ReactNode} from 'react';
+import {useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import type L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './map/map.css';
 import type {Session} from '@shared/domain';
 import {VEHICLE_STATUSES,TRIP_STATUSES,canTransitionTrip,type TelemetrySnapshotDto,type WorkspaceEventDto,type VehicleDto,type TripDto,type GuestDto} from '@shared/overhaul';
-import {TILE_FALLBACKS,TILE_LAYERS,createTileHealth,focusWithoutScroll,observeContainerSize,pinScrollOrigin,purgeRetiredTileCachesOnce,tileLayerOptions,type MapMode,type TileConfig} from './map/constants';
+import {DEFAULT_MAP_MODE,TILE_FALLBACKS,TILE_LAYERS,createTileHealth,focusWithoutScroll,observeContainerSize,pinScrollOrigin,purgeRetiredTileCachesOnce,tileLayerOptions,toMapMode,type MapMode,type TileConfig} from './map/constants';
 import {useWorkspaceResource,workspaceRequest} from '../lib/workspaceApi';
 import {Section} from './Section';
 import {TaskDispatch} from './TaskDispatch';
@@ -13,8 +13,8 @@ const input='w-full rounded border border-hairline bg-surface-1 p-2';
 const vehicleLabels:Record<string,[string,string]>={AVAILABLE:['Available','متاحة'],ASSIGNED_TO_TASK:['Assigned to task','مخصصة لمهمة'],WAITING:['Waiting','انتظار'],OUT_OF_ZONE:['Out of zone','خارج النطاق']};
 export function guestLabel(guest:GuestDto){return guest.masked?guest.guestCode:`${guest.guestCode} · ${guest.fullName}`;}
 export function routePoints(value:string|null):Array<[number,number]>{try{const items:unknown=JSON.parse(value??'null');if(!Array.isArray(items)||items.length>5000)return[];return items.flatMap(p=>p&&typeof p==='object'&&'lat'in p&&'lng'in p&&typeof p.lat==='number'&&typeof p.lng==='number'&&Number.isFinite(p.lat)&&Math.abs(p.lat)<=90&&Number.isFinite(p.lng)&&Math.abs(p.lng)<=180?[[p.lat,p.lng] as [number,number]]:[]);}catch{return[];}}
-/** Every style is an Esri basemap (map/constants.ts); the labels never claim OpenStreetMap. */
-const mapStyles:Array<[MapMode,string,string]>=[['standard','Street map (Esri)','خريطة الشوارع (Esri)'],['satellite','Satellite (Esri imagery)','قمر صناعي (صور Esri)'],['dark','Tactical (Esri dark gray)','تكتيكي (Esri رمادي داكن)']];
+/** The only two styles, both Esri basemaps (map/constants.ts); the labels never claim OpenStreetMap. */
+const mapStyles:Array<[MapMode,string,string]>=[['satellite','Satellite (Esri imagery)','قمر صناعي (صور Esri)'],['dark','Tactical (Esri dark gray)','تكتيكي (Esri رمادي داكن)']];
 const control='rounded border border-hairline bg-surface-1 p-2 text-sm';
 export type RadarFullscreen='native'|'css'|null;
 /**
@@ -26,11 +26,11 @@ export type RadarFullscreen='native'|'css'|null;
  * once per event, never remounted by polling, filters or fetch errors.
  */
 export function RadarMap({vehicles,guests,trip,selected,onSelect,ar,center,vehicleStatus,onVehicleStatus}:{vehicles:VehicleDto[];guests:GuestDto[];trip:TripDto|undefined;selected:string;onSelect:(id:string)=>void;ar:boolean;center:[number,number];vehicleStatus:string;onVehicleStatus:(value:string)=>void}){
- const canvas=useRef<HTMLDivElement>(null),stage=useRef<HTMLDivElement>(null),shell=useRef<HTMLDivElement>(null),mapRef=useRef<L.Map|null>(null),leaflet=useRef<typeof L|null>(null),[ready,setReady]=useState(false),[mode,setMode]=useState<MapMode>('standard'),[focus,setFocus]=useState(false),[showGuests,setGuests]=useState(true),[mapError,setMapError]=useState(''),[tileNotice,setTileNotice]=useState(''),[fullscreen,setFullscreen]=useState<RadarFullscreen>(null);
+ const canvas=useRef<HTMLDivElement>(null),stage=useRef<HTMLDivElement>(null),shell=useRef<HTMLDivElement>(null),mapRef=useRef<L.Map|null>(null),leaflet=useRef<typeof L|null>(null),[ready,setReady]=useState(false),[mode,setMode]=useState<MapMode>(DEFAULT_MAP_MODE),[focus,setFocus]=useState(false),[showGuests,setGuests]=useState(true),[mapError,setMapError]=useState(''),[tileNotice,setTileNotice]=useState(''),[fullscreen,setFullscreen]=useState<RadarFullscreen>(null);
  useEffect(()=>{let disposed=false,cleanup=()=>{};void purgeRetiredTileCachesOnce();void import('leaflet').then(module=>{if(disposed||!canvas.current)return;const lib=module.default;leaflet.current=lib;const node=canvas.current,restoreFocus=focusWithoutScroll(node);const map=lib.map(node,{center,zoom:11,zoomControl:true});mapRef.current=map;map.attributionControl.setPrefix(false);const unobserve=observeContainerSize(node,()=>map.invalidateSize({animate:false}));const unpins=[node,stage.current,shell.current].flatMap(el=>el?[pinScrollOrigin(el)]:[]);cleanup=()=>{unobserve();unpins.forEach(unpin=>unpin());restoreFocus();map.remove();mapRef.current=null;};setReady(true);}).catch(()=>setMapError(ar?'تعذر تحميل الخريطة؛ تظل البيانات التشغيلية متاحة':'Map could not load; operational data remains available'));return()=>{disposed=true;cleanup();};},[]);
  useEffect(()=>{const map=mapRef.current,lib=leaflet.current;if(!map||!lib||!ready)return;const health=createTileHealth(mode);let layers:L.TileLayer[]=[];
   const onLoad=()=>health.onLoad();
-  const onError=()=>{const verdict=health.onError(),fallback=TILE_FALLBACKS[mode];if(verdict==='fallback'&&fallback){remove();layers=add(fallback);setTileNotice(ar?'تعذر تحميل البلاطات التكتيكية؛ تُعرض خريطة شوارع Esri بلون داكن':'Tactical tiles are unavailable; showing darkened Esri street tiles');}else if(verdict==='degraded')setTileNotice(ar?'بعض البلاطات غير متاحة؛ تظل أدوات التحكم والبيانات متاحة':'Some tiles are unavailable; controls and operational data remain available');};
+  const onError=()=>{const verdict=health.onError(),fallback=TILE_FALLBACKS[mode];if(verdict==='fallback'&&fallback){remove();layers=add(fallback);setTileNotice(ar?'تعذر تحميل الخريطة التكتيكية؛ تُعرض صور القمر الصناعي بدلاً منها':'Tactical tiles are unavailable; showing satellite imagery instead');}else if(verdict==='degraded')setTileNotice(ar?'بعض البلاطات غير متاحة؛ تظل أدوات التحكم والبيانات متاحة':'Some tiles are unavailable; controls and operational data remain available');};
   const add=(config:TileConfig)=>{const base=lib.tileLayer(config.url,tileLayerOptions(config)).on('tileerror',onError).on('tileload',onLoad).addTo(map);return config.labelsUrl?[base,lib.tileLayer(config.labelsUrl,{...tileLayerOptions(config),attribution:undefined,className:'map-tiles map-tiles--labels'}).addTo(map)]:[base];};
   const remove=()=>{for(const layer of layers){layer.off('tileerror',onError).off('tileload',onLoad);map.removeLayer(layer);}layers=[];};
   layers=add(TILE_LAYERS[mode]);return remove;},[mode,ready,ar]);
@@ -45,7 +45,7 @@ export function RadarMap({vehicles,guests,trip,selected,onSelect,ar,center,vehic
  return <div ref={shell} data-fullscreen={fullscreen??undefined} className={radarShellClassName(fullscreen)}>
   <div className="map-chrome flex flex-wrap items-end gap-2 border-b border-hairline bg-surface-1 p-3" role="toolbar" aria-label={ar?'أدوات الرادار':'Radar controls'}>
    <label className="grid gap-1 text-xs">{ar?'حالة المركبات':'Vehicle status'}<select className={control} value={vehicleStatus} onChange={e=>onVehicleStatus(e.target.value)}><option value="">{ar?'الكل':'All'}</option>{VEHICLE_STATUSES.map(value=><option key={value} value={value}>{vehicleLabels[value][ar?1:0]}</option>)}</select></label>
-   <label className="grid gap-1 text-xs">{ar?'نمط الخريطة':'Map style'}<select className={control} value={mode} onChange={e=>{setMode(e.target.value as MapMode);setTileNotice('');}}>{mapStyles.map(([value,en,arabic])=><option key={value} value={value}>{ar?arabic:en}</option>)}</select></label>
+   <label className="grid gap-1 text-xs">{ar?'نمط الخريطة':'Map style'}<select className={control} value={mode} onChange={e=>{setMode(toMapMode(e.target.value));setTileNotice('');}}>{mapStyles.map(([value,en,arabic])=><option key={value} value={value}>{ar?arabic:en}</option>)}</select></label>
    <label className="flex items-center gap-2 self-center text-sm"><input type="checkbox" checked={focus} onChange={e=>setFocus(e.target.checked)}/> {ar?'تركيز التتبع':'Tracking focus'}</label>
    <label className="flex items-center gap-2 self-center text-sm"><input type="checkbox" checked={showGuests} onChange={e=>setGuests(e.target.checked)}/> {ar?'مواقع الضيوف المصرح بها':'Permitted guest positions'}</label>
    <button type="button" className={button} disabled={!ready} onClick={recenter}>{ar?'إعادة تمركز':'Recenter'}</button>
@@ -103,12 +103,16 @@ function FleetDataEntry({token,event,data,ar,onChange}:{token:string;event:Works
  </div></details>;
 }
 
-export function OperationalEventEntry({session,isArabic:ar,children,mode='radar'}:{session:Session|undefined|null;isArabic:boolean;children:ReactNode;mode?:'radar'|'guest'}){
- const resource=useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken??'',session?'/events':null),[selected,setSelected]=useState(''),[showPrevious,setShowPrevious]=useState(false);
+/** Professional EN/AR heading for the role's own workspace, shown directly under the event desk (SILA-INTAKE-002 owner steering). */
+export const ROLE_WORKSPACE_LABELS={guest:['Guest Services','خدمات الضيوف'],captain:['Captain Workspace','مساحة عمل الكابتن'],field:['Field Operations','العمليات الميدانية'],logistics:['Logistics Operations','العمليات اللوجستية'],event:['Event Operations','عمليات الفعالية']} as const;
+export type RoleWorkspace=keyof typeof ROLE_WORKSPACE_LABELS;
+/** `children` is the role's own workspace, rendered immediately in a labelled section; `empty` (Sila Fleet) replaces it when no approved event exists. */
+export function OperationalEventEntry({session,isArabic:ar,children,empty,mode='radar',workspace=mode==='guest'?'guest':'captain'}:{session:Session|undefined|null;isArabic:boolean;children?:ReactNode;empty?:ReactNode;mode?:'radar'|'guest';workspace?:RoleWorkspace}){
+ const resource=useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken??'',session?'/events':null),[selected,setSelected]=useState(''),headingId=useId();
  const events=resource.data?.events.filter(event=>event.planApproved&&event.operationalStatus!=='COMPLETED')??[],event=events.find(e=>e.id===selected)??events[0];
  if(session&&!resource.data)return <p role={resource.error?'alert':'status'}>{resource.error??(ar?'جارٍ تحميل الفعاليات…':'Loading permitted events…')}</p>;
- if(!session||!event)return <>{resource.error&&<p role="alert">{resource.error}</p>}{children}</>;
- return <div className="space-y-4" dir={ar?'rtl':'ltr'}><label>{ar?'مساحة الفعالية التشغيلية':'Event operations workspace'}<select className={input} value={event.id} onChange={e=>setSelected(e.target.value)}>{events.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>{mode==='guest'?<GuestEventDesk key={`${session.accessToken}:${event.id}`} token={session.accessToken} event={event} isArabic={ar}/>:<EventRadar key={`${session.accessToken}:${event.id}`} token={session.accessToken} event={event} isArabic={ar}/>}<details onToggle={e=>setShowPrevious(e.currentTarget.open)}><summary>{ar?'العرض الشخصي السابق':'Previous personal workspace'}</summary>{showPrevious&&children}</details></div>;
+ if(!session||!event)return <>{resource.error&&<p role="alert">{resource.error}</p>}{empty??children}</>;
+ return <div className="space-y-4" dir={ar?'rtl':'ltr'}><label>{ar?'مساحة الفعالية التشغيلية':'Event operations workspace'}<select className={input} value={event.id} onChange={e=>setSelected(e.target.value)}>{events.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>{mode==='guest'?<GuestEventDesk key={`${session.accessToken}:${event.id}`} token={session.accessToken} event={event} isArabic={ar}/>:<EventRadar key={`${session.accessToken}:${event.id}`} token={session.accessToken} event={event} isArabic={ar}/>}{children!=null&&<section aria-labelledby={headingId} className="space-y-3 rounded border border-hairline p-4" data-role-workspace={workspace}><h2 id={headingId} className="font-bold">{ROLE_WORKSPACE_LABELS[workspace][ar?1:0]}</h2>{children}</section>}</div>;
 }
 function GuestEventDesk({token,event,isArabic:ar}:{token:string;event:WorkspaceEventDto;isArabic:boolean}){
  const[revision,refresh]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false);

@@ -1,15 +1,41 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Driver, Task } from "@shared/domain";
+import type { ReactNode } from "react";
+import type { Driver, MidyafData, Session, Task } from "@shared/domain";
+import type { OrganizationDto } from "@shared/overhaul";
 import { eventTaskCards, TASK_CARD_LIMIT } from "../lib/eventTaskCards";
-import { ClientMessagesEmpty, EventTaskList } from "./SilaOperationsDashboard";
+import type { PortalProps } from "../pages/types";
 
 // Translation is not initialised in tests; use a fixed English language.
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } })
 }));
+
+// The organizer workspace and radar are tested in their own files; here only their placement matters.
+vi.mock("./OrganizerWorkspace", () => ({
+  OrganizerWorkspace: ({ session, isArabic }: { session?: Session | null; isArabic: boolean }) => (
+    <div data-organizer-workspace={session?.user.role ?? "none"} data-arabic={String(isArabic)} />
+  )
+}));
+vi.mock("./EventRadar", () => ({
+  OperationalEventEntry: ({ empty }: { empty?: ReactNode }) => <div data-operational-radar>{empty}</div>
+}));
+vi.mock("./AiPanel", () => ({ AiPanel: () => null }));
+vi.mock("./charts", () => ({ ArcGauge: () => null, Funnel: () => null, StackedBars: () => null }));
+const orgState = vi.hoisted(() => ({ value: {} as { data?: { organizations: unknown[] } } }));
+vi.mock("../lib/workspaceApi", () => ({ useWorkspaceResource: () => orgState.value, workspaceRequest: vi.fn() }));
+
+import {
+  ClientMessagesEmpty,
+  EventTaskList,
+  IntakeAccessNote,
+  SilaOperationsDashboard,
+  canCreateEvents,
+  type SilaTab
+} from "./SilaOperationsDashboard";
+import { CompanyDashboard } from "../pages/ops/CompanyDashboard";
 
 /**
  * VIS-04: the operations task cards come from the current event's tasks and
@@ -116,5 +142,164 @@ describe("SilaOperationsDashboard source", () => {
       expect(source).not.toContain(fixed);
     }
     expect(source).toMatch(/eventTaskCards\(tasks, data\.drivers, isArabic\)/);
+  });
+});
+
+/**
+ * SILA-INTAKE-002: Sila → Intake is the default tab and embeds the organizer
+ * workspace (the only event-creation form) in normal and demo modes. The
+ * live radar sits in Fleet; nothing is hidden under a previous-workspace drawer.
+ */
+const session = (role: Session["user"]["role"]) =>
+  ({
+    accessToken: "synthetic",
+    refreshToken: "synthetic",
+    user: { id: "synthetic", role, name: "Synthetic", email: "synthetic@example.test", phone: "", language: "en" }
+  }) as Session;
+
+const emptyData = {
+  events: [],
+  drivers: [],
+  guestJourneys: [],
+  activityIntakes: [],
+  companyReports: [],
+  contracts: []
+} as unknown as MidyafData;
+
+const org = (myRole: string | null, kind = "COMPANY") =>
+  ({ id: `org-${myRole}-${kind}`, name: "Synthetic org", kind, myRole }) as unknown as OrganizationDto;
+
+function renderSila({
+  isDemoMode = false,
+  isArabic = false,
+  initialTab,
+  data = emptyData,
+  role = "LOGISTICS_MANAGER"
+}: { isDemoMode?: boolean; isArabic?: boolean; initialTab?: SilaTab; data?: MidyafData; role?: Session["user"]["role"] } = {}) {
+  return renderToStaticMarkup(
+    <SilaOperationsDashboard
+      data={data}
+      session={session(role)}
+      isDemoMode={isDemoMode}
+      isArabic={isArabic}
+      initialTab={initialTab}
+    />
+  );
+}
+
+const selectedTab = (html: string) =>
+  html.match(/role="tab" aria-selected="true"(?:(?!<\/button>)[\s\S])*?<span class="relative">([^<]+)<\/span>/)?.[1];
+
+describe("Sila Intake", () => {
+  afterEach(() => {
+    orgState.value = {};
+  });
+
+  for (const isDemoMode of [false, true]) {
+    it(`opens on Intake with the embedded organizer workspace${isDemoMode ? " in demo mode" : ""}`, () => {
+      const html = renderSila({ isDemoMode });
+      expect(selectedTab(html)).toBe("Intake");
+      expect(html).toContain('data-organizer-workspace="LOGISTICS_MANAGER"');
+      expect(html).toContain("How to enter a new event");
+      expect(html).toContain("إدخال وتجهيز فعالية جديدة");
+      expect(html).toContain("Save &amp; open event plan");
+      expect(html).toContain("Approve plan &amp; unlock operations");
+      // No second form, no legacy drawer, and the radar is not on the default tab.
+      expect(html).not.toContain("<form");
+      expect(html).not.toContain("Previous personal workspace");
+      expect(html).not.toContain("data-operational-radar");
+    });
+  }
+
+  it("works for an organization without events and in Arabic", () => {
+    const html = renderSila({ isArabic: true });
+    expect(html).toContain('data-organizer-workspace="LOGISTICS_MANAGER"');
+    expect(html).toContain('data-arabic="true"');
+    expect(html).toContain("كيف تُدخل فعالية جديدة");
+    expect(html).toContain("اعتماد الخطة وتفعيل التشغيل");
+    expect(html).not.toContain("Earlier activity records");
+  });
+
+  it("keeps earlier activity intake records as a read-only list below the workspace", () => {
+    const data = {
+      ...emptyData,
+      activityIntakes: [{ id: "ai1", activityName: "Synthetic gala", activityPlace: "Synthetic hall", status: "SUBMITTED", visitorCount: 10, vipVisitorCount: 2 }]
+    } as unknown as MidyafData;
+    const html = renderSila({ data });
+    expect(html).toContain("Earlier activity records (1)");
+    expect(html).toContain("Synthetic gala");
+    expect(html.indexOf("data-organizer-workspace")).toBeLessThan(html.indexOf("Synthetic gala"));
+  });
+
+  it("explains a hidden new-event button without granting anything", () => {
+    orgState.value = { data: { organizations: [] } };
+    const html = renderSila({ role: "SUPER_ADMIN" });
+    const note = html.match(/<p role="note" data-intake-no-access[^>]*>([^<]*)<\/p>/)?.[1] ?? "";
+    expect(note).toContain("not an owner or admin of an organizing company");
+    expect(note).not.toMatch(/success|created|granted/i);
+
+    orgState.value = { data: { organizations: [org("OWNER")] } };
+    expect(renderSila()).not.toContain("data-intake-no-access");
+
+    // Still loading: no premature message.
+    orgState.value = {};
+    expect(renderSila()).not.toContain("data-intake-no-access");
+  });
+
+  it("uses the organizer workspace's own creation rule", () => {
+    expect(canCreateEvents([org("OWNER")])).toBe(true);
+    expect(canCreateEvents([org("ADMIN")])).toBe(true);
+    expect(canCreateEvents([org("MEMBER"), org(null)])).toBe(false);
+    expect(canCreateEvents([org("OWNER", "VENDOR")])).toBe(false);
+    expect(renderToStaticMarkup(<IntakeAccessNote organizations={[org("MEMBER")]} isArabic />)).toContain(
+      "ليس مالكاً أو مديراً"
+    );
+    expect(renderToStaticMarkup(<IntakeAccessNote organizations={[org("ADMIN")]} isArabic={false} />)).toBe("");
+  });
+});
+
+describe("Sila Fleet & Radar", () => {
+  it("puts the live event radar in the Fleet tab, with an honest empty state", () => {
+    const html = renderSila({ initialTab: "fleet" });
+    expect(selectedTab(html)).toBe("Fleet &amp; Radar");
+    expect(html).toContain("data-operational-radar");
+    expect(html).toContain("No approved event for the radar yet");
+    expect(html).not.toContain("data-organizer-workspace");
+  });
+
+  it("leaves the scripted demo fleet view without the live radar", () => {
+    const html = renderSila({ initialTab: "fleet", isDemoMode: true });
+    expect(html).not.toContain("data-operational-radar");
+    expect(html).toContain("Live Fleet Telemetry");
+  });
+});
+
+/**
+ * Migrated from the retired ActivityIntakePage wrapper test: the company
+ * portal stays the same organizer workspace for every role and in demo mode,
+ * and no entry module uses browser-local plan state or legacy intake calls.
+ */
+describe("single organizer entry path", () => {
+  const props = (over: Partial<PortalProps>) => ({ data: {}, isDemoMode: false, ...over }) as unknown as PortalProps;
+
+  for (const role of ["SUPER_ADMIN", "ORGANIZER", "COMPANY_ORGANIZER", "LOGISTICS_MANAGER"] as const) {
+    for (const isDemoMode of [false, true]) {
+      it(`renders the organizer workspace in the company portal for ${role}${isDemoMode ? " in demo mode" : ""}`, () => {
+        const html = renderToStaticMarkup(<CompanyDashboard {...props({ session: session(role), isDemoMode })} />);
+        expect(html).toContain(`data-organizer-workspace="${role}"`);
+        expect(html).not.toContain("<form");
+      });
+    }
+  }
+
+  it("keeps no browser-local plan approval or legacy intake calls in the entry modules", () => {
+    for (const file of ["client/src/pages/ops/CompanyDashboard.tsx", "client/src/components/SilaOperationsDashboard.tsx"]) {
+      const text = fs.readFileSync(path.join(process.cwd(), file), "utf8");
+      expect(text, file).not.toMatch(
+        /localPlanApproved|saveActivityIntake|analyzeActivityIntake|localStorage|\/activity-intakes|ActivityIntakePage/
+      );
+    }
+    const company = fs.readFileSync(path.join(process.cwd(), "client/src/pages/ops/CompanyDashboard.tsx"), "utf8");
+    expect(company).not.toMatch(/isDemoMode\s*\?/);
   });
 });

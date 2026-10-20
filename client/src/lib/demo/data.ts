@@ -173,7 +173,7 @@ export const DEMO_CONTRACTS: DemoContract[] = [
     vendorNameAr: "شركة الوفاق لوساطة المركبات",
     categoryEn: "Vehicle & Cart Brokerage",
     categoryAr: "وساطة المركبات والعربات اللوجستية",
-    scopeEn: "Sovereign Motorcade & Inter-Venue Cart Fleet Coordination",
+    scopeEn: "Official Motorcade & Inter-Venue Cart Fleet Coordination",
     scopeAr: "تأمين ووساطة أسطول المواكب الرسمية وتوزيع العربات بين المقرات",
     amount: 320000,
     commissionPercent: 10,
@@ -451,7 +451,7 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
     intakeId: "intake-sovereign-01",
     category: "VEHICLE_BROKERAGE",
     vendorName: "Al-Wefaq Vehicle Brokerage",
-    item: "Sovereign Motorcade Brokerage & 40 Armored VIP Units",
+    item: "Official Motorcade Brokerage & 40 Armored VIP Units",
     quantity: 40,
     unitPrice: 6500,
     totalPrice: 260000,
@@ -853,7 +853,7 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
     intakeId: "intake-sovereign-01",
     category: "HOTEL",
     vendorName: "The Ritz-Carlton",
-    item: "100 Royal & Executive Suites (Sovereign Summit)",
+    item: "100 Royal & Executive Suites (Summit)",
     quantity: 100,
     unitPrice: 12500,
     totalPrice: 1250000,
@@ -883,7 +883,7 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
     intakeId: "intake-sovereign-01",
     category: "HOTEL",
     vendorName: "Mandarin Oriental Al Faisaliah",
-    item: "80 Diplomatic Suites & Sovereign Majlis Access",
+    item: "80 Diplomatic Suites & Royal Majlis Access",
     quantity: 80,
     unitPrice: 14000,
     totalPrice: 1120000,
@@ -912,8 +912,8 @@ export const DEMO_VENDOR_QUOTES: VendorQuote[] = [
     id: "vq-hot-05",
     intakeId: "intake-sovereign-01",
     category: "HOTEL",
-    vendorName: "St. Regis Sovereign Suites",
-    item: "60 Butler-Serviced Sovereign Penthouses",
+    vendorName: "St. Regis Royal Suites",
+    item: "60 Butler-Serviced Royal Penthouses",
     quantity: 60,
     unitPrice: 16500,
     totalPrice: 990000,
@@ -1372,7 +1372,7 @@ export const DEMO_VIP_DOSSIERS: DemoVipDossier[] = [
   },
   {
     vipId: "vip-2",
-    clearance: { en: "Tier 0 · Sovereign", ar: "الفئة 0 · سيادي" },
+    clearance: { en: "Tier 0 · Head of Delegation", ar: "الفئة 0 · رئيس وفد" },
     protocol: {
       en: "Private apron reception; heritage corridor to Diriyah under full escort.",
       ar: "استقبال بالمهبط الخاص؛ الممر التراثي إلى الدرعية بمرافقة كاملة."
@@ -1389,8 +1389,8 @@ export const DEMO_VIP_DOSSIERS: DemoVipDossier[] = [
     vipId: "vip-3",
     clearance: { en: "Tier 1 · Executive", ar: "الفئة 1 · تنفيذي" },
     protocol: {
-      en: "Fast-track T2 exit; Sovereign Financial corridor to KAFD.",
-      ar: "خروج سريع من الصالة 2؛ الممر المالي السيادي إلى كافد."
+      en: "Fast-track T2 exit; Financial Corridor to KAFD.",
+      ar: "خروج سريع من الصالة 2؛ الممر المالي إلى كافد."
     },
     rider: [
       { en: "Wi-Fi hotspot + charging", ar: "نقطة اتصال وشحن" },

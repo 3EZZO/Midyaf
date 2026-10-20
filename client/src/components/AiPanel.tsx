@@ -80,7 +80,7 @@ export function AiPanel({
     ? p("Saif & Munirah · VIP Concierge", "سيف ومنيرة · المساعد الملكي للضيوف")
     : persona === "Ops Manager"
       ? p("Ops Manager AI", "مدير العمليات الذكي")
-      : p("Noura · Operations Copilot", "نورة · الذكاء السيادي للعمليات");
+      : p("Noura · Operations Copilot", "نورة · مساعد العمليات");
 
   const welcome = useMemo<ChatMessage>(
     () => ({

@@ -1,11 +1,13 @@
 import {renderToStaticMarkup}from'react-dom/server';import{afterEach,expect,it,vi}from'vitest';import type{GuestDto,TelemetrySnapshotDto}from'@shared/overhaul';
 import{testEvent}from'../lib/workspaceWorkflow.test';
 const telemetry={eventId:'evt_test',vehicles:[{id:'v1',label:'Synthetic shuttle',plateNumber:'SYN-1',status:'AVAILABLE',driver:{id:'driver',name:'Synthetic captain'},position:null,positionWithheld:true,inZone:true,capacity:4}],trips:[],flights:[],shifts:[],density:[],scope:'FULL'} as unknown as TelemetrySnapshotDto;
-const state=vi.hoisted(()=>({telemetry:{} as {data?:unknown;error?:string}}));
-// Each path gets the shape its real route returns; /fleet-captains answers {captains:[]}.
-vi.mock('../lib/workspaceApi',()=>({useWorkspaceResource:(_token:string,path:string)=>path.includes('/telemetry')?state.telemetry:path.includes('/fleet-captains')?{data:{captains:[]}}:{data:{tasks:[],members:[],recipients:[]}},workspaceRequest:vi.fn()}));
-import{EventRadar,guestLabel,radarMapKey,radarShellClassName,radarTelemetry,routePoints}from'./EventRadar';
-afterEach(()=>{state.telemetry={data:{telemetry}};});
+const state=vi.hoisted(()=>({telemetry:{} as {data?:unknown;error?:string},events:[] as unknown[]}));
+// Each path gets the shape its real route returns; /fleet-captains answers {captains:[]}, /events {events:state.events} (none approved by default),
+// /my-journey {guest,trips}. A null path (signed out) is the disabled resource: no data, no error, nothing fetched.
+vi.mock('../lib/workspaceApi',()=>({useWorkspaceResource:(_token:string,path:string|null)=>path==null?{}:path==='/events'?{data:{events:state.events}}:path.includes('/telemetry')?state.telemetry:path.includes('/fleet-captains')?{data:{captains:[]}}:path.endsWith('/my-journey')?{data:{guest:{id:'g-synthetic',guestCode:'GV09',isVip:false,masked:true},trips:[]}}:{data:{tasks:[],members:[],recipients:[]}},workspaceRequest:vi.fn()}));
+import type{Session}from'@shared/domain';
+import{EventRadar,OperationalEventEntry,ROLE_WORKSPACE_LABELS,guestLabel,radarMapKey,radarShellClassName,radarTelemetry,routePoints}from'./EventRadar';
+afterEach(()=>{state.telemetry={data:{telemetry}};state.events=[];});
 state.telemetry={data:{telemetry}};
 const render=()=>renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={false}/>);
 const controls=['Vehicle status','Map style','Tracking focus','Permitted guest positions','Recenter','Fullscreen'];
@@ -25,8 +27,44 @@ it('puts all six radar controls in the shell chrome, before the Leaflet stage, s
 it('labels every map style by its real Esri source, never OpenStreetMap',()=>{
  const html=render();
  expect(html).not.toContain('OpenStreetMap');
- for(const label of ['Street map (Esri)','Satellite (Esri imagery)','Tactical (Esri dark gray)'])expect(html).toContain(label);
- expect(html).toMatch(/<option value="standard" selected="">Street map \(Esri\)<\/option>/);
+ for(const label of ['Satellite (Esri imagery)','Tactical (Esri dark gray)'])expect(html).toContain(label);
+});
+// SILA-INTAKE-002: Satellite by default; Satellite and Tactical are the only choices, in both languages.
+it('defaults to Satellite and offers only Satellite and Tactical',()=>{
+ for(const ar of [false,true]){
+  const html=renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={ar}/>);
+  const select=html.match(/(?:Map style|نمط الخريطة)<select[^>]*>([\s\S]*?)<\/select>/)?.[1]??'';
+  expect([...select.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1])).toEqual(['satellite','dark']);
+  expect(select).toMatch(/<option value="satellite" selected="">/);
+  expect(html).not.toMatch(/value="standard"|Street map|خريطة الشوارع/);
+ }
+});
+it('shows an approved-event radar entry or the given empty state, without the previous-workspace drawer',()=>{
+ const session={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u',role:'LOGISTICS_MANAGER',name:'Synthetic',email:'synthetic@example.test',phone:'',language:'en'}} as unknown as Session;
+ const empty=renderToStaticMarkup(<OperationalEventEntry session={session} isArabic={false} empty={<p>Synthetic empty radar</p>}/>);
+ expect(empty).toContain('Synthetic empty radar');expect(empty).not.toContain('Previous personal workspace');
+ // Existing callers that pass a previous view still get it when no event is approved.
+ expect(renderToStaticMarkup(<OperationalEventEntry session={session} isArabic={false}><p>Synthetic previous view</p></OperationalEventEntry>)).toContain('Synthetic previous view');
+ // Still loading or failing: no event desk and no role workspace yet.
+ expect(renderToStaticMarkup(<OperationalEventEntry session={null} isArabic={false} empty={<p>Synthetic signed-out</p>}/>)).toContain('Synthetic signed-out');
+});
+// Owner steering: the role's own workspace shows directly, under a professional label, with no disclosure.
+it('renders the role workspace immediately for an approved event, labelled in English and Arabic, with no disclosure',()=>{
+ const session={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u',role:'CAPTAIN',name:'Synthetic',email:'synthetic@example.test',phone:'',language:'en'}} as unknown as Session;
+ state.events=[{...testEvent,planApproved:true}];
+ const cases=[[undefined,'radar','captain'],['guest','guest','guest'],['field','radar','field'],['logistics','radar','logistics'],['event','radar','event']] as const;
+ for(const [workspace,mode,expected] of cases)for(const ar of [false,true]){
+  const html=renderToStaticMarkup(<OperationalEventEntry session={session} isArabic={ar} mode={mode} workspace={workspace}><p>Synthetic role child</p></OperationalEventEntry>);
+  expect(html,`${expected}/${ar}`).toContain('Synthetic role child');
+  expect(html).toContain(`data-role-workspace="${expected}"`);
+  expect(html).toMatch(new RegExp(`<section aria-labelledby="[^"]+"[^>]*><h2 id="[^"]+"[^>]*>${ROLE_WORKSPACE_LABELS[expected][ar?1:0]}</h2><p>Synthetic role child</p></section>`));
+  expect(html).not.toMatch(/Previous personal workspace|العرض الشخصي السابق/);
+  // The role section is the entry's last block; nothing in it is a disclosure (the unrelated fleet-entry <details> sits earlier, inside the radar).
+  expect(html.slice(html.indexOf('<section aria-labelledby'))).not.toMatch(/<details|<summary/);
+ }
+ expect(ROLE_WORKSPACE_LABELS).toEqual({guest:['Guest Services','خدمات الضيوف'],captain:['Captain Workspace','مساحة عمل الكابتن'],field:['Field Operations','العمليات الميدانية'],logistics:['Logistics Operations','العمليات اللوجستية'],event:['Event Operations','عمليات الفعالية']});
+ // Without a role child (Sila Fleet) there is no empty section left behind.
+ expect(renderToStaticMarkup(<OperationalEventEntry session={session} isArabic={false} empty={<p>Synthetic empty radar</p>}/>)).not.toContain('data-role-workspace');
 });
 it('keeps the map shell and controls mounted while telemetry is loading or failing, and still shows the error',()=>{
  state.telemetry={error:'Synthetic telemetry failure'};

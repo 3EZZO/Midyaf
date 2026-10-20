@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { PORTALS } from "@shared/constants";
 import type { PortalKey, Role } from "@shared/domain";
+import { COMMAND_ITEMS } from "../lib/commandItems";
+import { portalCategory, portalIcons, portalMeta } from "./portalMeta";
 import { initialPortalForRole, portalsByRole } from "./rolePortals";
 
 /**
@@ -91,8 +96,45 @@ describe("portalsByRole", () => {
   });
 
   it("opens no second event-creation portal for any role", () => {
-    for (const role of ROLES) expect(portalsByRole[role]).not.toContain("intake");
+    for (const role of ROLES) expect(portalsByRole[role] as string[]).not.toContain("intake");
     expect(portalsByRole.SUPER_ADMIN).toContain("company");
+  });
+
+  it("keeps Sila reachable for the operations roles that create events from it", () => {
+    for (const role of ["ORGANIZER", "SUPER_ADMIN", "LOGISTICS_MANAGER", "COMPANY_ORGANIZER", "EVENT_MANAGER"] as const) {
+      expect(portalsByRole[role]).toContain("sila_operations");
+    }
+  });
+});
+
+/**
+ * SILA-INTAKE-002: the standalone intake portal is deleted, not just hidden.
+ * Its key, metadata, icon, category, render case, palette entries and share
+ * links are gone; event setup is Sila → Intake or the company workspace.
+ */
+describe("retired intake portal", () => {
+  it("is no longer a portal key or shell metadata entry", () => {
+    expect(PORTALS as readonly string[]).not.toContain("intake");
+    for (const record of [portalMeta, portalIcons, portalCategory]) {
+      expect(Object.keys(record)).not.toContain("intake");
+      expect(Object.keys(record).sort()).toEqual([...ALL_PORTAL_KEYS].sort());
+    }
+  });
+
+  it("has no command palette entry", () => {
+    const retired = COMMAND_ITEMS.filter(
+      (item) => String(item.portalTarget) === "intake" || item.sectionId?.startsWith("section-intake")
+    );
+    expect(retired.map((item) => item.id)).toEqual([]);
+  });
+
+  it("has no render case, page import or share link", () => {
+    const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
+    const app = read("client/src/App.tsx");
+    expect(app).not.toMatch(/case "intake"|ActivityIntakePage/);
+    const share = read("client/src/lib/planExport.ts");
+    expect(share).not.toContain("portal=intake");
+    expect(share).toContain("portal=sila_operations");
   });
 });
 

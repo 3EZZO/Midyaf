@@ -8,22 +8,15 @@ import {
   Building2,
   Car,
   CheckSquare,
-  ClipboardList,
-  Coins,
   Compass,
-  Cpu,
   Crown,
   FileDown,
-  FileSignature,
-  FileSpreadsheet,
-  Hotel,
   Languages,
   LayoutDashboard,
   Radar,
   Settings2,
   Share2,
   Shield,
-  Truck,
   Users,
   type LucideIcon
 } from "lucide-react";
@@ -52,7 +45,7 @@ export const COMMAND_ITEMS: CommandItem[] = [
   // ── PORTALS ──
   {
     id: "portal-admin",
-    titleEn: "Midyaf Sovereign Admin Dashboard (Owners Only)",
+    titleEn: "Midyaf Admin Dashboard (Owners Only)",
     titleAr: "لوحة الملاك والإدارة التنفيذية لمضياف",
     category: "portal",
     portalTarget: "admin",
@@ -79,16 +72,6 @@ export const COMMAND_ITEMS: CommandItem[] = [
     icon: Briefcase,
     keywordsEn: ["operations", "sila", "logistics", "events"],
     keywordsAr: ["عمليات", "صلة", "لوجستيات", "فعاليات"]
-  },
-  {
-    id: "portal-intake",
-    titleEn: "Activity Intake & Data Entry",
-    titleAr: "إدخال الفعالية والبيانات اللوجستية",
-    category: "portal",
-    portalTarget: "intake",
-    icon: ClipboardList,
-    keywordsEn: ["intake", "data", "event", "plan", "activity", "csv", "entry"],
-    keywordsAr: ["إدخال", "فعالية", "بيانات", "خطة", "استيراد"]
   },
   {
     id: "portal-company",
@@ -129,107 +112,6 @@ export const COMMAND_ITEMS: CommandItem[] = [
     icon: Users,
     keywordsEn: ["coordinator", "field", "support", "ground", "requests"],
     keywordsAr: ["منسق", "ميدان", "دعم", "طلبات"]
-  },
-
-  // ── INTAKE IN-PAGE SECTIONS ──
-  {
-    id: "sec-intake-core",
-    titleEn: "Event Core Info & Venues",
-    titleAr: "المعلومات الأساسية والمواقع",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-core",
-    icon: ClipboardList,
-    keywordsEn: ["venues", "visitors", "name", "place", "location"],
-    keywordsAr: ["موقع", "اسم", "حضور", "زوار", "أماكن"]
-  },
-  {
-    id: "sec-intake-hotels",
-    titleEn: "Hotel & Accommodation Details",
-    titleAr: "تفاصيل الفنادق والإقامة والأجنحة",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-hotels",
-    icon: Hotel,
-    keywordsEn: ["hotel", "rooms", "accommodation", "booking", "suites"],
-    keywordsAr: ["فندق", "غرف", "إقامة", "أجنحة", "حجز"]
-  },
-  {
-    id: "sec-intake-rentals",
-    titleEn: "Car & Bus Rental Companies",
-    titleAr: "شركات تأجير السيارات والحافلات",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-rentals",
-    icon: Car,
-    keywordsEn: ["rental", "car rental", "buses", "coaches", "maybach", "fleet"],
-    keywordsAr: ["تأجير", "سيارات", "حافلات", "أسطول", "مايباخ"]
-  },
-  {
-    id: "sec-intake-suppliers",
-    titleEn: "Certified Suppliers & Payment Terms",
-    titleAr: "المزودون والموردون المعتمدون وشروط الدفع",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-suppliers",
-    icon: Briefcase,
-    keywordsEn: ["supplier", "provider", "vendors", "payment terms", "downpayment", "installments"],
-    keywordsAr: ["مزود", "مورد", "موردين", "شروط الدفع", "أقساط", "دفعة مقدمة"]
-  },
-  {
-    id: "sec-intake-resources",
-    titleEn: "Resource Quotas (Golf Carts, Heavy Trucks, Man Power)",
-    titleAr: "عربات الجولف، الشاحنات، والمعدات والقوى البشرية",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-resources",
-    icon: Truck,
-    keywordsEn: ["golf carts", "trucks", "heavy equipment", "man power", "cranes", "buses"],
-    keywordsAr: ["جولف", "شاحنات", "رافعات", "معدات", "قوى بشرية", "عمال", "حافلات"]
-  },
-  {
-    id: "sec-intake-csv",
-    titleEn: "Guest Details CSV Upload & Bulk Import",
-    titleAr: "استيراد ورفع قائمة الضيوف (ملف CSV)",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-intake-csv",
-    icon: FileSpreadsheet,
-    keywordsEn: ["csv", "upload", "import", "guests", "spreadsheet"],
-    keywordsAr: ["ملف", "رفع", "استيراد", "ضيوف", "اكسل"]
-  },
-  {
-    id: "sec-price-ranges",
-    titleEn: "Supplier Price Ranges & Market Standards",
-    titleAr: "نطاقات أسعار الموردين والحدود السوقية",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-price-ranges",
-    icon: Coins,
-    keywordsEn: ["prices", "ranges", "market", "rates", "quotes", "estimates"],
-    keywordsAr: ["أسعار", "نطاق", "تكلفة", "عروض", "حدود"]
-  },
-  {
-    id: "sec-ai-plan",
-    titleEn: "AI Logistics Plan Output & Allocation",
-    titleAr: "مخرجات وتوزيعات الخطة الذكية (AI Plan)",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-ai-plan",
-    icon: Cpu,
-    keywordsEn: ["ai", "plan", "allocation", "gpt", "quotas", "approve"],
-    keywordsAr: ["خطة", "ذكاء", "اصطناعي", "توزيع", "اعتماد"]
-  },
-  {
-    id: "sec-supplier-contracts",
-    titleEn: "8-Category Supplier Contract Workflow",
-    titleAr: "مسار عقود الموردين الـ 8 وتفاوض العروض",
-    category: "section",
-    portalTarget: "intake",
-    sectionId: "section-supplier-contracts",
-    icon: FileSignature,
-    keywordsEn: ["contracts", "suppliers", "negotiation", "bids", "categories"],
-    keywordsAr: ["عقود", "موردين", "تفاوض", "اتفاقيات"]
   },
 
   // ── DASHBOARD IN-PAGE SECTIONS ──
@@ -337,13 +219,13 @@ export const COMMAND_ITEMS: CommandItem[] = [
   {
     demoOnly: true,
     id: "act-war-room",
-    titleEn: "Sovereign Command Bridge (War Room)",
-    titleAr: "غرفة العمليات والقيادة السيادية",
+    titleEn: "Operations Center (War Room)",
+    titleAr: "مركز العمليات (غرفة العمليات)",
     category: "action",
     actionType: "war-room",
     icon: Shield,
     shortcut: "Ctrl+Space",
-    keywordsEn: ["war room", "command", "bridge", "telemetry", "sovereign"],
-    keywordsAr: ["غرفة", "عمليات", "قيادة", "سيادية"]
+    keywordsEn: ["war room", "command", "operations center", "telemetry"],
+    keywordsAr: ["غرفة", "عمليات", "قيادة", "مركز"]
   }
 ];

@@ -11,7 +11,8 @@ import {
   purgeRetiredTileCachesOnce,
   tileLayerOptions,
   type MapMode,
-  type TileConfig
+  type TileConfig,
+  type TileHealthVerdict
 } from "./constants";
 
 // Kept importable from here for existing callers and tests.
@@ -25,10 +26,12 @@ const LABELS_PANE = "map-labels";
  * direction: zoom sits at the inline-start corner, attribution at the
  * inline-end, so they never collide with the HUD overlays.
  *
- * A mode with a fallback (the tactical Dark Gray base) swaps to it after
+ * The tactical Dark Gray base swaps to the satellite imagery after
  * `TILE_FALLBACK_THRESHOLD` consecutive tile errors — only while online, so
  * a warmed service-worker cache keeps serving the primary tiles offline.
- * Every provider is Esri; see constants.ts.
+ * `tileStatus` reports that swap ("fallback") or failing tiles without a
+ * fallback ("degraded") so the chrome can say so. Every provider is Esri;
+ * see constants.ts.
  *
  * Leaflet focuses its container on every mousedown (drag, double-click
  * zoom) and only restores the window scroll afterwards. When the canvas is
@@ -40,6 +43,7 @@ const LABELS_PANE = "map-labels";
 export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mode: MapMode, isRtl: boolean) {
   const [map, setMap] = useState<L.Map | null>(null);
   const [zoomControl, setZoomControl] = useState<L.Control.Zoom | null>(null);
+  const [tileStatus, setTileStatus] = useState<TileHealthVerdict>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -82,15 +86,16 @@ export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mo
 
   useEffect(() => {
     if (!map) return;
+    setTileStatus(null);
     let layers = addTileLayers(map, TILE_LAYERS[mode]);
     const health = createTileHealth(mode);
 
     const onError = () => {
       const verdict = health.onError();
       const fallback = TILE_FALLBACKS[mode];
-      if (verdict === "degraded") console.info(`[map] ${mode} tiles are failing; no keyless fallback for this mode`);
+      if (verdict === "degraded") setTileStatus("degraded");
       if (verdict !== "fallback" || !fallback) return;
-      console.info(`[map] ${mode} base tiles unavailable — falling back to Esri street tiles`);
+      setTileStatus("fallback");
       detach();
       layers.remove();
       layers = addTileLayers(map, fallback);
@@ -109,7 +114,7 @@ export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mo
     };
   }, [map, mode]);
 
-  return map;
+  return { map, tileStatus };
 }
 
 function addTileLayers(map: L.Map, cfg: TileConfig) {
