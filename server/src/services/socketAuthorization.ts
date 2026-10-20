@@ -1,5 +1,6 @@
 import { DriverStatus, Role } from "@prisma/client";
 import type { Server, Socket } from "socket.io";
+import { isWorkspaceDriver, isWorkspaceGuest } from "../utils/legacyWorkspaceBoundary.js";
 import { prisma } from "../db.js";
 import { verifyAccessToken } from "../middleware/auth.js";
 import type { AuthenticatedUser } from "../types/auth.js";
@@ -233,7 +234,7 @@ export function authenticateSocket(
 
   // SUPPLIER-001: the supplier workspace needs no realtime, and some REST
   // routes still broadcast globally; suppliers never join any room.
-  if (user.role === Role.SUPPLIER) {
+  if (user.onboardingPending || user.role === Role.SUPPLIER) {
     next(unauthorized("role_not_permitted"));
     return;
   }
@@ -462,6 +463,7 @@ export function configureRealtime(io: Server) {
   }
 
   async function broadcastTelemetry(frame: TelemetryFrame) {
+    if (await isWorkspaceDriver(frame.driverId)) return;
     const result = telemetryBuffer.ingest(frame);
     if (!result) return;
 
@@ -573,9 +575,11 @@ export function configureRealtime(io: Server) {
     socket.on("driver:location_update", telemetryHandler);
     socket.on("driver:telemetry_stream", telemetryHandler);
 
-    socket.on("user:location_update", (payload: unknown) => {
-      const location = sanitizeUserLocation(user, payload);
-      if (location) io.to("organizers").emit("user:location_update", location);
+    socket.on("user:location_update", async (payload: unknown) => {
+      try {
+        const location = sanitizeUserLocation(user, payload);
+        if (location && !(await isWorkspaceGuest(user.id))) io.to("organizers").emit("user:location_update", location);
+      } catch { /* A failed privacy lookup drops the location. */ }
     });
 
     // task:status_change, guest:arrived and alert:delay are intentionally not

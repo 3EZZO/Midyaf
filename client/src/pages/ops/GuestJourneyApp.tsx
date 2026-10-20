@@ -1,3 +1,4 @@
+import {OperationalEventEntry} from '../../components/EventRadar';
 // Guest-facing journey portal (phone-first).
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -45,7 +46,13 @@ const ARRIVAL_STEPS: GuestJourney["arrivalStatus"][] = [
   "PICKED_UP"
 ];
 
-export function GuestJourneyApp({
+export function GuestJourneyApp(props:PortalProps){
+ const ui=useOpsText();
+ const legacy=props.data.events.length>0&&props.data.events[0].guests.length>0?<LegacyGuestJourneyApp {...props}/>:<p>{ui.isArabic?'لا توجد رحلة شخصية سابقة':'No previous personal journey'}</p>;
+ if(props.isDemoMode)return legacy;
+ return <OperationalEventEntry session={props.session} isArabic={ui.isArabic} mode="guest">{legacy}</OperationalEventEntry>;
+}
+function LegacyGuestJourneyApp({
   data,
   session,
   updateGuestJourney

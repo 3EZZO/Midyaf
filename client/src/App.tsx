@@ -44,6 +44,10 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
+import { OnboardingWorkspace } from "./components/OnboardingWorkspace";
+import { InviteAcceptance } from "./components/EventTeams";
+import { useWorkspaceResource } from "./lib/workspaceApi";
+import type { WorkspaceEventDto } from "@shared/overhaul";
 import { LoginPage } from "./shell/LoginPage";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
@@ -137,7 +141,12 @@ export function App() {
   const [realtimeLog, setRealtimeLog] = useState<LogEntry[]>([]);
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
-  const allowedPortals = session ? portalsByRole[session.user.role] : [];
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
+  const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
+  const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
+  const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
+  const rolePortals = session ? portalsByRole[session.user.role] : [];
+  const allowedPortals = assignedWorkspace && !rolePortals.includes("company") ? [...rolePortals, "company" as const] : rolePortals;
   const eventId = data?.events[0]?.id;
   // Flipped synchronously on demo toggle/sign-out; gates late async writes.
   const demoLifecycle = getDemoLifecycle();
@@ -501,6 +510,10 @@ export function App() {
     );
   }
 
+  if (session.user.onboardingPending) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><button onClick={handleLogout}>{isArabic ? "تسجيل الخروج" : "Sign out"}</button><OnboardingWorkspace session={session} isArabic={isArabic} onRefresh={async()=>{const next=await refreshSession(session.refreshToken);installSession(next);setPortal(initialPortalForRole(next.user.role));}}/></main>;
+  const inviteToken = new URLSearchParams(window.location.hash.slice(1)).get("workspace-invite");
+  if (inviteToken) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><InviteAcceptance token={session.accessToken} isArabic={isArabic} inviteToken={inviteToken} onAccepted={()=>{setJustJoinedWorkspace(true);setWorkspaceRevision(n=>n+1);setPortal("company");}}/></main>;
+
   const handleExportPdf = () => {
     if (data?.aiPlans[0] && data?.activityIntakes[0]) {
       exportPlanAsPdf(data.aiPlans[0], data.activityIntakes[0], isArabic);
@@ -620,6 +633,7 @@ export function App() {
   }
 
   function handleLogout() {
+    setJustJoinedWorkspace(false);
     window.localStorage.removeItem(sessionStorageKey);
     sessionRef.current = null;
     socketRecovery.reset();
@@ -1298,7 +1312,7 @@ function renderPortal(
       return <CompanyDashboard {...props} />;
     case "intake":
     default:
-      return <ActivityIntakePage {...props} />;
+      return props.isDemoMode ? <ActivityIntakePage {...props} /> : <CompanyDashboard {...props} />;
   }
 }
 

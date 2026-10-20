@@ -1,3 +1,4 @@
+import {OperationalEventEntry} from '../../components/EventRadar';
 // Captain (driver) field app (phone-first).
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -52,7 +53,13 @@ function readGpsPref(): boolean | null {
   }
 }
 
-export function CaptainsApp({
+export function CaptainsApp(props:PortalProps){
+ const ui=useOpsText();
+ const legacy=props.data.events.length>0&&props.data.drivers.length>0?<LegacyCaptainsApp {...props}/>:<p>{ui.isArabic?'لا توجد رحلة شخصية سابقة':'No previous personal journey'}</p>;
+ if(props.isDemoMode)return legacy;
+ return <OperationalEventEntry session={props.session} isArabic={ui.isArabic} mode="radar">{legacy}</OperationalEventEntry>;
+}
+function LegacyCaptainsApp({
   data,
   session,
   isDemoMode,

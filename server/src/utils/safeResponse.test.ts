@@ -8,13 +8,15 @@ import {
 } from "./safeResponse.js";
 
 describe("safe response projections", () => {
-  it("selects every User column except passwordHash", () => {
+  it("selects operational User columns without password or enrollment metadata", () => {
     const expected = Object.values(Prisma.UserScalarFieldEnum)
-      .filter((field) => field !== "passwordHash")
+      .filter((field) => !["passwordHash", "onboardingPending", "onboardingKind"].includes(field))
       .sort();
 
     expect(Object.keys(safeUserSelect).sort()).toEqual(expected);
     expect(safeUserSelect).not.toHaveProperty("passwordHash");
+    expect(safeUserSelect).not.toHaveProperty("onboardingPending");
+    expect(safeUserSelect).not.toHaveProperty("onboardingKind");
   });
 
   it("omits only the national ID from Driver", () => {

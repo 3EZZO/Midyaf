@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Crosshair,
   Crown,
+  LocateFixed,
   Map as MapIcon,
   MapPin,
   Maximize2,
@@ -14,7 +15,8 @@ import {
   Moon,
   Radar,
   Satellite,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -30,12 +32,16 @@ import { createMapController, registerMapController, type MapController } from "
 import { MarkerRegistry, type MarkerSpec } from "./MarkerRegistry";
 import { OVERVIEW_MAX_ZOOM, type MapMode } from "./constants";
 import { coordinates } from "./geometry";
-import { useLeafletMap } from "./useLeafletMap";
+import { pinScrollOrigin, useLeafletMap } from "./useLeafletMap";
 
 /**
  * The tactical map. Leaflet stays imperative: React owns the chrome, the
  * registry/layers own the canvas. Data flows in as props on every tick and
  * is diffed by id, so convoys glide between fixes instead of being redrawn.
+ *
+ * Layering (map.css): `.map-shell` and `.map-stage` isolate Leaflet's z-index
+ * so the `.map-chrome` bar and `.map-hud` overlays stay visible and clickable
+ * at every zoom, in normal and fullscreen, LTR and RTL, before tiles load.
  */
 
 type Zone = "ALL" | "NORTH" | "CENTRAL" | "WEST";
@@ -146,6 +152,10 @@ export function RiyadhMap({
   const [fullscreenTab, setFullscreenTab] = useState<FullscreenTab>("drivers");
   const [selectedZone, setSelectedZone] = useState<Zone>("ALL");
   const [showGeofences, setShowGeofences] = useState(true);
+  // The convoy the camera is tracking: parent selection, marker click, Locate or director focus.
+  const [trackedDriverId, setTrackedDriverId] = useState<string | null>(selectedDriverId);
+  const trackedMarkerRef = useRef<string | null>(null);
+  trackedMarkerRef.current = trackedDriverId ? `driver:${trackedDriverId}` : null;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const map = useLeafletMap(containerRef, mapMode, isArabic);
@@ -165,7 +175,14 @@ export function RiyadhMap({
     const geofences = new GeofenceLayer(map, isArabic, showGeofences);
     const routes = L.layerGroup().addTo(map);
     const markers = new MarkerRegistry(map);
-    const controller = createMapController({ map, markers, geofences, corridors, reducedMotion });
+    const controller = createMapController({
+      map,
+      markers,
+      geofences,
+      corridors,
+      reducedMotion,
+      onFocusChange: (markerId) => setTrackedDriverId(driverIdFromMarker(markerId))
+    });
     const created: Layers = { markers, geofences, corridors, routes, controller };
     layersRef.current = created;
     setLayers(created);
@@ -196,8 +213,13 @@ export function RiyadhMap({
   }, [layers, isArabic]);
 
   useEffect(() => {
-    layers?.markers.setSelected(selectedDriverId);
-  }, [layers, selectedDriverId]);
+    setTrackedDriverId(selectedDriverId);
+  }, [selectedDriverId]);
+
+  // Marker ids are namespaced (`driver:<id>`); a bare driver id never matched.
+  useEffect(() => {
+    layers?.markers.setSelected(trackedMarkerRef.current);
+  }, [layers, trackedDriverId]);
 
   const displayedDrivers = useMemo(() => {
     if (selectedZone === "ALL") return drivers;
@@ -270,11 +292,16 @@ export function RiyadhMap({
         speedKmh: reported,
         label: l(driver.user.name),
         subtitle: [vehicle, speed].filter(Boolean).join(" · ") || l(driver.status),
-        onClick: () => onSelectDriverRef.current?.(driver)
+        onClick: () => {
+          setTrackedDriverId(driver.id);
+          onSelectDriverRef.current?.(driver);
+        }
       });
     }
 
     const bounds = markers.sync(specs);
+    // Newly created markers pick up the tracking highlight too.
+    markers.setSelected(trackedMarkerRef.current);
 
     // Task routes are static lines; rebuild only when the set actually changes.
     const routeKey = tasks
@@ -344,6 +371,21 @@ export function RiyadhMap({
   // backdrop-filtered ancestors, and what a projector wants). Where it is
   // unavailable (iOS Safari) the wrapper falls back to `position: fixed`.
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+
+  // Both boxes clip; neither may keep a scroll offset that hides the chrome.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const stage = stageRef.current;
+    if (!wrapper || !stage) return;
+    const unpinWrapper = pinScrollOrigin(wrapper);
+    const unpinStage = pinScrollOrigin(stage);
+    return () => {
+      unpinWrapper();
+      unpinStage();
+    };
+  }, []);
+
   const toggleFullscreen = () => {
     const el = wrapperRef.current;
     if (!isFullscreen) {
@@ -380,21 +422,27 @@ export function RiyadhMap({
     if (layersRef.current?.controller.focusConvoy(`driver:${driver.id}`)) onSelectDriver?.(driver);
   };
 
+  const recenterTracked = () => {
+    if (trackedDriverId) layersRef.current?.controller.focusConvoy(`driver:${trackedDriverId}`);
+  };
+
+  const releaseTracked = () => {
+    const controller = layersRef.current?.controller;
+    if (controller) controller.overview();
+    else setTrackedDriverId(null);
+  };
+
   const activeCount = displayedDrivers.filter((d) => d.status !== "OFFLINE").length;
+  const trackedDriver = trackedDriverId ? drivers.find((d) => d.id === trackedDriverId) : undefined;
 
   return (
     <div
       ref={wrapperRef}
-      className={cn(
-        "flex flex-col overflow-hidden bg-surface-1",
-        isFullscreen
-          ? "fixed inset-0 z-map-full h-screen w-screen rounded-none animate-fade-in"
-          : cn("rounded-lg border border-hairline shadow-2xl", className)
-      )}
+      className={mapShellClassName(isFullscreen, className)}
       data-fullscreen={isFullscreen || undefined}
     >
-      {/* Control bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline bg-surface-2/90 px-4 py-2.5 backdrop-blur-md">
+      {/* Control bar: a positioned layer above the stage, never squeezed or scrolled away. */}
+      <div className="map-chrome flex flex-wrap items-center justify-between gap-3 border-b border-hairline bg-surface-2/90 px-4 py-2.5 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <StatusPill status="LIVE" size="sm" />
           <div className="min-w-0">
@@ -409,9 +457,9 @@ export function RiyadhMap({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Never breakpoint-hidden: browser zoom shrinks the viewport below `md`. */}
           <Segmented
             ariaLabel={isArabic ? "تصفية حسب المنطقة" : "Filter by zone"}
-            className="hidden md:flex"
             items={ZONES.map((z) => ({ id: z.id, label: isArabic ? z.ar : z.en }))}
             value={selectedZone}
             onChange={setSelectedZone}
@@ -431,6 +479,7 @@ export function RiyadhMap({
             size="sm"
             variant={showGeofences ? "outline" : "ghost"}
             aria-pressed={showGeofences}
+            aria-label={isArabic ? "حلقات السياج" : "Geofences"}
             onClick={() => setShowGeofences((prev) => !prev)}
             leadingIcon={<Radar size={13} aria-hidden />}
             title={isArabic ? "تبديل حلقات السياج الجغرافي" : "Toggle geofence rings"}
@@ -452,12 +501,24 @@ export function RiyadhMap({
       {/* Canvas + (fullscreen) sidebar. The map node is never remounted. */}
       <div className={cn("flex min-h-0 flex-1", isFullscreen ? "gap-3 p-3" : "")}>
         <div
+          ref={stageRef}
           className={cn(
-            "relative min-w-0 flex-1 overflow-hidden bg-surface-0",
+            "map-stage relative min-w-0 flex-1 overflow-hidden bg-surface-0",
             isFullscreen ? "rounded-lg border border-gold-500/30" : height
           )}
         >
           <div ref={containerRef} className="h-full w-full" />
+
+          {trackedDriver && (
+            <TrackingHud
+              driver={trackedDriver}
+              isArabic={isArabic}
+              ready={layers !== null}
+              l={l}
+              onRecenter={recenterTracked}
+              onRelease={releaseTracked}
+            />
+          )}
 
           {!isFullscreen && (
             <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] flex items-end justify-between gap-2">
@@ -573,6 +634,89 @@ export function RiyadhMap({
   );
 }
 
+/** Outer box classes. Both modes keep `.map-shell` so Leaflet's z-index stays scoped. */
+export function mapShellClassName(isFullscreen: boolean, className = ""): string {
+  return cn(
+    "map-shell flex flex-col overflow-hidden bg-surface-1",
+    isFullscreen
+      ? "fixed inset-0 z-map-full h-screen w-screen rounded-none animate-fade-in"
+      : cn("rounded-lg border border-hairline shadow-2xl", className)
+  );
+}
+
+function driverIdFromMarker(markerId: string | null): string | null {
+  return markerId?.startsWith("driver:") ? markerId.slice("driver:".length) : null;
+}
+
+/**
+ * Tracking focus: which convoy the camera follows, with re-center and
+ * release. Sits at the top inline-end corner, opposite Leaflet's zoom
+ * control (top-left in LTR, top-right in RTL).
+ */
+export function TrackingHud({
+  driver,
+  isArabic,
+  ready,
+  l,
+  onRecenter,
+  onRelease
+}: {
+  driver: Driver;
+  isArabic: boolean;
+  /** False until the map and its layers exist; actions are disabled meanwhile. */
+  ready: boolean;
+  l: (value: string | number | null | undefined) => string;
+  onRecenter: () => void;
+  onRelease: () => void;
+}) {
+  const recenterLabel = isArabic ? "إعادة التمركز على القافلة" : "Re-center on convoy";
+  const releaseLabel = isArabic ? "إيقاف التتبع وعرض الكل" : "Stop tracking and show all";
+  return (
+    <div
+      className={cn(
+        "map-hud pointer-events-none absolute top-3 flex max-w-[calc(100%-4.5rem)]",
+        isArabic ? "left-3" : "right-3"
+      )}
+      data-map-hud="tracking"
+    >
+      <div
+        role="status"
+        aria-label={isArabic ? "تتبع القافلة" : "Convoy tracking"}
+        className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-lg border border-gold-500/40 bg-surface-1/90 py-1 pe-1 ps-3 shadow-xl backdrop-blur-md"
+      >
+        <Crosshair size={13} className="shrink-0 text-gold-500" aria-hidden />
+        <div className="min-w-0">
+          <p className="text-xs text-ink-faint">{isArabic ? "تتبع" : "Tracking"}</p>
+          <p className="truncate text-xs font-bold text-ink">{l(driver.user.name)}</p>
+        </div>
+        <StatusPill status={driver.status} size="sm" />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="px-2"
+          disabled={!ready}
+          onClick={onRecenter}
+          aria-label={recenterLabel}
+          title={recenterLabel}
+        >
+          <LocateFixed size={13} aria-hidden />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="px-2"
+          disabled={!ready}
+          onClick={onRelease}
+          aria-label={releaseLabel}
+          title={releaseLabel}
+        >
+          <X size={13} aria-hidden />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function describeVehicle(driver: Driver, l: (v: string | number | null | undefined) => string): string {
   const extra = driver as Driver & { vehicleModel?: string; plateNumber?: string };
   return [extra.vehicleModel ? l(extra.vehicleModel) : null, extra.plateNumber ?? null].filter(Boolean).join(" · ");
@@ -596,7 +740,11 @@ function Segmented<T extends string>({
   compactLabels?: boolean;
 }) {
   return (
-    <div role="group" aria-label={ariaLabel} className={cn("flex items-center gap-1 rounded-lg border border-hairline bg-surface-1 p-1", className)}>
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={cn("flex flex-wrap items-center gap-1 rounded-lg border border-hairline bg-surface-1 p-1", className)}
+    >
       {items.map((item) => {
         const active = item.id === value;
         return (
@@ -604,6 +752,8 @@ function Segmented<T extends string>({
             key={item.id}
             type="button"
             aria-pressed={active}
+            aria-label={compactLabels ? item.label : undefined}
+            title={compactLabels ? item.label : undefined}
             onClick={() => onChange(item.id)}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors duration-base",

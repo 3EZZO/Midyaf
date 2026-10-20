@@ -1,3 +1,7 @@
+import { assertMessagingAllowed, loadEventAccess, requirePermission, requirePlanApproved } from "../utils/workspacePolicy.js";
+import { EventPermission } from "@prisma/client";
+import {loadMessageRedactions,redactMessagePayload,type MessageRedactions} from '../utils/guestPrivacy.js';
+import {markScopedMessageResponse} from '../utils/legacyWorkspaceBoundary.js';
 import { Router } from "express";
 import { Role, Prisma } from "@prisma/client";
 import { databaseSchemaName } from "../utils/supplierPortal.js";
@@ -31,6 +35,11 @@ import {
 
 const router = Router();
 router.use(requireAuth);
+const requestPrivacy=new WeakMap<object,Map<string,MessageRedactions>>();
+router.use((req,res,next)=>{
+ const privacy=new Map<string,MessageRedactions>();requestPrivacy.set(req,privacy);
+ const send=res.json.bind(res);res.json=(body)=>{let result=body;for(const redactions of privacy.values())result=redactMessagePayload(result,redactions);return send(result);};next();
+});
 
 const personSelect = { select: { id: true, name: true, role: true } } as const;
 const UNREAD_SCAN_LIMIT = 2000;
@@ -68,7 +77,7 @@ async function linkedCounterparts(user: AuthenticatedUser) {
 }
 
 /** Participant check: anyone else gets the same 404 as a missing thread. */
-async function requireParticipation(conversationIdRaw: unknown, userId: string) {
+async function requireParticipation(conversationIdRaw: unknown, userId: string, req: AuthRequest) {
   const parsed = conversationIdSchema.safeParse(conversationIdRaw);
   if (!parsed.success) throw new HttpError(404, "Conversation not found");
   const membership = await prisma.conversationParticipant.findUnique({
@@ -76,7 +85,25 @@ async function requireParticipation(conversationIdRaw: unknown, userId: string) 
     select: { id: true, conversationId: true, lastReadAt: true }
   });
   if (!membership) throw new HttpError(404, "Conversation not found");
+  await guardScopedConversation(req, membership.conversationId);
   return membership;
+}
+
+async function guardScopedConversation(req: AuthRequest, id: string, db: Prisma.TransactionClient = prisma, writing = false) {
+  const conversation = await db.conversation.findUnique({ where: { id }, select: { eventId: true, messageClass: true } });
+  if (!conversation?.eventId) return;
+  const event = await db.event.findUnique({ where: { id: conversation.eventId }, select: { organizationId: true } });
+  if (!event?.organizationId) return;
+  const access = await loadEventAccess(req, conversation.eventId, db);
+  requirePlanApproved(access);
+  if (!access.guestId) requirePermission(access, EventPermission.VIEW);
+  const privacy=requestPrivacy.get(req);
+  if(privacy&&(!privacy.has(conversation.eventId)||db!==prisma))privacy.set(conversation.eventId,await loadMessageRedactions(db,access));
+  if(req.params.id===id)markScopedMessageResponse(req);
+  if (writing) {
+    // Visibility observers do not turn an individual conversation into a group.
+    assertMessagingAllowed(access, conversation.messageClass === "GROUP" ? ["recipient-one", "recipient-two"] : ["recipient"]);
+  }
 }
 
 router.get(
@@ -115,7 +142,7 @@ router.get(
     const query = conversationListQuerySchema.parse(req.query);
 
     if (query.cursor) {
-      await requireParticipation(query.cursor, user.id).catch(() => {
+      await requireParticipation(query.cursor, user.id, req).catch(() => {
         throw new HttpError(400, "Invalid cursor");
       });
     }
@@ -139,7 +166,12 @@ router.get(
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {})
     });
-    const page = rows.slice(0, query.limit);
+    const visible = [];
+    for (const row of rows) {
+      try { await guardScopedConversation(req, row.id); visible.push(row); }
+      catch (error) { if (!(error instanceof HttpError) || ![403,404,423].includes(error.status)) throw error; }
+    }
+    const page = visible.slice(0, query.limit);
 
     const readMarks = new Map<string, Date | null>();
     for (const conversation of page) {
@@ -180,7 +212,12 @@ router.get(
       orderBy: { joinedAt: "desc" },
       take: 500
     });
-    const marks = new Map(memberships.map((m) => [m.conversationId, m.lastReadAt]));
+    const visible = [];
+    for (const member of memberships) {
+      try { await guardScopedConversation(req, member.conversationId); visible.push(member); }
+      catch (error) { if (!(error instanceof HttpError) || ![403,404,423].includes(error.status)) throw error; }
+    }
+    const marks = new Map(visible.map((m) => [m.conversationId, m.lastReadAt]));
     const counts = await unreadCounts(req.user!.id, marks);
     let total = 0;
     for (const count of counts.values()) total += count;
@@ -253,9 +290,10 @@ router.post(
 router.get(
   "/conversations/:id",
   asyncHandler(async (req: AuthRequest, res) => {
-    const membership = await requireParticipation(req.params.id, req.user!.id);
+    const membership = await requireParticipation(req.params.id, req.user!.id, req);
     const thread = await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx);
       const observed = await loadThread(membership.conversationId, req.user!.id, tx);
       await markReadUpTo(membership.id, observedReadCutoff(observed.messages), tx);
       return observed;
@@ -268,20 +306,29 @@ router.post(
   "/conversations/:id/messages",
   asyncHandler(async (req: AuthRequest, res) => {
     const user = req.user!;
-    const membership = await requireParticipation(req.params.id, user.id);
+    const membership = await requireParticipation(req.params.id, user.id, req);
     const body = messageCreateSchema.parse(req.body);
 
     const message = await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx, true);
       const conversation = await tx.conversation.findUnique({
         where: { id: membership.conversationId }, select: { lastMessageAt: true }
       });
       if (!conversation) throw new HttpError(404, "Conversation not found");
+      if(body.clientRequestId) {
+        const existing=await tx.conversationMessage.findUnique({where:{senderId_clientRequestId:{senderId:user.id,clientRequestId:body.clientRequestId}},select:{id:true,conversationId:true,body:true,createdAt:true,sender:personSelect}});
+        if(existing) {
+          if(existing.conversationId!==membership.conversationId||existing.body!==body.body)throw new HttpError(409,"This retry id was used for another reply");
+          return {...existing,replayed:true};
+        }
+      }
       const now = new Date(Math.max(Date.now(), conversation.lastMessageAt.getTime() + 1));
       const created = await tx.conversationMessage.create({
         data: {
           conversationId: membership.conversationId,
           senderId: user.id,
+          clientRequestId: body.clientRequestId,
           body: body.body,
           createdAt: now
         },
@@ -293,14 +340,14 @@ router.post(
       });
       // Sending does not read: earlier incoming messages the sender has not
       // been shown stay unread (own messages never count as unread).
-      return created;
+      return {...created,replayed:false};
     }, CONVERSATION_TRANSACTION);
 
     const others = await prisma.conversationParticipant.findMany({
       where: { conversationId: membership.conversationId, userId: { not: user.id } },
       select: { userId: true }
     });
-    notifyParticipants(req, others.map((p) => p.userId), membership.conversationId);
+    if(!message.replayed)notifyParticipants(req, others.map((p) => p.userId), membership.conversationId);
 
     res.status(201).json({
       message: {
@@ -317,9 +364,10 @@ router.post(
 router.post(
   "/conversations/:id/read",
   asyncHandler(async (req: AuthRequest, res) => {
-    const membership = await requireParticipation(req.params.id, req.user!.id);
+    const membership = await requireParticipation(req.params.id, req.user!.id, req);
     await prisma.$transaction(async (tx) => {
       await lockConversation(tx, membership.conversationId);
+      await guardScopedConversation(req, membership.conversationId, tx);
       const newest = await tx.conversationMessage.findFirst({
         where: { conversationId: membership.conversationId },
         select: { createdAt: true },
@@ -380,7 +428,7 @@ async function loadThread(conversationId: string, userId: string, db: ThreadDb =
   };
 }
 
-async function unreadCounts(userId: string, marks: Map<string, Date | null>) {
+export async function unreadCounts(userId: string, marks: Map<string, Date | null>) {
   if (marks.size === 0) return new Map<string, number>();
   const read = [...marks.values()];
   const oldest = read.some((value) => !value)

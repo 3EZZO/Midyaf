@@ -43,6 +43,8 @@ export async function assertEventOperatorAccess(
   user: AuthenticatedUser,
   eventId: string
 ) {
+  const scope = await prisma.event.findUnique({ where: { id: eventId }, select: { organizationId: true } });
+  if (scope?.organizationId) throw new HttpError(403, "Use the scoped event workspace");
   if (isLegacyOperator(user)) {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -76,6 +78,8 @@ export async function canReadEvent(
   user: AuthenticatedUser,
   eventId: string
 ): Promise<boolean> {
+  const scope = await prisma.event.findUnique({ where: { id: eventId }, select: { organizationId: true } });
+  if (scope?.organizationId) return false;
   switch (user.role) {
     case Role.LOGISTICS_MANAGER:
     case Role.SUPER_ADMIN:

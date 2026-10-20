@@ -145,6 +145,37 @@ describe("GET /notifications", () => {
     expect(ids(ownStaff.body)).toEqual(["n_msg_coord", "n_task_coord"]);
   });
 
+  it("keeps a stored tenant scope-change alert private to its recipient and generic", async () => {
+    memory.current.rows("notification").push({
+      ...notification("n_scope_guest", "usr_guest", 6, "Event scope changed", {
+        kind: "EVENT_SCOPE_CHANGE",
+        eventId: "evt_tenant",
+        scopeChangeId: "esc_1"
+      }),
+      body: "Synthetic tenant event: hotelZone changed before contract signature. Review your offer."
+    });
+    // The coordinator also receives their own private message notification.
+    for (const [manager, expected] of [
+      [actors.lm, ["n_ops_guest", "n_task_coord"]],
+      [actors.sa, ["n_ops_guest", "n_task_coord"]],
+      [actors.org, ["n_ops_guest", "n_task_coord"]],
+      [actors.coord, ["n_msg_coord", "n_ops_guest", "n_task_coord"]]
+    ] as const) {
+      const all = await http.get("/api/notifications?all=true", manager);
+      expect(ids(all.body)).toEqual(expected);
+      expect(ids(all.body)).not.toContain("n_scope_guest");
+      expect((await http.put("/api/notifications/n_scope_guest/read", manager)).status).toBe(404);
+    }
+    const own = await http.get("/notifications", actors.guest);
+    expect(ids(own.body)).toContain("n_scope_guest");
+    expect(JSON.stringify(own.body)).not.toMatch(/Synthetic tenant event|hotelZone/);
+    const boot = await http.get("/bootstrap", actors.guest);
+    expect(JSON.stringify(boot.body.notifications)).not.toMatch(/Synthetic tenant event|hotelZone/);
+    const read = await http.put("/notifications/n_scope_guest/read", actors.guest);
+    expect(read.status).toBe(200);
+    expect(JSON.stringify(read.body)).not.toMatch(/Synthetic tenant event|hotelZone/);
+  });
+
   it("still finds operational notifications behind a long run of hidden ones", async () => {
     for (let index = 0; index < 150; index += 1) {
       memory.current.rows("notification").push(

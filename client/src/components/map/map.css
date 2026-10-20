@@ -4,6 +4,35 @@
    Colours are the design tokens from styles/index.css.
    ══════════════════════════════════════════════════════════ */
 
+/* ── Radar layering ──────────────────────────────────────────
+   Leaflet's panes (z 400) and controls (z 1000) used to join whatever
+   stacking context sat above the map, competing with the radar chrome, the
+   app shell and dialogs. The shell and the stage now isolate them, so every
+   z-index below is local to the map component, never global. */
+.map-shell {
+  isolation: isolate;
+}
+
+/* Filters, map style, geofences, fullscreen: always painted above the stage. */
+.map-chrome {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.map-stage {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+
+/* Interactive HUD (tracking focus) sits above Leaflet's panes and controls,
+   inside the stage only. The passive stats strip stays under the controls
+   so it never covers the required tile attribution. */
+.map-hud {
+  z-index: 1001;
+}
+
 .leaflet-container {
   background-color: rgb(var(--surface-0));
   font-family: var(--m-font-body-ar), var(--m-font-body-en), sans-serif;
