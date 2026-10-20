@@ -16,7 +16,6 @@ import type {
   TaskStatus
 } from "@shared/domain";
 // Portals are code-split: each becomes its own chunk and loads on first use.
-const ActivityIntakePage = lazy(() => import("./pages/ops/ActivityIntakePage").then((m) => ({ default: m.ActivityIntakePage })));
 const CaptainsApp = lazy(() => import("./pages/ops/CaptainsApp").then((m) => ({ default: m.CaptainsApp })));
 const CompanyDashboard = lazy(() => import("./pages/ops/CompanyDashboard").then((m) => ({ default: m.CompanyDashboard })));
 const CoordinatorsApp = lazy(() => import("./pages/ops/CoordinatorsApp").then((m) => ({ default: m.CoordinatorsApp })));
@@ -220,7 +219,7 @@ export function App() {
           : "Full Demo Mode Activated (Ctrl + Shift + D)",
         isArabic
           ? "تم تشغيل محاكاة الفعالية الافتراضية والأسطول المباشر · اضغط الآن Ctrl + Space لفتح غرفة العمليات"
-          : "Virtual event telemetry engaged · Press Ctrl + Space for Sovereign War Room"
+          : "Virtual event telemetry engaged · Press Ctrl + Space for the Operations Center"
       );
     }
   }
@@ -1308,11 +1307,11 @@ function renderPortal(
       return <CaptainsApp {...props} />;
     case "coordinator":
       return <CoordinatorsApp {...props} />;
+    // SILA-INTAKE-002: there is no standalone intake portal. Event setup is
+    // Sila → Intake or this company workspace; both embed OrganizerWorkspace.
     case "company":
-      return <CompanyDashboard {...props} />;
-    case "intake":
     default:
-      return props.isDemoMode ? <ActivityIntakePage {...props} /> : <CompanyDashboard {...props} />;
+      return <CompanyDashboard {...props} />;
   }
 }
 

@@ -33,7 +33,12 @@ import {
   memberAvailabilitySchema,
   planApproveSchema,
   planGenerateSchema,
+  buildRfqDraft,
+  rfqDraftFromPlanContent,
+  rfqRequirementsFromPlan,
   type EventMemberDto,
+  type EventPlanDto,
+  type RfqDraftDto,
   type EventScopeField,
   type EventUpdateInput
 } from "../../../shared/overhaul.js";
@@ -68,6 +73,7 @@ import {
   toWorkspaceHttpError,
   writeWorkspaceAudit,
   type EventAccess,
+  type EventPlanRow,
   type OrgEventRow
 } from "../utils/workspacePolicy.js";
 
@@ -565,6 +571,66 @@ router.post(
 // Plans
 // ---------------------------------------------------------------------------
 
+/**
+ * RADAR-ORGANIZER-001 RFQ drafts live in `EventPlan.content.rfqDraft`. They
+ * are internal working documents: org admins, support (read-only) and event
+ * members holding EDIT see them; vendors, client viewers and guests never do,
+ * even through the plan list.
+ */
+const RFQ_HIDDEN_ROLES: readonly EventMemberRole[] = [EventMemberRole.VENDOR, EventMemberRole.CLIENT_VIEWER];
+const rfqDraftRequestSchema = z.object({}).strict();
+
+function canViewRfq(access: EventAccess) {
+  return access.permissions.has(EventPermission.EDIT) && !hasEventRole(access, RFQ_HIDDEN_ROLES);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function planDtoFor(access: EventAccess, plan: EventPlanRow): EventPlanDto {
+  const dto = toPlanDto(plan);
+  if (canViewRfq(access) || !isRecord(dto.content) || !("rfqDraft" in dto.content)) return dto;
+  const { rfqDraft: _internal, ...content } = dto.content;
+  return { ...dto, content };
+}
+
+/**
+ * Server-side, deterministic: quantities come from the plan's validated items
+ * (manual / stored rules) or from the rules over the current event counts
+ * (AI plans). Nothing from the request body is used.
+ */
+function rfqForPlan(
+  event: OrgEventRow,
+  plan: { id: string; version: number; source: EventPlanRow["source"]; content: unknown },
+  now: Date
+): RfqDraftDto {
+  return buildRfqDraft({
+    eventId: event.id,
+    planId: plan.id,
+    planVersion: plan.version,
+    planSource: plan.source,
+    event: {
+      locationLabel: event.locationLabel,
+      venue: event.venue,
+      hotelZone: event.hotelZone,
+      vipGuestCount: event.vipGuestCount,
+      regularGuestCount: event.regularGuestCount,
+      carCount: event.carCount,
+      startAt: event.startAt,
+      endAt: event.endAt,
+      arrivalStartAt: event.arrivalStartAt,
+      departureEndAt: event.departureEndAt
+    },
+    requirements: rfqRequirementsFromPlan(plan.source, plan.content, buildAdvisoryPlan(event).content),
+    generatedAt: now
+  });
+}
+
+function contentWithRfq(content: unknown, rfq: RfqDraftDto): Prisma.InputJsonObject {
+  return toJsonObject({ ...(isRecord(content) ? content : {}), rfqDraft: rfq });
+}
+
 router.get(
   "/events/:eventId/plans",
   asyncHandler(async (req: AuthRequest, res) => {
@@ -576,7 +642,7 @@ router.get(
       orderBy: { version: "desc" },
       take: 50
     });
-    res.json({ plans: plans.map(toPlanDto) });
+    res.json({ plans: plans.map((plan) => planDtoFor(access, plan)) });
   })
 );
 
@@ -627,6 +693,14 @@ router.post(
             content: generated.content,
             generatedById: access.actor.id
           },
+          select: { id: true, version: true, source: true, content: true }
+        });
+        // The RFQ draft is derived from the stored plan in the same
+        // transaction, so a plan never exists without its draft.
+        const rfq = rfqForPlan(event, created, new Date());
+        const stored = await tx.eventPlan.update({
+          where: { id: created.id },
+          data: { content: contentWithRfq(created.content, rfq) },
           select: EVENT_PLAN_SELECT
         });
         await writeWorkspaceAudit(tx, req, {
@@ -634,15 +708,15 @@ router.post(
           entityType: "EVENT_PLAN",
           entityId: created.id,
           eventId: event.id,
-          metadata: { version: created.version, source: created.source, support: access.support }
+          metadata: { version: created.version, source: created.source, support: access.support, rfqReference: rfq.reference }
         });
-        return created;
+        return stored;
       }, WORKSPACE_TRANSACTION)
       .catch((error: unknown) => {
         throw toWorkspaceHttpError(error, "Another plan was generated at the same time; retry");
       });
 
-    res.status(201).json({ plan: toPlanDto(plan) });
+    res.status(201).json({ plan: planDtoFor(access, plan) });
   })
 );
 
@@ -699,7 +773,87 @@ router.post(
         throw toWorkspaceHttpError(error);
       });
 
-    res.json({ event: eventResponse(result.event, access), plan: toPlanDto(result.plan) });
+    res.json({ event: eventResponse(result.event, access), plan: planDtoFor(access, result.plan) });
+  })
+);
+
+/** Regenerates the stored RFQ draft of a draft or approved plan. Never sends anything. */
+router.post(
+  "/events/:eventId/plans/:planId/rfq",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    requirePermission(access, EventPermission.EDIT);
+    requireNotSupport(access, "generate an RFQ draft");
+    if (!canViewRfq(access)) throw new HttpError(403, "RFQ drafts are internal to the event team");
+    requireEventOpen(access);
+    // Nothing is taken from the client: no prices, suppliers or quantities.
+    rfqDraftRequestSchema.parse(req.body ?? {});
+    const planId = parseRouteId(req.params.planId, () => new HttpError(404, "Plan not found"));
+
+    const result = await prisma
+      .$transaction(async (tx) => {
+        // Re-authorize under the Event-first lock: an actor revoked or demoted
+        // while waiting for the lock cannot write the draft.
+        await lockEventActorRows(tx, access, []);
+        const fresh = await loadEventAccess(req, access.event.id, tx);
+        requirePermission(fresh, EventPermission.EDIT);
+        requireNotSupport(fresh, "generate an RFQ draft");
+        if (!canViewRfq(fresh)) throw new HttpError(403, "RFQ drafts are internal to the event team");
+        requireEventOpen(fresh);
+        const event = await reloadEvent(tx, fresh.event.id);
+        requireContractUnsigned(event);
+        const plan = await tx.eventPlan.findFirst({
+          where: { id: planId, eventId: event.id },
+          select: { id: true, version: true, status: true, source: true, content: true }
+        });
+        if (!plan) throw new HttpError(404, "Plan not found");
+        if (plan.status === EventPlanStatus.SUPERSEDED) {
+          throw new HttpError(409, "A superseded plan cannot produce an RFQ draft");
+        }
+        const rfq = rfqForPlan(event, plan, new Date());
+        const stored = await tx.eventPlan.update({
+          where: { id: plan.id },
+          data: { content: contentWithRfq(plan.content, rfq) },
+          select: EVENT_PLAN_SELECT
+        });
+        await writeWorkspaceAudit(tx, req, {
+          action: "workspace.plan.rfq_draft",
+          entityType: "EVENT_PLAN",
+          entityId: plan.id,
+          eventId: event.id,
+          metadata: { reference: rfq.reference, lines: rfq.lines.length, sent: false }
+        });
+        return { access: fresh, plan: stored, rfq };
+      }, WORKSPACE_TRANSACTION)
+      .catch((error: unknown) => {
+        throw toWorkspaceHttpError(error);
+      });
+
+    res.status(201).json({ plan: planDtoFor(result.access, result.plan), rfq: result.rfq });
+  })
+);
+
+/** The approved plan's RFQ draft, for the Vendors tab (after approval, internal viewers only). */
+router.get(
+  "/events/:eventId/rfq",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    requirePermission(access, EventPermission.VIEW);
+    if (!canViewRfq(access)) throw new HttpError(403, "RFQ drafts are internal to the event team");
+    requirePlanApproved(access);
+    const approvedPlanId = access.event.approvedPlanId;
+    const plan = approvedPlanId
+      ? await prisma.eventPlan.findFirst({
+          where: { id: approvedPlanId, eventId: access.event.id },
+          select: { id: true, version: true, content: true }
+        })
+      : null;
+    const rfq = plan ? rfqDraftFromPlanContent(plan.content) : null;
+    res.json({
+      rfq: rfq && plan && rfq.planId === plan.id && rfq.eventId === access.event.id ? rfq : null,
+      planId: plan?.id ?? null,
+      planVersion: plan?.version ?? null
+    });
   })
 );
 
@@ -754,6 +908,15 @@ async function assertRolePrerequisites(userId: string, role: EventMemberRole, db
  * cannot still grant or change event access.
  */
 async function lockedTeamAccess(req: AuthRequest, tx: Prisma.TransactionClient, access: EventAccess, userIds: readonly string[]) {
+  await lockEventActorRows(tx, access, userIds);
+  const fresh = await loadEventAccess(req, access.event.id, tx);
+  requirePlanApproved(fresh);
+  requireEventOpen(fresh);
+  return fresh;
+}
+
+/** Lock order shared by access re-checks: Event, event memberships by id, then the actor's organization membership. */
+async function lockEventActorRows(tx: Prisma.TransactionClient, access: EventAccess, userIds: readonly string[]) {
   await lockRow(tx, "Event", access.event.id);
   const members = await tx.eventMembership.findMany({
     where: { eventId: access.event.id, userId: { in: [...new Set([access.actor.id, ...userIds])] } },
@@ -766,10 +929,6 @@ async function lockedTeamAccess(req: AuthRequest, tx: Prisma.TransactionClient, 
     select: { id: true }
   });
   if (organizationMember) await lockRow(tx, "OrganizationMembership", organizationMember.id);
-  const fresh = await loadEventAccess(req, access.event.id, tx);
-  requirePlanApproved(fresh);
-  requireEventOpen(fresh);
-  return fresh;
 }
 
 router.post(

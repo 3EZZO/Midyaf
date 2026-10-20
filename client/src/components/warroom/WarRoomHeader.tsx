@@ -47,7 +47,7 @@ export function WarRoomHeader({
         </span>
         <div className="leading-tight">
           <p className="text-xs font-bold uppercase tracking-label text-gold-300">
-            {isArabic ? "غرفة العمليات السيادية" : "Sovereign War Room"}
+            {isArabic ? "مركز العمليات" : "Operations Center"}
           </p>
           <p className="text-xs text-ink-muted">
             {isArabic

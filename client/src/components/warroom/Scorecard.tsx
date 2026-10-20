@@ -66,8 +66,8 @@ export function Scorecard({
                 </div>
                 <h2 className="mt-1 text-display-sm text-ink">
                   {isArabic
-                    ? "اكتمل الوصول السيادي"
-                    : "Sovereign Arrival complete"}
+                    ? "اكتمل وصول الفعالية"
+                    : "Event Arrival complete"}
                 </h2>
                 <p className="mt-1 text-sm text-ink-muted">
                   {event?.name ?? ""} · {isArabic ? "مدة العرض" : "Demo clock"}{" "}

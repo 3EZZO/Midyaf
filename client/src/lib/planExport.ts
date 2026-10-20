@@ -138,7 +138,7 @@ export function exportPlanAsPdf(
               intake.providerName ||
               (isArabic
                 ? "مجموعة الضيافة والخدمات المساندة"
-                : "Sovereign Mobility Group"),
+                : "Hospitality & Support Services Group"),
             category: "HOTEL",
             contact: "+966 54 777 8899",
             scopeOfWork: isArabic
@@ -291,7 +291,7 @@ export function exportPlanAsPdf(
         <div>
           <div class="brand">مِضْيَافٌ · MIDYAF</div>
           <div style="font-size: 12px; color: ${PRINT.inkMuted}; margin-top: 2px;">
-            ${isArabic ? "نظام إدارة لوجستيات الفعاليات والقمم السيادية" : "Sovereign Summit & Event Logistics Platform"}
+            ${isArabic ? "نظام إدارة لوجستيات الفعاليات والقمم" : "Summit & Event Logistics Platform"}
           </div>
         </div>
         <div style="text-align: ${isArabic ? "left" : "right"};">
@@ -309,7 +309,7 @@ export function exportPlanAsPdf(
       <div class="grid">
         <div class="card">
           <div class="card-label">${isArabic ? "اسم الفعالية:" : "Activity Name:"}</div>
-          <div class="card-value">${intake.activityName || (isArabic ? "القمة السيادية 2027" : "Sovereign Summit 2027")}</div>
+          <div class="card-value">${intake.activityName || (isArabic ? "قمة 2027" : "Summit 2027")}</div>
         </div>
         <div class="card">
           <div class="card-label">${isArabic ? "مقر الفعالية:" : "Venue Place:"}</div>
@@ -489,7 +489,7 @@ export function exportPlanAsPdf(
           <div style="font-family: monospace; font-size: 10px; margin-top: 3px;">SHA-256: 0x9f88...71ea · Verified Autonomous Workflow</div>
         </div>
         <div style="text-align: ${isArabic ? "left" : "right"};">
-          <div>${isArabic ? "الختم السيادي لمنصة مضياف" : "Midyaf Sovereign Verification Seal"}</div>
+          <div>${isArabic ? "ختم التحقق لمنصة مضياف" : "Midyaf Verification Seal"}</div>
           <div style="color: ${PRINT.ok}; font-weight: bold;">✓ ${isArabic ? "موثق إلكترونياً" : "Digitally Certified"}</div>
         </div>
       </div>
@@ -516,7 +516,8 @@ export function sharePlanLink(
     alert: (title: string, desc?: string) => void;
   }
 ) {
-  const shareUrl = `${window.location.origin}/?portal=intake&plan=${encodeURIComponent(planId || "active")}`;
+  // SILA-INTAKE-002: event setup lives in Sila, not a standalone intake portal.
+  const shareUrl = `${window.location.origin}/?portal=sila_operations&plan=${encodeURIComponent(planId || "active")}`;
   if (navigator.clipboard) {
     navigator.clipboard
       .writeText(shareUrl)

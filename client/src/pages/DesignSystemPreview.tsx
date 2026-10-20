@@ -75,7 +75,7 @@ export function DesignSystemPreview({ onLanguageToggle }: { onLanguageToggle: ()
             <p className="text-display-xl text-ink">88</p>
             <p className="text-display-lg text-ink">1,950,000 ر.س</p>
             <p className="text-display-md text-ink">مركز القيادة</p>
-            <p className="text-display-sm text-ink">Sovereign Command</p>
+            <p className="text-display-sm text-ink">Operations Center</p>
           </div>
           <div className="space-y-2 text-ink">
             <p className="text-xs font-semibold uppercase tracking-label text-ink-muted">Label · text-xs tracking-label</p>

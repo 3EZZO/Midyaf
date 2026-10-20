@@ -29,8 +29,8 @@ export const BRIEF_PROMPTS: Record<
   sandstorm_reroute: {
     title: { en: "Reroute rationale", ar: "مبررات إعادة التوجيه" },
     prompt: {
-      en: "The Sovereign Financial Corridor just closed for a sandstorm. Explain the reroute for Shuttle Charlie via Prince Mohammed bin Salman Road: why that road, the SLA buffer impact, and what the escort should do.",
-      ar: "أُغلق الممر المالي السيادي للتو بسبب عاصفة رملية. اشرح إعادة توجيه الحافلة تشارلي عبر طريق الأمير محمد بن سلمان: لماذا هذا الطريق، وأثره على هامش اتفاقية الخدمة، وما الذي ينبغي على المرافقة فعله."
+      en: "The Financial Corridor just closed for a sandstorm. Explain the reroute for Shuttle Charlie via Prince Mohammed bin Salman Road: why that road, the SLA buffer impact, and what the escort should do.",
+      ar: "أُغلق الممر المالي للتو بسبب عاصفة رملية. اشرح إعادة توجيه الحافلة تشارلي عبر طريق الأمير محمد بن سلمان: لماذا هذا الطريق، وأثره على هامش اتفاقية الخدمة، وما الذي ينبغي على المرافقة فعله."
     }
   },
   arrival_scorecard: {

@@ -14,7 +14,7 @@ export default defineConfig({
         name: "Midyaf",
         short_name: "Midyaf",
         description:
-          "AI-powered royal hospitality and sovereign event logistics command center",
+          "AI-powered royal hospitality and event logistics operations center",
         lang: "ar",
         dir: "rtl",
         start_url: "/",
@@ -51,30 +51,27 @@ export default defineConfig({
           /^\/uploads\//,
           /^\/socket\.io\//
         ],
+        // Drop precaches from older builds when this service worker activates.
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // World_Imagery (server.) and the Dark Gray fallback (services.)
+            // Only two Esri base maps: World_Imagery (server.) and the
+            // tactical Dark Gray Canvas (services.). No street map and no
+            // OpenStreetMap volunteer tile server is requested or cached.
+            // Tiles load with CORS, so only real 200s are cached: an error
+            // or opaque (status 0) response is never replayed from cache.
+            // The cache name is versioned; older caches, including
+            // "map-tiles-esri-v2" with retired street tiles, are deleted by
+            // the app at startup (components/map/constants.ts RETIRED_TILE_CACHES).
             urlPattern: /^https:\/\/(server|services)\.arcgisonline\.com\//i,
             handler: "CacheFirst",
             options: {
-              cacheName: "map-tiles-esri",
+              cacheName: "map-tiles-esri-v3",
               expiration: {
                 maxEntries: 2000,
                 maxAgeSeconds: 60 * 60 * 24 * 30
               },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/[a-c]\.tile\.openstreetmap\.org\//i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "map-tiles-osm",
-              expiration: {
-                maxEntries: 1000,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: { statuses: [0, 200] }
+              cacheableResponse: { statuses: [200] }
             }
           }
         ]

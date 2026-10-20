@@ -115,7 +115,7 @@ export function ClientDashboard({
       {config.canViewPerformance ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KpiTile label={isArabic ? "دقة الالتزام بالمواعيد" : "Punctuality SLA"} value={kpis.onTimePercent.value} format="percent" detail={isArabic ? "ضمن المعايير السيادية المعتمدة" : "Within sovereign protocol standard"} tone={kpis.onTimePercent.value >= 95 ? "ok" : "warn"} size="lg" />
+            <KpiTile label={isArabic ? "دقة الالتزام بالمواعيد" : "Punctuality SLA"} value={kpis.onTimePercent.value} format="percent" detail={isArabic ? "ضمن معايير البروتوكول المعتمدة" : "Within protocol standard"} tone={kpis.onTimePercent.value >= 95 ? "ok" : "warn"} size="lg" />
             <KpiTile label={isArabic ? "الضيوف المستقبلون" : "Guests Welcomed"} value={`${integer(kpis.guestsServed.served)} / ${integer(kpis.guestsServed.total)}`} detail={kpis.guestsServed.served === kpis.guestsServed.total && kpis.guestsServed.total > 0 ? (isArabic ? "اكتمال وصول جميع الوفود" : "All delegations arrived safely") : isArabic ? "الوصول جارٍ" : "Arrivals in progress"} icon={<Users className="size-4" aria-hidden />} size="lg" />
             <KpiTile label={isArabic ? "المهام المكتملة" : "Tasks Completed"} value={`${integer(kpis.tasksCompleted.completed)} / ${integer(kpis.tasksCompleted.total)}`} detail={isArabic ? `${integer(sla.delayed)} متأخرة` : `${integer(sla.delayed)} delayed`} tone={sla.delayed ? "warn" : "none"} size="lg" />
             <KpiTile label={isArabic ? "الحوادث الحرجة" : "Critical Incidents"} value={kpis.openIssues.value} detail={kpis.openIssues.value === 0 ? (isArabic ? "سجل تشغيلي نظيف 100%" : "100% clean incident record") : isArabic ? "بلاغات مفتوحة" : "Open issues"} tone={kpis.openIssues.value === 0 ? "ok" : "danger"} size="lg" />
@@ -223,7 +223,7 @@ export function ClientDashboard({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h4 className="text-base font-bold text-ink">
-                    {report?.title || (isArabic ? "التقرير الختامي المعتمد للفعالية — قمة القيادة والضيافة السيادية" : "Confirmed Event Report — Sovereign Leadership Summit")}
+                    {report?.title || (isArabic ? "التقرير الختامي المعتمد للفعالية — قمة القيادة والضيافة" : "Confirmed Event Report — Leadership Summit")}
                   </h4>
                   <p className="mt-1 font-tnum text-xs text-ink-muted">
                     {isArabic ? "تاريخ الإصدار: 10 سبتمبر 2026 · اعتماد مدير العمليات (صلة)" : "Issued: Sep 10, 2026 · Confirmed by Sila Logistics Manager"}

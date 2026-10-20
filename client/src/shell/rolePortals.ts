@@ -7,11 +7,15 @@ import type { PortalKey, Role } from "@shared/domain";
  * The supplier workspace (SUPPLIER-001) is open to SUPPLIER, where it replaces
  * the company dashboard, and to SUPER_ADMIN, which sees every dashboard and
  * gets a read-only administrative view of it (ADMIN-PORTALS-001).
+ *
+ * SILA-INTAKE-002: the standalone intake portal no longer exists. New events
+ * are entered from Sila → Intake or the company workspace, which both embed
+ * the same organizer workspace. No role, menu or palette entry opens "intake".
  */
 export const portalsByRole: Record<Role, PortalKey[]> = {
   GUEST: ["guest", MESSAGES_PORTAL],
   DRIVER: ["captain", MESSAGES_PORTAL],
-  ORGANIZER: [...PORTALS.filter(portal => portal !== "intake"), MESSAGES_PORTAL],
+  ORGANIZER: [...PORTALS, MESSAGES_PORTAL],
   SUPPLIER: [SUPPLIER_PORTAL, MESSAGES_PORTAL],
   SUPER_ADMIN: [...PORTALS, SUPPLIER_PORTAL, MESSAGES_PORTAL],
   COORDINATOR: ["coordinator", MESSAGES_PORTAL],

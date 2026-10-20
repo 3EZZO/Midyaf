@@ -156,3 +156,190 @@ it("keeps executive event invitations and direct grants read-only",async()=>{
   expect(created.status).toBe(201);
   expect((await http.patch(`${base}/members/${created.body.member.id}`,a.owner,{permissions:["VIEW","INVITE"]})).status).toBe(400);
 });
+
+// ---------------------------------------------------------------------------
+// RADAR-ORGANIZER-001: create -> generate -> plan view -> approve -> unlock,
+// with the server-derived RFQ draft, through the real router.
+// ---------------------------------------------------------------------------
+
+const createBody = {
+  organizationId: "org_a",
+  name: "Synthetic setup summit",
+  locationLabel: "Synthetic district",
+  planningMode: "AI",
+  hotelZone: "Synthetic north",
+  vipGuestCount: 4,
+  regularGuestCount: 20,
+  carCount: 6,
+  startAt: "2026-12-01T06:00:00.000Z",
+  endAt: "2026-12-02T18:00:00.000Z",
+  arrivalStartAt: "2026-11-30T06:00:00.000Z",
+  departureEndAt: "2026-12-03T18:00:00.000Z"
+};
+
+it("creates an event once, generates a locked advisory draft with an RFQ, and unlocks operations only on explicit approval", async () => {
+  const created = await http.post("/w/events", a.owner, createBody);
+  expect(created.status).toBe(201);
+  const eventId: string = created.body.event.id;
+  expect(created.body.event).toMatchObject({ planApproved: false, operationalStatus: "PLANNING", contractSigned: false });
+
+  const generated = await http.post(`/w/events/${eventId}/plans/generate`, a.owner, { mode: "ADVISORY" });
+  expect(generated.status).toBe(201);
+  const plan = generated.body.plan;
+  expect(plan).toMatchObject({ status: "DRAFT", source: "DETERMINISTIC_ADVISORY", advisory: true });
+  for (const section of ["logistics", "hotelDistribution", "vehicleRequirements", "teamRequirements", "scopeOfWork"]) expect(plan.content).toHaveProperty(section);
+
+  // The RFQ draft is persisted inside the plan content, scoped to this event and plan.
+  const rfq = plan.content.rfqDraft;
+  expect(rfq).toMatchObject({ status: "DRAFT", sent: false, eventId, planId: plan.id, planVersion: 1, quantitiesFrom: "PLAN_ITEMS" });
+  expect(rfq.lines.map((line: { category: string }) => line.category)).toEqual(expect.arrayContaining(["HOTEL_ROOMS", "VEHICLES", "STAFF"]));
+  const hotel = rfq.lines.filter((line: { category: string }) => line.category === "HOTEL_ROOMS");
+  expect(hotel.reduce((sum: number, line: { quantity: number }) => sum + line.quantity, 0)).toBe(plan.content.hotelDistribution.totalRooms);
+  expect(rfq.scope).toMatchObject({ vipGuests: 4, regularGuests: 20, guestsNeedingVehicles: 6, serviceDays: 4, hotelZone: "Synthetic north" });
+  for (const line of rfq.lines) expect(Object.keys(line).sort()).toEqual(["category", "description", "quantity", "serviceDays", "unit"]);
+  const stored = memory.current.rows("eventPlan").find((row) => row.id === plan.id)!;
+  expect((stored.content as { rfqDraft: { reference: string } }).rfqDraft.reference).toBe(rfq.reference);
+
+  // Still locked: the draft does not unlock anything.
+  expect((await http.get(`/w/events/${eventId}`, a.owner)).body.event.planApproved).toBe(false);
+  for (const part of ["members", "telemetry", "rfq"]) expect((await http.get(`/w/events/${eventId}/${part}`, a.owner)).status).toBe(423);
+
+  // The plan view lists exactly this draft.
+  const listed = await http.get(`/w/events/${eventId}/plans`, a.owner);
+  expect(listed.body.plans.map((p: { id: string }) => p.id)).toEqual([plan.id]);
+
+  // Only an authorized approver; an organization member without event access cannot.
+  expect([403, 404]).toContain((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.orgMember, { confirm: true })).status);
+  expect((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.sa, { confirm: true })).status).toBe(403);
+  expect((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.owner, {})).status).toBe(400);
+  const approved = await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.owner, { confirm: true });
+  expect(approved.status).toBe(200);
+  expect(approved.body.event).toMatchObject({ planApproved: true, approvedPlanId: plan.id, operationalStatus: "PLANNING", contractSigned: false });
+  expect(approved.body.plan.status).toBe("APPROVED");
+
+  // Persisted: a fresh read and the operational endpoints agree.
+  expect((await http.get(`/w/events/${eventId}`, a.owner)).body.event.planApproved).toBe(true);
+  expect((await http.get(`/w/events/${eventId}/members`, a.owner)).status).toBe(200);
+  const vendorsRfq = await http.get(`/w/events/${eventId}/rfq`, a.owner);
+  expect(vendorsRfq.status).toBe(200);
+  expect(vendorsRfq.body.rfq.reference).toBe(rfq.reference);
+
+  // Approval assigns, contracts and notifies no one, and one event exists.
+  expect(memory.current.rows("event").filter((row) => row.name === createBody.name)).toHaveLength(1);
+  expect(memory.current.rows("eventMembership").filter((row) => row.eventId === eventId)).toHaveLength(0);
+  expect(memory.current.rows("notification")).toHaveLength(0);
+  expect(memory.current.rows("conversation")).toHaveLength(0);
+});
+
+it("rolls back a failed plan generation without touching the created event, so only generation is retried", async () => {
+  const created = await http.post("/w/events", a.owner, createBody);
+  const eventId: string = created.body.event.id;
+  memory.current.failNext("eventPlan", "update", new Error("synthetic failure"));
+  expect((await http.post(`/w/events/${eventId}/plans/generate`, a.owner, { mode: "ADVISORY" })).status).toBe(500);
+  expect(memory.current.rows("eventPlan").filter((row) => row.eventId === eventId)).toHaveLength(0);
+  expect(memory.current.rows("event").filter((row) => row.id === eventId)).toHaveLength(1);
+  const retried = await http.post(`/w/events/${eventId}/plans/generate`, a.owner, { mode: "ADVISORY" });
+  expect(retried.status).toBe(201);
+  expect(retried.body.plan.version).toBe(1);
+  expect(memory.current.rows("event").filter((row) => row.name === createBody.name)).toHaveLength(1);
+});
+
+it("derives a manual plan's RFQ from its validated items and never trusts request pricing or supplier ids", async () => {
+  const items = [
+    { category: "HOTEL_ROOMS", quantity: 12, note: "Hotels: four-star near the venue" },
+    { category: "VEHICLES", quantity: 5, note: "Vehicles: sedans" },
+    { category: "STAFF", quantity: 0, note: "Teams: to confirm" }
+  ];
+  const manual = await http.post("/w/events/evt_locked/plans/generate", a.pm, { mode: "MANUAL", summary: "Synthetic manual plan", items });
+  expect(manual.status).toBe(201);
+  const rfq = manual.body.plan.content.rfqDraft;
+  expect(rfq.quantitiesFrom).toBe("PLAN_ITEMS");
+  expect(rfq.lines.map((line: { category: string; quantity: number }) => [line.category, line.quantity])).toEqual([["HOTEL_ROOMS", 12], ["VEHICLES", 5]]);
+  // Pricing and supplier ids are not accepted anywhere in the request.
+  expect((await http.post("/w/events/evt_locked/plans/generate", a.pm, { mode: "MANUAL", summary: "Priced", items: [{ ...items[0], unitPrice: 900 }] })).status).toBe(400);
+  expect((await http.post(`/w/events/evt_locked/plans/${manual.body.plan.id}/rfq`, a.pm, { supplierId: "x" })).status).toBe(400);
+  expect((await http.post(`/w/events/evt_locked/plans/${manual.body.plan.id}/rfq`, a.pm, { lines: [{ quantity: 999 }] })).status).toBe(400);
+  expect((await http.post(`/w/events/evt_locked/plans/${manual.body.plan.id}/rfq`, a.pm, {})).status).toBe(201);
+  expect(JSON.stringify(memory.current.rows("eventPlan").find((row) => row.id === manual.body.plan.id)!.content)).not.toMatch(/supplierId|unitPrice/);
+});
+
+it("keeps a manual plan's exact quantities in the RFQ when its items carry no notes, including on regeneration", async () => {
+  const items = [
+    { category: "HOTEL_ROOMS", quantity: 7 },
+    { category: "VEHICLES", quantity: 3 },
+    { category: "STAFF", quantity: 9 }
+  ];
+  const manual = await http.post("/w/events/evt_locked/plans/generate", a.pm, { mode: "MANUAL", summary: "Synthetic manual plan without notes", items });
+  expect(manual.status).toBe(201);
+  // The route stores the absent notes as null.
+  const stored = memory.current.rows("eventPlan").find((row) => row.id === manual.body.plan.id)!;
+  expect((stored.content as { items: Array<{ note: unknown }> }).items.every((item) => item.note === null)).toBe(true);
+  const exact = [["HOTEL_ROOMS", 7], ["VEHICLES", 3], ["STAFF", 9]];
+  const quantities = (rfq: { lines: Array<{ category: string; quantity: number }> }) => rfq.lines.map((line) => [line.category, line.quantity]);
+  expect(manual.body.plan.content.rfqDraft.quantitiesFrom).toBe("PLAN_ITEMS");
+  expect(quantities(manual.body.plan.content.rfqDraft)).toEqual(exact);
+  const regenerated = await http.post(`/w/events/evt_locked/plans/${manual.body.plan.id}/rfq`, a.pm, {});
+  expect(regenerated.status).toBe(201);
+  expect(regenerated.body.rfq.quantitiesFrom).toBe("PLAN_ITEMS");
+  expect(quantities(regenerated.body.rfq)).toEqual(exact);
+});
+
+it("re-authorizes RFQ regeneration under the event lock, so an actor revoked or demoted while waiting writes nothing", async () => {
+  const content = () => JSON.stringify(memory.current.rows("eventPlan").find((row) => row.id === "plan_a1")!.content);
+  const audits = () => memory.current.rows("auditLog").filter((row) => row.action === "workspace.plan.rfq_draft").length;
+  const pmMembership = () => memory.current.rows("eventMembership").find((m) => m.id === "em_evt_a_u_pm")!;
+  const before = content();
+  // The revocation commits after the route's pre-checks, before the Event row lock is granted.
+  memory.current.beforeNext("$raw", "$queryRaw", () => { pmMembership().status = "REVOKED"; });
+  expect([403, 404]).toContain((await http.post(`${base}/plans/plan_a1/rfq`, a.pm, {})).status);
+  expect(content()).toBe(before);
+  expect(audits()).toBe(0);
+
+  memory.current.seed(structuredClone(seed));
+  memory.current.beforeNext("$raw", "$queryRaw", () => { pmMembership().permissions = ["VIEW"]; });
+  expect((await http.post(`${base}/plans/plan_a1/rfq`, a.pm, {})).status).toBe(403);
+  expect(content()).toBe(before);
+  expect(audits()).toBe(0);
+
+  // Without a concurrent change the same request succeeds.
+  memory.current.seed(structuredClone(seed));
+  expect((await http.post(`${base}/plans/plan_a1/rfq`, a.pm, {})).status).toBe(201);
+  expect(audits()).toBe(1);
+});
+
+it("keeps RFQ drafts internal: hidden from vendors and clients, refused to support and other tenants, locked by the contract", async () => {
+  const regenerated = await http.post(`${base}/plans/plan_a1/rfq`, a.owner, {});
+  expect(regenerated.status).toBe(201);
+  const rfq = regenerated.body.rfq;
+  expect(rfq).toMatchObject({ eventId: "evt_a", planId: "plan_a1", status: "DRAFT", sent: false });
+  // plan_a1 has no items: quantities fall back to the deterministic rules, never invented.
+  expect(rfq.quantitiesFrom).toBe("DETERMINISTIC_RULES");
+  expect(memory.current.rows("auditLog").some((row) => row.action === "workspace.plan.rfq_draft" && row.entityId === "plan_a1")).toBe(true);
+
+  // No guest identities, contacts or positions, and nothing was sent.
+  const text = JSON.stringify(rfq);
+  for (const secret of ["Synthetic person", "GV01", "+966", "example.test", "24.7", "Synthetic Hotel"]) expect(text).not.toContain(secret);
+  expect(memory.current.rows("notification")).toHaveLength(0);
+  expect(memory.current.rows("conversation")).toHaveLength(0);
+
+  // Internal viewers read it; vendors and client viewers neither read it nor see it in the plan list.
+  expect((await http.get(`${base}/rfq`, a.pm)).body.rfq.reference).toBe(rfq.reference);
+  for (const actor of [a.vendor, a.client]) {
+    expect((await http.get(`${base}/rfq`, actor)).status).toBe(403);
+    const plans = await http.get(`${base}/plans`, actor);
+    expect(plans.status).toBe(200);
+    expect(JSON.stringify(plans.body)).not.toContain("rfqDraft");
+    expect((await http.post(`${base}/plans/plan_a1/rfq`, actor, {})).status).toBe(403);
+  }
+  expect(JSON.stringify((await http.get(`${base}/plans`, a.pm)).body)).toContain("rfqDraft");
+  expect((await http.post(`${base}/plans/plan_a1/rfq`, a.sa, {})).status).toBe(403);
+  for (const outsider of [a.ownerB, a.lmOutsider]) {
+    expect((await http.get(`${base}/rfq`, outsider)).status).toBe(404);
+    expect((await http.post(`${base}/plans/plan_a1/rfq`, outsider, {})).status).toBe(404);
+  }
+  expect((await http.post(`/w/events/evt_b/plans/plan_a1/rfq`, a.ownerB, {})).status).toBe(404);
+
+  // A signed contract locks the scope, including RFQ regeneration.
+  expect((await http.post(`${base}/contract/sign`, a.owner, { confirm: true, reference: "Signed synthetic contract" })).status).toBe(200);
+  expect((await http.post(`${base}/plans/plan_a1/rfq`, a.owner, {})).status).toBe(409);
+});

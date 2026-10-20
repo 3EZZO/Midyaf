@@ -168,7 +168,7 @@ export function SovereignCommandBridge({
         isArabic ? "font-arabic" : "font-english"
       )}
       role="region"
-      aria-label={isArabic ? "غرفة العمليات السيادية" : "Sovereign War Room"}
+      aria-label={isArabic ? "مركز العمليات" : "Operations Center"}
     >
       <WarRoomHeader
         isArabic={isArabic}
@@ -206,7 +206,6 @@ export function SovereignCommandBridge({
               drivers={drivers}
               tasks={tasks}
               height="h-full min-h-[360px]"
-              defaultMode="dark"
               selectedDriverId={selectedDriverId}
               onSelectDriver={(driver) => setSelectedDriverId(driver.id)}
               className="flex-1"

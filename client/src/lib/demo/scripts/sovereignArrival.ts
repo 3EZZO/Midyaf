@@ -86,8 +86,8 @@ const act1: Act = {
         type: "ticker.push",
         tag: "LIVE",
         text: {
-          en: "[LIVE] Sovereign Arrival sequence armed · all corridors green.",
-          ar: "[بث مباشر] تسلسل الوصول السيادي جاهز · جميع الممرات خضراء."
+          en: "[LIVE] Event Arrival sequence armed · all corridors green.",
+          ar: "[بث مباشر] تسلسل وصول الفعالية جاهز · جميع الممرات خضراء."
         }
       }
     },
@@ -428,8 +428,8 @@ const act3: Act = {
         type: "ticker.push",
         tag: "SHUTTLE",
         text: {
-          en: "[SHUTTLE] Charlie departed Ritz-Carlton for KAFD Plenary via the Sovereign Financial Corridor.",
-          ar: "[حافلة] تشارلي غادرت الريتز-كارلتون إلى قاعة كافد عبر الممر المالي السيادي."
+          en: "[SHUTTLE] Charlie departed Ritz-Carlton for KAFD Plenary via the Financial Corridor.",
+          ar: "[حافلة] تشارلي غادرت الريتز-كارلتون إلى قاعة كافد عبر الممر المالي."
         }
       }
     },
@@ -501,8 +501,8 @@ const act4: Act = {
       cmd: {
         type: "fleet.diverted",
         message: {
-          en: "Sovereign Financial Corridor closed — Shuttle Charlie rerouting.",
-          ar: "إغلاق الممر المالي السيادي — إعادة توجيه الحافلة تشارلي."
+          en: "Financial Corridor closed — Shuttle Charlie rerouting.",
+          ar: "إغلاق الممر المالي — إعادة توجيه الحافلة تشارلي."
         }
       }
     },
@@ -514,8 +514,8 @@ const act4: Act = {
         tone: "alert",
         title: { en: "Corridor closed", ar: "إغلاق الممر" },
         message: {
-          en: "Sovereign Financial Corridor · sandstorm.",
-          ar: "الممر المالي السيادي · عاصفة رملية."
+          en: "Financial Corridor · sandstorm.",
+          ar: "الممر المالي · عاصفة رملية."
         }
       }
     },
@@ -526,8 +526,8 @@ const act4: Act = {
         type: "ticker.push",
         tag: "AI",
         text: {
-          en: "[AI] Sovereign AI evaluating alternates for Shuttle Charlie against the SLA buffer.",
-          ar: "[ذكاء] الذكاء السيادي يقيّم المسارات البديلة للحافلة تشارلي ضمن هامش اتفاقية الخدمة."
+          en: "[AI] AI Assistant evaluating alternates for Shuttle Charlie against the SLA buffer.",
+          ar: "[ذكاء] المساعد الذكي يقيّم المسارات البديلة للحافلة تشارلي ضمن هامش اتفاقية الخدمة."
         }
       }
     },
@@ -615,8 +615,8 @@ const act4: Act = {
         type: "ticker.push",
         tag: "CORRIDOR",
         text: {
-          en: "[CORRIDOR] Sovereign Financial Corridor reopened.",
-          ar: "[ممر] إعادة فتح الممر المالي السيادي."
+          en: "[CORRIDOR] Financial Corridor reopened.",
+          ar: "[ممر] إعادة فتح الممر المالي."
         }
       }
     }
@@ -719,8 +719,8 @@ const act5: Act = {
         type: "ticker.push",
         tag: "SCORECARD",
         text: {
-          en: "[SCORECARD] Sovereign Arrival complete · scorecard on screen.",
-          ar: "[بطاقة الأداء] اكتمال الوصول السيادي · بطاقة الأداء على الشاشة."
+          en: "[SCORECARD] Event Arrival complete · scorecard on screen.",
+          ar: "[بطاقة الأداء] اكتمال وصول الفعالية · بطاقة الأداء على الشاشة."
         }
       }
     },
@@ -731,6 +731,6 @@ const act5: Act = {
 
 export const sovereignArrival: Script = {
   id: "sovereign-arrival",
-  title: { en: "Sovereign Arrival", ar: "الوصول السيادي" },
+  title: { en: "Event Arrival", ar: "وصول الفعالية" },
   acts: [act1, act2, act3, act4, act5]
 };

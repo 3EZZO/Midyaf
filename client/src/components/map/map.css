@@ -26,6 +26,21 @@
   isolation: isolate;
 }
 
+/* Native fullscreen (Fullscreen API on the shell): the shell fills the
+   screen as a column, the chrome keeps its height and the stage takes the
+   rest, so the controls are never pushed off-screen. */
+.map-shell:fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.map-shell:fullscreen .map-stage--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* Interactive HUD (tracking focus) sits above Leaflet's panes and controls,
    inside the stage only. The passive stats strip stays under the controls
    so it never covers the required tile attribution. */
@@ -49,7 +64,7 @@
   opacity: 0.85;
 }
 
-/* Fallback: OSM standard tiles inverted to a dark canvas (keyless). */
+/* Fallback: Esri World_Street_Map tiles inverted to a dark canvas (keyless). */
 .map-tiles--inverted {
   filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.72) contrast(1.05);
 }
@@ -153,7 +168,7 @@
   display: none;
 }
 
-/* Attribution: required by CARTO/OSM; keep it quiet but readable */
+/* Attribution: required by Esri; keep it quiet but readable */
 .leaflet-control-attribution {
   background: rgb(var(--surface-1) / 0.8) !important;
   backdrop-filter: blur(8px);

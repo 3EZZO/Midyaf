@@ -1,4 +1,5 @@
-import {OperationalEventEntry} from './EventRadar';
+import { OperationalEventEntry } from "./EventRadar";
+import { OrganizerWorkspace } from "./OrganizerWorkspace";
 import { useMemo, useState } from "react";
 import {
   ArrowLeftRight,
@@ -15,11 +16,14 @@ import {
 import { AiPanel } from "./AiPanel";
 import { ResponsibilityBadges, TaskHandoverDialog, canUseHandover } from "./TaskHandover";
 import type { MidyafData, Session, Task } from "@shared/domain";
+import type { OrganizationDto } from "@shared/overhaul";
 import {
   TASK_CARD_LIMIT,
   eventTaskCards,
   type EventTaskCard
 } from "../lib/eventTaskCards";
+import { EVENT_SETUP_HEADING_AR, EVENT_SETUP_HEADING_EN } from "../lib/workspaceWorkflow";
+import { useWorkspaceResource } from "../lib/workspaceApi";
 import { integer, shortDate, shortTime } from "../lib/format";
 import {
   fleetUtilisation,
@@ -43,21 +47,22 @@ import {
 } from "./ui";
 import { PortalHero } from "./ui/PortalHero";
 
-type Tab = "intake" | "fleet" | "contracts" | "delegation" | "reports" | "ai";
+export type SilaTab = "intake" | "fleet" | "contracts" | "delegation" | "reports" | "ai";
 
-export function SilaOperationsDashboard(props:Parameters<typeof LegacySilaOperationsDashboard>[0]){
- const legacy=<LegacySilaOperationsDashboard {...props}/>;
- if(props.isDemoMode)return legacy;
- return <OperationalEventEntry session={props.session} isArabic={props.isArabic}>{legacy}</OperationalEventEntry>;
-}
-function LegacySilaOperationsDashboard({
+/**
+ * SILA-INTAKE-002: Intake is the default tab and embeds the organizer
+ * workspace, the same /workspace create → plan → approve → RFQ flow as the
+ * company portal. The live event radar sits in the Fleet tab.
+ */
+export function SilaOperationsDashboard({
   data,
   session,
   isDemoMode,
   isArabic,
   onDownloadReport,
   onToggleDemo,
-  onTasksChanged
+  onTasksChanged,
+  initialTab = "intake"
 }: {
   data: MidyafData;
   session: Session | null;
@@ -67,10 +72,11 @@ function LegacySilaOperationsDashboard({
   onToggleDemo?: () => void;
   /** Reload after a task handover (OPS-COLLAB-001). */
   onTasksChanged?: () => Promise<void>;
+  initialTab?: SilaTab;
 }) {
   const toast = useToast();
   const [handoverTaskId, setHandoverTaskId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("intake");
+  const [activeTab, setActiveTab] = useState<SilaTab>(initialTab);
   const event = data.events[0];
   const tasks = event?.tasks ?? [];
 
@@ -106,8 +112,8 @@ function LegacySilaOperationsDashboard({
     {
       id: "intake" as const,
       icon: ClipboardList,
-      labelEn: "Activity Intake",
-      labelAr: "استقبال الأنشطة"
+      labelEn: "Intake",
+      labelAr: "الإدخال"
     },
     {
       id: "delegation" as const,
@@ -118,8 +124,8 @@ function LegacySilaOperationsDashboard({
     {
       id: "fleet" as const,
       icon: CarFront,
-      labelEn: "Fleet Telemetry",
-      labelAr: "تتبع الأسطول"
+      labelEn: "Fleet & Radar",
+      labelAr: "الأسطول والرادار"
     },
     {
       id: "contracts" as const,
@@ -136,8 +142,8 @@ function LegacySilaOperationsDashboard({
     {
       id: "ai" as const,
       icon: Bot,
-      labelEn: "Sovereign AI",
-      labelAr: "الذكاء السيادي"
+      labelEn: "AI Assistant",
+      labelAr: "المساعد الذكي"
     }
   ];
 
@@ -304,12 +310,13 @@ function LegacySilaOperationsDashboard({
       />
 
       {activeTab === "intake" && (
+        <div className="space-y-4">
         <Section
           id="section-intake"
           title={
             isArabic
-              ? "استقبال الأنشطة وإدارة الضيوف"
-              : "Sila Intake & Guest Management"
+              ? "الإدخال: تجهيز فعالية جديدة"
+              : "Sila Intake: set up a new event"
           }
           action={
             <Button
@@ -333,13 +340,18 @@ function LegacySilaOperationsDashboard({
             </Button>
           }
         >
-          {intakes.length === 0 ? (
-            <EmptyState
-              compact
-              title={isArabic ? "لا توجد أنشطة مسجلة" : "No activities yet"}
-            />
-          ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
+          <IntakeHowTo isArabic={isArabic} />
+          <IntakeAccessCheck session={session} isArabic={isArabic} />
+        </Section>
+        <OrganizerWorkspace session={session} isArabic={isArabic} />
+        {intakes.length > 0 ? (
+          <details className="rounded-lg border border-hairline p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-ink">
+              {isArabic
+                ? `سجلات الأنشطة السابقة (${integer(intakes.length)}) · للعرض فقط`
+                : `Earlier activity records (${integer(intakes.length)}) · read-only`}
+            </summary>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
               {intakes.map((act) => (
                 <Surface key={act.id} padding="sm">
                   <div className="mb-2 flex items-start justify-between gap-3">
@@ -368,11 +380,31 @@ function LegacySilaOperationsDashboard({
                 </Surface>
               ))}
             </div>
-          )}
-        </Section>
+          </details>
+        ) : null}
+        </div>
       )}
 
       {activeTab === "fleet" && (
+        <div className="space-y-4">
+        {!isDemoMode ? (
+          <OperationalEventEntry
+            session={session}
+            isArabic={isArabic}
+            empty={
+              <EmptyState
+                compact
+                icon={<Map className="size-5" />}
+                title={isArabic ? "لا توجد فعالية معتمدة للرادار" : "No approved event for the radar yet"}
+                description={
+                  isArabic
+                    ? "يظهر الرادار المباشر بعد اعتماد خطة فعالية من تبويب الإدخال."
+                    : "The live radar appears once an event plan is approved from the Intake tab."
+                }
+              />
+            }
+          />
+        ) : null}
         <Section
           id="section-fleet"
           title={isArabic ? "تتبع الأسطول المباشر" : "Live Fleet Telemetry"}
@@ -405,14 +437,8 @@ function LegacySilaOperationsDashboard({
               ))}
             </ul>
           )}
-          {!isDemoMode ? (
-            <p className="mt-4 text-xs text-ink-faint">
-              {isArabic
-                ? "سيتم عرض الخريطة الحية للأسطول عند تفعيل محاكاة العرض التوضيحي (Investor Demo)."
-                : "Fleet mapping is accessible via the live demo simulation. Trigger the simulation to view active convoys."}
-            </p>
-          ) : null}
         </Section>
+        </div>
       )}
 
       {activeTab === "delegation" && (
@@ -545,7 +571,7 @@ function LegacySilaOperationsDashboard({
         <Section
           id="section-smart-assistant"
           title={
-            isArabic ? "الذكاء السيادي للعمليات" : "Sovereign operations AI"
+            isArabic ? "مساعد العمليات" : "Operations Assistant"
           }
           eyebrow={
             isArabic
@@ -566,6 +592,69 @@ function LegacySilaOperationsDashboard({
       )}
     </div>
   );
+}
+
+/** Short owner-facing steps for entering a new event. */
+export function IntakeHowTo({ isArabic }: { isArabic: boolean }) {
+  const steps = isArabic
+    ? [
+        `اضغط «${EVENT_SETUP_HEADING_AR}» واختر المؤسسة.`,
+        "أدخل اسم الفعالية والموقع ونطاق الفنادق، وأعداد كبار الشخصيات والضيوف العاديين والمحتاجين لسيارات، ثم مواعيد الفعالية ووصول الضيوف ومغادرتهم بتوقيت الرياض.",
+        "اضغط «حفظ وفتح خطة الفعالية»؛ يُجهَّز مقترح خطة استرشادي تلقائياً (محسوب بالقواعد إذا لم يُهيأ مزود الذكاء الاصطناعي).",
+        "راجع أقسام الخطة الخمسة ومسودة طلب العروض، ثم اضغط «اعتماد الخطة وتفعيل التشغيل». لا يبدأ التشغيل قبل هذا الاعتماد، والخطة اليدوية تبقى يدوية."
+      ]
+    : [
+        `Press «${EVENT_SETUP_HEADING_AR} · ${EVENT_SETUP_HEADING_EN}» and choose the organization.`,
+        "Enter the event name, location and hotel zone; the VIP, regular and vehicle-needing guest counts; then the event, guest arrival and departure times in Riyadh time.",
+        "Press “Save & open event plan”. An advisory plan is prepared automatically (rules-based when no AI provider is configured).",
+        "Review the five plan sections and the RFQ draft, then press “Approve plan & unlock operations”. Nothing starts before that approval, and a manual plan stays manual."
+      ];
+  return (
+    <div data-intake-howto>
+      <h4 className="mb-2 text-sm font-semibold text-ink">
+        {isArabic ? "كيف تُدخل فعالية جديدة" : "How to enter a new event"}
+      </h4>
+      <ol className="list-decimal space-y-1 ps-5 text-sm text-ink-muted">
+        {steps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Mirrors OrganizerWorkspace: owners/admins of a non-vendor organization see the new-event button. */
+export function canCreateEvents(organizations: OrganizationDto[]) {
+  return organizations.some(
+    (org) => ["OWNER", "ADMIN"].includes(org.myRole ?? "") && org.kind !== "VENDOR"
+  );
+}
+
+/** Explains a hidden new-event button; grants nothing and claims nothing. */
+export function IntakeAccessNote({
+  organizations,
+  isArabic
+}: {
+  organizations: OrganizationDto[];
+  isArabic: boolean;
+}) {
+  if (canCreateEvents(organizations)) return null;
+  return (
+    <p role="note" data-intake-no-access className="mt-3 rounded-md border border-warn/40 bg-warn/10 p-3 text-sm text-ink">
+      {isArabic
+        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من مالك المؤسسة منحك هذه الصلاحية؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها فقط.`
+        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask that organization's owner to grant you this role; until then you can only follow events you have access to.`}
+    </p>
+  );
+}
+
+function IntakeAccessCheck({ session, isArabic }: { session: Session | null; isArabic: boolean }) {
+  const orgs = useWorkspaceResource<{ organizations: OrganizationDto[] }>(
+    session?.accessToken ?? "",
+    session ? "/organizations" : null
+  );
+  if (!orgs.data) return null;
+  return <IntakeAccessNote organizations={orgs.data.organizations} isArabic={isArabic} />;
 }
 
 /** The current event's tasks with honest empty/unassigned/missing states. */

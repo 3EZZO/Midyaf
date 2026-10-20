@@ -221,7 +221,7 @@ function drawLine(
 }
 
 const L = {
-  brand: { en: "MIDYAF SOVEREIGN PLATFORM", ar: "منصة مِضياف السيادية" },
+  brand: { en: "MIDYAF PLATFORM", ar: "منصة مِضياف" },
   subtitle: {
     en: "RIYADH SUMMIT LOGISTICS & VIP DISPATCH REPORT",
     ar: "تقرير الخدمات اللوجستية وإرسال كبار الشخصيات — قمة الرياض"
@@ -234,8 +234,8 @@ const L = {
   timestamp: { en: "CERTIFIED TIMESTAMP", ar: "الختم الزمني المعتمد" },
   governance: { en: "GOVERNANCE LEVEL", ar: "مستوى الحوكمة" },
   governanceValue: {
-    en: "Sovereign Protocol (FII / PIF)",
-    ar: "البروتوكول السيادي (FII / PIF)"
+    en: "Official Protocol (FII / PIF)",
+    ar: "البروتوكول الرسمي (FII / PIF)"
   },
   kpiTitle: {
     en: "Operational Key Performance Indicators",
@@ -245,16 +245,16 @@ const L = {
   outcome: { en: "CONFIRMED OUTCOME", ar: "النتيجة المعتمدة" },
   seal: { en: "AUDIT SEAL & VERIFICATION", ar: "ختم التدقيق والتحقق" },
   sealLine1: {
-    en: "Multi-signature approval: Sila Operations · Organizer · Midyaf Sovereign Guard",
-    ar: "اعتماد متعدد التوقيع: عمليات صلة · المنظم · الحرس السيادي لمِضياف"
+    en: "Multi-signature approval: Sila Operations · Organizer · Midyaf Guard",
+    ar: "اعتماد متعدد التوقيع: عمليات صلة · المنظم · حارس مِضياف"
   },
   sealLine2: {
     en: "ZATCA VAT & diplomatic service regulation compliance: verified · Riyadh launch standard",
     ar: "الامتثال لضريبة القيمة المضافة (زاتكا) ولوائح الخدمة الدبلوماسية: تم التحقق · معيار إطلاق الرياض"
   },
   footer: {
-    en: "Midyaf Sovereign Hospitality & Logistics Command Platform · Riyadh 2027 · Strictly confidential",
-    ar: "منصة مِضياف السيادية للضيافة والقيادة اللوجستية · الرياض 2027 · سري للغاية"
+    en: "Midyaf Hospitality & Logistics Operations Platform · Riyadh 2027 · Strictly confidential",
+    ar: "منصة مِضياف للضيافة والعمليات اللوجستية · الرياض 2027 · سري للغاية"
   }
 };
 
@@ -271,7 +271,7 @@ export function generateReportPdf(report: ReportPdfInput) {
       lang,
       info: {
         Title: `Midyaf Executive Report - ${report.title}`,
-        Author: "Midyaf Sovereign Operations Platform",
+        Author: "Midyaf Operations Platform",
         Subject: "Summit Logistics & VIP Chauffeur Dispatch",
         Keywords: "Riyadh, Midyaf, Logistics, Summit 2027, Certified Report"
       }

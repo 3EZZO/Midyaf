@@ -55,7 +55,7 @@ function readGpsPref(): boolean | null {
 
 export function CaptainsApp(props:PortalProps){
  const ui=useOpsText();
- const legacy=props.data.events.length>0&&props.data.drivers.length>0?<LegacyCaptainsApp {...props}/>:<p>{ui.isArabic?'لا توجد رحلة شخصية سابقة':'No previous personal journey'}</p>;
+ const legacy=props.data.events.length>0&&props.data.drivers.length>0?<LegacyCaptainsApp {...props}/>:<p>{ui.isArabic?'لا توجد رحلات مسندة حاليًا':'No assigned trips yet'}</p>;
  if(props.isDemoMode)return legacy;
  return <OperationalEventEntry session={props.session} isArabic={ui.isArabic} mode="radar">{legacy}</OperationalEventEntry>;
 }
