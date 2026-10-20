@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { EventMemberDto,GuestDto,WorkspaceEventDto } from '@shared/overhaul';
+import { WORKSPACE_LIMITS,type EventMemberDto,type GuestDto,type WorkspaceEventDto } from '@shared/overhaul';
 import { useWorkspaceResource,workspaceDownload,workspaceImport,workspaceRequest,type GuestImportResult } from '../lib/workspaceApi';
 import { workspaceButton,workspaceInput,type WorkspaceProps } from './OrganizerWorkspace';
 import { Section } from './Section';
@@ -20,7 +20,7 @@ function PrivacyEditor({token,eventId,isArabic:ar,guest,members,onSaved}:{token:
 }
 export function EventGuests(props:WorkspaceProps&{event:WorkspaceEventDto}) {
  const {token,eventId,isArabic:ar,event}=props;const [revision,refresh]=useState(0),[cursor,setCursor]=useState<string|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[file,setFile]=useState<File|null>(null),[result,setResult]=useState<GuestImportResult|null>(null),[defaultVip,setDefaultVip]=useState(false),[privacy,setPrivacy]=useState<GuestDto|null>(null);
- const resource=useWorkspaceResource<{guests:GuestDto[];nextCursor:string|null}>(token,`/events/${eventId}/guests?limit=200${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`,revision);
+ const resource=useWorkspaceResource<{guests:GuestDto[];nextCursor:string|null}>(token,`/events/${eventId}/guests?limit=${WORKSPACE_LIMITS.maxPage}${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`,revision);
  const members=useWorkspaceResource<{members:EventMemberDto[]}>(token,event.planApproved?`/events/${eventId}/members`:null,revision);
  const canEdit=event.access.permissions.includes('EDIT')&&!event.access.support&&event.operationalStatus!=='COMPLETED';
  async function perform(work:()=>Promise<unknown>){setBusy(true);setError('');try{await work();}catch(e){setError(e instanceof Error?e.message:'Request failed');}finally{setBusy(false);}}

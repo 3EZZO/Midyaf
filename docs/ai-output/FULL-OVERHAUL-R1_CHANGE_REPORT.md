@@ -11,6 +11,16 @@ State: **Ready for review.** This is not self-approval.
 
 Codex reported that the 48 focused tests for F1–F5 passed. For R2, Codex ran the six affected router suites: **76 passed and 1 failed**. The failure was my R2 test "keeps a stored tenant scope-change alert private to its recipient and generic". It was a wrong expectation, not a recipient leak: with `all=true` the coordinator correctly also receives their **own** private `n_msg_coord`. Codex also ran isolated PostgreSQL contention. Mutual owner demotion kept one owner, and organization-admin/event-grantor revocation races correctly denied writes. However, the helper exited 1 at `Privacy grant revoked during guest row-lock wait blocks detail edits`. That race is fixed in R3 below. The R3 edits have **not been executed** (Not run by Claude).
 
+## R4 correction (`FULL-OVERHAUL-R1_R4_FEEDBACK.md`)
+
+Commit `0f4a83d` (F1–F5, R2, R3) is preserved. Only the two client files below were edited, plus this report and the coordination reply. The server schema, the pagination cap and the dependencies are unchanged. R4 has **not been executed** (`npm run test`/`check`/`build` Not run by Claude).
+
+| # | Severity | Finding | Fix | Regression tests |
+|---|---|---|---|---|
+| R4-1 | High (Guests roster cannot load) | `EventGuests.tsx` requested `/events/:id/guests?limit=200`. The shared `guestListQuerySchema` caps `limit` at `WORKSPACE_LIMITS.maxPage` (100), so the real API returned validation 400 and the roster never rendered. Static types could not catch this because the URL is a string. | The roster URL now uses `limit=${WORKSPACE_LIMITS.maxPage}`, imported from `@shared/overhaul` (EventPermissions already imports values from there). The cursor append (`&cursor=…`), next/first-page buttons and the post-import cursor reset are unchanged. | `EventGuests.test.tsx`, "requests the guest roster with a query the shared API schema accepts". It renders the real `EventGuests` with a mocked `useWorkspaceResource` that records each requested path. It finds the roster URL, checks the pathname is `/events/evt_test/guests`, and parses `Object.fromEntries(searchParams)` (string values, like `req.query`) with the real strict `guestListQuerySchema`. It asserts `limit === WORKSPACE_LIMITS.maxPage` and that no cursor is on the first page. It also asserts the old `limit=200` is rejected, and that the mocked roster renders the masked `GV01` card with "Next page" and no "First page". The existing masked privacy-card test is kept unchanged. |
+
+Limitation: `renderToStaticMarkup` only covers the first-page URL. The `&cursor=` variant is unchanged code and is not exercised by this test.
+
 ## R3 correction (`FULL-OVERHAUL-R1_R3_FEEDBACK.md`)
 
 F1–F5 and R2 are preserved. Only the three files below were edited, plus this report and the coordination reply.
@@ -105,6 +115,8 @@ Added in R2 (some files above were edited again: `workspaceTelemetry.ts`/`.test.
 - `server/src/utils/workspacePolicy.ts`
 
 Edited again in R3 (no new files): `server/src/routes/workspaceGuests.ts`, `server/src/routes/workspaceGuests.test.ts`, `server/src/routes/notifications.privacy.test.ts`.
+
+Added in R4: `client/src/components/EventGuests.tsx`, `client/src/components/EventGuests.test.tsx`.
 
 Root:
 
