@@ -11,12 +11,15 @@ import { initialPortalForRole, portalsByRole } from "./rolePortals";
  * stays exactly as before.
  */
 
+/**
+ * RADAR-ORGANIZER-001: the standalone "intake" portal is retired for every
+ * role, SUPER_ADMIN included; event setup lives only in the company workspace.
+ */
 const ALL_PORTAL_KEYS: PortalKey[] = [
   "admin",
   "company",
   "client",
   "sila_operations",
-  "intake",
   "guest",
   "captain",
   "coordinator",
@@ -29,7 +32,6 @@ const SHARED_PORTALS: PortalKey[] = [
   "company",
   "client",
   "sila_operations",
-  "intake",
   "guest",
   "captain",
   "coordinator"
@@ -38,7 +40,7 @@ const SHARED_PORTALS: PortalKey[] = [
 const EXPECTED_ALLOWED: Record<Role, PortalKey[]> = {
   GUEST: ["guest", "messages"],
   DRIVER: ["captain", "messages"],
-  ORGANIZER: [...SHARED_PORTALS.filter(p => p !== "intake"), "messages"],
+  ORGANIZER: [...SHARED_PORTALS, "messages"],
   SUPPLIER: ["supplier", "messages"],
   SUPER_ADMIN: [...SHARED_PORTALS, "supplier", "messages"],
   COORDINATOR: ["coordinator", "messages"],
@@ -86,6 +88,11 @@ describe("portalsByRole", () => {
 
   it("gives every role the messages inbox", () => {
     for (const role of ROLES) expect(portalsByRole[role]).toContain("messages");
+  });
+
+  it("opens no second event-creation portal for any role", () => {
+    for (const role of ROLES) expect(portalsByRole[role]).not.toContain("intake");
+    expect(portalsByRole.SUPER_ADMIN).toContain("company");
   });
 });
 

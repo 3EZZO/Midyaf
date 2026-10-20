@@ -343,6 +343,19 @@ export const manualPlanItemSchema = z
   })
   .strict();
 
+/**
+ * A manual item as stored in `EventPlan.content.items`: the generate route
+ * persists an absent note as null. Request input stays on the strict
+ * `manualPlanItemSchema`; this is only for reading stored plans.
+ */
+export const storedManualPlanItemSchema = z
+  .object({
+    category: manualPlanItemSchema.shape.category,
+    quantity: manualPlanItemSchema.shape.quantity,
+    note: plainText(1, 300).nullable().optional()
+  })
+  .strict();
+
 export const planGenerateSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("ADVISORY") }).strict(),
   z
@@ -355,6 +368,280 @@ export const planGenerateSchema = z.discriminatedUnion("mode", [
 ]);
 
 export const planApproveSchema = z.object({ confirm: z.literal(true) }).strict();
+
+// ---------------------------------------------------------------------------
+// RFQ drafts (RADAR-ORGANIZER-001)
+// ---------------------------------------------------------------------------
+
+/**
+ * An RFQ draft is derived on the server from the plan's authoritative items
+ * and the event counts, then stored in `EventPlan.content.rfqDraft` (no new
+ * table). It is a DRAFT: nothing is sent, no vendor is chosen, and it never
+ * carries prices, supplier ids, guest names, contacts or positions. For an
+ * AI-provider plan only the deterministic rules give quantities; AI text is
+ * never parsed for numbers.
+ */
+export const RFQ_GENERATOR = "midyaf-rfq-rules/v1" as const;
+export const RFQ_LINE_CATEGORIES = ["HOTEL_ROOMS", "VEHICLES", "STAFF", "TICKETS", "OTHER"] as const;
+export const RFQ_UNITS = ["rooms", "vehicles", "people", "tickets", "items"] as const;
+export const RFQ_LIMITS = { maxLines: 40, maxText: 300, maxNotes: 8 } as const;
+export type RfqLineCategory = (typeof RFQ_LINE_CATEGORIES)[number];
+export type RfqUnit = (typeof RFQ_UNITS)[number];
+
+const rfqCount = z.number().int().min(0).max(WORKSPACE_LIMITS.maxEventCount);
+const rfqText = z.string().min(1).max(RFQ_LIMITS.maxText);
+const rfqIso = z.string().datetime({ offset: true }).nullable();
+
+export const rfqLineSchema = z
+  .object({
+    category: z.enum(RFQ_LINE_CATEGORIES),
+    description: rfqText,
+    quantity: rfqCount,
+    unit: z.enum(RFQ_UNITS),
+    /** Nights for rooms, service days for vehicles and staff; null when not time-based. */
+    serviceDays: z.number().int().min(1).max(366).nullable()
+  })
+  .strict();
+
+export const rfqDraftSchema = z
+  .object({
+    reference: z.string().regex(/^RFQ-[A-Z0-9-]{1,40}$/),
+    status: z.literal("DRAFT"),
+    sent: z.literal(false),
+    eventId: idSchema,
+    planId: idSchema,
+    planVersion: z.number().int().min(1),
+    planSource: z.enum(EVENT_PLAN_SOURCES),
+    quantitiesFrom: z.enum(["PLAN_ITEMS", "DETERMINISTIC_RULES"]),
+    generator: z.literal(RFQ_GENERATOR),
+    generatedAt: z.string().datetime({ offset: true }),
+    scope: z
+      .object({
+        locationLabel: z.string().max(200).nullable(),
+        hotelZone: z.string().max(120).nullable(),
+        serviceStartAt: rfqIso,
+        serviceEndAt: rfqIso,
+        serviceDays: z.number().int().min(1).max(366),
+        vipGuests: rfqCount,
+        regularGuests: rfqCount,
+        guestsNeedingVehicles: rfqCount
+      })
+      .strict(),
+    lines: z.array(rfqLineSchema).max(RFQ_LIMITS.maxLines),
+    notes: z.array(rfqText).max(RFQ_LIMITS.maxNotes)
+  })
+  .strict();
+
+export type RfqLineDto = z.infer<typeof rfqLineSchema>;
+export type RfqDraftDto = z.infer<typeof rfqDraftSchema>;
+
+/** Quantities the deterministic planning rules give for an event (server `buildAdvisoryPlan`). */
+export type RfqRules = {
+  hotelDistribution: { vipSingleRooms: number; regularTwinRooms: number };
+  vehicleRequirements: { vip: number; shuttle: number };
+  teamRequirements: Array<{ subteam: string; minimumPeople: number }>;
+};
+
+export type RfqRequirements = {
+  quantitiesFrom: RfqDraftDto["quantitiesFrom"];
+  hotel: { vipSingleRooms: number; regularTwinRooms: number } | null;
+  vehicles: { vip: number; shuttle: number } | null;
+  staff: Array<{ subteam: string; people: number }>;
+  items: Array<{ category: RfqLineCategory; quantity: number; note: string | null }>;
+};
+
+const rulesShape = z.object({
+  hotelDistribution: z.object({ vipSingleRooms: rfqCount, regularTwinRooms: rfqCount }).passthrough(),
+  vehicleRequirements: z.object({ vip: rfqCount, shuttle: rfqCount }).passthrough(),
+  teamRequirements: z
+    .array(z.object({ subteam: z.enum(EVENT_SUBTEAMS), minimumPeople: rfqCount }).passthrough())
+    .max(EVENT_SUBTEAMS.length)
+});
+
+function fromRules(rules: RfqRules): RfqRequirements {
+  return {
+    quantitiesFrom: "DETERMINISTIC_RULES",
+    hotel: { ...rules.hotelDistribution },
+    vehicles: { ...rules.vehicleRequirements },
+    staff: rules.teamRequirements.map((team) => ({ subteam: team.subteam, people: team.minimumPeople })),
+    items: []
+  };
+}
+
+/**
+ * Picks the authoritative quantities for a plan: a manual plan's validated
+ * items, a stored deterministic plan's own numbers, otherwise (AI provider
+ * output, or anything malformed) the rules computed from the event counts.
+ */
+export function rfqRequirementsFromPlan(source: EventPlanSource, content: unknown, rules: RfqRules): RfqRequirements {
+  const record = content && typeof content === "object" && !Array.isArray(content) ? (content as Record<string, unknown>) : {};
+  if (source === "MANUAL") {
+    const items = z.array(storedManualPlanItemSchema).min(1).max(40).safeParse(record.items);
+    if (items.success) {
+      return {
+        quantitiesFrom: "PLAN_ITEMS",
+        hotel: null,
+        vehicles: null,
+        staff: [],
+        items: items.data.map((item) => ({ category: item.category, quantity: item.quantity, note: item.note ?? null }))
+      };
+    }
+    return fromRules(rules);
+  }
+  if (source === "DETERMINISTIC_ADVISORY") {
+    const stored = rulesShape.safeParse(record);
+    if (stored.success) return { ...fromRules(stored.data), quantitiesFrom: "PLAN_ITEMS" };
+  }
+  return fromRules(rules);
+}
+
+export type RfqEventInput = {
+  locationLabel: string | null;
+  venue?: string | null;
+  hotelZone: string | null;
+  vipGuestCount: number;
+  regularGuestCount: number;
+  carCount: number;
+  startAt: Date | string | null;
+  endAt: Date | string | null;
+  arrivalStartAt: Date | string | null;
+  departureEndAt: Date | string | null;
+};
+
+const MANUAL_UNITS: Record<RfqLineCategory, RfqUnit> = {
+  HOTEL_ROOMS: "rooms",
+  VEHICLES: "vehicles",
+  STAFF: "people",
+  TICKETS: "tickets",
+  OTHER: "items"
+};
+
+const MANUAL_LABELS: Record<RfqLineCategory, string> = {
+  HOTEL_ROOMS: "Hotel rooms",
+  VEHICLES: "Vehicles with drivers",
+  STAFF: "Operations staff",
+  TICKETS: "Tickets",
+  OTHER: "Other services"
+};
+
+function isoOrNull(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function clip(value: string, max: number = RFQ_LIMITS.maxText) {
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+}
+
+export function rfqReference(eventId: string, planVersion: number) {
+  const tail = eventId.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase() || "EVENT";
+  return `RFQ-${tail}-P${planVersion}`;
+}
+
+/** Deterministic RFQ draft: same plan + event + time give the same draft. */
+export function buildRfqDraft(input: {
+  eventId: string;
+  planId: string;
+  planVersion: number;
+  planSource: EventPlanSource;
+  event: RfqEventInput;
+  requirements: RfqRequirements;
+  generatedAt: Date;
+}): RfqDraftDto {
+  const { event, requirements } = input;
+  const serviceStartAt = isoOrNull(event.arrivalStartAt ?? event.startAt);
+  const serviceEndAt = isoOrNull(event.departureEndAt ?? event.endAt);
+  const span = serviceStartAt && serviceEndAt ? Date.parse(serviceEndAt) - Date.parse(serviceStartAt) : 0;
+  const serviceDays = Math.min(366, Math.max(1, Math.ceil(span / 86_400_000)));
+  const zone = event.hotelZone ? ` · ${clip(event.hotelZone, 120)}` : "";
+
+  const lines: RfqLineDto[] = [];
+  const push = (line: RfqLineDto) => {
+    if (line.quantity > 0 && lines.length < RFQ_LIMITS.maxLines) lines.push(line);
+  };
+  if (requirements.hotel) {
+    push({ category: "HOTEL_ROOMS", description: `VIP single rooms${zone}`, quantity: requirements.hotel.vipSingleRooms, unit: "rooms", serviceDays });
+    push({ category: "HOTEL_ROOMS", description: `Standard twin rooms${zone}`, quantity: requirements.hotel.regularTwinRooms, unit: "rooms", serviceDays });
+  }
+  if (requirements.vehicles) {
+    push({ category: "VEHICLES", description: "VIP sedans with chauffeur", quantity: requirements.vehicles.vip, unit: "vehicles", serviceDays });
+    push({ category: "VEHICLES", description: "Shuttle vehicles with driver", quantity: requirements.vehicles.shuttle, unit: "vehicles", serviceDays });
+  }
+  for (const team of requirements.staff) {
+    push({ category: "STAFF", description: `${team.subteam.toLowerCase()} team staff`, quantity: team.people, unit: "people", serviceDays });
+  }
+  for (const item of requirements.items) {
+    push({
+      category: item.category,
+      description: clip(item.note ? item.note : MANUAL_LABELS[item.category]),
+      quantity: item.quantity,
+      unit: MANUAL_UNITS[item.category],
+      serviceDays: item.category === "TICKETS" || item.category === "OTHER" ? null : serviceDays
+    });
+  }
+
+  const notes = [
+    "Draft only. It has not been sent to any vendor; sending is a separate, explicit step.",
+    "No prices, supplier selections or guest personal data are included. Vendors quote their own prices.",
+    requirements.quantitiesFrom === "PLAN_ITEMS"
+      ? `Quantities copied from plan version ${input.planVersion}.`
+      : "Quantities computed by the deterministic planning rules from the event counts (not from AI text)."
+  ];
+  if (event.carCount > 0) notes.push(`${event.carCount} guests need vehicles (event scope).`);
+
+  return rfqDraftSchema.parse({
+    reference: rfqReference(input.eventId, input.planVersion),
+    status: "DRAFT",
+    sent: false,
+    eventId: input.eventId,
+    planId: input.planId,
+    planVersion: input.planVersion,
+    planSource: input.planSource,
+    quantitiesFrom: requirements.quantitiesFrom,
+    generator: RFQ_GENERATOR,
+    generatedAt: input.generatedAt.toISOString(),
+    scope: {
+      locationLabel: event.locationLabel ? clip(event.locationLabel, 200) : event.venue ? clip(event.venue, 200) : null,
+      hotelZone: event.hotelZone ? clip(event.hotelZone, 120) : null,
+      serviceStartAt,
+      serviceEndAt,
+      serviceDays,
+      vipGuests: event.vipGuestCount,
+      regularGuests: event.regularGuestCount,
+      guestsNeedingVehicles: event.carCount
+    },
+    lines,
+    notes
+  });
+}
+
+/** The stored draft of a plan's content, or null when absent or malformed. */
+export function rfqDraftFromPlanContent(content: unknown): RfqDraftDto | null {
+  if (!content || typeof content !== "object" || Array.isArray(content)) return null;
+  const parsed = rfqDraftSchema.safeParse((content as Record<string, unknown>).rfqDraft);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Plain-text rendering for copy/download (English; the draft itself is data). */
+export function rfqDraftText(draft: RfqDraftDto): string {
+  const scope = draft.scope;
+  return [
+    `Request for quotation — DRAFT (not sent)`,
+    `Reference: ${draft.reference}`,
+    `Plan version: ${draft.planVersion}`,
+    `Location: ${scope.locationLabel ?? "—"}${scope.hotelZone ? ` · Hotel zone: ${scope.hotelZone}` : ""}`,
+    `Service window: ${scope.serviceStartAt ?? "—"} → ${scope.serviceEndAt ?? "—"} (${scope.serviceDays} day(s))`,
+    `Guests: ${scope.vipGuests} VIP, ${scope.regularGuests} regular; ${scope.guestsNeedingVehicles} need vehicles`,
+    "",
+    "Line items (quantity · unit · days · description):",
+    ...draft.lines.map((line, i) => `${i + 1}. ${line.quantity} ${line.unit}${line.serviceDays ? ` × ${line.serviceDays} day(s)` : ""} — ${line.description}`),
+    "",
+    "Unit price: to be quoted by the vendor.",
+    ...draft.notes.map((note) => `* ${note}`)
+  ].join("\n");
+}
 
 // ---------------------------------------------------------------------------
 // Event memberships

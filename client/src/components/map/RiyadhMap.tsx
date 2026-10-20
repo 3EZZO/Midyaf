@@ -54,11 +54,40 @@ const ZONES: { id: Zone; en: string; ar: string }[] = [
   { id: "WEST", en: "Diriyah / DQ", ar: "الدرعية / الدبلوماسي" }
 ];
 
+// Every mode is an Esri basemap (constants.ts); labels name the style, never OpenStreetMap.
 const MODES: { id: MapMode; icon: typeof Moon; en: string; ar: string }[] = [
   { id: "dark", icon: Moon, en: "Tactical", ar: "تكتيكي" },
   { id: "satellite", icon: Satellite, en: "Satellite", ar: "قمر صناعي" },
-  { id: "standard", icon: MapIcon, en: "Standard", ar: "قياسي" }
+  { id: "standard", icon: MapIcon, en: "Street", ar: "خريطة الشوارع" }
 ];
+
+type VehicleStatusFilter = "ALL" | Driver["status"];
+
+const VEHICLE_STATUS_FILTERS: { id: VehicleStatusFilter; en: string; ar: string }[] = [
+  { id: "ALL", en: "All vehicles", ar: "كل المركبات" },
+  { id: "AVAILABLE", en: "Available", ar: "متاحة" },
+  { id: "ASSIGNED", en: "Assigned", ar: "مخصصة" },
+  { id: "EN_ROUTE", en: "En route", ar: "في الطريق" },
+  { id: "BUSY", en: "Busy", ar: "مشغولة" },
+  { id: "OFFLINE", en: "Offline", ar: "غير متصلة" }
+];
+
+/** Zone + vehicle-status filter, shared by the markers, counts and fullscreen roster. */
+export function filterDrivers(drivers: Driver[], zone: Zone, status: VehicleStatusFilter): Driver[] {
+  return drivers.filter((d) => {
+    if (status !== "ALL" && d.status !== status) return false;
+    if (zone === "ALL") return true;
+    const zoneName = (d.zone ?? "").toUpperCase();
+    const lat = d.currentLat;
+    const lng = d.currentLng;
+    if (zone === "NORTH") return zoneName.includes("NORTH") || (typeof lat === "number" && lat > 24.85);
+    if (zone === "CENTRAL")
+      return zoneName.includes("CENTRAL") || (typeof lat === "number" && lat >= 24.7 && lat <= 24.85);
+    if (zone === "WEST")
+      return zoneName.includes("WEST") || zoneName.includes("DIRIYAH") || (typeof lng === "number" && lng < 46.62);
+    return true;
+  });
+}
 
 const FULLSCREEN_TABS: IconTab<FullscreenTab>[] = [
   { id: "drivers", icon: Car, labelEn: "Fleet & Captains", labelAr: "الأسطول والقادة" },
@@ -151,6 +180,7 @@ export function RiyadhMap({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState<FullscreenTab>("drivers");
   const [selectedZone, setSelectedZone] = useState<Zone>("ALL");
+  const [vehicleStatus, setVehicleStatus] = useState<VehicleStatusFilter>("ALL");
   const [showGeofences, setShowGeofences] = useState(true);
   // The convoy the camera is tracking: parent selection, marker click, Locate or director focus.
   const [trackedDriverId, setTrackedDriverId] = useState<string | null>(selectedDriverId);
@@ -221,20 +251,10 @@ export function RiyadhMap({
     layers?.markers.setSelected(trackedMarkerRef.current);
   }, [layers, trackedDriverId]);
 
-  const displayedDrivers = useMemo(() => {
-    if (selectedZone === "ALL") return drivers;
-    return drivers.filter((d) => {
-      const zone = (d.zone ?? "").toUpperCase();
-      const lat = d.currentLat;
-      const lng = d.currentLng;
-      if (selectedZone === "NORTH") return zone.includes("NORTH") || (typeof lat === "number" && lat > 24.85);
-      if (selectedZone === "CENTRAL")
-        return zone.includes("CENTRAL") || (typeof lat === "number" && lat >= 24.7 && lat <= 24.85);
-      if (selectedZone === "WEST")
-        return zone.includes("WEST") || zone.includes("DIRIYAH") || (typeof lng === "number" && lng < 46.62);
-      return true;
-    });
-  }, [drivers, selectedZone]);
+  const displayedDrivers = useMemo(
+    () => filterDrivers(drivers, selectedZone, vehicleStatus),
+    [drivers, selectedZone, vehicleStatus]
+  );
 
   // Reconcile markers on every data change. Nothing here clears a layer.
   useEffect(() => {
@@ -432,8 +452,21 @@ export function RiyadhMap({
     else setTrackedDriverId(null);
   };
 
+  /** Recenter: back onto the tracked convoy, otherwise the whole operation. */
+  const recenter = () => {
+    if (trackedDriverId && layersRef.current?.controller.focusConvoy(`driver:${trackedDriverId}`)) return;
+    layersRef.current?.controller.overview();
+  };
+
+  const trackDriver = (driverId: string) => {
+    if (!driverId) return releaseTracked();
+    const driver = drivers.find((d) => d.id === driverId);
+    if (driver) locateDriver(driver);
+  };
+
   const activeCount = displayedDrivers.filter((d) => d.status !== "OFFLINE").length;
   const trackedDriver = trackedDriverId ? drivers.find((d) => d.id === trackedDriverId) : undefined;
+  const trackable = displayedDrivers.filter((d) => coordinates(d.currentLat, d.currentLng));
 
   return (
     <div
@@ -475,6 +508,53 @@ export function RiyadhMap({
             onChange={setMapMode}
             compactLabels
           />
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+            <span className="hidden sm:inline">{isArabic ? "حالة المركبات" : "Vehicle status"}</span>
+            <select
+              aria-label={isArabic ? "حالة المركبات" : "Vehicle status"}
+              className="h-8 rounded-lg border border-hairline bg-surface-1 px-2 text-xs text-ink"
+              value={vehicleStatus}
+              onChange={(e) => setVehicleStatus(e.target.value as VehicleStatusFilter)}
+            >
+              {VEHICLE_STATUS_FILTERS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {isArabic ? s.ar : s.en}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+            <Crosshair size={13} className="text-gold-500" aria-hidden />
+            <span className="hidden sm:inline">{isArabic ? "تركيز التتبع" : "Tracking focus"}</span>
+            <select
+              aria-label={isArabic ? "تركيز التتبع" : "Tracking focus"}
+              className="h-8 max-w-[12rem] rounded-lg border border-hairline bg-surface-1 px-2 text-xs text-ink"
+              value={trackedDriverId ?? ""}
+              disabled={layers === null}
+              onChange={(e) => trackDriver(e.target.value)}
+            >
+              <option value="">{isArabic ? "بدون تتبع" : "Not tracking"}</option>
+              {trackable.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {l(d.user.name)}
+                </option>
+              ))}
+              {trackedDriver && !trackable.some((d) => d.id === trackedDriver.id) && (
+                <option value={trackedDriver.id}>{l(trackedDriver.user.name)}</option>
+              )}
+            </select>
+          </label>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={layers === null}
+            onClick={recenter}
+            leadingIcon={<LocateFixed size={13} aria-hidden />}
+            aria-label={isArabic ? "إعادة التمركز" : "Recenter"}
+            title={isArabic ? "إعادة التمركز" : "Recenter"}
+          >
+            <span className="hidden sm:inline">{isArabic ? "إعادة التمركز" : "Recenter"}</span>
+          </Button>
           <Button
             size="sm"
             variant={showGeofences ? "outline" : "ghost"}
@@ -496,6 +576,18 @@ export function RiyadhMap({
             {isFullscreen ? l("Exit Fullscreen") : l("Fullscreen")}
           </Button>
         </div>
+
+        {/* Tracking focus lives in the chrome, not over the canvas: zoom can never hide it. */}
+        {trackedDriver && (
+          <TrackingHud
+            driver={trackedDriver}
+            isArabic={isArabic}
+            ready={layers !== null}
+            l={l}
+            onRecenter={recenterTracked}
+            onRelease={releaseTracked}
+          />
+        )}
       </div>
 
       {/* Canvas + (fullscreen) sidebar. The map node is never remounted. */}
@@ -508,17 +600,6 @@ export function RiyadhMap({
           )}
         >
           <div ref={containerRef} className="h-full w-full" />
-
-          {trackedDriver && (
-            <TrackingHud
-              driver={trackedDriver}
-              isArabic={isArabic}
-              ready={layers !== null}
-              l={l}
-              onRecenter={recenterTracked}
-              onRelease={releaseTracked}
-            />
-          )}
 
           {!isFullscreen && (
             <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] flex items-end justify-between gap-2">
@@ -650,8 +731,8 @@ function driverIdFromMarker(markerId: string | null): string | null {
 
 /**
  * Tracking focus: which convoy the camera follows, with re-center and
- * release. Sits at the top inline-end corner, opposite Leaflet's zoom
- * control (top-left in LTR, top-right in RTL).
+ * release. Rendered as a full-width row of the chrome bar (outside the
+ * Leaflet stage), so zooming, panning or tile loading can never cover it.
  */
 export function TrackingHud({
   driver,
@@ -672,17 +753,11 @@ export function TrackingHud({
   const recenterLabel = isArabic ? "إعادة التمركز على القافلة" : "Re-center on convoy";
   const releaseLabel = isArabic ? "إيقاف التتبع وعرض الكل" : "Stop tracking and show all";
   return (
-    <div
-      className={cn(
-        "map-hud pointer-events-none absolute top-3 flex max-w-[calc(100%-4.5rem)]",
-        isArabic ? "left-3" : "right-3"
-      )}
-      data-map-hud="tracking"
-    >
+    <div className="map-hud flex w-full min-w-0 justify-end" data-map-hud="tracking" dir={isArabic ? "rtl" : "ltr"}>
       <div
         role="status"
         aria-label={isArabic ? "تتبع القافلة" : "Convoy tracking"}
-        className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-lg border border-gold-500/40 bg-surface-1/90 py-1 pe-1 ps-3 shadow-xl backdrop-blur-md"
+        className="flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-gold-500/40 bg-surface-1/90 py-1 pe-1 ps-3 shadow-xl backdrop-blur-md"
       >
         <Crosshair size={13} className="shrink-0 text-gold-500" aria-hidden />
         <div className="min-w-0">

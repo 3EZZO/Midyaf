@@ -16,7 +16,6 @@ import type {
   TaskStatus
 } from "@shared/domain";
 // Portals are code-split: each becomes its own chunk and loads on first use.
-const ActivityIntakePage = lazy(() => import("./pages/ops/ActivityIntakePage").then((m) => ({ default: m.ActivityIntakePage })));
 const CaptainsApp = lazy(() => import("./pages/ops/CaptainsApp").then((m) => ({ default: m.CaptainsApp })));
 const CompanyDashboard = lazy(() => import("./pages/ops/CompanyDashboard").then((m) => ({ default: m.CompanyDashboard })));
 const CoordinatorsApp = lazy(() => import("./pages/ops/CoordinatorsApp").then((m) => ({ default: m.CoordinatorsApp })));
@@ -1308,11 +1307,12 @@ function renderPortal(
       return <CaptainsApp {...props} />;
     case "coordinator":
       return <CoordinatorsApp {...props} />;
+    // RADAR-ORGANIZER-001: "intake" is no longer a portal; an old deep link
+    // canonicalizes to the company workspace, in demo mode too.
     case "company":
-      return <CompanyDashboard {...props} />;
     case "intake":
     default:
-      return props.isDemoMode ? <ActivityIntakePage {...props} /> : <CompanyDashboard {...props} />;
+      return <CompanyDashboard {...props} />;
   }
 }
 

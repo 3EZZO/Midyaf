@@ -51,30 +51,27 @@ export default defineConfig({
           /^\/uploads\//,
           /^\/socket\.io\//
         ],
+        // Drop precaches from older builds when this service worker activates.
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            // World_Imagery (server.) and the Dark Gray fallback (services.)
+            // Every map provider is Esri: World_Imagery (server.) plus
+            // World_Street_Map and Dark Gray Canvas (services.). No
+            // OpenStreetMap volunteer tile server is requested or cached.
+            // Tiles load with CORS, so only real 200s are cached: an error
+            // or opaque (status 0) response is never replayed from cache.
+            // The cache name is versioned; the retired "map-tiles-esri" and
+            // "map-tiles-osm" caches are deleted by the app at startup
+            // (components/map/constants.ts RETIRED_TILE_CACHES).
             urlPattern: /^https:\/\/(server|services)\.arcgisonline\.com\//i,
             handler: "CacheFirst",
             options: {
-              cacheName: "map-tiles-esri",
+              cacheName: "map-tiles-esri-v2",
               expiration: {
                 maxEntries: 2000,
                 maxAgeSeconds: 60 * 60 * 24 * 30
               },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/[a-c]\.tile\.openstreetmap\.org\//i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "map-tiles-osm",
-              expiration: {
-                maxEntries: 1000,
-                maxAgeSeconds: 60 * 60 * 24 * 30
-              },
-              cacheableResponse: { statuses: [0, 200] }
+              cacheableResponse: { statuses: [200] }
             }
           }
         ]

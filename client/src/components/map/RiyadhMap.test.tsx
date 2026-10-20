@@ -17,7 +17,7 @@ vi.mock("motion/react", async (importOriginal) => ({
   useReducedMotion: () => false
 }));
 
-import { RiyadhMap, TrackingHud, mapShellClassName } from "./RiyadhMap";
+import { RiyadhMap, TrackingHud, filterDrivers, mapShellClassName } from "./RiyadhMap";
 
 /**
  * FULL-OVERHAUL-M1: the radar chrome and tracking HUD render outside
@@ -77,17 +77,38 @@ describe("RiyadhMap radar chrome", () => {
     expect(groupClass(html, "Map style")).not.toContain("hidden");
     expect(html).toMatch(/aria-pressed="false" aria-label="Tactical"/);
     expect(html).toMatch(/aria-pressed="true" aria-label="Satellite"/);
-    expect(html).toMatch(/aria-pressed="false" aria-label="Standard"/);
+    // RADAR-ORGANIZER-001: the street base is Esri World_Street_Map, never labelled OpenStreetMap.
+    expect(html).toMatch(/aria-pressed="false" aria-label="Street"/);
+    expect(html).not.toContain("OpenStreetMap");
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("Geofences");
     expect(html).toContain("Fullscreen");
+  });
+
+  it("puts vehicle status, map style, tracking focus, recenter and fullscreen in the chrome, ahead of the stage", () => {
+    const html = render({ selectedDriverId: "drv_1" });
+    const stage = html.indexOf("map-stage");
+    for (const marker of [
+      'aria-label="Vehicle status"',
+      'aria-label="Map style"',
+      'aria-label="Tracking focus"',
+      'aria-label="Recenter"',
+      "Fullscreen",
+      'data-map-hud="tracking"'
+    ]) {
+      const at = html.indexOf(marker);
+      expect(at, marker).toBeGreaterThan(-1);
+      expect(at, marker).toBeLessThan(stage);
+    }
+    // The tracked convoy is preselected in the focus control.
+    expect(html).toMatch(/<option value="drv_1" selected="">Synthetic Captain<\/option>/);
   });
 
   it("shows the tracking HUD for the selected convoy, disabled until the map is live", () => {
     const html = render({ selectedDriverId: "drv_1" });
     expect(html).toContain('data-map-hud="tracking"');
     expect(html).toContain("Synthetic Captain");
-    expect(html).toMatch(/class="map-hud [^"]*\bright-3\b/);
+    expect(html).not.toMatch(/class="map-hud [^"]*\babsolute\b/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Re-center on convoy"/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Stop tracking and show all"/);
   });
@@ -103,9 +124,29 @@ describe("RiyadhMap radar chrome", () => {
     expect(groupClass(html, "تصفية حسب المنطقة")).not.toContain("hidden");
     expect(groupClass(html, "نمط الخريطة")).not.toContain("hidden");
     expect(html).toContain("كافة المسارات");
-    expect(html).toMatch(/class="map-hud [^"]*\bleft-3\b/);
-    expect(html).not.toMatch(/class="map-hud [^"]*\bright-3\b/);
+    expect(html).toContain("خريطة الشوارع");
+    expect(html).toMatch(/data-map-hud="tracking" dir="rtl"/);
     expect(html).toContain('aria-label="إعادة التمركز على القافلة"');
+    expect(html).toContain('aria-label="تركيز التتبع"');
+    expect(html).toContain('aria-label="حالة المركبات"');
+  });
+});
+
+describe("filterDrivers", () => {
+  const at = (id: string, status: Driver["status"], lat: number, lng: number, zone = "") =>
+    ({ ...driver, id, status, currentLat: lat, currentLng: lng, zone }) as unknown as Driver;
+  const fleet = [
+    at("north", "AVAILABLE", 24.9, 46.7),
+    at("central", "EN_ROUTE", 24.75, 46.7),
+    at("west", "OFFLINE", 24.6, 46.5, "DIRIYAH")
+  ];
+
+  it("combines the zone and vehicle-status filters", () => {
+    expect(filterDrivers(fleet, "ALL", "ALL").map((d) => d.id)).toEqual(["north", "central", "west"]);
+    expect(filterDrivers(fleet, "ALL", "EN_ROUTE").map((d) => d.id)).toEqual(["central"]);
+    expect(filterDrivers(fleet, "NORTH", "ALL").map((d) => d.id)).toEqual(["north"]);
+    expect(filterDrivers(fleet, "WEST", "OFFLINE").map((d) => d.id)).toEqual(["west"]);
+    expect(filterDrivers(fleet, "NORTH", "OFFLINE")).toEqual([]);
   });
 });
 

@@ -7,13 +7,19 @@ import type { PortalKey, Role } from "@shared/domain";
  * The supplier workspace (SUPPLIER-001) is open to SUPPLIER, where it replaces
  * the company dashboard, and to SUPER_ADMIN, which sees every dashboard and
  * gets a read-only administrative view of it (ADMIN-PORTALS-001).
+ *
+ * RADAR-ORGANIZER-001: no role opens the retired "intake" portal; event
+ * setup happens only inside the company workspace. A stale "intake" portal
+ * is clamped by the shell and rendered as the company workspace.
  */
+const OPEN_PORTALS = PORTALS.filter(portal => portal !== "intake");
+
 export const portalsByRole: Record<Role, PortalKey[]> = {
   GUEST: ["guest", MESSAGES_PORTAL],
   DRIVER: ["captain", MESSAGES_PORTAL],
-  ORGANIZER: [...PORTALS.filter(portal => portal !== "intake"), MESSAGES_PORTAL],
+  ORGANIZER: [...OPEN_PORTALS, MESSAGES_PORTAL],
   SUPPLIER: [SUPPLIER_PORTAL, MESSAGES_PORTAL],
-  SUPER_ADMIN: [...PORTALS, SUPPLIER_PORTAL, MESSAGES_PORTAL],
+  SUPER_ADMIN: [...OPEN_PORTALS, SUPPLIER_PORTAL, MESSAGES_PORTAL],
   COORDINATOR: ["coordinator", MESSAGES_PORTAL],
   LOGISTICS_MANAGER: ["sila_operations", "company", "coordinator", MESSAGES_PORTAL],
   COMPANY_ORGANIZER: ["company", "client", "sila_operations", MESSAGES_PORTAL],

@@ -1,7 +1,21 @@
 import { useEffect, useState, type RefObject } from "react";
 import L from "leaflet";
 import { RIYADH } from "@shared/constants";
-import { DARK_FALLBACK_TILES, TILE_FALLBACK_THRESHOLD, TILE_LAYERS, type MapMode, type TileConfig } from "./constants";
+import {
+  TILE_FALLBACKS,
+  TILE_LAYERS,
+  createTileHealth,
+  focusWithoutScroll,
+  observeContainerSize,
+  pinScrollOrigin,
+  purgeRetiredTileCachesOnce,
+  tileLayerOptions,
+  type MapMode,
+  type TileConfig
+} from "./constants";
+
+// Kept importable from here for existing callers and tests.
+export { focusWithoutScroll, observeContainerSize, pinScrollOrigin };
 
 const LABELS_PANE = "map-labels";
 
@@ -11,9 +25,10 @@ const LABELS_PANE = "map-labels";
  * direction: zoom sits at the inline-start corner, attribution at the
  * inline-end, so they never collide with the HUD overlays.
  *
- * The dark base falls back from Esri Dark Gray to filtered OSM after
+ * A mode with a fallback (the tactical Dark Gray base) swaps to it after
  * `TILE_FALLBACK_THRESHOLD` consecutive tile errors — only while online, so
  * a warmed service-worker cache keeps serving the primary tiles offline.
+ * Every provider is Esri; see constants.ts.
  *
  * Leaflet focuses its container on every mousedown (drag, double-click
  * zoom) and only restores the window scroll afterwards. When the canvas is
@@ -29,6 +44,7 @@ export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mo
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    void purgeRetiredTileCachesOnce();
     const instance = L.map(container, {
       center: [RIYADH.centerLat, RIYADH.centerLng],
       zoom: RIYADH.defaultZoom,
@@ -67,29 +83,28 @@ export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mo
   useEffect(() => {
     if (!map) return;
     let layers = addTileLayers(map, TILE_LAYERS[mode]);
-    let consecutiveErrors = 0;
-    let fellBack = false;
+    const health = createTileHealth(mode);
 
     const onError = () => {
-      consecutiveErrors += 1;
-      if (fellBack || mode !== "dark" || consecutiveErrors < TILE_FALLBACK_THRESHOLD) return;
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
-      fellBack = true;
-      console.info("[map] dark base tiles unavailable — falling back to filtered OSM");
+      const verdict = health.onError();
+      const fallback = TILE_FALLBACKS[mode];
+      if (verdict === "degraded") console.info(`[map] ${mode} tiles are failing; no keyless fallback for this mode`);
+      if (verdict !== "fallback" || !fallback) return;
+      console.info(`[map] ${mode} base tiles unavailable — falling back to Esri street tiles`);
+      detach();
+      layers.remove();
+      layers = addTileLayers(map, fallback);
+    };
+    const onLoad = () => health.onLoad();
+    const detach = () => {
       layers.base.off("tileerror", onError);
       layers.base.off("tileload", onLoad);
-      layers.remove();
-      layers = addTileLayers(map, DARK_FALLBACK_TILES);
-    };
-    const onLoad = () => {
-      consecutiveErrors = 0;
     };
     layers.base.on("tileerror", onError);
     layers.base.on("tileload", onLoad);
 
     return () => {
-      layers.base.off("tileerror", onError);
-      layers.base.off("tileload", onLoad);
+      detach();
       layers.remove();
     };
   }, [map, mode]);
@@ -97,44 +112,8 @@ export function useLeafletMap(containerRef: RefObject<HTMLDivElement | null>, mo
   return map;
 }
 
-type ScrollTarget = Pick<HTMLElement, "scrollTop" | "scrollLeft" | "addEventListener" | "removeEventListener">;
-
-/** Snaps a clipped box back to its origin whenever focus or script scrolls it. */
-export function pinScrollOrigin(el: ScrollTarget): () => void {
-  const reset = () => {
-    if (el.scrollTop !== 0) el.scrollTop = 0;
-    if (el.scrollLeft !== 0) el.scrollLeft = 0;
-  };
-  el.addEventListener("scroll", reset, { passive: true });
-  return () => el.removeEventListener("scroll", reset);
-}
-
-/** Makes programmatic `focus()` on `el` (Leaflet's mousedown focus) never scroll ancestors. */
-export function focusWithoutScroll(el: Pick<HTMLElement, "focus">): () => void {
-  const original = el.focus;
-  el.focus = (options?: FocusOptions) => original.call(el, { ...options, preventScroll: true });
-  return () => {
-    el.focus = original;
-  };
-}
-
-/** Calls `onResize` when the element's box changes (wrapping chrome, fullscreen, browser zoom). */
-export function observeContainerSize(el: Element, onResize: () => void): () => void {
-  if (typeof ResizeObserver === "undefined") return () => undefined;
-  const observer = new ResizeObserver(() => onResize());
-  observer.observe(el);
-  return () => observer.disconnect();
-}
-
 function addTileLayers(map: L.Map, cfg: TileConfig) {
-  const base = L.tileLayer(cfg.url, {
-    maxZoom: cfg.maxZoom,
-    maxNativeZoom: cfg.maxNativeZoom,
-    attribution: cfg.attribution,
-    subdomains: cfg.subdomains,
-    crossOrigin: true,
-    className: cfg.className ?? "map-tiles"
-  }).addTo(map);
+  const base = L.tileLayer(cfg.url, tileLayerOptions(cfg)).addTo(map);
   const labels = cfg.labelsUrl
     ? L.tileLayer(cfg.labelsUrl, {
         maxZoom: cfg.maxZoom,
