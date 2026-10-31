@@ -13,6 +13,8 @@ import {
   supplierQuoteBodySchema,
   toOwnQuoteDto,
   toSubmissionReviewDto,
+  isOpenedByKeyHolder,
+  VAULT_KEY_HOLDER_ROLE,
   toSupplierBookingDto,
   toSupplierRequestDto
 } from "./supplierPortal.js";
@@ -221,8 +223,40 @@ describe("DTOs and references", () => {
       createdAt: new Date(),
       supplier: { id: "s1", name: "Synthetic Hotel", category: SupplierCategory.HOTEL }
     });
-    expect(dto).toMatchObject({ source: "SUPPLIER_PORTAL", sealed: true, policyPending: true });
+    expect(dto).toMatchObject({ source: "SUPPLIER_PORTAL", sealed: true, terms: null, contract: null });
     expect(JSON.stringify(dto)).not.toMatch(/price|Price|commission|score/);
+  });
+
+  it("drops price columns unless the key holder reveals them (D-011)", () => {
+    const row = {
+      id: "q1",
+      intakeId: demo.intakeId,
+      category: "HOTEL",
+      item: "Rooms",
+      quantity: 15,
+      unitPrice: "1200.00",
+      totalPrice: "18000.00",
+      commissionPercent: "12.00",
+      commissionAmount: "2160.00",
+      status: QuoteStatus.RECEIVED,
+      isVaultSealed: true,
+      createdAt: new Date(),
+      supplier: { id: "s1", name: "Synthetic Hotel", category: SupplierCategory.HOTEL }
+    };
+    expect(JSON.stringify(toSubmissionReviewDto(row))).not.toMatch(/1200|18000|2160|Price|commission/);
+    expect(toSubmissionReviewDto(row, { revealTerms: true })).toMatchObject({
+      sealed: false,
+      terms: { unitPrice: "1200.00", totalPrice: "18000.00", commissionPercent: "12.00", commissionAmount: "2160.00", currency: "SAR" }
+    });
+  });
+
+  it("treats only a session opened by the Super Admin key as open", () => {
+    const unlockedAt = new Date();
+    expect(isOpenedByKeyHolder({ status: "UNLOCKED", key1Role: VAULT_KEY_HOLDER_ROLE, unlockedAt })).toBe(true);
+    expect(isOpenedByKeyHolder({ status: "UNLOCKED", key1Role: "Sila Operations Director", unlockedAt })).toBe(false);
+    expect(isOpenedByKeyHolder({ status: "LOCKED", key1Role: VAULT_KEY_HOLDER_ROLE, unlockedAt })).toBe(false);
+    expect(isOpenedByKeyHolder({ status: "UNLOCKED", key1Role: VAULT_KEY_HOLDER_ROLE, unlockedAt: null })).toBe(false);
+    expect(isOpenedByKeyHolder(null)).toBe(false);
   });
 
   it("exposes only an opaque event reference on bookings and requests", () => {

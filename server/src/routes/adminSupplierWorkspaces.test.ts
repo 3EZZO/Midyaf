@@ -412,7 +412,7 @@ describe("read-only and preservation", () => {
     expect(memory.current.rows("vendorQuote").every((q) => q.isVaultSealed === true)).toBe(true);
   });
 
-  it("keeps approval failing closed for a supplier quote after admin views (D-011)", async () => {
+  it("keeps the legacy approve path closed for a supplier quote after admin views", async () => {
     await http.get(workspaceUrl("sup_hotel"), sa);
     expect((await http.put("/api/vendor-quotes/q_hotel/approve", sa)).status).toBe(409);
     expect(memory.current.rows("vendorQuote").find((q) => q.id === "q_hotel")!.status).toBe(QuoteStatus.RECEIVED);

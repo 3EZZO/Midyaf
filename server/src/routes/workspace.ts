@@ -228,12 +228,16 @@ router.post(
     const access = await loadOrganization(req, user, req.params.organizationId);
     requireOrganizationManager(access);
     const body = organizationMemberCreateSchema.parse(req.body);
-    if (body.userId === user.id) throw new HttpError(403, "You cannot change your own membership");
     if (body.role === OrganizationRole.OWNER && access.role !== OrganizationRole.OWNER && !access.support) {
       throw new HttpError(403, "Only an owner can grant ownership");
     }
-    const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true } });
+    // Only organization managers reach this point; one message for any miss.
+    const target = await prisma.user.findUnique({
+      where: body.userId ? { id: body.userId } : { email: body.email! },
+      select: { id: true }
+    });
     if (!target) throw new HttpError(400, "The member must be an existing user");
+    if (target.id === user.id) throw new HttpError(403, "You cannot change your own membership");
 
     const member = await prisma
       .$transaction(async (tx) => {

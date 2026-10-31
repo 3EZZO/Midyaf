@@ -125,6 +125,50 @@ describe("organization members", () => {
     ).toBe(409);
   });
 
+  it("lets the Super Admin add a project manager by email as admin, who can then create events (ORG-MEMBERS)", async () => {
+    const event = {
+      organizationId: "org_a",
+      name: "Synthetic new activity",
+      locationLabel: "Synthetic district",
+      planningMode: "MANUAL",
+      vipGuestCount: 2,
+      regularGuestCount: 10,
+      carCount: 3,
+      startAt: "2026-12-01T06:00:00.000Z",
+      endAt: "2026-12-02T18:00:00.000Z"
+    };
+    // Before: an event-level project manager without an organization role cannot create.
+    expect((await http.post("/api/workspace/events", actors.pm, event)).status).toBe(404);
+
+    const added = await http.post("/api/workspace/organizations/org_a/members", actors.sa, {
+      email: " U_PM@example.test ",
+      role: "ADMIN"
+    });
+    expect(added.status).toBe(201);
+    expect(added.body.member).toMatchObject({ user: { id: "u_pm" }, role: "ADMIN", status: "ACTIVE" });
+    expect(audits("organization.member.add")[0]).toMatchObject({ metadata: { support: true } });
+
+    const orgs = await http.get("/api/workspace/organizations", actors.pm);
+    expect(orgs.body.organizations).toEqual([expect.objectContaining({ id: "org_a", myRole: "ADMIN" })]);
+    const created = await http.post("/api/workspace/events", actors.pm, event);
+    expect(created.status).toBe(201);
+    // The new event is editable by its creator like the existing ones.
+    const edited = await http.patch(`/api/workspace/events/${created.body.event.id}`, actors.pm, { name: "Synthetic renamed activity" });
+    expect(edited.status).toBe(200);
+    expect(edited.body.event.name).toBe("Synthetic renamed activity");
+  });
+
+  it("validates the email form of adding a member", async () => {
+    const path = "/api/workspace/organizations/org_a/members";
+    expect((await http.post(path, actors.owner, { email: "nobody@example.test", role: "MEMBER" })).status).toBe(400);
+    expect((await http.post(path, actors.owner, { email: "not-an-email", role: "MEMBER" })).status).toBe(400);
+    expect((await http.post(path, actors.owner, { email: "u_lm@example.test", userId: "u_lm", role: "MEMBER" })).status).toBe(400);
+    expect((await http.post(path, actors.owner, { role: "MEMBER" })).status).toBe(400);
+    expect((await http.post(path, actors.owner, { email: "u_owner@example.test", role: "ADMIN" })).status).toBe(403);
+    expect((await http.post(path, actors.orgMember, { email: "u_lm@example.test", role: "MEMBER" })).status).toBe(403);
+    expect((await http.post(path, actors.owner, { email: "u_lm@example.test", role: "MEMBER" })).status).toBe(201);
+  });
+
   it("refuses self-grants and lets only owners grant ownership", async () => {
     expect(
       (await http.post("/api/workspace/organizations/org_a/members", actors.admin2, { userId: "u_admin2", role: "OWNER" })).status

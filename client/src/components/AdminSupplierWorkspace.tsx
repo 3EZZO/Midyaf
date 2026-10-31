@@ -94,10 +94,10 @@ export function adminSupplierCopy(isArabic: boolean) {
     quoting: p("Collecting quotations", "جمع عروض الأسعار"),
     supplierQuote: p("Supplier's quotation", "عرض سعر المورد"),
     sealedNote: p(
-      "Sealed: the quoted price is not shown to administrators. Opening rules are still pending approval.",
-      "مختوم: لا يظهر السعر المعروض للمشرفين. قواعد فتح العروض لا تزال بانتظار الاعتماد."
+      "Sealed here: this read-only view never shows prices. The Super Admin opens the vault and approves from Contracts → Supplier portal submissions.",
+      "مختوم هنا: هذا العرض للاطلاع فقط ولا يُظهر الأسعار. يفتح المشرف العام الخزنة ويعتمد العروض من «العقود ← عروض بوابة الموردين»."
     ),
-    policyPending: p("Opening policy pending", "سياسة الفتح قيد الاعتماد"),
+    policyPending: p("Sealed · Super Admin key", "مختوم · مفتاح المشرف العام"),
     supplierNotes: p("Supplier notes and recommendations", "ملاحظات المورد وتوصياته"),
     noNotes: p("No notes from this supplier", "لا توجد ملاحظات من هذا المورد"),
     submitted: p("Submitted", "تاريخ الإرسال"),

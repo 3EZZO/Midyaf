@@ -275,7 +275,8 @@ router.get(
         orderBy: { createdAt: "desc" }
       }),
       // Supplier-owned submissions stay out of the raw numeric legacy array:
-      // their terms are sealed pending D-011 (see /supplier-submissions).
+      // their terms are sealed for all but the Super Admin key holder (D-011,
+      // see /supplier-submissions).
       isFullAccess
         ? prisma.vendorQuote.findMany({
             where: { supplierId: null },

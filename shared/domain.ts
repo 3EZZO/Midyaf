@@ -769,7 +769,16 @@ export type SupplierQuotesResponse = {
   nextCursor: string | null;
 };
 
-/** Logistics review: origin and status only, never prices (D-011 pending). */
+/** Logistics review: origin and status; prices only for the Super Admin key holder (D-011). */
+/** D-011: sealed supplier terms, sent only to the Super Admin on an opened vault. */
+export type SupplierSubmissionTerms = {
+  unitPrice: string;
+  totalPrice: string;
+  commissionPercent: string;
+  commissionAmount: string;
+  currency: string;
+};
+
 export type SupplierSubmissionReview = {
   quoteId: string;
   source: "SUPPLIER_PORTAL";
@@ -780,8 +789,10 @@ export type SupplierSubmissionReview = {
   quantity: number;
   status: SupplierQuoteStatus;
   submittedAt: string;
-  sealed: true;
-  policyPending: true;
+  /** False only when terms are revealed to the key holder. */
+  sealed: boolean;
+  terms: SupplierSubmissionTerms | null;
+  contract: { id: string; status: Contract["status"] } | null;
 };
 
 export type SupplierReviewNote = {
@@ -792,9 +803,17 @@ export type SupplierReviewNote = {
   createdAt: string;
 };
 
+/** D-011: the Super Admin is the single key holder and approver. */
+export type SupplierVaultState = {
+  keyHolder: "SUPER_ADMIN";
+  opened: boolean;
+  canOpen: boolean;
+  canApprove: boolean;
+};
+
 export type SupplierSubmissionsView = {
   intakeId: string;
-  policyPending: boolean;
+  vault: SupplierVaultState;
   sealedCount: number;
   submissions: SupplierSubmissionReview[];
   notes: SupplierReviewNote[];

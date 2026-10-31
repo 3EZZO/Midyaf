@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Lock, MessageSquareText, RotateCcw, ShieldAlert, XCircle } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CheckCircle2, FileSignature, KeyRound, Lock, LockOpen, MessageSquareText, RotateCcw, ShieldAlert, XCircle } from "lucide-react";
 import type { Session, SupplierSubmissionsView } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
-import { shortDate, shortTime } from "../lib/format";
+import { money, shortDate, shortTime } from "../lib/format";
 import { allCurrent, createRequestGeneration } from "../lib/requestGeneration";
 import { Badge, Button, EmptyState, Surface, Textarea } from "./ui";
 import { categoryLabel, quoteStatusLabel } from "./SupplierDashboard";
@@ -10,8 +10,10 @@ import { categoryLabel, quoteStatusLabel } from "./SupplierDashboard";
 /**
  * SUPPLIER-001 logistics review panel: supplier-portal submissions for one
  * intake, with origin, item, quantity, status and the suppliers' notes.
- * Prices, scores and commission are never fetched (D-011 pending). These
- * submissions are separate from, and excluded from, the legacy quote totals.
+ * D-011 (approved 2026-10-31): the Midyaf Super Admin is the single key
+ * holder. Only the Super Admin opens the vault, sees prices, approves one
+ * quote per category and drafts/signs its contract; the server sends terms
+ * to no one else. These submissions are excluded from the legacy totals.
  */
 
 export type SubmissionsState =
@@ -28,10 +30,31 @@ export function submissionsCopy(isArabic: boolean) {
     retry: p("Retry", "إعادة المحاولة"),
     empty: p("No supplier has submitted through the portal yet", "لم يقدّم أي مورد عرضاً عبر البوابة بعد"),
     sealedCount: p("Sealed submissions", "عروض مختومة"),
-    policyPending: p(
-      "Prices stay sealed and cannot be approved or contracted until an approved key-holder policy exists (D-011).",
-      "تبقى الأسعار مختومة ولا يمكن اعتمادها أو التعاقد عليها حتى تُعتمد سياسة حاملي المفاتيح (D-011)."
+    keyHolderSealed: p(
+      "Prices are sealed. Only the Midyaf Super Admin holds the key, opens the vault and approves a quote.",
+      "الأسعار مختومة. المشرف العام لمضياف وحده يحمل المفتاح ويفتح الخزنة ويعتمد العرض."
     ),
+    keyHolderOpen: p(
+      "The vault is open. Prices are shown to the Midyaf Super Admin only.",
+      "الخزنة مفتوحة. تظهر الأسعار للمشرف العام لمضياف فقط."
+    ),
+    openVault: p("Open vault · Super Admin key", "فتح الخزنة · مفتاح المشرف العام"),
+    confirmOpen: p("Confirm: open and show all prices", "تأكيد: فتح الخزنة وإظهار جميع الأسعار"),
+    reseal: p("Re-seal vault", "إعادة ختم الخزنة"),
+    vaultOpenBadge: p("Vault open", "الخزنة مفتوحة"),
+    vaultSealedBadge: p("Vault sealed", "الخزنة مختومة"),
+    total: p("Total", "الإجمالي"),
+    unit: p("Unit", "سعر الوحدة"),
+    commission: p("Midyaf commission", "عمولة مضياف"),
+    approve: p("Approve this quote", "اعتماد هذا العرض"),
+    confirmApprove: p(
+      "Confirm approval (other quotes in this category become not selected)",
+      "تأكيد الاعتماد (تصبح العروض الأخرى في هذه الفئة غير مختارة)"
+    ),
+    createContract: p("Create contract", "إنشاء العقد"),
+    signContract: p("Sign contract", "توقيع العقد"),
+    contract: p("Contract", "العقد"),
+    actionFailed: p("The action could not be completed.", "تعذر إتمام الإجراء."),
     excluded: p(
       "Not included in the legacy quote totals above.",
       "غير مشمولة في إجماليات العروض السابقة أعلاه."
@@ -56,10 +79,54 @@ export function rejectErrorMessage(error: unknown, isArabic: boolean) {
   return status === 409 || status === 404 ? copy.unavailable : copy.rejectFailed;
 }
 
+export function decisionErrorMessage(error: unknown, isArabic: boolean) {
+  const copy = submissionsCopy(isArabic);
+  const status = error instanceof ApiError ? error.status : 0;
+  if (status === 409 && error instanceof ApiError && error.message) return error.message;
+  return status === 404 ? copy.unavailable : copy.actionFailed;
+}
+
+const CONTRACT_STATUS_LABELS: Record<string, [string, string]> = {
+  DRAFT: ["Draft", "مسودة"],
+  UNDER_REVIEW: ["Under review", "قيد المراجعة"],
+  PENDING_SIGNATURE: ["Awaiting signature", "بانتظار التوقيع"],
+  SIGNED: ["Signed", "موقّع"],
+  ACTIVE: ["Active", "ساري"]
+};
+
+export function contractStatusLabel(status: string, isArabic: boolean) {
+  const label = CONTRACT_STATUS_LABELS[status];
+  return label ? (isArabic ? label[1] : label[0]) : status;
+}
+
+/** Super Admin decisions (D-011). `id` is the intake, quote or contract id. */
+export type SubmissionDecision =
+  | { kind: "open" | "reseal"; id: string }
+  | { kind: "approve" | "contract"; id: string }
+  | { kind: "sign"; id: string };
+
 export type SubmissionsApi = {
   load: (intakeId: string) => Promise<SupplierSubmissionsView>;
   reject: (quoteId: string, reason: string) => Promise<void>;
+  decide?: (decision: SubmissionDecision) => Promise<void>;
 };
+
+/** The HTTP call behind each decision; the server enforces the key holder. */
+export function decisionRequest(decision: SubmissionDecision): { path: string; method: "POST" | "PUT" } {
+  const id = encodeURIComponent(decision.id);
+  switch (decision.kind) {
+    case "open":
+      return { path: `/vault/${id}/authorize`, method: "POST" };
+    case "reseal":
+      return { path: `/vault/${id}/reset`, method: "POST" };
+    case "approve":
+      return { path: `/supplier-submissions/${id}/approve`, method: "POST" };
+    case "contract":
+      return { path: `/supplier-submissions/${id}/contract`, method: "POST" };
+    case "sign":
+      return { path: `/contracts/${id}/approve`, method: "PUT" };
+  }
+}
 
 /**
  * Async rules of the review panel, independent of React: results belong to
@@ -96,13 +163,24 @@ export function createSubmissionsController(
     }
   }
 
+  /** Same scope rule as reject: errors propagate, refresh only in scope. */
+  async function decide(decision: SubmissionDecision) {
+    const sameScope = scope.capture();
+    try {
+      if (!api.decide) throw new Error("Decisions are not available");
+      await api.decide(decision);
+    } finally {
+      if (sameScope()) await load();
+    }
+  }
+
   function open(id: string | null) {
     intakeId = id;
     scope.invalidate();
     loads.invalidate();
   }
 
-  return { load, reject, open, close: () => open(null) };
+  return { load, reject, decide, open, close: () => open(null) };
 }
 
 export function SupplierSubmissions({
@@ -141,6 +219,10 @@ export function SupplierSubmissions({
             method: "POST",
             body: JSON.stringify(reason.trim() ? { reason: reason.trim() } : {})
           });
+        },
+        decide: async (decision) => {
+          const { path, method } = decisionRequest(decision);
+          await apiFetch(path, token(), { method, body: JSON.stringify({}) });
         }
       },
       {
@@ -174,6 +256,15 @@ export function SupplierSubmissions({
     }
   }
 
+  async function decide(decision: SubmissionDecision) {
+    try {
+      await controller.decide(decision);
+      return null;
+    } catch (error) {
+      return decisionErrorMessage(error, isArabic);
+    }
+  }
+
   return (
     <SupplierSubmissionsView
       state={state}
@@ -184,7 +275,55 @@ export function SupplierSubmissions({
         void controller.load();
       }}
       onReject={reject}
+      onDecide={decide}
     />
+  );
+}
+
+/** Two-step confirm button for an irreversible or revealing decision. */
+function ConfirmAction({
+  label,
+  confirmLabel,
+  icon,
+  variant = "outline",
+  onConfirm
+}: {
+  label: string;
+  confirmLabel?: string;
+  icon: ReactNode;
+  variant?: "outline" | "ghost" | "primary";
+  onConfirm: () => Promise<string | null>;
+}) {
+  const [armed, setArmed] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <span className="inline-flex flex-col items-end gap-1">
+      <Button
+        size="sm"
+        variant={armed ? "gold" : variant}
+        loading={pending}
+        leadingIcon={icon}
+        onClick={async () => {
+          if (confirmLabel && !armed) {
+            setArmed(true);
+            return;
+          }
+          setPending(true);
+          const failure = await onConfirm();
+          setPending(false);
+          setArmed(false);
+          setError(failure);
+        }}
+      >
+        {armed && confirmLabel ? confirmLabel : label}
+      </Button>
+      {error ? (
+        <span role="alert" className="text-xs font-medium text-danger">
+          {error}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -193,13 +332,15 @@ export function SupplierSubmissionsView({
   isArabic,
   canManage,
   onRetry,
-  onReject
+  onReject,
+  onDecide = async () => null
 }: {
   state: SubmissionsState;
   isArabic: boolean;
   canManage: boolean;
   onRetry: () => void;
   onReject: (quoteId: string, reason: string) => Promise<string | null>;
+  onDecide?: (decision: SubmissionDecision) => Promise<string | null>;
 }) {
   const copy = submissionsCopy(isArabic);
   const locale = isArabic ? "ar" : "en";
@@ -212,17 +353,47 @@ export function SupplierSubmissionsView({
           {copy.title}
         </h4>
         {state.status === "ready" ? (
-          <Badge tone="gold">
-            {copy.sealedCount}: {state.value.sealedCount}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={state.value.vault.opened ? "ok" : "gold"}>
+              {state.value.vault.opened ? (
+                <LockOpen className="size-3" aria-hidden />
+              ) : (
+                <Lock className="size-3" aria-hidden />
+              )}
+              {state.value.vault.opened ? copy.vaultOpenBadge : copy.vaultSealedBadge}
+            </Badge>
+            <Badge tone="gold">
+              {copy.sealedCount}: {state.value.sealedCount}
+            </Badge>
+          </div>
         ) : null}
       </div>
-      <p className="flex items-start gap-1.5 text-xs text-ink-muted">
-        <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
-        <span>
-          {copy.policyPending} {copy.excluded}
-        </span>
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="flex items-start gap-1.5 text-xs text-ink-muted">
+          <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
+          <span>
+            {state.status === "ready" && state.value.vault.opened ? copy.keyHolderOpen : copy.keyHolderSealed}{" "}
+            {copy.excluded}
+          </span>
+        </p>
+        {state.status === "ready" && state.value.vault.canOpen ? (
+          state.value.vault.opened ? (
+            <ConfirmAction
+              label={copy.reseal}
+              icon={<Lock className="size-3.5" aria-hidden />}
+              variant="ghost"
+              onConfirm={() => onDecide({ kind: "reseal", id: state.value.intakeId })}
+            />
+          ) : (
+            <ConfirmAction
+              label={copy.openVault}
+              confirmLabel={copy.confirmOpen}
+              icon={<KeyRound className="size-3.5" aria-hidden />}
+              onConfirm={() => onDecide({ kind: "open", id: state.value.intakeId })}
+            />
+          )
+        ) : null}
+      </div>
 
       {state.status === "loading" ? (
         <p aria-busy className="text-sm text-ink-muted">
@@ -245,7 +416,9 @@ export function SupplierSubmissionsView({
                     submission={submission}
                     isArabic={isArabic}
                     canManage={canManage}
+                    canDecide={state.value.vault.canApprove}
                     onReject={onReject}
+                    onDecide={onDecide}
                   />
                 </li>
               ))}
@@ -285,12 +458,16 @@ function SubmissionRow({
   submission,
   isArabic,
   canManage,
-  onReject
+  canDecide,
+  onReject,
+  onDecide
 }: {
   submission: SupplierSubmissionsView["submissions"][number];
   isArabic: boolean;
   canManage: boolean;
+  canDecide: boolean;
   onReject: (quoteId: string, reason: string) => Promise<string | null>;
+  onDecide: (decision: SubmissionDecision) => Promise<string | null>;
 }) {
   const copy = submissionsCopy(isArabic);
   const [rejecting, setRejecting] = useState(false);
@@ -315,15 +492,75 @@ function SubmissionRow({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="gold">
-            <Lock className="size-3" aria-hidden />
-            {copy.priceSealed}
-          </Badge>
-          <Badge tone={submission.status === "REJECTED" ? "danger" : "info"}>
+          {submission.terms ? null : (
+            <Badge tone="gold">
+              <Lock className="size-3" aria-hidden />
+              {copy.priceSealed}
+            </Badge>
+          )}
+          <Badge
+            tone={
+              submission.status === "REJECTED" ? "danger" : submission.status === "APPROVED" ? "ok" : "info"
+            }
+          >
             {quoteStatusLabel(submission.status, isArabic)}
           </Badge>
+          {submission.contract ? (
+            <Badge tone="neutral">
+              <FileSignature className="size-3" aria-hidden />
+              {copy.contract}: {contractStatusLabel(submission.contract.status, isArabic)}
+            </Badge>
+          ) : null}
         </div>
       </div>
+
+      {submission.terms ? (
+        <dl data-supplier-terms className="grid gap-2 rounded-md bg-surface-2 p-2 text-xs sm:grid-cols-3">
+          <div>
+            <dt className="text-ink-muted">{copy.total}</dt>
+            <dd className="font-tnum font-semibold text-ink">{money(submission.terms.totalPrice, submission.terms.currency)}</dd>
+          </div>
+          <div>
+            <dt className="text-ink-muted">{copy.unit}</dt>
+            <dd className="font-tnum text-ink">{money(submission.terms.unitPrice, submission.terms.currency)}</dd>
+          </div>
+          <div>
+            <dt className="text-ink-muted">{copy.commission}</dt>
+            <dd className="font-tnum text-ink">
+              {submission.terms.commissionPercent}% · {money(submission.terms.commissionAmount, submission.terms.currency)}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+
+      {canDecide ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          {submission.status === "RECEIVED" ? (
+            <ConfirmAction
+              label={copy.approve}
+              confirmLabel={copy.confirmApprove}
+              icon={<CheckCircle2 className="size-3.5" aria-hidden />}
+              onConfirm={() => onDecide({ kind: "approve", id: submission.quoteId })}
+            />
+          ) : null}
+          {submission.status === "APPROVED" && !submission.contract ? (
+            <ConfirmAction
+              label={copy.createContract}
+              icon={<FileSignature className="size-3.5" aria-hidden />}
+              onConfirm={() => onDecide({ kind: "contract", id: submission.quoteId })}
+            />
+          ) : null}
+          {submission.contract &&
+          ["DRAFT", "UNDER_REVIEW", "PENDING_SIGNATURE"].includes(submission.contract.status) ? (
+            <ConfirmAction
+              label={copy.signContract}
+              confirmLabel={copy.signContract + " ✓"}
+              icon={<FileSignature className="size-3.5" aria-hidden />}
+              onConfirm={() => onDecide({ kind: "sign", id: submission.contract!.id })}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {canManage && submission.status === "RECEIVED" ? (
         rejecting ? (

@@ -236,6 +236,7 @@ describe("Sila Intake", () => {
     const html = renderSila({ role: "SUPER_ADMIN" });
     const note = html.match(/<p role="note" data-intake-no-access[^>]*>([^<]*)<\/p>/)?.[1] ?? "";
     expect(note).toContain("not an owner or admin of an organizing company");
+    expect(note).toContain("Ask the Midyaf Super Admin");
     expect(note).not.toMatch(/success|created|granted/i);
 
     orgState.value = { data: { organizations: [org("OWNER")] } };

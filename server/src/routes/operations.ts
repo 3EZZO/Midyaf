@@ -49,12 +49,16 @@ import {
   MAX_SUPPLIER_PAGE_SIZE,
   idParamSchema,
   isAllowlistedIntake,
+  isOpenedByKeyHolder,
   lockIntake,
   parseIdParam,
   submissionRejectBodySchema,
   toReviewNoteDto,
   toSafeHttpError,
+  submissionDecisionBodySchema,
+  submissionReviewSelect,
   toSubmissionReviewDto,
+  VAULT_KEY_HOLDER_ROLE,
   writeTransactionalAudit
 } from "../utils/supplierPortal.js";
 
@@ -65,6 +69,8 @@ const logisticsRoles: Role[] = [
   Role.SUPER_ADMIN
 ];
 const reportMutationRoles: Role[] = [Role.LOGISTICS_MANAGER, Role.SUPER_ADMIN];
+/** D-011: the only vault key holder and supplier-quote approver. */
+const vaultKeyHolderRoles: Role[] = [Role.SUPER_ADMIN];
 const companyRoles: Role[] = [...logisticsRoles, Role.COMPANY_ORGANIZER];
 const coordinatorRoles: Role[] = [...logisticsRoles, Role.COORDINATOR];
 const journeyUpdateRoles: Role[] = [...coordinatorRoles, Role.GUEST];
@@ -752,9 +758,11 @@ router.put(
   })
 );
 
+// D-011: approving a quote is the Super Admin's decision, also for legacy
+// manual quotes. Logistics roles still create and edit legacy quotes.
 router.put(
   "/vendor-quotes/:id/approve",
-  requireRole(logisticsRoles),
+  requireRole(vaultKeyHolderRoles),
   asyncHandler(async (req: AuthRequest, res) => {
     const existingQuote = requireEntity(
       await prisma.vendorQuote.findUnique({ where: { id: req.params.id } }),
@@ -804,21 +812,33 @@ router.delete(
   })
 );
 
-// Vault routes require a logistics role and access to the intake's event
-// BEFORE any session is read or changed. D-011 (key holders/approval rules)
-// is still Pending, so supplier-portal terms are never unsealed here.
+// D-011 (approved 2026-10-31): the Midyaf Super Admin is the single key
+// holder of every intake vault and the only approver of supplier-portal
+// quotes. One audited Super Admin action opens an intake. Reads still need a
+// logistics role and access to the intake's event; no other role ever sees
+// supplier prices. A session opened any other way (the retired multi-key
+// flow, a stored flag) grants no authority.
 
-const vaultKeySchema = z.object({
-  keyNumber: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  // Accepted for client compatibility and ignored: a caller-supplied role
-  // label is never authorization.
-  roleName: z.string().max(120).optional()
-});
+const vaultOpenSchema = z
+  .object({
+    // Accepted from older clients and ignored: one Super Admin key opens the
+    // vault, and a caller-supplied role label is never authorization.
+    keyNumber: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    roleName: z.string().max(120).optional()
+  })
+  .strict();
 
-const VAULT_KEY_LABELS = {
-  1: "Sila Operations Director",
-  2: "Sila Procurement / Finance",
-  3: "Midyaf Compliance Auditor"
+const CLOSED_VAULT_FIELDS = {
+  key1User: null,
+  key1Role: null,
+  key1ApprovedAt: null,
+  key2User: null,
+  key2Role: null,
+  key2ApprovedAt: null,
+  key3User: null,
+  key3Role: null,
+  key3ApprovedAt: null,
+  unlockedAt: null
 } as const;
 
 router.get(
@@ -828,133 +848,83 @@ router.get(
     const { intakeId } = req.params;
     await assertIntakeOperatorAccess(req.user!, intakeId);
     // A read never creates a session: a missing one is reported as LOCKED.
-    const vaultSession =
-      (await prisma.vaultSession.findUnique({ where: { intakeId } })) ?? {
-        id: null,
-        intakeId,
-        status: "LOCKED",
-        key1User: null,
-        key1Role: null,
-        key1ApprovedAt: null,
-        key2User: null,
-        key2Role: null,
-        key2ApprovedAt: null,
-        key3User: null,
-        key3Role: null,
-        key3ApprovedAt: null,
-        unlockedAt: null
-      };
+    const stored = await prisma.vaultSession.findUnique({ where: { intakeId } });
+    const vaultSession = stored ?? {
+      id: null,
+      intakeId,
+      status: "LOCKED",
+      ...CLOSED_VAULT_FIELDS
+    };
 
     res.json({
       vaultSession,
-      policyPending: await hasSupplierSealedTerms(intakeId)
+      keyHolder: "SUPER_ADMIN",
+      opened: isOpenedByKeyHolder(stored),
+      canOpen: req.user!.role === Role.SUPER_ADMIN,
+      hasSupplierTerms: await hasSupplierSealedTerms(intakeId)
     });
   })
 );
 
 router.post(
   "/vault/:intakeId/authorize",
-  requireRole(logisticsRoles),
+  requireRole(vaultKeyHolderRoles),
   asyncHandler(async (req: AuthRequest, res) => {
     const { intakeId } = req.params;
     await assertIntakeOperatorAccess(req.user!, intakeId);
-    const { keyNumber } = vaultKeySchema.parse(req.body);
+    vaultOpenSchema.parse(req.body ?? {});
 
-    if (await hasSupplierSealedTerms(intakeId)) {
-      throw new HttpError(
-        409,
-        "Vault unlock is pending an approved key-holder policy (D-011) for supplier submissions"
-      );
+    const existing = await prisma.vaultSession.findUnique({ where: { intakeId } });
+    if (isOpenedByKeyHolder(existing)) {
+      res.json({ vaultSession: existing, isFullyUnlocked: true, opened: true });
+      return;
     }
 
-    let session = await prisma.vaultSession.findUnique({
-      where: { intakeId }
-    });
-
-    if (!session) {
-      session = await prisma.vaultSession.create({
-        data: { intakeId, status: "LOCKED" }
-      });
-    }
-
-    const updateData: Prisma.VaultSessionUpdateInput = {};
-    const userName = req.user!.email;
     const now = new Date();
-
-    if (keyNumber === 1) {
-      updateData.key1User = userName;
-      updateData.key1Role = VAULT_KEY_LABELS[1];
-      updateData.key1ApprovedAt = now;
-    } else if (keyNumber === 2) {
-      updateData.key2User = userName;
-      updateData.key2Role = VAULT_KEY_LABELS[2];
-      updateData.key2ApprovedAt = now;
-    } else {
-      updateData.key3User = userName;
-      updateData.key3Role = VAULT_KEY_LABELS[3];
-      updateData.key3ApprovedAt = now;
-    }
-
-    const k1 = keyNumber === 1 || Boolean(session.key1ApprovedAt);
-    const k2 = keyNumber === 2 || Boolean(session.key2ApprovedAt);
-    const k3 = keyNumber === 3 || Boolean(session.key3ApprovedAt);
-
-    const isFullyUnlocked = k1 && k2 && k3;
-    if (isFullyUnlocked) {
-      updateData.status = "UNLOCKED";
-      updateData.unlockedAt = now;
-
-      // Legacy manual quotes only; supplier terms stay sealed.
-      await prisma.vendorQuote.updateMany({
-        where: { intakeId, supplierId: null },
-        data: { isVaultSealed: false }
-      });
-
-      await recordAuditLog({
-        req,
-        action: "vault.unlocked_all_keys",
-        entityType: "VAULT_SESSION",
-        entityId: session.id,
-        metadata: {
-          intakeId,
-          key1: session.key1User || updateData.key1User,
-          key2: session.key2User || updateData.key2User,
-          key3: session.key3User || updateData.key3User
-        }
-      });
-    }
-
-    const updatedSession = await prisma.vaultSession.update({
+    const openFields = {
+      ...CLOSED_VAULT_FIELDS,
+      status: "UNLOCKED",
+      key1User: req.user!.email,
+      key1Role: VAULT_KEY_HOLDER_ROLE,
+      key1ApprovedAt: now,
+      unlockedAt: now
+    };
+    const vaultSession = await prisma.vaultSession.upsert({
       where: { intakeId },
-      data: updateData
+      create: { intakeId, ...openFields },
+      update: openFields
     });
 
-    res.json({ vaultSession: updatedSession, isFullyUnlocked });
+    // Legacy manual quotes carry their own flag. Supplier-portal terms keep
+    // isVaultSealed=true: they are revealed only to the key holder through
+    // the opened session, never by a stored flag.
+    await prisma.vendorQuote.updateMany({
+      where: { intakeId, supplierId: null },
+      data: { isVaultSealed: false }
+    });
+
+    await recordAuditLog({
+      req,
+      action: "vault.opened_by_super_admin",
+      entityType: "VAULT_SESSION",
+      entityId: vaultSession.id,
+      metadata: { intakeId, keyHolder: "SUPER_ADMIN" }
+    });
+
+    res.json({ vaultSession, isFullyUnlocked: true, opened: true });
   })
 );
 
 router.post(
   "/vault/:intakeId/reset",
-  requireRole(logisticsRoles),
+  requireRole(vaultKeyHolderRoles),
   asyncHandler(async (req: AuthRequest, res) => {
     const { intakeId } = req.params;
     await assertIntakeOperatorAccess(req.user!, intakeId);
     const session = await prisma.vaultSession.upsert({
       where: { intakeId },
       create: { intakeId, status: "LOCKED" },
-      update: {
-        status: "LOCKED",
-        key1User: null,
-        key1Role: null,
-        key1ApprovedAt: null,
-        key2User: null,
-        key2Role: null,
-        key2ApprovedAt: null,
-        key3User: null,
-        key3Role: null,
-        key3ApprovedAt: null,
-        unlockedAt: null
-      }
+      update: { status: "LOCKED", ...CLOSED_VAULT_FIELDS }
     });
 
     await prisma.vendorQuote.updateMany({
@@ -989,20 +959,10 @@ router.get(
       .parse(req.query);
     await assertIntakeOperatorAccess(req.user!, intakeId);
 
-    const [quotes, notes] = await Promise.all([
+    const [quotes, notes, session] = await Promise.all([
       prisma.vendorQuote.findMany({
         where: { intakeId, supplierId: { not: null } },
-        select: {
-          id: true,
-          intakeId: true,
-          category: true,
-          item: true,
-          quantity: true,
-          status: true,
-          isVaultSealed: true,
-          createdAt: true,
-          supplier: { select: { id: true, name: true, category: true } }
-        },
+        select: submissionReviewSelect,
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: MAX_SUPPLIER_PAGE_SIZE
       }),
@@ -1017,14 +977,40 @@ router.get(
         },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: MAX_SUPPLIER_PAGE_SIZE
-      })
+      }),
+      prisma.vaultSession.findUnique({ where: { intakeId } })
     ]);
+
+    const opened = isOpenedByKeyHolder(session);
+    const isKeyHolder = req.user!.role === Role.SUPER_ADMIN;
+    // D-011: terms only for the key holder on a vault opened by that key.
+    const revealTerms = isKeyHolder && opened;
+    const contracts = quotes.length
+      ? await prisma.vendorContract.findMany({
+          where: { quoteId: { in: quotes.map((quote) => quote.id) } },
+          select: { id: true, quoteId: true, status: true },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+        })
+      : [];
+    const contractByQuote = new Map(
+      contracts.map((contract) => [contract.quoteId, { id: contract.id, status: contract.status }])
+    );
 
     res.json({
       intakeId,
-      policyPending: true,
-      sealedCount: quotes.length,
-      submissions: quotes.map(toSubmissionReviewDto),
+      vault: {
+        keyHolder: "SUPER_ADMIN",
+        opened,
+        canOpen: isKeyHolder,
+        canApprove: revealTerms
+      },
+      sealedCount: revealTerms ? 0 : quotes.length,
+      submissions: quotes.map((quote) =>
+        toSubmissionReviewDto(quote, {
+          revealTerms,
+          contract: contractByQuote.get(quote.id) ?? null
+        })
+      ),
       notes: notes.map(toReviewNoteDto)
     });
   })
@@ -1072,17 +1058,7 @@ router.post(
         const updated = await tx.vendorQuote.update({
           where: { id: quoteId },
           data: { status: QuoteStatus.REJECTED },
-          select: {
-            id: true,
-            intakeId: true,
-            category: true,
-            item: true,
-            quantity: true,
-            status: true,
-            isVaultSealed: true,
-            createdAt: true,
-            supplier: { select: { id: true, name: true, category: true } }
-          }
+          select: submissionReviewSelect
         });
 
         await writeTransactionalAudit(tx, context, {
@@ -1109,6 +1085,197 @@ router.post(
   })
 );
 
+/**
+ * Loads a supplier-portal submission for a Super Admin decision: 404 for a
+ * missing or legacy quote, then the usual intake access check.
+ */
+async function loadSubmissionForDecision(req: AuthRequest) {
+  const quoteId = parseIdParam(req.params.id);
+  const target = await prisma.vendorQuote.findUnique({
+    where: { id: quoteId },
+    select: { id: true, intakeId: true, supplierId: true }
+  });
+  if (!target || !target.supplierId) {
+    throw new HttpError(404, "Submission not found");
+  }
+  await assertIntakeOperatorAccess(req.user!, target.intakeId);
+  submissionDecisionBodySchema.parse(req.body ?? {});
+  return { quoteId, intakeId: target.intakeId };
+}
+
+/** Re-checked under the intake lock: the vault must be open by the Super Admin key. */
+async function assertVaultOpenedByKeyHolder(tx: Prisma.TransactionClient, intakeId: string) {
+  const session = await tx.vaultSession.findUnique({ where: { intakeId } });
+  if (!isOpenedByKeyHolder(session)) {
+    throw new HttpError(409, "Open the vault with the Super Admin key first");
+  }
+}
+
+function decisionContext(req: AuthRequest) {
+  return {
+    actor: req.user!,
+    ipAddress: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null
+  };
+}
+
+// D-011: the Super Admin approves exactly one supplier quote per intake and
+// category. The other received quotes in that category become REJECTED (not
+// selected). Terms are never edited.
+router.post(
+  "/supplier-submissions/:id/approve",
+  requireRole(vaultKeyHolderRoles),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { quoteId, intakeId } = await loadSubmissionForDecision(req);
+    const context = decisionContext(req);
+
+    try {
+      const approved = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const { eventId } = await assertIntakeOperatorAccess(req.user!, intakeId, tx);
+        await assertVaultOpenedByKeyHolder(tx, intakeId);
+
+        const current = await tx.vendorQuote.findUnique({
+          where: { id: quoteId },
+          select: { id: true, status: true, supplierId: true, intakeId: true, category: true }
+        });
+        if (!current || !current.supplierId || current.intakeId !== intakeId) {
+          throw new HttpError(404, "Submission not found");
+        }
+        if (current.status !== QuoteStatus.RECEIVED) {
+          throw new HttpError(409, "Only a received submission can be approved");
+        }
+        const awarded = await tx.vendorQuote.findFirst({
+          where: {
+            intakeId,
+            category: current.category,
+            supplierId: { not: null },
+            status: QuoteStatus.APPROVED
+          },
+          select: { id: true }
+        });
+        if (awarded) {
+          throw new HttpError(409, "A supplier quote is already approved for this category");
+        }
+
+        const others = await tx.vendorQuote.findMany({
+          where: {
+            intakeId,
+            category: current.category,
+            supplierId: { not: null },
+            status: QuoteStatus.RECEIVED,
+            id: { not: quoteId }
+          },
+          select: { id: true }
+        });
+
+        const updated = await tx.vendorQuote.update({
+          where: { id: quoteId },
+          data: { status: QuoteStatus.APPROVED },
+          select: submissionReviewSelect
+        });
+        if (others.length) {
+          await tx.vendorQuote.updateMany({
+            where: { id: { in: others.map((other) => other.id) } },
+            data: { status: QuoteStatus.REJECTED }
+          });
+        }
+
+        await writeTransactionalAudit(tx, context, {
+          action: "supplier_quote.approve",
+          entityType: "VENDOR_QUOTE",
+          entityId: quoteId,
+          eventId,
+          metadata: {
+            intakeId,
+            supplierId: current.supplierId,
+            quoteId,
+            category: current.category,
+            notSelectedCount: others.length
+          }
+        });
+
+        return updated;
+      });
+
+      res.json({ submission: toSubmissionReviewDto(approved, { revealTerms: true }) });
+    } catch (error) {
+      throw toSafeHttpError(error);
+    }
+  })
+);
+
+// D-011: the Super Admin drafts the contract of an approved supplier quote.
+// Vendor, category and amounts come from the stored quote, never the client.
+router.post(
+  "/supplier-submissions/:id/contract",
+  requireRole(vaultKeyHolderRoles),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { quoteId, intakeId } = await loadSubmissionForDecision(req);
+    const context = decisionContext(req);
+
+    try {
+      const contract = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const { eventId } = await assertIntakeOperatorAccess(req.user!, intakeId, tx);
+        await assertVaultOpenedByKeyHolder(tx, intakeId);
+
+        const quote = await tx.vendorQuote.findUnique({
+          where: { id: quoteId },
+          select: {
+            id: true,
+            intakeId: true,
+            supplierId: true,
+            status: true,
+            category: true,
+            totalPrice: true,
+            commissionAmount: true,
+            supplier: { select: { name: true } }
+          }
+        });
+        if (!quote || !quote.supplierId || quote.intakeId !== intakeId) {
+          throw new HttpError(404, "Submission not found");
+        }
+        if (quote.status !== QuoteStatus.APPROVED) {
+          throw new HttpError(409, "Only an approved submission can be contracted");
+        }
+        const existing = await tx.vendorContract.findFirst({
+          where: { quoteId },
+          select: { id: true }
+        });
+        if (existing) {
+          throw new HttpError(409, "A contract already exists for this submission");
+        }
+
+        const created = await tx.vendorContract.create({
+          data: {
+            quoteId,
+            vendorName: quote.supplier?.name ?? "Supplier",
+            category: quote.category,
+            amount: quote.totalPrice,
+            commissionAmount: quote.commissionAmount,
+            status: ContractStatus.DRAFT
+          }
+        });
+
+        await writeTransactionalAudit(tx, context, {
+          action: "supplier_contract.create",
+          entityType: "CONTRACT",
+          entityId: created.id,
+          eventId,
+          metadata: { intakeId, supplierId: quote.supplierId, quoteId, contractId: created.id }
+        });
+
+        return created;
+      });
+
+      res.status(201).json({ contract });
+    } catch (error) {
+      throw toSafeHttpError(error);
+    }
+  })
+);
+
 const contractSchema = z.object({
   quoteId: z.string(),
   vendorName: z.string().min(2),
@@ -1122,10 +1289,23 @@ const contractSchema = z.object({
 router.get(
   "/contracts",
   asyncHandler(async (req: AuthRequest, res) => {
+    const role = req.user!.role;
+    let where: Prisma.VendorContractWhereInput | undefined;
+    if (!logisticsRoles.includes(role)) {
+      where = { id: "__no_contract_access__" };
+    } else if (role !== Role.SUPER_ADMIN) {
+      // D-011: a supplier contract carries sealed terms; only the key holder
+      // lists it. Legacy manual contracts stay visible as before.
+      const supplierQuotes = await prisma.vendorQuote.findMany({
+        where: { supplierId: { not: null } },
+        select: { id: true }
+      });
+      where = supplierQuotes.length
+        ? { quoteId: { notIn: supplierQuotes.map((quote) => quote.id) } }
+        : undefined;
+    }
     const contracts = await prisma.vendorContract.findMany({
-      where: logisticsRoles.includes(req.user!.role)
-        ? undefined
-        : { id: "__no_contract_access__" },
+      where,
       orderBy: { updatedAt: "desc" }
     });
     res.json({ contracts });
@@ -1182,15 +1362,19 @@ router.put(
   })
 );
 
+// D-011: only the Super Admin signs contracts.
 router.put(
   "/contracts/:id/approve",
-  requireRole(logisticsRoles),
+  requireRole(vaultKeyHolderRoles),
   asyncHandler(async (req: AuthRequest, res) => {
     const existingContract = requireEntity(
       await prisma.vendorContract.findUnique({ where: { id: req.params.id } }),
       "Contract not found"
     );
-    await assertCanMutateQuoteId(req.user!, existingContract.quoteId);
+    await assertCanSignContractQuote(req.user!, existingContract.quoteId);
+    if (existingContract.status === ContractStatus.SIGNED || existingContract.status === ContractStatus.ACTIVE) {
+      throw new HttpError(409, "This contract is already signed");
+    }
 
     const contract = await prisma.vendorContract.update({
       where: { id: existingContract.id },
@@ -1671,15 +1855,42 @@ async function assertCanMutateQuoteId(user: AuthUser, quoteId: string) {
 }
 
 /**
- * SUPPLIER-001: supplier-portal quotes are immutable here, and approval or
- * contracting fails closed while D-011 (key holders/approval) is Pending.
+ * SUPPLIER-001: supplier-portal quotes are immutable on the legacy quote and
+ * contract paths. D-011: the Super Admin approves and contracts them through
+ * /supplier-submissions/:id/approve and /supplier-submissions/:id/contract.
  */
 function assertLegacyQuote(quote: { supplierId: string | null }) {
   if (quote.supplierId) {
     throw new HttpError(
       409,
-      "Supplier submissions are sealed and immutable; approval and contracts await an approved policy (D-011)"
+      "Supplier submissions are immutable here; the Super Admin approves and contracts them from the supplier submissions review"
     );
+  }
+}
+
+/**
+ * Signing (route already limited to the Super Admin, D-011): a legacy
+ * contract keeps the intake check; a supplier contract needs intake access
+ * and an approved quote.
+ */
+async function assertCanSignContractQuote(user: AuthUser, quoteId: string) {
+  const quote = requireEntity(
+    await prisma.vendorQuote.findUnique({
+      where: { id: quoteId },
+      select: { intakeId: true, supplierId: true, status: true }
+    }),
+    "Vendor quote not found"
+  );
+  if (!quote.supplierId) {
+    await assertCanMutateIntakeId(user, quote.intakeId);
+    return;
+  }
+  if (user.role !== Role.SUPER_ADMIN) {
+    throw new HttpError(403, "Only the Super Admin signs supplier contracts");
+  }
+  await assertIntakeOperatorAccess(user, quote.intakeId);
+  if (quote.status !== QuoteStatus.APPROVED) {
+    throw new HttpError(409, "Only an approved supplier quote can be signed");
   }
 }
 

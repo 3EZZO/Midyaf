@@ -224,6 +224,20 @@ router.post(
         if (existing) {
           throw new HttpError(409, "An initial quote was already submitted for this request");
         }
+        // D-011: once the Super Admin approved a quote for this category, the
+        // request is awarded and takes no further submissions.
+        const awarded = await tx.vendorQuote.findFirst({
+          where: {
+            intakeId,
+            category: supplier.category,
+            supplierId: { not: null },
+            status: QuoteStatus.APPROVED
+          },
+          select: { id: true }
+        });
+        if (awarded) {
+          throw new HttpError(409, "This request has already been awarded");
+        }
 
         const created = await tx.vendorQuote.create({
           data: {

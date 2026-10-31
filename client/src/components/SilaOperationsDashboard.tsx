@@ -642,8 +642,8 @@ export function IntakeAccessNote({
   return (
     <p role="note" data-intake-no-access className="mt-3 rounded-md border border-warn/40 bg-warn/10 p-3 text-sm text-ink">
       {isArabic
-        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من مالك المؤسسة منحك هذه الصلاحية؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها فقط.`
-        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask that organization's owner to grant you this role; until then you can only follow events you have access to.`}
+        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من المشرف العام لمضياف أو من مالك المؤسسة إضافتك بدور «مدير» (اختر المؤسسة ← أعضاء المؤسسة والصلاحيات)؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها وتعديلها حسب صلاحياتك.`
+        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask the Midyaf Super Admin or that organization's owner to add you as an Admin (choose the organization → Organization members & roles); until then you can follow and edit only the events you were given access to.`}
     </p>
   );
 }
