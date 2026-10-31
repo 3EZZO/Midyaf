@@ -13,7 +13,7 @@ export const workspaceButton = "rounded-md border border-gold-500/40 bg-gold-500
 export type WorkspaceProps = { token: string; isArabic: boolean; eventId: string };
 export function OrganizerWorkspace({ session, isArabic }: { session?: Session | null; isArabic: boolean }) {
   if (!session) return <p>{isArabic ? "سجل الدخول لعرض فعاليات المؤسسة" : "Sign in to view organization events"}</p>;
-  return <div className="space-y-4"><OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} isSuperAdmin={session.user.role === "SUPER_ADMIN"} /><details><summary>{isArabic?"تسجيل الموردين والعملاء":"Vendor / client registration"}</summary><OnboardingWorkspace key={session.accessToken} session={session} isArabic={isArabic}/></details></div>;
+  return <div className="space-y-4"><OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} isSuperAdmin={session.user.role === "SUPER_ADMIN"} currentUserId={session.user.id} /><details><summary>{isArabic?"تسجيل الموردين والعملاء":"Vendor / client registration"}</summary><OnboardingWorkspace key={session.accessToken} session={session} isArabic={isArabic}/></details></div>;
 }
 
 /**
@@ -36,7 +36,7 @@ export function EventSetupForm({ organizations, defaultOrganizationId, busy, isA
   </Section>;
 }
 
-function OrganizerContent({ token, isArabic: ar, isSuperAdmin = false }: { token: string; isArabic: boolean; isSuperAdmin?: boolean }) {
+function OrganizerContent({ token, isArabic: ar, isSuperAdmin = false, currentUserId }: { token: string; isArabic: boolean; isSuperAdmin?: boolean; currentUserId?: string }) {
   const [revision, refresh] = useState(0); const [selected, select] = useState<string | null>(null);
   const [landing, setLanding] = useState<WorkspaceLanding | undefined>(undefined);
   const [organizationId, setOrganization] = useState(""); const [creating, setCreating] = useState(false);
@@ -66,7 +66,7 @@ function OrganizerContent({ token, isArabic: ar, isSuperAdmin = false }: { token
       {!events.data && !events.error && <p role="status">{ar ? "جاري التحميل…" : "Loading…"}</p>}
       {!selectedOrganization && managesAny && <p data-members-hint className="mt-3 text-sm text-ink-muted">{ar ? "اختر مؤسسة لإدارة أعضائها ومنح دور «مدير» لمن يُنشئ الفعاليات." : "Choose an organization to manage its members and grant the Admin role to whoever creates events."}</p>}
     </Section>
-    {selectedOrganization && canManageMembers(selectedOrganization, isSuperAdmin) && <details className="rounded-lg border border-hairline p-3"><summary className="cursor-pointer text-sm font-semibold text-ink">{ar ? "أعضاء المؤسسة والصلاحيات" : "Organization members & roles"}</summary><div className="mt-3"><OrganizationMembers key={selectedOrganization.id} token={token} organization={selectedOrganization} isArabic={ar} /></div></details>}
+    {selectedOrganization && canManageMembers(selectedOrganization, isSuperAdmin) && <details className="rounded-lg border border-hairline p-3"><summary className="cursor-pointer text-sm font-semibold text-ink">{ar ? "أعضاء المؤسسة والصلاحيات" : "Organization members & roles"}</summary><div className="mt-3"><OrganizationMembers key={selectedOrganization.id} token={token} organization={selectedOrganization} isArabic={ar} isSuperAdmin={isSuperAdmin} currentUserId={currentUserId} /></div></details>}
     {creating && canCreate.length > 0 && <EventSetupForm organizations={canCreate} defaultOrganizationId={organizationId} busy={busy} isArabic={ar} onSubmit={form => void create(form)} />}
     <div className="grid gap-4 lg:grid-cols-3">{([['PLANNING', ar ? 'تحت التخطيط' : 'Under planning'], ['ACTIVE', ar ? 'نشطة' : 'Active'], ['COMPLETED', ar ? 'مكتملة' : 'Completed']] as const).map(([status,label]) => <Section key={status} title={`${label} (${grouped[status].length})`}><div className="space-y-3">{grouped[status].map(event => <button key={event.id} className="w-full rounded-lg border border-hairline bg-surface-1 p-4 text-start hover:border-gold-500" onClick={() => { setLanding(undefined); select(event.id); }}><strong>{event.name}</strong><p className="text-sm text-ink-muted">{event.locationLabel} · {event.vipGuestCount + event.regularGuestCount} {ar ? "ضيف" : "guests"}</p><p className="text-xs text-gold-500">{event.planApproved ? (event.contractSigned ? (ar ? "العقد موقع" : "Contract signed") : (ar ? "الخطة معتمدة — التشغيل متاح" : "Plan approved — operations unlocked")) : (ar ? "بانتظار اعتماد الخطة" : "Awaiting plan approval")}</p></button>)}{grouped[status].length === 0 && <p className="text-sm text-ink-muted">{ar ? "لا توجد فعاليات" : "No events"}</p>}</div></Section>)}</div>
   </div>;

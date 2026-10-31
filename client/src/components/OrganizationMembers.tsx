@@ -32,18 +32,31 @@ export function canManageMembers(organization: Pick<OrganizationDto, "myRole">, 
   return isSuperAdmin || organization.myRole === "OWNER" || organization.myRole === "ADMIN";
 }
 
+/** Ownership is granted or changed only by an owner or the Super Admin (server rule). */
+export function grantableRoles(organization: Pick<OrganizationDto, "myRole">, isSuperAdmin: boolean): Role[] {
+  return isSuperAdmin || organization.myRole === "OWNER" ? [...ROLES] : ["ADMIN", "MEMBER"];
+}
+
 export function OrganizationMembers({
   token,
   organization,
-  isArabic: ar
+  isArabic: ar,
+  isSuperAdmin = false,
+  currentUserId
 }: {
   token: string;
   organization: OrganizationDto;
   isArabic: boolean;
+  isSuperAdmin?: boolean;
+  /** The signed-in user: their own row offers no actions (server refuses self-change). */
+  currentUserId?: string;
 }) {
   const [revision, refresh] = useState(0);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("ADMIN");
+  const [role, setRole] = useState<Role>("MEMBER");
+  const roles = grantableRoles(organization, isSuperAdmin);
+  const canTouch = (member: OrganizationMemberDto) =>
+    member.user.id !== currentUserId && (member.role !== "OWNER" || roles.includes("OWNER"));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const members = useWorkspaceResource<{ members: OrganizationMemberDto[] }>(
@@ -75,8 +88,8 @@ export function OrganizationMembers({
       title={ar ? `أعضاء المؤسسة · ${organization.name}` : `Organization members · ${organization.name}`}
       description={
         ar
-          ? "أضف الحساب بالبريد الإلكتروني المستخدم لتسجيل الدخول. دور «مدير» يتيح إنشاء الفعاليات وتعديلها."
-          : "Add an account by its sign-in email. The Admin role can create and edit this organization's events."
+          ? "أضف الحساب بالبريد الإلكتروني المستخدم لتسجيل الدخول. دور «مدير» يتيح إنشاء فعاليات المؤسسة وتعديلها وإدارة أعضائها."
+          : "Add an account by its sign-in email. The Admin role can create and edit this organization's events and also manage its members."
       }
     >
       <div data-organization-members className="space-y-4">
@@ -106,7 +119,7 @@ export function OrganizationMembers({
           <label className="flex flex-col text-sm">
             {ar ? "الدور" : "Role"}
             <select value={role} onChange={(event) => setRole(event.target.value as Role)} className={input}>
-              {ROLES.map((value) => (
+              {roles.map((value) => (
                 <option key={value} value={value}>
                   {roleLabel(value, ar)}
                 </option>
@@ -134,9 +147,10 @@ export function OrganizationMembers({
                   <strong>{member.user.name}</strong> · {roleLabel(member.role, ar)}
                   {member.status === "REVOKED" ? (ar ? " · مُلغى" : " · Revoked") : ""}
                 </span>
+                {canTouch(member) ? (
                 <span className="flex flex-wrap gap-2">
                   {member.status === "ACTIVE"
-                    ? ROLES.filter((value) => value !== member.role).map((value) => (
+                    ? roles.filter((value) => value !== member.role).map((value) => (
                         <button
                           key={value}
                           className={button}
@@ -171,6 +185,7 @@ export function OrganizationMembers({
                     {member.status === "ACTIVE" ? (ar ? "إلغاء العضوية" : "Revoke") : ar ? "إعادة التفعيل" : "Restore"}
                   </button>
                 </span>
+                ) : null}
               </li>
             ))}
           </ul>

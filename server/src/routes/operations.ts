@@ -52,6 +52,7 @@ import {
   isOpenedByKeyHolder,
   lockIntake,
   parseIdParam,
+  sealedSupplierQuoteIds,
   submissionRejectBodySchema,
   toReviewNoteDto,
   toSafeHttpError,
@@ -71,6 +72,8 @@ const logisticsRoles: Role[] = [
 const reportMutationRoles: Role[] = [Role.LOGISTICS_MANAGER, Role.SUPER_ADMIN];
 /** D-011: the only vault key holder and supplier-quote approver. */
 const vaultKeyHolderRoles: Role[] = [Role.SUPER_ADMIN];
+/** Contract statuses a sign may move from (guarded update). */
+const SIGNABLE_CONTRACT_STATUSES: ContractStatus[] = [ContractStatus.DRAFT, ContractStatus.UNDER_REVIEW];
 const companyRoles: Role[] = [...logisticsRoles, Role.COMPANY_ORGANIZER];
 const coordinatorRoles: Role[] = [...logisticsRoles, Role.COORDINATOR];
 const journeyUpdateRoles: Role[] = [...coordinatorRoles, Role.GUEST];
@@ -828,6 +831,14 @@ const vaultOpenSchema = z
   })
   .strict();
 
+function decisionContext(req: AuthRequest) {
+  return {
+    actor: req.user!,
+    ipAddress: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null
+  };
+}
+
 const CLOSED_VAULT_FIELDS = {
   key1User: null,
   key1Role: null,
@@ -873,45 +884,54 @@ router.post(
     const { intakeId } = req.params;
     await assertIntakeOperatorAccess(req.user!, intakeId);
     vaultOpenSchema.parse(req.body ?? {});
+    const context = decisionContext(req);
 
-    const existing = await prisma.vaultSession.findUnique({ where: { intakeId } });
-    if (isOpenedByKeyHolder(existing)) {
-      res.json({ vaultSession: existing, isFullyUnlocked: true, opened: true });
-      return;
+    try {
+      // One transaction under the intake lock: the session, the legacy flags
+      // and the audit commit together, serialized with approvals/contracts.
+      const vaultSession = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const { eventId } = await assertIntakeOperatorAccess(req.user!, intakeId, tx);
+        const existing = await tx.vaultSession.findUnique({ where: { intakeId } });
+        if (isOpenedByKeyHolder(existing)) return existing!;
+
+        const now = new Date();
+        const openFields = {
+          ...CLOSED_VAULT_FIELDS,
+          status: "UNLOCKED",
+          key1User: req.user!.email,
+          key1Role: VAULT_KEY_HOLDER_ROLE,
+          key1ApprovedAt: now,
+          unlockedAt: now
+        };
+        const opened = await tx.vaultSession.upsert({
+          where: { intakeId },
+          create: { intakeId, ...openFields },
+          update: openFields
+        });
+
+        // Legacy manual quotes carry their own flag. Supplier-portal terms
+        // keep isVaultSealed=true: they are revealed only to the key holder
+        // through the opened session, never by a stored flag.
+        await tx.vendorQuote.updateMany({
+          where: { intakeId, supplierId: null },
+          data: { isVaultSealed: false }
+        });
+
+        await writeTransactionalAudit(tx, context, {
+          action: "vault.opened_by_super_admin",
+          entityType: "VAULT_SESSION",
+          entityId: opened.id,
+          eventId,
+          metadata: { intakeId, keyHolder: "SUPER_ADMIN" }
+        });
+        return opened;
+      });
+
+      res.json({ vaultSession, isFullyUnlocked: true, opened: true });
+    } catch (error) {
+      throw toSafeHttpError(error);
     }
-
-    const now = new Date();
-    const openFields = {
-      ...CLOSED_VAULT_FIELDS,
-      status: "UNLOCKED",
-      key1User: req.user!.email,
-      key1Role: VAULT_KEY_HOLDER_ROLE,
-      key1ApprovedAt: now,
-      unlockedAt: now
-    };
-    const vaultSession = await prisma.vaultSession.upsert({
-      where: { intakeId },
-      create: { intakeId, ...openFields },
-      update: openFields
-    });
-
-    // Legacy manual quotes carry their own flag. Supplier-portal terms keep
-    // isVaultSealed=true: they are revealed only to the key holder through
-    // the opened session, never by a stored flag.
-    await prisma.vendorQuote.updateMany({
-      where: { intakeId, supplierId: null },
-      data: { isVaultSealed: false }
-    });
-
-    await recordAuditLog({
-      req,
-      action: "vault.opened_by_super_admin",
-      entityType: "VAULT_SESSION",
-      entityId: vaultSession.id,
-      metadata: { intakeId, keyHolder: "SUPER_ADMIN" }
-    });
-
-    res.json({ vaultSession, isFullyUnlocked: true, opened: true });
   })
 );
 
@@ -921,26 +941,37 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { intakeId } = req.params;
     await assertIntakeOperatorAccess(req.user!, intakeId);
-    const session = await prisma.vaultSession.upsert({
-      where: { intakeId },
-      create: { intakeId, status: "LOCKED" },
-      update: { status: "LOCKED", ...CLOSED_VAULT_FIELDS }
-    });
+    const context = decisionContext(req);
 
-    await prisma.vendorQuote.updateMany({
-      where: { intakeId },
-      data: { isVaultSealed: true }
-    });
+    try {
+      const session = await prisma.$transaction(async (tx) => {
+        await lockIntake(tx, intakeId);
+        const { eventId } = await assertIntakeOperatorAccess(req.user!, intakeId, tx);
+        const sealed = await tx.vaultSession.upsert({
+          where: { intakeId },
+          create: { intakeId, status: "LOCKED" },
+          update: { status: "LOCKED", ...CLOSED_VAULT_FIELDS }
+        });
 
-    await recordAuditLog({
-      req,
-      action: "vault.reset_sealed",
-      entityType: "VAULT_SESSION",
-      entityId: session.id,
-      metadata: { intakeId }
-    });
+        await tx.vendorQuote.updateMany({
+          where: { intakeId },
+          data: { isVaultSealed: true }
+        });
 
-    res.json({ vaultSession: session });
+        await writeTransactionalAudit(tx, context, {
+          action: "vault.reset_sealed",
+          entityType: "VAULT_SESSION",
+          entityId: sealed.id,
+          eventId,
+          metadata: { intakeId }
+        });
+        return sealed;
+      });
+
+      res.json({ vaultSession: session });
+    } catch (error) {
+      throw toSafeHttpError(error);
+    }
   })
 );
 
@@ -1109,14 +1140,6 @@ async function assertVaultOpenedByKeyHolder(tx: Prisma.TransactionClient, intake
   if (!isOpenedByKeyHolder(session)) {
     throw new HttpError(409, "Open the vault with the Super Admin key first");
   }
-}
-
-function decisionContext(req: AuthRequest) {
-  return {
-    actor: req.user!,
-    ipAddress: req.ip ?? null,
-    userAgent: req.get("user-agent") ?? null
-  };
 }
 
 // D-011: the Super Admin approves exactly one supplier quote per intake and
@@ -1293,16 +1316,12 @@ router.get(
     let where: Prisma.VendorContractWhereInput | undefined;
     if (!logisticsRoles.includes(role)) {
       where = { id: "__no_contract_access__" };
-    } else if (role !== Role.SUPER_ADMIN) {
-      // D-011: a supplier contract carries sealed terms; only the key holder
-      // lists it. Legacy manual contracts stay visible as before.
-      const supplierQuotes = await prisma.vendorQuote.findMany({
-        where: { supplierId: { not: null } },
-        select: { id: true }
-      });
-      where = supplierQuotes.length
-        ? { quoteId: { notIn: supplierQuotes.map((quote) => quote.id) } }
-        : undefined;
+    } else {
+      // D-011: a supplier contract carries sealed terms. Only the key holder
+      // lists it, and only while that intake's vault is open by the Super
+      // Admin key. Legacy manual contracts stay visible as before.
+      const hidden = await sealedSupplierQuoteIds(prisma, role === Role.SUPER_ADMIN);
+      where = hidden.length ? { quoteId: { notIn: hidden } } : undefined;
     }
     const contracts = await prisma.vendorContract.findMany({
       where,
@@ -1371,15 +1390,73 @@ router.put(
       await prisma.vendorContract.findUnique({ where: { id: req.params.id } }),
       "Contract not found"
     );
-    await assertCanSignContractQuote(req.user!, existingContract.quoteId);
-    if (existingContract.status === ContractStatus.SIGNED || existingContract.status === ContractStatus.ACTIVE) {
-      throw new HttpError(409, "This contract is already signed");
+    const quote = requireEntity(
+      await prisma.vendorQuote.findUnique({
+        where: { id: existingContract.quoteId },
+        select: { intakeId: true, supplierId: true }
+      }),
+      "Vendor quote not found"
+    );
+
+    if (quote.supplierId) {
+      // D-011 supplier contract: under the intake lock, the vault must be
+      // open by the Super Admin key, the quote approved, and the status
+      // transition is guarded so concurrent signs cannot both succeed.
+      // Signing after a re-seal is refused.
+      await assertIntakeOperatorAccess(req.user!, quote.intakeId);
+      const context = decisionContext(req);
+      try {
+        const signed = await prisma.$transaction(async (tx) => {
+          await lockIntake(tx, quote.intakeId);
+          const { eventId } = await assertIntakeOperatorAccess(req.user!, quote.intakeId, tx);
+          await assertVaultOpenedByKeyHolder(tx, quote.intakeId);
+          const current = await tx.vendorQuote.findUnique({
+            where: { id: existingContract.quoteId },
+            select: { status: true, supplierId: true, intakeId: true }
+          });
+          if (!current || current.supplierId !== quote.supplierId || current.intakeId !== quote.intakeId) {
+            throw new HttpError(404, "Vendor quote not found");
+          }
+          if (current.status !== QuoteStatus.APPROVED) {
+            throw new HttpError(409, "Only an approved supplier quote can be signed");
+          }
+          const result = await tx.vendorContract.updateMany({
+            where: { id: existingContract.id, status: { in: SIGNABLE_CONTRACT_STATUSES } },
+            data: { status: ContractStatus.SIGNED, signedAt: new Date() }
+          });
+          if (result.count !== 1) throw new HttpError(409, "This contract is already signed");
+          await writeTransactionalAudit(tx, context, {
+            action: "supplier_contract.sign",
+            entityType: "CONTRACT",
+            entityId: existingContract.id,
+            eventId,
+            metadata: {
+              intakeId: quote.intakeId,
+              supplierId: quote.supplierId,
+              quoteId: existingContract.quoteId,
+              contractId: existingContract.id
+            }
+          });
+          return tx.vendorContract.findUnique({ where: { id: existingContract.id } });
+        });
+        res.json({ contract: signed });
+      } catch (error) {
+        throw toSafeHttpError(error);
+      }
+      return;
     }
 
-    const contract = await prisma.vendorContract.update({
-      where: { id: existingContract.id },
+    await assertCanMutateIntakeId(req.user!, quote.intakeId);
+    // Guarded transition: a concurrent second sign gets 409, not a re-sign.
+    const result = await prisma.vendorContract.updateMany({
+      where: { id: existingContract.id, status: { in: SIGNABLE_CONTRACT_STATUSES } },
       data: { status: ContractStatus.SIGNED, signedAt: new Date() }
     });
+    if (result.count !== 1) throw new HttpError(409, "This contract is already signed");
+    const contract = requireEntity(
+      await prisma.vendorContract.findUnique({ where: { id: existingContract.id } }),
+      "Contract not found"
+    );
     await recordAuditLog({
       req,
       action: "contract.approve",
@@ -1865,32 +1942,6 @@ function assertLegacyQuote(quote: { supplierId: string | null }) {
       409,
       "Supplier submissions are immutable here; the Super Admin approves and contracts them from the supplier submissions review"
     );
-  }
-}
-
-/**
- * Signing (route already limited to the Super Admin, D-011): a legacy
- * contract keeps the intake check; a supplier contract needs intake access
- * and an approved quote.
- */
-async function assertCanSignContractQuote(user: AuthUser, quoteId: string) {
-  const quote = requireEntity(
-    await prisma.vendorQuote.findUnique({
-      where: { id: quoteId },
-      select: { intakeId: true, supplierId: true, status: true }
-    }),
-    "Vendor quote not found"
-  );
-  if (!quote.supplierId) {
-    await assertCanMutateIntakeId(user, quote.intakeId);
-    return;
-  }
-  if (user.role !== Role.SUPER_ADMIN) {
-    throw new HttpError(403, "Only the Super Admin signs supplier contracts");
-  }
-  await assertIntakeOperatorAccess(user, quote.intakeId);
-  if (quote.status !== QuoteStatus.APPROVED) {
-    throw new HttpError(409, "Only an approved supplier quote can be signed");
   }
 }
 

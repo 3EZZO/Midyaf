@@ -483,6 +483,29 @@ export function isOpenedByKeyHolder(
   );
 }
 
+/**
+ * Ids of supplier-portal quotes whose terms must stay hidden from this
+ * reader, e.g. to drop their contracts (amounts) from lists: every supplier
+ * quote for non-key-holders, and for the Super Admin those whose intake vault
+ * is not currently opened by the Super Admin key (D-011).
+ */
+export async function sealedSupplierQuoteIds(
+  db: Pick<Prisma.TransactionClient, "vendorQuote" | "vaultSession">,
+  isKeyHolder: boolean
+): Promise<string[]> {
+  const quotes = await db.vendorQuote.findMany({
+    where: { supplierId: { not: null } },
+    select: { id: true, intakeId: true }
+  });
+  if (!quotes.length || !isKeyHolder) return quotes.map((quote) => quote.id);
+  const sessions = await db.vaultSession.findMany({
+    where: { intakeId: { in: [...new Set(quotes.map((quote) => quote.intakeId))] } },
+    select: { intakeId: true, status: true, key1Role: true, unlockedAt: true }
+  });
+  const opened = new Set(sessions.filter((session) => isOpenedByKeyHolder(session)).map((session) => session.intakeId));
+  return quotes.filter((quote) => !opened.has(quote.intakeId)).map((quote) => quote.id);
+}
+
 /** Columns read for the review list; price columns are mapped only for the key holder. */
 export const submissionReviewSelect = {
   id: true,

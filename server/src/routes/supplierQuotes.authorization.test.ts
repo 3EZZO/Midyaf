@@ -596,6 +596,42 @@ describe("D-011 Super Admin approval and contracts", () => {
     expect(signed.status).toBe(200);
     expect(signed.body.contract.status).toBe("SIGNED");
     expect((await http.put(`/api/contracts/${contract.id}/approve`, actors.sa)).status).toBe(409);
+    expect(audits("supplier_contract.sign")).toHaveLength(1);
+  });
+
+  it("hides supplier contracts again after re-sealing and refuses signing then", async () => {
+    const { first } = await twoHotelQuotes();
+    await openVault();
+    await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa);
+    const created = await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa);
+    const contractId = created.body.contract.id as string;
+
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.sa)).status).toBe(200);
+    const list = await http.get("/api/contracts", actors.sa);
+    expect(list.body.contracts.map((c: any) => c.id)).not.toContain(contractId);
+    const review = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(JSON.stringify(review.body)).not.toMatch(/18000|2160/);
+    expect((await http.put(`/api/contracts/${contractId}/approve`, actors.sa)).status).toBe(409);
+    expect(memory.current.rows("vendorContract")[0].status).toBe("DRAFT");
+  });
+
+  it("lets only one of two simultaneous signs succeed", async () => {
+    const { first } = await twoHotelQuotes();
+    await openVault();
+    await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa);
+    const created = await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa);
+    const path = `/api/contracts/${created.body.contract.id}/approve`;
+    const results = await Promise.all([http.put(path, actors.sa), http.put(path, actors.sa)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(audits("supplier_contract.sign")).toHaveLength(1);
+  });
+
+  it("rolls the vault opening back when its audit cannot be written", async () => {
+    memory.current.failNext("auditLog", "create", new Error("audit down"));
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa)).status).toBe(500);
+    const session = memory.current.rows("vaultSession")[0];
+    expect(session?.status ?? "LOCKED").not.toBe("UNLOCKED");
+    expect(memory.current.rows("vendorQuote").every((q) => q.isVaultSealed)).toBe(true);
   });
 });
 

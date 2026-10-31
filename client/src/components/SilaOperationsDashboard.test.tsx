@@ -29,6 +29,8 @@ vi.mock("../lib/workspaceApi", () => ({ useWorkspaceResource: () => orgState.val
 
 import {
   ClientMessagesEmpty,
+  canReviewSupplierQuotes,
+  defaultQuoteIntakeId,
   EventTaskList,
   IntakeAccessNote,
   SilaOperationsDashboard,
@@ -302,5 +304,21 @@ describe("single organizer entry path", () => {
     }
     const company = fs.readFileSync(path.join(process.cwd(), "client/src/pages/ops/CompanyDashboard.tsx"), "utf8");
     expect(company).not.toMatch(/isDemoMode\s*\?/);
+  });
+});
+
+describe("Sila supplier quotations (D-011)", () => {
+  it("is offered to the logistics roles the server allows", () => {
+    expect(canReviewSupplierQuotes("SUPER_ADMIN")).toBe(true);
+    expect(canReviewSupplierQuotes("LOGISTICS_MANAGER")).toBe(true);
+    expect(canReviewSupplierQuotes("ORGANIZER")).toBe(true);
+    expect(canReviewSupplierQuotes("COMPANY_ORGANIZER")).toBe(false);
+    expect(canReviewSupplierQuotes("SUPPLIER")).toBe(false);
+  });
+
+  it("opens a quoting activity first", () => {
+    expect(defaultQuoteIntakeId([{ id: "a", status: "DRAFT" }, { id: "b", status: "QUOTING" }])).toBe("b");
+    expect(defaultQuoteIntakeId([{ id: "a", status: "DRAFT" }])).toBe("a");
+    expect(defaultQuoteIntakeId([])).toBe("");
   });
 });

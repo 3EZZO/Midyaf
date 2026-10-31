@@ -13,6 +13,7 @@ import {
   stripSensitiveFields
 } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
+import { sealedSupplierQuoteIds } from "../utils/supplierPortal.js";
 import { loadVisibleNotifications } from "./notifications.js";
 
 const router = Router();
@@ -284,7 +285,13 @@ router.get(
           })
         : Promise.resolve([]),
       isFullAccess
-        ? prisma.vendorContract.findMany({ orderBy: { updatedAt: "desc" } })
+        ? // D-011: supplier contracts carry sealed amounts; same rule as GET /contracts.
+          sealedSupplierQuoteIds(prisma, user.role === Role.SUPER_ADMIN).then((hidden) =>
+            prisma.vendorContract.findMany({
+              where: hidden.length ? { quoteId: { notIn: hidden } } : undefined,
+              orderBy: { updatedAt: "desc" }
+            })
+          )
         : Promise.resolve([]),
       prisma.guestJourneyRecord.findMany({
         where: buildGuestJourneyWhere({

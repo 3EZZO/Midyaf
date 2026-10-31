@@ -62,12 +62,15 @@ export function QuotesAndContracts({
 
   const isVaultLocked = !vaultState.isUnlocked;
 
+  // Display only: these toggle how legacy manual quotes are shown on this
+  // page. They do not open, re-seal or audit the server vault; that happens
+  // in the Supplier portal submissions panel (server-backed).
   function openVault() {
     if (!isKeyHolder) return;
     setVaultState({ isUnlocked: true });
-    toast.success(
-      ui.isArabic ? "فُتحت الخزنة بمفتاح المشرف العام" : "Vault opened with the Super Admin key",
-      ui.isArabic ? "أصبحت العروض متاحة للاعتماد" : "Quotations are now available for selection"
+    toast.info(
+      ui.isArabic ? "إظهار أسعار العروض اليدوية (عرض فقط)" : "Showing manual quote prices (display only)",
+      ui.isArabic ? "لم تتغير خزنة الخادم" : "The server vault is unchanged"
     );
   }
 
@@ -75,8 +78,8 @@ export function QuotesAndContracts({
     if (!isKeyHolder) return;
     setVaultState({ isUnlocked: false });
     toast.info(
-      ui.isArabic ? "أُعيد ختم الخزنة" : "Vault re-sealed",
-      ui.isArabic ? "الأسعار مختومة حتى يفتحها المشرف العام" : "Prices stay sealed until the Super Admin opens them"
+      ui.isArabic ? "إخفاء أسعار العروض اليدوية (عرض فقط)" : "Hiding manual quote prices (display only)",
+      ui.isArabic ? "لم تتغير خزنة الخادم" : "The server vault is unchanged"
     );
   }
 
@@ -146,7 +149,7 @@ export function QuotesAndContracts({
             {vaultState.isUnlocked ? (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">
                 <Unlock className="h-3.5 w-3.5" />
-                {ui.p("VAULT OPEN · AUDITED", "الخزنة مفتوحة · مُدقَّقة")}
+                {ui.p("PRICES SHOWN · DISPLAY ONLY", "الأسعار ظاهرة · عرض فقط")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
@@ -172,7 +175,7 @@ export function QuotesAndContracts({
                 className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-600"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                {ui.p("Re-seal vault", "إعادة ختم الخزنة")}
+                {ui.p("Hide prices (display only)", "إخفاء الأسعار (عرض فقط)")}
               </button>
             ) : (
               <button
@@ -180,7 +183,7 @@ export function QuotesAndContracts({
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
               >
                 <Key className="h-3.5 w-3.5" />
-                {ui.p("Open vault · Super Admin key", "فتح الخزنة · مفتاح المشرف العام")}
+                {ui.p("Show prices (display only)", "إظهار الأسعار (عرض فقط)")}
               </button>
             )
           ) : (
@@ -197,8 +200,8 @@ export function QuotesAndContracts({
           <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-300">
             <CheckCircle2 className="h-4 w-4" />
             {ui.p(
-              "Opened with the Super Admin key. Quotations are visible for a transparent selection.",
-              "فُتحت بمفتاح المشرف العام. العروض ظاهرة لاختيار شفاف."
+              "Display only: manual quote prices are shown on this page. The audited server vault is opened in Supplier portal submissions.",
+              "عرض فقط: تظهر أسعار العروض اليدوية في هذه الصفحة. تُفتح خزنة الخادم المُدقَّقة من «عروض بوابة الموردين»."
             )}
           </p>
         ) : null}
