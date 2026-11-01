@@ -11,8 +11,9 @@ import { HttpError } from "./http.js";
  * profile, services and bookings, plus sanitized demand for the explicitly
  * allow-listed synthetic demo intake while it is QUOTING and matches their
  * STORED category. Nothing a caller sends (category, names, ids of other
- * events) can widen that. D-011 is unresolved, so supplier terms are always
- * sealed and never approved, unlocked or contracted here.
+ * events) can widen that. D-011 (approved 2026-10-31): supplier terms stay
+ * sealed for everyone except the Super Admin, the single key holder, who
+ * opens the vault and approves and contracts through the operations routes.
  */
 
 /** Non-secret synthetic showcase allow-list (D-019). */
@@ -228,6 +229,9 @@ export const supplierNoteBodySchema = z
 export const submissionRejectBodySchema = z
   .object({ reason: plainText(1, 500, true).optional() })
   .strict();
+
+/** Super Admin approval / contract actions take no body fields (D-011). */
+export const submissionDecisionBodySchema = z.object({}).strict();
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -462,19 +466,99 @@ export function toSupplierRequestDto(
 // Logistics review (no prices, scores or commission)
 // ---------------------------------------------------------------------------
 
+/**
+ * D-011 (approved 2026-10-31): the label recorded on a vault session opened
+ * by the single Super Admin key. Only such a session reveals supplier terms.
+ */
+export const VAULT_KEY_HOLDER_ROLE = "Midyaf Super Admin";
+
+export function isOpenedByKeyHolder(
+  session: { status: string; key1Role: string | null; unlockedAt: Date | null } | null | undefined
+) {
+  return Boolean(
+    session &&
+      session.status === "UNLOCKED" &&
+      session.key1Role === VAULT_KEY_HOLDER_ROLE &&
+      session.unlockedAt
+  );
+}
+
+/**
+ * Ids of supplier-portal quotes whose terms must stay hidden from this
+ * reader, e.g. to drop their contracts (amounts) from lists: every supplier
+ * quote for non-key-holders, and for the Super Admin those whose intake vault
+ * is not currently opened by the Super Admin key (D-011).
+ */
+export async function sealedSupplierQuoteIds(
+  db: Pick<Prisma.TransactionClient, "vendorQuote" | "vaultSession">,
+  isKeyHolder: boolean
+): Promise<string[]> {
+  const quotes = await db.vendorQuote.findMany({
+    where: { supplierId: { not: null } },
+    select: { id: true, intakeId: true }
+  });
+  if (!quotes.length || !isKeyHolder) return quotes.map((quote) => quote.id);
+  const sessions = await db.vaultSession.findMany({
+    where: { intakeId: { in: [...new Set(quotes.map((quote) => quote.intakeId))] } },
+    select: { intakeId: true, status: true, key1Role: true, unlockedAt: true }
+  });
+  const opened = new Set(sessions.filter((session) => isOpenedByKeyHolder(session)).map((session) => session.intakeId));
+  return quotes.filter((quote) => !opened.has(quote.intakeId)).map((quote) => quote.id);
+}
+
+/** Columns read for the review list; price columns are mapped only for the key holder. */
+export const submissionReviewSelect = {
+  id: true,
+  intakeId: true,
+  category: true,
+  item: true,
+  quantity: true,
+  unitPrice: true,
+  totalPrice: true,
+  commissionPercent: true,
+  commissionAmount: true,
+  status: true,
+  isVaultSealed: true,
+  createdAt: true,
+  supplier: { select: { id: true, name: true, category: true } }
+} as const;
+
 export type SubmissionReviewRow = {
   id: string;
   intakeId: string;
   category: string;
   item: string;
   quantity: number;
+  unitPrice?: unknown;
+  totalPrice?: unknown;
+  commissionPercent?: unknown;
+  commissionAmount?: unknown;
   status: QuoteStatus;
   isVaultSealed: boolean;
   createdAt: Date;
   supplier: { id: string; name: string; category: SupplierCategory } | null;
 };
 
-export function toSubmissionReviewDto(quote: SubmissionReviewRow) {
+export type SubmissionReviewOptions = {
+  /** True only for the Super Admin on a vault opened by the Super Admin key. */
+  revealTerms?: boolean;
+  contract?: { id: string; status: string } | null;
+};
+
+/**
+ * Price-free by default. Terms are mapped only when the caller passes
+ * revealTerms, i.e. the key holder viewing an opened vault (D-011).
+ */
+export function toSubmissionReviewDto(quote: SubmissionReviewRow, options: SubmissionReviewOptions = {}) {
+  const terms = options.revealTerms
+    ? {
+        unitPrice: money(quote.unitPrice),
+        totalPrice: money(quote.totalPrice),
+        commissionPercent: money(quote.commissionPercent),
+        commissionAmount: money(quote.commissionAmount),
+        currency: SUPPLIER_REQUEST_CURRENCY
+      }
+    : null;
   return {
     quoteId: quote.id,
     source: "SUPPLIER_PORTAL" as const,
@@ -487,9 +571,9 @@ export function toSubmissionReviewDto(quote: SubmissionReviewRow) {
     quantity: quote.quantity,
     status: quote.status,
     submittedAt: iso(quote.createdAt),
-    // Supplier terms are sealed regardless of any stored flag (D-011).
-    sealed: true,
-    policyPending: true
+    sealed: terms === null,
+    terms,
+    contract: options.contract ?? null
   };
 }
 

@@ -13,6 +13,7 @@ import {
   stripSensitiveFields
 } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
+import { sealedSupplierQuoteIds } from "../utils/supplierPortal.js";
 import { loadVisibleNotifications } from "./notifications.js";
 
 const router = Router();
@@ -275,7 +276,8 @@ router.get(
         orderBy: { createdAt: "desc" }
       }),
       // Supplier-owned submissions stay out of the raw numeric legacy array:
-      // their terms are sealed pending D-011 (see /supplier-submissions).
+      // their terms are sealed for all but the Super Admin key holder (D-011,
+      // see /supplier-submissions).
       isFullAccess
         ? prisma.vendorQuote.findMany({
             where: { supplierId: null },
@@ -283,7 +285,13 @@ router.get(
           })
         : Promise.resolve([]),
       isFullAccess
-        ? prisma.vendorContract.findMany({ orderBy: { updatedAt: "desc" } })
+        ? // D-011: supplier contracts carry sealed amounts; same rule as GET /contracts.
+          sealedSupplierQuoteIds(prisma, user.role === Role.SUPER_ADMIN).then((hidden) =>
+            prisma.vendorContract.findMany({
+              where: hidden.length ? { quoteId: { notIn: hidden } } : undefined,
+              orderBy: { updatedAt: "desc" }
+            })
+          )
         : Promise.resolve([]),
       prisma.guestJourneyRecord.findMany({
         where: buildGuestJourneyWhere({

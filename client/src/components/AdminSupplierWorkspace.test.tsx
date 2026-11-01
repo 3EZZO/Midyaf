@@ -166,8 +166,8 @@ describe("AdminSupplierWorkspaceView workspace", () => {
     expect(html).toContain("Synthetic recommendation");
     expect(html).toContain("Synthetic supplier hotel offer");
     expect(html).toContain("Received, under review");
-    expect(html).toContain("Sealed: the quoted price is not shown to administrators");
-    expect(html).toContain("Opening policy pending");
+    expect(html).toContain("Sealed here: this read-only view never shows prices");
+    expect(html).toContain("Sealed · Super Admin key");
     expect(html).toContain("Supplier quotations");
     expect(html).toContain("Supplier services");
     expect(html).toContain("Supplier bookings");
@@ -207,7 +207,7 @@ describe("AdminSupplierWorkspaceView workspace", () => {
     expect(html).toContain("عرض إداري للقراءة فقط");
     expect(html).toContain("مساحات الموردين");
     expect(html).toContain("غرف فندقية: 15 غرفة");
-    expect(html).toContain("مختوم: لا يظهر السعر المعروض للمشرفين");
+    expect(html).toContain("مختوم هنا: هذا العرض للاطلاع فقط ولا يُظهر الأسعار");
     expect(html).toContain("حساب المورد مرتبط");
     expect(html).toContain("لا يوجد حساب مورد مرتبط");
     expect(html).toContain("950.00 ر.س");

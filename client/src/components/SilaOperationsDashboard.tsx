@@ -1,5 +1,6 @@
 import { OperationalEventEntry } from "./EventRadar";
 import { OrganizerWorkspace } from "./OrganizerWorkspace";
+import { SupplierSubmissions } from "./SupplierSubmissions";
 import { useMemo, useState } from "react";
 import {
   ArrowLeftRight,
@@ -475,6 +476,10 @@ export function SilaOperationsDashboard({
         </Section>
       )}
 
+      {activeTab === "contracts" && !isDemoMode && session && canReviewSupplierQuotes(session.user.role) && intakes.length > 0 ? (
+        <SupplierQuotesSection intakes={intakes} session={session} isArabic={isArabic} />
+      ) : null}
+
       {activeTab === "contracts" && (
         <Section
           id="section-contracts"
@@ -594,6 +599,55 @@ export function SilaOperationsDashboard({
   );
 }
 
+/** Logistics roles allowed by GET /supplier-submissions (server-enforced). */
+export function canReviewSupplierQuotes(role: string) {
+  return role === "SUPER_ADMIN" || role === "LOGISTICS_MANAGER" || role === "ORGANIZER";
+}
+
+/** The request whose supplier quotations open first: a quoting one, else the first. */
+export function defaultQuoteIntakeId(intakes: Array<{ id: string; status: string }>) {
+  return (intakes.find((intake) => intake.status === "QUOTING") ?? intakes[0])?.id ?? "";
+}
+
+/**
+ * D-011: supplier-portal quotations for one activity. The Super Admin opens
+ * the vault, sees prices, approves and contracts here; other logistics roles
+ * see status and notes only. The server decides what each role receives.
+ */
+function SupplierQuotesSection({
+  intakes,
+  session,
+  isArabic
+}: {
+  intakes: MidyafData["activityIntakes"];
+  session: Session;
+  isArabic: boolean;
+}) {
+  const [intakeId, setIntakeId] = useState(() => defaultQuoteIntakeId(intakes));
+  return (
+    <Section
+      id="section-supplier-quotes"
+      title={isArabic ? "عروض الموردين · خزنة المشرف العام" : "Supplier quotations · Super Admin vault"}
+    >
+      <label className="flex flex-col gap-1 text-sm text-ink-muted sm:max-w-md">
+        {isArabic ? "النشاط" : "Activity"}
+        <select
+          value={intakeId}
+          onChange={(event) => setIntakeId(event.target.value)}
+          className="rounded-md border border-hairline bg-surface-1 p-2 text-ink"
+        >
+          {intakes.map((intake) => (
+            <option key={intake.id} value={intake.id}>
+              {intake.activityName}
+            </option>
+          ))}
+        </select>
+      </label>
+      <SupplierSubmissions intakeId={intakeId} session={session} isArabic={isArabic} canManage />
+    </Section>
+  );
+}
+
 /** Short owner-facing steps for entering a new event. */
 export function IntakeHowTo({ isArabic }: { isArabic: boolean }) {
   const steps = isArabic
@@ -642,8 +696,8 @@ export function IntakeAccessNote({
   return (
     <p role="note" data-intake-no-access className="mt-3 rounded-md border border-warn/40 bg-warn/10 p-3 text-sm text-ink">
       {isArabic
-        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من مالك المؤسسة منحك هذه الصلاحية؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها فقط.`
-        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask that organization's owner to grant you this role; until then you can only follow events you have access to.`}
+        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من المشرف العام لمضياف أو من مالك المؤسسة إضافتك بدور «مدير» (اختر المؤسسة ← أعضاء المؤسسة والصلاحيات)؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها وتعديلها حسب صلاحياتك.`
+        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask the Midyaf Super Admin or that organization's owner to add you as an Admin (choose the organization → Organization members & roles); until then you can follow and edit only the events you were given access to.`}
     </p>
   );
 }

@@ -52,62 +52,34 @@ export function QuotesAndContracts({
     };
   }, [selectedDemoContract]);
 
-  // Triple-Key Security Vault state for Anti-Corruption protocol
+  // D-011 (approved 2026-10-31): the Midyaf Super Admin is the single key
+  // holder. This banner gates the display of legacy manual quotes only; the
+  // supplier-portal prices below are released by the server to the Super
+  // Admin alone (see SupplierSubmissions).
+  const isKeyHolder = session?.user.role === "SUPER_ADMIN";
   const hasSealedQuotes = data.vendorQuotes.some((q) => q.isVaultSealed);
-  const [vaultState, setVaultState] = useState({
-    key1: !hasSealedQuotes,
-    key2: !hasSealedQuotes,
-    key3: !hasSealedQuotes,
-    isUnlocked: !hasSealedQuotes
-  });
+  const [vaultState, setVaultState] = useState({ isUnlocked: !hasSealedQuotes });
 
   const isVaultLocked = !vaultState.isUnlocked;
 
-  function turnKey(keyNum: 1 | 2 | 3) {
-    setVaultState((prev) => {
-      const next = { ...prev };
-      if (keyNum === 1) next.key1 = true;
-      if (keyNum === 2) next.key2 = true;
-      if (keyNum === 3) next.key3 = true;
-      if (next.key1 && next.key2 && next.key3) {
-        next.isUnlocked = true;
-        toast.success(
-          ui.isArabic ? "تم فك تشفير الخزنة الثلاثية بنجاح" : "Triple-Key Security Vault Unlocked",
-          ui.isArabic ? "كافة العروض المشفرة أصبحت متاحة للاعتماد" : "All procurement bids unmasked"
-        );
-      } else {
-        toast.info(
-          ui.isArabic ? `تم تدوير المفتاح الأمني ${keyNum}` : `Security Key ${keyNum} Turned`,
-          ui.isArabic ? "بانتظار بقية التواقيع المعتمدة" : "Awaiting remaining multi-sig keys"
-        );
-      }
-      return next;
-    });
-  }
-
-  function turnAllKeys() {
-    setVaultState({
-      key1: true,
-      key2: true,
-      key3: true,
-      isUnlocked: true
-    });
-    toast.success(
-      ui.isArabic ? "تم فك تشفير الخزنة الثلاثية فورياً" : "Vault Instantly Unmasked",
-      ui.isArabic ? "تم التحقق من كافة المفاتيح الأمنية الثلاثة" : "All 3 cryptographic keys validated"
+  // Display only: these toggle how legacy manual quotes are shown on this
+  // page. They do not open, re-seal or audit the server vault; that happens
+  // in the Supplier portal submissions panel (server-backed).
+  function openVault() {
+    if (!isKeyHolder) return;
+    setVaultState({ isUnlocked: true });
+    toast.info(
+      ui.isArabic ? "إظهار أسعار العروض اليدوية (عرض فقط)" : "Showing manual quote prices (display only)",
+      ui.isArabic ? "لم تتغير خزنة الخادم" : "The server vault is unchanged"
     );
   }
 
   function resetVault() {
-    setVaultState({
-      key1: false,
-      key2: false,
-      key3: false,
-      isUnlocked: false
-    });
+    if (!isKeyHolder) return;
+    setVaultState({ isUnlocked: false });
     toast.info(
-      ui.isArabic ? "تم إعادة قفل وتشفير الخزنة الثلاثية" : "Vault Sealed & Re-Encrypted",
-      ui.isArabic ? "عروض الأسعار محمية ببروتوكول النزاهة" : "Bids secured under anti-corruption lock"
+      ui.isArabic ? "إخفاء أسعار العروض اليدوية (عرض فقط)" : "Hiding manual quote prices (display only)",
+      ui.isArabic ? "لم تتغير خزنة الخادم" : "The server vault is unchanged"
     );
   }
 
@@ -153,25 +125,21 @@ export function QuotesAndContracts({
 
   return (
     <Section title={ui.l("Vendor quotations, contracts, and commissions")}>
-      {/* Triple-Key Anti-Corruption Security Vault Banner */}
-      <div id="triple-key-vault" className="mb-6 scroll-mt-6 overflow-hidden rounded-lg border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl transition-all duration-500">
+      {/* D-011 sealed-bid vault: one key, held by the Midyaf Super Admin */}
+      <div id="triple-key-vault" data-vault-key-holder="SUPER_ADMIN" className="mb-6 scroll-mt-6 overflow-hidden rounded-lg border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl transition-all duration-500">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold tracking-wide text-white md:text-base">
-                  {ui.l("Midyaf Anti-Corruption Vault: Multi-Party Authorization")}
-                </h4>
-                <span className="rounded-md bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/30">
-                  {ui.l("PATENT-PENDING")}
-                </span>
-              </div>
+              <h4 className="font-bold tracking-wide text-white md:text-base">
+                {ui.p("Midyaf sealed-bid vault · Super Admin key", "خزنة العروض المختومة · مفتاح المشرف العام")}
+              </h4>
               <p className="text-xs text-slate-300">
-                {ui.l(
-                  "Vendor bids are cryptographically sealed to eliminate procurement corruption. Requires 2 Organizer keys + 1 Midyaf auditor key."
+                {ui.p(
+                  "Quotation prices stay sealed. Only the Midyaf Super Admin holds the key, opens the vault and approves the selected quote.",
+                  "تبقى أسعار العروض مختومة. المشرف العام لمضياف وحده يحمل المفتاح ويفتح الخزنة ويعتمد العرض المختار."
                 )}
               </p>
             </div>
@@ -181,191 +149,62 @@ export function QuotesAndContracts({
             {vaultState.isUnlocked ? (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">
                 <Unlock className="h-3.5 w-3.5" />
-                {ui.l("VAULT UNLOCKED & AUDITED")}
+                {ui.p("PRICES SHOWN · DISPLAY ONLY", "الأسعار ظاهرة · عرض فقط")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300">
                 <Lock className="h-3.5 w-3.5 animate-pulse" />
-                {ui.l("3-KEY SEAL ACTIVE")}
+                {ui.p("SEALED", "مختومة")}
               </span>
             )}
           </div>
         </div>
 
-        {/* The Three Keys Grid */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {/* Key 1 */}
-          <div
-            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
-              vaultState.key1
-                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
-                : "border-slate-700 bg-slate-800/60 text-slate-300"
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-400">
-                  {ui.l("Key 1: Organizer Ops")}
-                </p>
-                <p className="text-sm font-bold text-white">
-                  {ui.l("Sila Operations Director")}
-                </p>
-              </div>
-              <Key
-                className={`h-5 w-5 ${
-                  vaultState.key1 ? "text-emerald-400" : "text-slate-500"
-                }`}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs">
-                {vaultState.key1 ? (
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={13} className="shrink-0" />
-                    <span>{ui.l("Key Turned (Khalid Al-Omar)")}</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
-                )}
-              </span>
-              {!vaultState.key1 && (
-                <button
-                  onClick={() => turnKey(1)}
-                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
-                >
-                  {ui.l("Turn Key 1")}
-                </button>
-              )}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+          <div className="flex items-center gap-3">
+            <Key className={`h-5 w-5 ${vaultState.isUnlocked ? "text-emerald-400" : "text-slate-500"}`} />
+            <div>
+              <p className="text-xs font-semibold text-slate-400">{ui.p("Key holder", "حامل المفتاح")}</p>
+              <p className="text-sm font-bold text-white">{ui.p("Midyaf Super Admin", "المشرف العام لمضياف")}</p>
             </div>
           </div>
-
-          {/* Key 2 */}
-          <div
-            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
-              vaultState.key2
-                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
-                : "border-slate-700 bg-slate-800/60 text-slate-300"
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-400">
-                  {ui.l("Key 2: Organizer Finance")}
-                </p>
-                <p className="text-sm font-bold text-white">
-                  {ui.l("Sila Procurement / Finance")}
-                </p>
-              </div>
-              <Key
-                className={`h-5 w-5 ${
-                  vaultState.key2 ? "text-emerald-400" : "text-slate-500"
-                }`}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs">
-                {vaultState.key2 ? (
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={13} className="shrink-0" />
-                    <span>{ui.l("Key Turned (Noura Al-Saud)")}</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
-                )}
-              </span>
-              {!vaultState.key2 && (
-                <button
-                  onClick={() => turnKey(2)}
-                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
-                >
-                  {ui.l("Turn Key 2")}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Key 3 */}
-          <div
-            className={`flex flex-col justify-between rounded-xl border p-3 transition-all ${
-              vaultState.key3
-                ? "border-emerald-500/50 bg-emerald-950/40 text-emerald-200"
-                : "border-slate-700 bg-slate-800/60 text-slate-300"
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-400">
-                  {ui.l("Key 3: Midyaf Compliance")}
-                </p>
-                <p className="text-sm font-bold text-white">
-                  {ui.l("Midyaf Compliance Auditor")}
-                </p>
-              </div>
-              <Key
-                className={`h-5 w-5 ${
-                  vaultState.key3 ? "text-emerald-400" : "text-slate-500"
-                }`}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs">
-                {vaultState.key3 ? (
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 size={13} className="shrink-0" />
-                    <span>{ui.l("Key Turned (Audit Team)")}</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-400">{ui.l("Awaiting turn")}</span>
-                )}
-              </span>
-              {!vaultState.key3 && (
-                <button
-                  onClick={() => turnKey(3)}
-                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500"
-                >
-                  {ui.l("Turn Key 3")}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Vault Controls & Audit Footer */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-700/60 pt-3 text-xs">
-          {vaultState.isUnlocked ? (
-            <p className="flex items-center gap-1.5 text-emerald-300">
-              <CheckCircle2 className="h-4 w-4" />
-              {ui.l(
-                "Audit Entry #MIDYAF-SEC-2027 confirmed. Quotations decrypted for transparent selection."
-              )}
-            </p>
+          {isKeyHolder ? (
+            vaultState.isUnlocked ? (
+              <button
+                onClick={resetVault}
+                className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-600"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {ui.p("Hide prices (display only)", "إخفاء الأسعار (عرض فقط)")}
+              </button>
+            ) : (
+              <button
+                onClick={openVault}
+                className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+              >
+                <Key className="h-3.5 w-3.5" />
+                {ui.p("Show prices (display only)", "إظهار الأسعار (عرض فقط)")}
+              </button>
+            )
           ) : (
-            <p className="text-amber-300">
-              {ui.l(
-                "All 3 keys required simultaneously. Quotation amounts are locked and encrypted."
+            <p className="text-xs text-amber-300">
+              {ui.p(
+                "Only the Midyaf Super Admin can open this vault and approve a quote.",
+                "المشرف العام لمضياف وحده يستطيع فتح هذه الخزنة واعتماد العرض."
               )}
             </p>
           )}
-
-          <div className="flex items-center gap-2">
-            {!vaultState.isUnlocked && (
-              <button
-                onClick={turnAllKeys}
-                className="flex items-center gap-1 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 ring-1 ring-amber-400/40 hover:bg-amber-500/30"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {ui.l("Authorize All Keys (Emergency Protocol)")}
-              </button>
-            )}
-            <button
-              onClick={resetVault}
-              className="flex items-center gap-1 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-600"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {ui.l("Re-Seal Security Vault")}
-            </button>
-          </div>
         </div>
+
+        {vaultState.isUnlocked ? (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-300">
+            <CheckCircle2 className="h-4 w-4" />
+            {ui.p(
+              "Display only: manual quote prices are shown on this page. The audited server vault is opened in Supplier portal submissions.",
+              "عرض فقط: تظهر أسعار العروض اليدوية في هذه الصفحة. تُفتح خزنة الخادم المُدقَّقة من «عروض بوابة الموردين»."
+            )}
+          </p>
+        ) : null}
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -444,7 +283,7 @@ export function QuotesAndContracts({
                     : `${ui.l("Score")} ${quote.score} · ${ui.l(quote.status)}`}
                 </Badge>
 
-                {canManage && quote.status !== "APPROVED" ? (
+                {canManage && isKeyHolder && quote.status !== "APPROVED" ? (
                   <button
                     onClick={() => void handleApproveQuote(quote.id)}
                     disabled={isSealed || pendingAction !== null}
@@ -489,8 +328,8 @@ export function QuotesAndContracts({
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {ui.p(
-                  "Legally binding procurement contracts authenticated via Triple-Key Multi-Sig and sealed on-chain.",
-                  "عقود توريد ملزمة قانونياً موثقة عبر بروتوكول التوقيع المتعدد ومختومة رقمياً."
+                  "Procurement contracts opened with the Midyaf Super Admin key and approved by the Super Admin.",
+                  "عقود توريد فُتحت بمفتاح المشرف العام لمضياف واعتمدها المشرف العام."
                 )}
               </p>
             </div>
@@ -593,8 +432,8 @@ export function QuotesAndContracts({
                 </p>
                 <p className="mt-1">
                   {ui.p(
-                    "This contract was unmasked through the Anti-Corruption Triple-Key Vault and digitally signed by Sila Operations, Sila Finance, and the Midyaf Independent Compliance Auditor.",
-                    "تم فتح هذا العقد عبر الخزنة الأمنية الثلاثية وتوقيعه رقمياً من قبل عمليات صلة، ومالية صلة، ومدقق الامتثال المستقل بمضياف."
+                    "This contract's sealed quotation was opened with the Midyaf Super Admin key, and the Super Admin approved and signed it.",
+                    "فُتح عرض هذا العقد المختوم بمفتاح المشرف العام لمضياف، واعتمده المشرف العام ووقّعه."
                   )}
                 </p>
               </div>

@@ -189,9 +189,18 @@ export const organizationCreateSchema = z
     path: ["vendorCategory"]
   });
 
+/**
+ * Add an existing user by id, or by sign-in email (ORG-MEMBERS: lets the
+ * Super Admin or an owner/admin grant a role from the Organizer screen).
+ */
 export const organizationMemberCreateSchema = z
-  .object({ userId: idSchema, role: z.enum(ORGANIZATION_ROLES) })
-  .strict();
+  .object({
+    userId: idSchema.optional(),
+    email: z.string().trim().toLowerCase().email().max(254).optional(),
+    role: z.enum(ORGANIZATION_ROLES)
+  })
+  .strict()
+  .refine((body) => Boolean(body.userId) !== Boolean(body.email), "Provide either userId or email");
 
 export const organizationMemberUpdateSchema = z
   .object({

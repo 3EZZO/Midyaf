@@ -5,8 +5,9 @@ import type { Harness } from "../testing/httpHarness.js";
 
 /**
  * SUPPLIER-001 HTTP checks for owned immutable quotations, append-only notes,
- * the logistics review/rejection path and vault/contract containment while
- * D-011 is Pending. Real routers and JWT middleware over an in-memory Prisma
+ * the logistics review/rejection path, and the D-011 policy (approved
+ * 2026-10-31): the Super Admin alone opens the vault, approves and contracts.
+ * Real routers and JWT middleware over an in-memory Prisma
  * double; telemetry/geofence singletons are stubbed. Synthetic records only.
  */
 
@@ -35,6 +36,7 @@ const NOTES = `/api/suppliers/me/requests/${DEMO.intakeId}/notes`;
 const actors = {
   hotel: { id: "usr_sup_hotel", role: Role.SUPPLIER },
   hotel2: { id: "usr_sup_hotel2", role: Role.SUPPLIER },
+  hotel3: { id: "usr_sup_hotel3", role: Role.SUPPLIER },
   catering: { id: "usr_sup_catering", role: Role.SUPPLIER },
   badCommission: { id: "usr_sup_bad", role: Role.SUPPLIER },
   unlinked: { id: "usr_sup_unlinked", role: Role.SUPPLIER },
@@ -107,6 +109,7 @@ function seed() {
     supplier: [
       supplier("sup_hotel", "usr_sup_hotel", "HOTEL"),
       supplier("sup_hotel2", "usr_sup_hotel2", "HOTEL"),
+      supplier("sup_hotel3", "usr_sup_hotel3", "HOTEL"),
       supplier("sup_catering", "usr_sup_catering", "CATERING"),
       supplier("sup_bad", "usr_sup_bad", "HOTEL", "30.00")
     ],
@@ -360,6 +363,29 @@ describe("legacy quote paths contain supplier submissions", () => {
     expect((await http.put("/api/vendor-quotes/q_legacy_b", actors.org2, { intakeId: "int_other" })).status).toBe(403);
   });
 
+  it("lets only the Super Admin approve a legacy quote and sign its contract (D-011)", async () => {
+    expect((await http.put("/api/vendor-quotes/q_legacy_b/approve", actors.lm)).status).toBe(403);
+    expect((await http.put("/api/vendor-quotes/q_legacy_b/approve", actors.org)).status).toBe(403);
+    const approved = await http.put("/api/vendor-quotes/q_legacy_b/approve", actors.sa);
+    expect(approved.status).toBe(200);
+    expect(approved.body.vendorQuote.status).toBe("APPROVED");
+
+    // Logistics may still draft a legacy contract; signing is the Super Admin's.
+    const draft = await http.post("/api/contracts", actors.org, {
+      quoteId: "q_legacy_b",
+      vendorName: "Legacy q_legacy_b",
+      category: "Hotels",
+      amount: 10000,
+      commissionAmount: 1200
+    });
+    expect(draft.status).toBe(201);
+    expect((await http.put(`/api/contracts/${draft.body.contract.id}/approve`, actors.org)).status).toBe(403);
+    expect((await http.put(`/api/contracts/${draft.body.contract.id}/approve`, actors.lm)).status).toBe(403);
+    expect((await http.put(`/api/contracts/${draft.body.contract.id}/approve`, actors.sa)).status).toBe(200);
+    // Legacy contracts stay listed for logistics.
+    expect((await http.get("/api/contracts", actors.org)).body.contracts).toHaveLength(1);
+  });
+
   it("refuses to delete an intake that holds supplier submissions", async () => {
     await submitHotelQuote();
     expect((await http.del(`/api/activity-intakes/${DEMO.intakeId}`, actors.lm)).status).toBe(409);
@@ -367,11 +393,17 @@ describe("legacy quote paths contain supplier submissions", () => {
   });
 });
 
-describe("vault containment while D-011 is Pending", () => {
-  it("requires a logistics role and intake access, and never creates a session on read", async () => {
+describe("D-011 vault: the Super Admin is the single key holder", () => {
+  it("lets logistics read the state, never creates a session on read and denies other roles", async () => {
     const read = await http.get(`/api/vault/${DEMO.intakeId}`, actors.lm);
     expect(read.status).toBe(200);
-    expect(read.body).toMatchObject({ vaultSession: { status: "LOCKED", id: null }, policyPending: true });
+    expect(read.body).toMatchObject({
+      vaultSession: { status: "LOCKED", id: null },
+      keyHolder: "SUPER_ADMIN",
+      opened: false,
+      canOpen: false
+    });
+    expect((await http.get(`/api/vault/${DEMO.intakeId}`, actors.sa)).body.canOpen).toBe(true);
     expect(memory.current.rows("vaultSession")).toHaveLength(0);
 
     expect((await http.get(`/api/vault/${DEMO.intakeId}`, actors.hotel)).status).toBe(403);
@@ -380,36 +412,226 @@ describe("vault containment while D-011 is Pending", () => {
     expect((await http.get("/api/vault/int_missing", actors.lm)).status).toBe(404);
   });
 
-  it("refuses unlock for the demo intake and intakes with supplier terms, even with a spoofed role", async () => {
-    for (const keyNumber of [1, 2, 3]) {
-      const response = await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa, {
-        keyNumber,
-        roleName: "Midyaf Compliance Auditor"
+  it("refuses every key turn by other roles, including the event owner and a spoofed label", async () => {
+    for (const actor of [actors.lm, actors.org, actors.hotel, actors.coordinator, actors.company]) {
+      const response = await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actor, {
+        keyNumber: 1,
+        roleName: "Midyaf Super Admin"
       });
-      expect(response.status).toBe(409);
+      expect(response.status).toBe(403);
     }
+    expect((await http.post("/api/vault/int_org_b/authorize", actors.org, { keyNumber: 1 })).status).toBe(403);
     expect(memory.current.rows("vaultSession")).toHaveLength(0);
     expect(memory.current.rows("vendorQuote").every((q) => q.isVaultSealed)).toBe(true);
-
-    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.hotel, { keyNumber: 1 })).status).toBe(403);
   });
 
-  it("keeps the legacy flow for other intakes but ignores the caller's role label", async () => {
-    const response = await http.post("/api/vault/int_org_b/authorize", actors.org, {
-      keyNumber: 1,
-      roleName: "Midyaf Compliance Auditor"
+  it("opens the whole intake with one audited Super Admin action", async () => {
+    await submitHotelQuote();
+    const response = await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa, {});
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ opened: true, isFullyUnlocked: true });
+    expect(response.body.vaultSession).toMatchObject({
+      status: "UNLOCKED",
+      key1User: "usr_sa@example.test",
+      key1Role: "Midyaf Super Admin",
+      key2User: null,
+      key3User: null
     });
-    expect(response.status).toBe(200);
-    expect(response.body.vaultSession.key1Role).toBe("Sila Operations Director");
-    expect((await http.post("/api/vault/int_org_b/authorize", actors.org2, { keyNumber: 2 })).status).toBe(403);
-    expect((await http.post("/api/vault/int_org_b/authorize", actors.org, { keyNumber: 4 })).status).toBe(400);
+    expect(audits("vault.opened_by_super_admin")).toHaveLength(1);
+    // Legacy manual quotes lose their flag; supplier terms keep theirs.
+    const rows = memory.current.rows("vendorQuote").filter((q) => q.intakeId === DEMO.intakeId);
+    expect(rows.find((q) => q.id === "q_legacy")!.isVaultSealed).toBe(false);
+    expect(rows.filter((q) => q.supplierId).every((q) => q.isVaultSealed)).toBe(true);
+
+    // Idempotent: a second open neither changes nor re-audits.
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa)).status).toBe(200);
+    expect(audits("vault.opened_by_super_admin")).toHaveLength(1);
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa, { keyNumber: 4 })).status).toBe(400);
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa, { extra: true })).status).toBe(400);
   });
 
-  it("lets an authorized reset seal, with an audit entry", async () => {
-    const response = await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.lm);
-    expect(response.status).toBe(200);
-    expect(audits("vault.reset_sealed")).toHaveLength(1);
+  it("gives a session unlocked by the retired multi-key flow no authority", async () => {
+    const quote = await submitHotelQuote();
+    memory.current.rows("vaultSession").push({
+      id: "vs_legacy",
+      intakeId: DEMO.intakeId,
+      status: "UNLOCKED",
+      key1User: "someone@example.test",
+      key1Role: "Sila Operations Director",
+      key1ApprovedAt: new Date(),
+      unlockedAt: new Date(),
+      createdAt: new Date()
+    });
+    const view = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(view.body.vault.opened).toBe(false);
+    expect(view.body.submissions[0]).toMatchObject({ sealed: true, terms: null });
+    expect((await http.post(`/api/supplier-submissions/${quote.id}/approve`, actors.sa)).status).toBe(409);
+  });
+
+  it("lets only the Super Admin re-seal, with an audit entry", async () => {
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.lm)).status).toBe(403);
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.org)).status).toBe(403);
     expect((await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.hotel)).status).toBe(403);
+    await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa);
+    const response = await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.sa);
+    expect(response.status).toBe(200);
+    expect(response.body.vaultSession).toMatchObject({ status: "LOCKED", key1Role: null, unlockedAt: null });
+    expect(audits("vault.reset_sealed")).toHaveLength(1);
+    expect(memory.current.rows("vendorQuote").every((q) => q.isVaultSealed)).toBe(true);
+    const view = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(view.body.vault.opened).toBe(false);
+  });
+});
+
+describe("D-011 Super Admin approval and contracts", () => {
+  async function twoHotelQuotes() {
+    const first = await submitHotelQuote();
+    const second = await http.post(QUOTES, actors.hotel2, { ...validQuote, unitPrice: 1100 });
+    expect(second.status).toBe(201);
+    return { first, second: second.body.quote as { id: string } };
+  }
+
+  async function openVault() {
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa)).status).toBe(200);
+  }
+
+  it("reveals terms to the Super Admin only after opening, and never to other roles", async () => {
+    await submitHotelQuote();
+    const sealed = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(sealed.body).toMatchObject({ vault: { opened: false, canOpen: true, canApprove: false }, sealedCount: 1 });
+    expect(JSON.stringify(sealed.body)).not.toMatch(/1200|18000|2160|Price|commission/);
+
+    await openVault();
+    const open = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(open.body).toMatchObject({ vault: { opened: true, canApprove: true }, sealedCount: 0 });
+    expect(open.body.submissions[0]).toMatchObject({
+      sealed: false,
+      terms: { unitPrice: "1200.00", totalPrice: "18000.00", commissionPercent: "12.00", commissionAmount: "2160.00", currency: "SAR" }
+    });
+
+    for (const actor of [actors.lm, actors.org]) {
+      const { body } = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actor);
+      expect(body.vault).toMatchObject({ opened: true, canOpen: false, canApprove: false });
+      expect(body.submissions[0]).toMatchObject({ sealed: true, terms: null });
+      expect(JSON.stringify(body)).not.toMatch(/1200|18000|2160|Price|commission/);
+    }
+  });
+
+  it("approves one quote per category, marks the others not selected and closes the category", async () => {
+    const { first, second } = await twoHotelQuotes();
+    expect((await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa)).status).toBe(409);
+
+    await openVault();
+    for (const actor of [actors.lm, actors.org, actors.hotel, actors.company]) {
+      expect((await http.post(`/api/supplier-submissions/${first.id}/approve`, actor)).status).toBe(403);
+    }
+    expect((await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa, { status: "APPROVED" })).status).toBe(400);
+    expect((await http.post("/api/supplier-submissions/q_legacy/approve", actors.sa)).status).toBe(404);
+
+    const approved = await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa);
+    expect(approved.status).toBe(200);
+    expect(approved.body.submission).toMatchObject({ status: "APPROVED", terms: { totalPrice: "18000.00" } });
+
+    const byId = new Map(supplierQuotes().map((q) => [q.id, q]));
+    expect(byId.get(first.id)!.status).toBe(QuoteStatus.APPROVED);
+    expect(byId.get(second.id)!.status).toBe(QuoteStatus.REJECTED);
+    expect(audits("supplier_quote.approve")[0].metadata).toMatchObject({
+      quoteId: first.id,
+      supplierId: "sup_hotel",
+      notSelectedCount: 1
+    });
+
+    expect((await http.post(`/api/supplier-submissions/${second.id}/approve`, actors.sa)).status).toBe(409);
+    expect((await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa)).status).toBe(409);
+    // The awarded category takes no further submissions.
+    expect((await http.post(QUOTES, actors.hotel3, validQuote)).status).toBe(409);
+
+    expect((await http.get("/api/suppliers/me/quotes", actors.hotel)).body.quotes[0].status).toBe("APPROVED");
+    expect((await http.get("/api/suppliers/me/quotes", actors.hotel2)).body.quotes[0].status).toBe("REJECTED");
+  });
+
+  it("drafts the contract from the stored quote and lets only the Super Admin see and sign it", async () => {
+    const { first, second } = await twoHotelQuotes();
+    await openVault();
+    expect((await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa)).status).toBe(409);
+    expect((await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa)).status).toBe(200);
+
+    expect((await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.lm)).status).toBe(403);
+    expect(
+      (await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa, { amount: 1 })).status
+    ).toBe(400);
+    expect((await http.post(`/api/supplier-submissions/${second.id}/contract`, actors.sa)).status).toBe(409);
+
+    const created = await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa);
+    expect(created.status).toBe(201);
+    const [contract] = memory.current.rows("vendorContract");
+    expect(contract).toMatchObject({ quoteId: first.id, vendorName: "Synthetic sup_hotel", category: "HOTEL", status: "DRAFT" });
+    expect(Number(contract.amount)).toBe(18000);
+    expect(Number(contract.commissionAmount)).toBe(2160);
+    expect(audits("supplier_contract.create")).toHaveLength(1);
+    expect((await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa)).status).toBe(409);
+
+    // Listing: the key holder sees it; other logistics roles do not see sealed amounts.
+    const saList = await http.get("/api/contracts", actors.sa);
+    expect(saList.body.contracts.map((c: any) => c.id)).toContain(contract.id);
+    const lmList = await http.get("/api/contracts", actors.lm);
+    expect(lmList.body.contracts.map((c: any) => c.id)).not.toContain(contract.id);
+    const review = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.org);
+    expect(review.body.submissions.find((s: any) => s.quoteId === first.id).contract).toEqual({ id: contract.id, status: "DRAFT" });
+
+    // Legacy contract paths stay closed for supplier quotes.
+    const legacyCreate = await http.post("/api/contracts", actors.sa, {
+      quoteId: first.id,
+      vendorName: "Synthetic vendor",
+      category: "HOTEL",
+      amount: 1,
+      commissionAmount: 0
+    });
+    expect(legacyCreate.status).toBe(409);
+    expect((await http.put(`/api/contracts/${contract.id}`, actors.sa, { amount: 1 })).status).toBe(409);
+
+    expect((await http.put(`/api/contracts/${contract.id}/approve`, actors.lm)).status).toBe(403);
+    expect((await http.put(`/api/contracts/${contract.id}/approve`, actors.org)).status).toBe(403);
+    const signed = await http.put(`/api/contracts/${contract.id}/approve`, actors.sa);
+    expect(signed.status).toBe(200);
+    expect(signed.body.contract.status).toBe("SIGNED");
+    expect((await http.put(`/api/contracts/${contract.id}/approve`, actors.sa)).status).toBe(409);
+    expect(audits("supplier_contract.sign")).toHaveLength(1);
+  });
+
+  it("hides supplier contracts again after re-sealing and refuses signing then", async () => {
+    const { first } = await twoHotelQuotes();
+    await openVault();
+    await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa);
+    const created = await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa);
+    const contractId = created.body.contract.id as string;
+
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/reset`, actors.sa)).status).toBe(200);
+    const list = await http.get("/api/contracts", actors.sa);
+    expect(list.body.contracts.map((c: any) => c.id)).not.toContain(contractId);
+    const review = await http.get(`/api/supplier-submissions?intakeId=${DEMO.intakeId}`, actors.sa);
+    expect(JSON.stringify(review.body)).not.toMatch(/18000|2160/);
+    expect((await http.put(`/api/contracts/${contractId}/approve`, actors.sa)).status).toBe(409);
+    expect(memory.current.rows("vendorContract")[0].status).toBe("DRAFT");
+  });
+
+  it("lets only one of two simultaneous signs succeed", async () => {
+    const { first } = await twoHotelQuotes();
+    await openVault();
+    await http.post(`/api/supplier-submissions/${first.id}/approve`, actors.sa);
+    const created = await http.post(`/api/supplier-submissions/${first.id}/contract`, actors.sa);
+    const path = `/api/contracts/${created.body.contract.id}/approve`;
+    const results = await Promise.all([http.put(path, actors.sa), http.put(path, actors.sa)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(audits("supplier_contract.sign")).toHaveLength(1);
+  });
+
+  it("rolls the vault opening back when its audit cannot be written", async () => {
+    memory.current.failNext("auditLog", "create", new Error("audit down"));
+    expect((await http.post(`/api/vault/${DEMO.intakeId}/authorize`, actors.sa)).status).toBe(500);
+    const session = memory.current.rows("vaultSession")[0];
+    expect(session?.status ?? "LOCKED").not.toBe("UNLOCKED");
+    expect(memory.current.rows("vendorQuote").every((q) => q.isVaultSealed)).toBe(true);
   });
 });
 
@@ -424,14 +646,20 @@ describe("logistics review of supplier submissions", () => {
         actor
       );
       expect(status).toBe(200);
-      expect(body).toMatchObject({ intakeId: DEMO.intakeId, policyPending: true, sealedCount: 1 });
+      expect(body).toMatchObject({
+        intakeId: DEMO.intakeId,
+        vault: { keyHolder: "SUPER_ADMIN", opened: false, canOpen: false, canApprove: false },
+        sealedCount: 1
+      });
       expect(body.submissions[0]).toMatchObject({
         source: "SUPPLIER_PORTAL",
         supplier: { id: "sup_hotel", name: "Synthetic sup_hotel", category: "HOTEL" },
         item: "Synthetic supplier hotel offer",
         quantity: 15,
         status: "RECEIVED",
-        sealed: true
+        sealed: true,
+        terms: null,
+        contract: null
       });
       expect(body.notes[0]).toMatchObject({
         text: "Synthetic recommendation",
