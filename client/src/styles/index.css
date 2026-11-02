@@ -992,18 +992,11 @@ textarea:focus-visible {
   border-color: rgba(212, 175, 55, 0.6);
 }
 
-@media (max-width: 768px) {
-  /* Ensure header navigation wraps properly without colliding with notch */
-  header, .shell-header {
-    padding-top: calc(1rem + env(safe-area-inset-top)) !important;
-    flex-wrap: wrap !important;
-  }
-}
-
+/* Shell header safe-area/height and main tab-bar clearance are owned by
+   TopBar and ShellFrame; no broad header/main overrides here. */
 @media (max-width: 480px) {
   input, select, textarea { font-size: 16px !important; }
   .login-card { padding: 1.25rem !important; }
-  main { padding-top: calc(2rem + env(safe-area-inset-top)) !important; padding-bottom: calc(2rem + env(safe-area-inset-bottom)) !important; }
   button, .btn-primary, .btn-secondary { min-height: 44px; }
 }
 

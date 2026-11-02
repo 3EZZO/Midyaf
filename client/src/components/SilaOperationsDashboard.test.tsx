@@ -4,7 +4,6 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import type { Driver, MidyafData, Session, Task } from "@shared/domain";
-import type { OrganizationDto } from "@shared/overhaul";
 import { eventTaskCards, TASK_CARD_LIMIT } from "../lib/eventTaskCards";
 import type { PortalProps } from "../pages/types";
 
@@ -14,9 +13,15 @@ vi.mock("react-i18next", () => ({
 }));
 
 // The organizer workspace and radar are tested in their own files; here only their placement matters.
-vi.mock("./OrganizerWorkspace", () => ({
-  OrganizerWorkspace: ({ session, isArabic }: { session?: Session | null; isArabic: boolean }) => (
-    <div data-organizer-workspace={session?.user.role ?? "none"} data-arabic={String(isArabic)} />
+vi.mock("./OrganizerWorkspace", async () => ({
+  ...(await vi.importActual<typeof import("./OrganizerWorkspace")>("./OrganizerWorkspace")),
+  OrganizerWorkspace: ({ session, isArabic, newEventRequest = 0, onNewEventRequestTaken }: { session?: Session | null; isArabic: boolean; newEventRequest?: number; onNewEventRequestTaken?: (id: number) => void }) => (
+    <div
+      data-organizer-workspace={session?.user.role ?? "none"}
+      data-arabic={String(isArabic)}
+      data-new-event-request={String(newEventRequest)}
+      data-new-event-ack={typeof onNewEventRequestTaken}
+    />
   )
 }));
 vi.mock("./EventRadar", () => ({
@@ -32,11 +37,12 @@ import {
   canReviewSupplierQuotes,
   defaultQuoteIntakeId,
   EventTaskList,
-  IntakeAccessNote,
   SilaOperationsDashboard,
-  canCreateEvents,
+  silaNewEventShortcut,
+  silaTabChange,
   type SilaTab
 } from "./SilaOperationsDashboard";
+import { NEW_EVENT_LABEL_AR, NEW_EVENT_LABEL_EN } from "./OrganizerWorkspace";
 import { CompanyDashboard } from "../pages/ops/CompanyDashboard";
 
 /**
@@ -168,8 +174,9 @@ const emptyData = {
   contracts: []
 } as unknown as MidyafData;
 
-const org = (myRole: string | null, kind = "COMPANY") =>
-  ({ id: `org-${myRole}-${kind}`, name: "Synthetic org", kind, myRole }) as unknown as OrganizationDto;
+/** The Sila hero shortcut (opening tag and label). */
+const shortcut = (html: string) =>
+  html.match(/<button[^>]*data-sila-new-event="shortcut"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? "";
 
 function renderSila({
   isDemoMode = false,
@@ -203,7 +210,7 @@ describe("Sila Intake", () => {
       expect(selectedTab(html)).toBe("Intake");
       expect(html).toContain('data-organizer-workspace="LOGISTICS_MANAGER"');
       expect(html).toContain("How to enter a new event");
-      expect(html).toContain("إدخال وتجهيز فعالية جديدة");
+      expect(html).toContain(`Press «${NEW_EVENT_LABEL_EN}»`);
       expect(html).toContain("Save &amp; open event plan");
       expect(html).toContain("Approve plan &amp; unlock operations");
       // No second form, no legacy drawer, and the radar is not on the default tab.
@@ -233,31 +240,52 @@ describe("Sila Intake", () => {
     expect(html.indexOf("data-organizer-workspace")).toBeLessThan(html.indexOf("Synthetic gala"));
   });
 
-  it("explains a hidden new-event button without granting anything", () => {
+  it("leaves the role explanation to the canonical workspace (no duplicate note here)", () => {
     orgState.value = { data: { organizations: [] } };
     const html = renderSila({ role: "SUPER_ADMIN" });
-    const note = html.match(/<p role="note" data-intake-no-access[^>]*>([^<]*)<\/p>/)?.[1] ?? "";
-    expect(note).toContain("not an owner or admin of an organizing company");
-    expect(note).toContain("Ask the Midyaf Super Admin");
-    expect(note).not.toMatch(/success|created|granted/i);
+    expect(html).not.toContain("data-intake-no-access");
+    expect(html.match(/data-organizer-workspace=/g)).toHaveLength(1);
+  });
+});
 
-    orgState.value = { data: { organizations: [org("OWNER")] } };
-    expect(renderSila()).not.toContain("data-intake-no-access");
-
-    // Still loading: no premature message.
-    orgState.value = {};
-    expect(renderSila()).not.toContain("data-intake-no-access");
+/**
+ * SILA-DASHBOARD-003: a prominent, localized «New event / activity» shortcut
+ * in the Sila hero, available from every tab. It only switches to Intake and
+ * asks the canonical OrganizerWorkspace for its entry; no form lives here.
+ */
+describe("Sila new event / activity shortcut", () => {
+  it("is offered in English and Arabic from every tab and controls the Intake section", () => {
+    for (const initialTab of ["intake", "fleet", "contracts", "reports", "ai"] as const) {
+      const english = shortcut(renderSila({ initialTab }));
+      expect(english, initialTab).toContain(NEW_EVENT_LABEL_EN);
+      expect(english).toContain('aria-controls="section-intake"');
+      expect(english).not.toContain('disabled=""');
+    }
+    expect(shortcut(renderSila({ isArabic: true }))).toContain(NEW_EVENT_LABEL_AR);
+    expect(shortcut(renderSila({ isDemoMode: true }))).toContain(NEW_EVENT_LABEL_EN);
   });
 
-  it("uses the organizer workspace's own creation rule", () => {
-    expect(canCreateEvents([org("OWNER")])).toBe(true);
-    expect(canCreateEvents([org("ADMIN")])).toBe(true);
-    expect(canCreateEvents([org("MEMBER"), org(null)])).toBe(false);
-    expect(canCreateEvents([org("OWNER", "VENDOR")])).toBe(false);
-    expect(renderToStaticMarkup(<IntakeAccessNote organizations={[org("MEMBER")]} isArabic />)).toContain(
-      "ليس مالكاً أو مديراً"
+  it("does not request the entry by itself: the workspace starts with no pending request", () => {
+    expect(renderSila()).toContain('data-new-event-request="0"');
+  });
+
+  it("opens Intake and issues a request on every press; tab navigation withdraws an untaken one", () => {
+    expect(silaNewEventShortcut()).toEqual({ tab: "intake", issueRequest: true });
+    expect(silaTabChange("fleet")).toEqual({ tab: "fleet", withdrawRequest: true });
+    // Returning to Intake by the tab bar never reopens the form on its own.
+    expect(silaTabChange("intake")).toEqual({ tab: "intake", withdrawRequest: true });
+  });
+
+  it("hands the canonical workspace the one-shot request together with its acknowledgement", () => {
+    // Rendered with the tab the shortcut produces, from another tab.
+    const next = silaNewEventShortcut();
+    const html = renderToStaticMarkup(
+      <SilaOperationsDashboard data={emptyData} session={session("ORGANIZER")} isDemoMode={false} isArabic={false} initialTab={next.tab} />
     );
-    expect(renderToStaticMarkup(<IntakeAccessNote organizations={[org("ADMIN")]} isArabic={false} />)).toBe("");
+    expect(selectedTab(html)).toBe("Intake");
+    expect(html).toContain('data-organizer-workspace="ORGANIZER"');
+    // The workspace acknowledges what it takes, so Sila keeps nothing to replay.
+    expect(html).toContain('data-new-event-ack="function"');
   });
 });
 

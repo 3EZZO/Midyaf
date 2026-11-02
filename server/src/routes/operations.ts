@@ -25,7 +25,7 @@ import {
   roundCurrency
 } from "../services/logisticsRules.js";
 import { generateReportPdf } from "../services/pdf.js";
-import { recordAuditLog } from "../services/auditLog.js";
+import { recordAuditLog, toAuditJson } from "../services/auditLog.js";
 import {
   safeDriverRelation,
   safeGuestRelation,
@@ -74,6 +74,19 @@ const reportMutationRoles: Role[] = [Role.LOGISTICS_MANAGER, Role.SUPER_ADMIN];
 const vaultKeyHolderRoles: Role[] = [Role.SUPER_ADMIN];
 /** Contract statuses a sign may move from (guarded update). */
 const SIGNABLE_CONTRACT_STATUSES: ContractStatus[] = [ContractStatus.DRAFT, ContractStatus.UNDER_REVIEW];
+/**
+ * VD011-R2-02/03: generic (non-decision) quotation and contract writes. They
+ * may only create, edit from, and move between these non-approved / unsigned
+ * states. APPROVED and SIGNED are granted only by the exclusive Super Admin
+ * decision routes; approved quotations and signed/active contracts are locked
+ * against generic edits, rollback and deletion.
+ */
+const GENERIC_QUOTE_STATUS_VALUES = ["REQUESTED", "RECEIVED", "RECOMMENDED", "REJECTED"] as const;
+const GENERIC_EDITABLE_QUOTE_STATUSES: QuoteStatus[] = [...GENERIC_QUOTE_STATUS_VALUES];
+const GENERIC_CONTRACT_STATUS_VALUES = ["DRAFT", "UNDER_REVIEW"] as const;
+const GENERIC_EDITABLE_CONTRACT_STATUSES: ContractStatus[] = [...GENERIC_CONTRACT_STATUS_VALUES];
+const LOCKED_CONTRACT_STATUSES: ContractStatus[] = [ContractStatus.SIGNED, ContractStatus.ACTIVE];
+const STALE_FINANCIAL_RECORD = "This record changed meanwhile; refresh and try again";
 const companyRoles: Role[] = [...logisticsRoles, Role.COMPANY_ORGANIZER];
 const coordinatorRoles: Role[] = [...logisticsRoles, Role.COORDINATOR];
 const journeyUpdateRoles: Role[] = [...coordinatorRoles, Role.GUEST];
@@ -477,32 +490,54 @@ router.delete(
       "Activity intake not found"
     );
 
-    // Supplier submissions and notes are retained history (SUPPLIER-001).
-    const [ownedQuote, supplierNote] = await Promise.all([
-      prisma.vendorQuote.findFirst({
-        where: { intakeId: existingIntake.id, supplierId: { not: null } },
-        select: { id: true }
-      }),
-      prisma.supplierRequestNote.findFirst({
+    await prisma.$transaction(async (tx) => {
+      await lockIntake(tx, existingIntake.id);
+      // Supplier submissions and notes are retained history (SUPPLIER-001).
+      const [ownedQuote, supplierNote] = await Promise.all([
+        tx.vendorQuote.findFirst({
+          where: { intakeId: existingIntake.id, supplierId: { not: null } },
+          select: { id: true }
+        }),
+        tx.supplierRequestNote.findFirst({
+          where: { intakeId: existingIntake.id },
+          select: { id: true }
+        })
+      ]);
+      if (ownedQuote || supplierNote) {
+        throw new HttpError(
+          409,
+          "This intake has supplier submissions or notes and cannot be deleted"
+        );
+      }
+      // VD011-R2: deleting the intake must not detach an approved quotation
+      // or any contract from its scope (no deletion bypass of a decision).
+      const quotes = await tx.vendorQuote.findMany({
         where: { intakeId: existingIntake.id },
-        select: { id: true }
-      })
-    ]);
-    if (ownedQuote || supplierNote) {
-      throw new HttpError(
-        409,
-        "This intake has supplier submissions or notes and cannot be deleted"
-      );
-    }
+        select: { id: true, status: true }
+      });
+      const contract = quotes.length
+        ? await tx.vendorContract.findFirst({
+            where: { quoteId: { in: quotes.map((quote) => quote.id) } },
+            select: { id: true }
+          })
+        : null;
+      if (contract || quotes.some((quote) => quote.status === QuoteStatus.APPROVED)) {
+        throw new HttpError(
+          409,
+          "This intake has an approved quotation or a contract and cannot be deleted"
+        );
+      }
 
-    await prisma.activityIntake.delete({ where: { id: existingIntake.id } });
-    await recordAuditLog({
-      req,
-      action: "activity_intake.delete",
-      entityType: "ACTIVITY_INTAKE",
-      entityId: existingIntake.id,
-      eventId: existingIntake.eventId,
-      before: existingIntake
+      await tx.activityIntake.delete({ where: { id: existingIntake.id } });
+      // Mandatory, in the same transaction: no deletion without its audit.
+      await writeFinancialAudit(tx, req, {
+        action: "activity_intake.delete",
+        entityType: "ACTIVITY_INTAKE",
+        entityId: existingIntake.id,
+        eventId: existingIntake.eventId,
+        before: existingIntake,
+        metadata: { deletedQuoteIds: quotes.map((quote) => quote.id) }
+      });
     });
     res.status(204).send();
   })
@@ -638,18 +673,22 @@ router.put(
   })
 );
 
-const vendorQuoteSchema = z.object({
-  intakeId: z.string(),
-  category: z.string().min(2),
-  vendorName: z.string().min(2),
-  item: z.string().min(2),
-  quantity: z.number().int().positive(),
-  unitPrice: z.number().nonnegative(),
-  totalPrice: z.number().nonnegative().optional(),
-  commissionPercent: z.number().min(0).max(100),
-  score: z.number().int().min(0).max(100).default(70),
-  status: z.nativeEnum(QuoteStatus).default(QuoteStatus.REQUESTED)
-});
+// VD011-R2-02: strict, so decision/provenance fields (supplierId,
+// isVaultSealed, ...) are rejected, and APPROVED is not a generic status.
+const vendorQuoteSchema = z
+  .object({
+    intakeId: z.string(),
+    category: z.string().min(2),
+    vendorName: z.string().min(2),
+    item: z.string().min(2),
+    quantity: z.number().int().positive(),
+    unitPrice: z.number().nonnegative(),
+    totalPrice: z.number().nonnegative().optional(),
+    commissionPercent: z.number().min(0).max(100),
+    score: z.number().int().min(0).max(100).default(70),
+    status: z.enum(GENERIC_QUOTE_STATUS_VALUES).default("REQUESTED")
+  })
+  .strict();
 
 router.get(
   "/vendor-quotes",
@@ -679,26 +718,28 @@ router.post(
       body.commissionPercent
     );
 
-    const vendorQuote = await prisma.vendorQuote.create({
-      data: {
-        ...body,
-        totalPrice,
-        commissionAmount
-      }
-    });
-
-    await prisma.activityIntake.updateMany({
-      where: { id: body.intakeId },
-      data: { status: ActivityStatus.QUOTING }
-    });
-
-    await recordAuditLog({
-      req,
-      action: "vendor_quote.create",
-      entityType: "VENDOR_QUOTE",
-      entityId: vendorQuote.id,
-      after: vendorQuote,
-      metadata: { intakeId: vendorQuote.intakeId }
+    // Quote, intake status and mandatory audit commit together.
+    const vendorQuote = await prisma.$transaction(async (tx) => {
+      const created = await tx.vendorQuote.create({
+        data: {
+          ...body,
+          totalPrice,
+          commissionAmount
+        }
+      });
+      await tx.activityIntake.updateMany({
+        where: { id: body.intakeId },
+        data: { status: ActivityStatus.QUOTING }
+      });
+      await writeFinancialAudit(tx, req, {
+        action: "vendor_quote.create",
+        entityType: "VENDOR_QUOTE",
+        entityId: created.id,
+        eventId: await intakeEventId(tx, created.intakeId),
+        after: created,
+        metadata: { intakeId: created.intakeId }
+      });
+      return created;
     });
 
     res.status(201).json({ vendorQuote });
@@ -709,8 +750,6 @@ router.put(
   "/vendor-quotes/:id",
   requireRole(logisticsRoles),
   asyncHandler(async (req: AuthRequest, res) => {
-    const body = vendorQuoteSchema.partial().parse(req.body);
-    const data = { ...body } as Record<string, unknown>;
     const current = requireEntity(
       await prisma.vendorQuote.findUnique({ where: { id: req.params.id } }),
       "Vendor quote not found"
@@ -718,43 +757,69 @@ router.put(
 
     // Reparenting needs access to BOTH the current and the proposed intake.
     await assertCanMutateIntakeId(req.user!, current.intakeId);
+    const body = vendorQuoteSchema.partial().parse(req.body);
     if (body.intakeId && body.intakeId !== current.intakeId) {
       await assertCanMutateIntakeId(req.user!, body.intakeId);
     }
     assertLegacyQuote(current);
+    assertGenericQuoteEditable(current.status);
 
-    if (
-      typeof body.quantity === "number" ||
-      typeof body.unitPrice === "number" ||
-      typeof body.totalPrice === "number" ||
-      typeof body.commissionPercent === "number"
-    ) {
-      const quantity = body.quantity ?? current.quantity;
-      const unitPrice = body.unitPrice ?? Number(current.unitPrice);
-      const totalPrice = body.totalPrice ?? roundCurrency(quantity * unitPrice);
-      const commissionPercent =
-        body.commissionPercent ?? Number(current.commissionPercent);
+    // Fresh state under the intake row lock(s): a concurrent Super Admin
+    // approval, contract signature or reparent wins and this edit gets 409.
+    const lockIds = uniqueStrings([current.intakeId, body.intakeId]).sort();
+    const vendorQuote = await prisma.$transaction(async (tx) => {
+      for (const intakeId of lockIds) await lockIntake(tx, intakeId);
+      const fresh = await tx.vendorQuote.findUnique({ where: { id: current.id } });
+      if (!fresh || fresh.supplierId || fresh.intakeId !== current.intakeId) {
+        throw new HttpError(409, STALE_FINANCIAL_RECORD);
+      }
+      assertGenericQuoteEditable(fresh.status);
+      await assertQuoteHasNoLockedContract(tx, fresh.id);
 
-      data.totalPrice = totalPrice;
-      data.commissionAmount = calculateCommission(
-        totalPrice,
-        commissionPercent
+      const data = { ...body } as Record<string, unknown>;
+      if (
+        typeof body.quantity === "number" ||
+        typeof body.unitPrice === "number" ||
+        typeof body.totalPrice === "number" ||
+        typeof body.commissionPercent === "number"
+      ) {
+        const quantity = body.quantity ?? fresh.quantity;
+        const unitPrice = body.unitPrice ?? Number(fresh.unitPrice);
+        const totalPrice = body.totalPrice ?? roundCurrency(quantity * unitPrice);
+        const commissionPercent =
+          body.commissionPercent ?? Number(fresh.commissionPercent);
+
+        data.totalPrice = totalPrice;
+        data.commissionAmount = calculateCommission(
+          totalPrice,
+          commissionPercent
+        );
+      }
+
+      const result = await tx.vendorQuote.updateMany({
+        where: {
+          id: fresh.id,
+          intakeId: fresh.intakeId,
+          supplierId: null,
+          status: { in: GENERIC_EDITABLE_QUOTE_STATUSES }
+        },
+        data: data as Prisma.VendorQuoteUncheckedUpdateManyInput
+      });
+      if (result.count !== 1) throw new HttpError(409, STALE_FINANCIAL_RECORD);
+      const updated = requireEntity(
+        await tx.vendorQuote.findUnique({ where: { id: fresh.id } }),
+        "Vendor quote not found"
       );
-    }
-
-    const vendorQuote = await prisma.vendorQuote.update({
-      where: { id: req.params.id },
-      data
-    });
-
-    await recordAuditLog({
-      req,
-      action: "vendor_quote.update",
-      entityType: "VENDOR_QUOTE",
-      entityId: vendorQuote.id,
-      before: current,
-      after: vendorQuote,
-      metadata: { intakeId: vendorQuote.intakeId }
+      await writeFinancialAudit(tx, req, {
+        action: "vendor_quote.update",
+        entityType: "VENDOR_QUOTE",
+        entityId: updated.id,
+        eventId: await intakeEventId(tx, updated.intakeId),
+        before: fresh,
+        after: updated,
+        metadata: { intakeId: updated.intakeId, previousIntakeId: fresh.intakeId }
+      });
+      return updated;
     });
 
     res.json({ vendorQuote });
@@ -774,18 +839,44 @@ router.put(
     await assertCanMutateIntakeId(req.user!, existingQuote.intakeId);
     assertLegacyQuote(existingQuote);
 
-    const vendorQuote = await prisma.vendorQuote.update({
-      where: { id: existingQuote.id },
-      data: { status: QuoteStatus.APPROVED }
-    });
-    await recordAuditLog({
-      req,
-      action: "vendor_quote.approve",
-      entityType: "VENDOR_QUOTE",
-      entityId: vendorQuote.id,
-      before: existingQuote,
-      after: vendorQuote,
-      metadata: { intakeId: vendorQuote.intakeId }
+    // Same intake row lock as generic edits/deletes: the decision applies to
+    // the fresh, still-legacy, not-yet-approved row in the same intake, and
+    // the decision and its mandatory audit commit (or roll back) together.
+    const vendorQuote = await prisma.$transaction(async (tx) => {
+      await lockIntake(tx, existingQuote.intakeId);
+      const fresh = await tx.vendorQuote.findUnique({ where: { id: existingQuote.id } });
+      if (!fresh || fresh.supplierId || fresh.intakeId !== existingQuote.intakeId) {
+        throw new HttpError(409, STALE_FINANCIAL_RECORD);
+      }
+      // Guarded transition: one approval decision (and one audit) per quote.
+      const result = await tx.vendorQuote.updateMany({
+        where: {
+          id: fresh.id,
+          intakeId: fresh.intakeId,
+          supplierId: null,
+          status: { in: GENERIC_EDITABLE_QUOTE_STATUSES }
+        },
+        data: { status: QuoteStatus.APPROVED }
+      });
+      if (result.count !== 1) throw new HttpError(409, "This quotation is already approved");
+      const approved = requireEntity(
+        await tx.vendorQuote.findUnique({ where: { id: fresh.id } }),
+        "Vendor quote not found"
+      );
+      await writeFinancialAudit(tx, req, {
+        action: "vendor_quote.approve",
+        entityType: "VENDOR_QUOTE",
+        entityId: approved.id,
+        eventId: await intakeEventId(tx, approved.intakeId),
+        before: fresh,
+        after: approved,
+        metadata: {
+          intakeId: approved.intakeId,
+          decision: "APPROVED",
+          previousStatus: fresh.status
+        }
+      });
+      return approved;
     });
     res.json({ vendorQuote });
   })
@@ -802,14 +893,36 @@ router.delete(
     await assertCanMutateIntakeId(req.user!, existingQuote.intakeId);
     assertLegacyQuote(existingQuote);
 
-    await prisma.vendorQuote.delete({ where: { id: existingQuote.id } });
-    await recordAuditLog({
-      req,
-      action: "vendor_quote.delete",
-      entityType: "VENDOR_QUOTE",
-      entityId: existingQuote.id,
-      before: existingQuote,
-      metadata: { intakeId: existingQuote.intakeId }
+    // VD011-R2: an approved quotation, or one a contract refers to, is a
+    // financial decision record; deletion must not bypass the decision routes.
+    await prisma.$transaction(async (tx) => {
+      await lockIntake(tx, existingQuote.intakeId);
+      const fresh = await tx.vendorQuote.findUnique({
+        where: { id: existingQuote.id },
+        select: { status: true, supplierId: true, intakeId: true }
+      });
+      if (!fresh || fresh.supplierId || fresh.intakeId !== existingQuote.intakeId) {
+        throw new HttpError(409, STALE_FINANCIAL_RECORD);
+      }
+      if (fresh.status === QuoteStatus.APPROVED) {
+        throw new HttpError(409, "An approved quotation cannot be deleted");
+      }
+      const contract = await tx.vendorContract.findFirst({
+        where: { quoteId: existingQuote.id },
+        select: { id: true }
+      });
+      if (contract) {
+        throw new HttpError(409, "This quotation has a contract and cannot be deleted");
+      }
+      await tx.vendorQuote.delete({ where: { id: existingQuote.id } });
+      await writeFinancialAudit(tx, req, {
+        action: "vendor_quote.delete",
+        entityType: "VENDOR_QUOTE",
+        entityId: existingQuote.id,
+        eventId: await intakeEventId(tx, existingQuote.intakeId),
+        before: existingQuote,
+        metadata: { intakeId: existingQuote.intakeId }
+      });
     });
     res.status(204).send();
   })
@@ -1299,15 +1412,18 @@ router.post(
   })
 );
 
-const contractSchema = z.object({
-  quoteId: z.string(),
-  vendorName: z.string().min(2),
-  category: z.string().min(2),
-  amount: z.number().nonnegative(),
-  commissionAmount: z.number().nonnegative(),
-  status: z.nativeEnum(ContractStatus).default(ContractStatus.DRAFT),
-  signedAt: z.coerce.date().optional()
-});
+// VD011-R2-03: strict and without signedAt; SIGNED/ACTIVE are not generic
+// statuses. Signing is only PUT /contracts/:id/approve (Super Admin, audited).
+const contractSchema = z
+  .object({
+    quoteId: z.string(),
+    vendorName: z.string().min(2),
+    category: z.string().min(2),
+    amount: z.number().nonnegative(),
+    commissionAmount: z.number().nonnegative(),
+    status: z.enum(GENERIC_CONTRACT_STATUS_VALUES).default("DRAFT")
+  })
+  .strict();
 
 router.get(
   "/contracts",
@@ -1336,15 +1452,22 @@ router.post(
   requireRole(logisticsRoles),
   asyncHandler(async (req: AuthRequest, res) => {
     const body = contractSchema.parse(req.body);
-    await assertCanMutateQuoteId(req.user!, body.quoteId);
-    const contract = await prisma.vendorContract.create({ data: body });
-    await recordAuditLog({
-      req,
-      action: "contract.create",
-      entityType: "CONTRACT",
-      entityId: contract.id,
-      after: contract,
-      metadata: { quoteId: contract.quoteId }
+    const quote = await assertCanMutateQuoteId(req.user!, body.quoteId);
+    // Server-initialised unsigned contract; fresh legacy provenance under the
+    // same intake lock as quotation edits and deletes.
+    const contract = await prisma.$transaction(async (tx) => {
+      await lockIntake(tx, quote.intakeId);
+      await assertFreshLegacyQuote(tx, body.quoteId, quote.intakeId);
+      const created = await tx.vendorContract.create({ data: { ...body, signedAt: null } });
+      await writeFinancialAudit(tx, req, {
+        action: "contract.create",
+        entityType: "CONTRACT",
+        entityId: created.id,
+        eventId: await intakeEventId(tx, quote.intakeId),
+        after: created,
+        metadata: { quoteId: created.quoteId, intakeId: quote.intakeId }
+      });
+      return created;
     });
     res.status(201).json({ contract });
   })
@@ -1354,28 +1477,61 @@ router.put(
   "/contracts/:id",
   requireRole(logisticsRoles),
   asyncHandler(async (req: AuthRequest, res) => {
-    const body = contractSchema.partial().parse(req.body);
     const existingContract = requireEntity(
       await prisma.vendorContract.findUnique({ where: { id: req.params.id } }),
       "Contract not found"
     );
-    await assertCanMutateQuoteId(
-      req.user!,
-      body.quoteId ?? existingContract.quoteId
-    );
+    // VD011-R2-01: authorize the contract's CURRENT quote first. A supplier
+    // contract never enters this generic path (409, no terms disclosed), for
+    // every role and vault state, whatever replacement quote is proposed.
+    const source = await assertCanMutateQuoteId(req.user!, existingContract.quoteId);
+    const body = contractSchema.partial().parse(req.body);
+    assertGenericContractEditable(existingContract.status);
+    // Legacy reparenting needs access to BOTH scopes; the target must be legacy too.
+    const targetQuoteId =
+      body.quoteId && body.quoteId !== existingContract.quoteId ? body.quoteId : undefined;
+    const target = targetQuoteId
+      ? await assertCanMutateQuoteId(req.user!, targetQuoteId)
+      : undefined;
 
-    const contract = await prisma.vendorContract.update({
-      where: { id: existingContract.id },
-      data: body
-    });
-    await recordAuditLog({
-      req,
-      action: "contract.update",
-      entityType: "CONTRACT",
-      entityId: contract.id,
-      before: existingContract,
-      after: contract,
-      metadata: { quoteId: contract.quoteId }
+    const lockIds = uniqueStrings([source.intakeId, target?.intakeId]).sort();
+    const contract = await prisma.$transaction(async (tx) => {
+      for (const intakeId of lockIds) await lockIntake(tx, intakeId);
+      await assertFreshLegacyQuote(tx, existingContract.quoteId, source.intakeId);
+      if (targetQuoteId && target) {
+        await assertFreshLegacyQuote(tx, targetQuoteId, target.intakeId);
+      }
+      // Guarded transition: a concurrent signature or reparent wins.
+      const result = await tx.vendorContract.updateMany({
+        where: {
+          id: existingContract.id,
+          quoteId: existingContract.quoteId,
+          status: { in: GENERIC_EDITABLE_CONTRACT_STATUSES }
+        },
+        data: body
+      });
+      if (result.count !== 1) {
+        throw new HttpError(409, "This contract was signed or changed meanwhile; refresh and try again");
+      }
+      const updated = requireEntity(
+        await tx.vendorContract.findUnique({ where: { id: existingContract.id } }),
+        "Contract not found"
+      );
+      const intakeId = target?.intakeId ?? source.intakeId;
+      await writeFinancialAudit(tx, req, {
+        action: "contract.update",
+        entityType: "CONTRACT",
+        entityId: updated.id,
+        eventId: await intakeEventId(tx, intakeId),
+        before: existingContract,
+        after: updated,
+        metadata: {
+          quoteId: updated.quoteId,
+          previousQuoteId: existingContract.quoteId,
+          intakeId
+        }
+      });
+      return updated;
     });
     res.json({ contract });
   })
@@ -1447,24 +1603,44 @@ router.put(
     }
 
     await assertCanMutateIntakeId(req.user!, quote.intakeId);
-    // Guarded transition: a concurrent second sign gets 409, not a re-sign.
-    const result = await prisma.vendorContract.updateMany({
-      where: { id: existingContract.id, status: { in: SIGNABLE_CONTRACT_STATUSES } },
-      data: { status: ContractStatus.SIGNED, signedAt: new Date() }
-    });
-    if (result.count !== 1) throw new HttpError(409, "This contract is already signed");
-    const contract = requireEntity(
-      await prisma.vendorContract.findUnique({ where: { id: existingContract.id } }),
-      "Contract not found"
-    );
-    await recordAuditLog({
-      req,
-      action: "contract.approve",
-      entityType: "CONTRACT",
-      entityId: contract.id,
-      before: existingContract,
-      after: contract,
-      metadata: { quoteId: contract.quoteId }
+    // Under the same intake lock as generic edits: fresh legacy provenance,
+    // then a guarded transition so a concurrent second sign gets 409. The
+    // signature (status + signedAt) and its mandatory audit commit together.
+    const contract = await prisma.$transaction(async (tx) => {
+      await lockIntake(tx, quote.intakeId);
+      await assertFreshLegacyQuote(tx, existingContract.quoteId, quote.intakeId);
+      const before = requireEntity(
+        await tx.vendorContract.findUnique({ where: { id: existingContract.id } }),
+        "Contract not found"
+      );
+      const result = await tx.vendorContract.updateMany({
+        where: {
+          id: existingContract.id,
+          quoteId: existingContract.quoteId,
+          status: { in: SIGNABLE_CONTRACT_STATUSES }
+        },
+        data: { status: ContractStatus.SIGNED, signedAt: new Date() }
+      });
+      if (result.count !== 1) throw new HttpError(409, "This contract is already signed");
+      const signed = requireEntity(
+        await tx.vendorContract.findUnique({ where: { id: existingContract.id } }),
+        "Contract not found"
+      );
+      await writeFinancialAudit(tx, req, {
+        action: "contract.approve",
+        entityType: "CONTRACT",
+        entityId: signed.id,
+        eventId: await intakeEventId(tx, quote.intakeId),
+        before,
+        after: signed,
+        metadata: {
+          quoteId: signed.quoteId,
+          intakeId: quote.intakeId,
+          decision: "SIGNED",
+          previousStatus: before.status
+        }
+      });
+      return signed;
     });
     res.json({ contract });
   })
@@ -1929,6 +2105,104 @@ async function assertCanMutateQuoteId(user: AuthUser, quoteId: string) {
   await assertCanMutateIntakeId(user, quote.intakeId);
   // Contracts are a quote-selection outcome; blocked for supplier terms.
   assertLegacyQuote(quote);
+  return { intakeId: quote.intakeId };
+}
+
+/** VD011-R2-02: approved quotations are locked against generic writes. */
+function assertGenericQuoteEditable(status: QuoteStatus) {
+  if (!GENERIC_EDITABLE_QUOTE_STATUSES.includes(status)) {
+    throw new HttpError(
+      409,
+      "An approved quotation is locked; only the Super Admin decision changes its status"
+    );
+  }
+}
+
+/** VD011-R2-03: signed/active contracts are locked against generic writes. */
+function assertGenericContractEditable(status: ContractStatus) {
+  if (!GENERIC_EDITABLE_CONTRACT_STATUSES.includes(status)) {
+    throw new HttpError(409, "A signed contract is locked and cannot be edited here");
+  }
+}
+
+/** A quotation whose contract is signed/active keeps its recorded terms. */
+async function assertQuoteHasNoLockedContract(tx: Prisma.TransactionClient, quoteId: string) {
+  const locked = await tx.vendorContract.findFirst({
+    where: { quoteId, status: { in: LOCKED_CONTRACT_STATUSES } },
+    select: { id: true }
+  });
+  if (locked) {
+    throw new HttpError(409, "This quotation has a signed contract and is locked");
+  }
+}
+
+/** Re-read under the intake lock: the quote still exists, is legacy and in that intake. */
+async function assertFreshLegacyQuote(
+  tx: Prisma.TransactionClient,
+  quoteId: string,
+  intakeId: string
+) {
+  const fresh = await tx.vendorQuote.findUnique({
+    where: { id: quoteId },
+    select: { supplierId: true, intakeId: true }
+  });
+  if (!fresh || fresh.intakeId !== intakeId) {
+    throw new HttpError(409, STALE_FINANCIAL_RECORD);
+  }
+  assertLegacyQuote(fresh);
+}
+
+/**
+ * D-011 / SILA-DASHBOARD-003 R1: mandatory audit for legacy financial
+ * decisions and mutations, written with the SAME transaction client as the
+ * change. Unlike recordAuditLog (best effort, swallows failures) an audit
+ * error propagates, so the whole transaction - status, signedAt, terms,
+ * deletion - rolls back and nothing is recorded without its audit. Same
+ * actor/request context and before/after shape as recordAuditLog.
+ */
+async function writeFinancialAudit(
+  tx: Prisma.TransactionClient,
+  req: AuthRequest,
+  entry: {
+    action: string;
+    entityType: "ACTIVITY_INTAKE" | "CONTRACT" | "VENDOR_QUOTE";
+    entityId: string;
+    eventId?: string | null;
+    before?: unknown;
+    after?: unknown;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  const actor = req.user;
+  if (!actor) throw new HttpError(401, "Authentication required");
+  await tx.auditLog.create({
+    data: {
+      actorUserId: actor.id,
+      actorRole: actor.role,
+      action: entry.action,
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      eventId: entry.eventId ?? null,
+      beforeData: toAuditJson(entry.before),
+      afterData: toAuditJson(entry.after),
+      metadata: toAuditJson({
+        ...(entry.metadata ?? {}),
+        method: req.method,
+        path: req.originalUrl
+      }),
+      ipAddress: req.ip ?? null,
+      userAgent: req.get("user-agent") ?? null
+    }
+  });
+}
+
+/** The event an intake belongs to, for the audit row (null for legacy intakes). */
+async function intakeEventId(tx: Prisma.TransactionClient, intakeId: string) {
+  const intake = await tx.activityIntake.findUnique({
+    where: { id: intakeId },
+    select: { eventId: true }
+  });
+  return intake?.eventId ?? null;
 }
 
 /**

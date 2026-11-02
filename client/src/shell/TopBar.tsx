@@ -69,11 +69,13 @@ export function TopBar({
 
   return (
     <header
-      className="sticky top-0 z-header flex h-16 items-center gap-3 border-b border-hairline bg-surface-1/90 px-4 backdrop-blur lg:px-6"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
+      className="sticky top-0 z-header flex items-center gap-3 border-b border-hairline bg-surface-1/90 px-4 backdrop-blur lg:px-6"
+      // The bar's 4rem content row sits below the notch inset; the background
+      // spans both, so controls never paint outside it.
+      style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(4rem + env(safe-area-inset-top))" }}
     >
       {/* Brand mark (mobile only — the rail carries it on desktop) */}
-      <img src="/midyaf-icon.png" alt={t("brand")} className="size-9 rounded-lg object-cover ring-1 ring-gold-500/40 lg:hidden" />
+      <img src="/midyaf-icon.png" alt={t("brand")} className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-gold-500/40 lg:hidden" />
 
       {/* Current portal */}
       <div className="flex min-w-0 items-center gap-3">
@@ -103,7 +105,8 @@ export function TopBar({
         </AnimatePresence>
       </div>
 
-      <div className="ms-auto flex items-center gap-2">
+      {/* Controls keep their size; the portal title above truncates instead. */}
+      <div className="ms-auto flex shrink-0 items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onOpenQuickNav} className="gap-2 px-2.5">
           <Search className="size-4 text-gold-500" aria-hidden />
           <span className="hidden sm:inline">{isArabic ? "بحث سريع" : "Quick jump"}</span>
@@ -119,9 +122,16 @@ export function TopBar({
               <Sparkles className="size-3.5" aria-hidden />
               {isArabic ? "الوضع التجريبي نشط" : "DEMO MODE"}
             </span>
-            <Button variant="outline" size="sm" onClick={onOpenWarRoom} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenWarRoom}
+              className="gap-2"
+              aria-label={isArabic ? "غرفة العمليات" : "War Room"}
+            >
               <Shield className="size-4" aria-hidden />
-              <span>{isArabic ? "غرفة العمليات" : "War Room"}</span>
+              {/* Icon-only on phones so the fixed-height bar fits; the name stays on aria-label. */}
+              <span className="hidden sm:inline">{isArabic ? "غرفة العمليات" : "War Room"}</span>
               <span className="hidden items-center gap-0.5 lg:flex">
                 <Kbd>Ctrl</Kbd>
                 <Kbd>Space</Kbd>
