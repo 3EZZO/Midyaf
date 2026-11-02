@@ -22,11 +22,18 @@ export function PortalHero({
   return (
     <header className={cn("flex flex-wrap items-end justify-between gap-4 py-2", className)}>
       <div className="min-w-0">
-        {badge ? <Badge tone="gold">{badge}</Badge> : null}
+        {/* Bounded and wrapping so a long eyebrow (e.g. the Admin confidentiality badge) breaks onto a
+            second line on phones instead of widening the page; the icon keeps its size. */}
+        {badge ? (
+          <Badge tone="gold" className="max-w-full whitespace-normal [&_svg]:shrink-0">
+            {badge}
+          </Badge>
+        ) : null}
         <h1 className="mt-3 text-display-sm text-ink">{title}</h1>
         {body ? <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{body}</p> : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {/* Bounded to the row so a multi-button action wraps instead of widening the page on phones. */}
+      {action ? <div className="min-w-0 max-w-full">{action}</div> : null}
     </header>
   );
 }

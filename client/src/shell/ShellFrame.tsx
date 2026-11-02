@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import type {
   Driver,
   Event,
@@ -100,17 +100,14 @@ export function ShellFrame({
 
         {/* Bottom padding clears the tab bar plus the phone's home-indicator inset. */}
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={portal}
-              variants={portalSwitch}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/*
+            Keyed by portal so the requested portal always mounts fresh (state reset,
+            enter slide). Deliberately no AnimatePresence/exit gate: a "wait" exit
+            could retain the previous portal invisibly and never mount the new one.
+          */}
+          <motion.div key={portal} variants={portalSwitch} initial="initial" animate="animate">
+            {children}
+          </motion.div>
         </main>
       </div>
 

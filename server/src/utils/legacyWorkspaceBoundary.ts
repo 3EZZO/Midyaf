@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from './http.js';
@@ -52,9 +53,20 @@ export async function loadLegacyBoundary(): Promise<LegacyBoundary> {
 const OMIT=Symbol('omit');
 const refs=new Set(['id','eventId','guestId','taskId','intakeId','quoteId','entityId','conversationId']);
 const positionKeys=/^(currentLat|currentLng|lastLat|lastLng|lat|lng|latitude|longitude|position|location|route|routePolyline|activeRoute|etaMinutes)$/i;
+/** Output is a redacted plain-data copy of the payload.
+ * - An actual Prisma.Decimal (class instance check only, never a duck-typed
+ *   look-alike) becomes its canonical JSON string, exactly what Express would
+ *   send for it, and that string then gets the normal string redaction. Cloning
+ *   its internal d/e/s fields instead turned money into NaN on the client.
+ * - Functions are dropped. JSON.stringify would ignore them anyway, except an
+ *   own `toJSON`, which it would call on the redacted copy and so let it
+ *   replace already-redacted output. Other class instances are copied by their
+ *   own enumerable fields; their prototype toJSON is not trusted. */
 export function sanitizeLegacyPayload(value:unknown,boundary:LegacyBoundary):unknown {
  function visit(node:unknown,depth:number):unknown {
   if(depth>30)return null;
+  if(typeof node==='function')return OMIT;
+  if(node instanceof Prisma.Decimal)return visit(node.toJSON(),depth);
   if(typeof node==='string'){
    for(const id of [...boundary.ids,...boundary.drivers]) if(node.includes(id))return OMIT;
    let text=node;for(const [secret,code]of boundary.replacements)text=text.split(secret).join(code);return text;

@@ -1,5 +1,5 @@
 import { OperationalEventEntry } from "./EventRadar";
-import { OrganizerWorkspace } from "./OrganizerWorkspace";
+import { NEW_EVENT_LABEL_AR, NEW_EVENT_LABEL_EN, OrganizerWorkspace, newEventLabel, useNewEventRequest } from "./OrganizerWorkspace";
 import { SupplierSubmissions } from "./SupplierSubmissions";
 import { useMemo, useState } from "react";
 import {
@@ -12,19 +12,17 @@ import {
   Mail,
   Map,
   MessageSquare,
+  Plus,
   TrendingUp
 } from "lucide-react";
 import { AiPanel } from "./AiPanel";
 import { ResponsibilityBadges, TaskHandoverDialog, canUseHandover } from "./TaskHandover";
 import type { MidyafData, Session, Task } from "@shared/domain";
-import type { OrganizationDto } from "@shared/overhaul";
 import {
   TASK_CARD_LIMIT,
   eventTaskCards,
   type EventTaskCard
 } from "../lib/eventTaskCards";
-import { EVENT_SETUP_HEADING_AR, EVENT_SETUP_HEADING_EN } from "../lib/workspaceWorkflow";
-import { useWorkspaceResource } from "../lib/workspaceApi";
 import { integer, shortDate, shortTime } from "../lib/format";
 import {
   fleetUtilisation,
@@ -78,6 +76,21 @@ export function SilaOperationsDashboard({
   const toast = useToast();
   const [handoverTaskId, setHandoverTaskId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SilaTab>(initialTab);
+  // SILA-DASHBOARD-003: the hero shortcut opens Intake and issues a one-shot
+  // request, scoped to this session, that the canonical organizer workspace
+  // takes over and acknowledges (form or role explanation). Leaving and
+  // returning to Intake, or another session, never replays it.
+  const sessionKey = session?.accessToken ?? null;
+  const newEventShortcut = useNewEventRequest(sessionKey);
+  const requestNewEvent = () => {
+    setActiveTab(silaNewEventShortcut().tab);
+    newEventShortcut.requestNewEvent();
+  };
+  const changeTab = (tab: SilaTab) => {
+    const next = silaTabChange(tab);
+    setActiveTab(next.tab);
+    if (next.withdrawRequest) newEventShortcut.withdrawNewEventRequest();
+  };
   const event = data.events[0];
   const tasks = event?.tasks ?? [];
 
@@ -173,22 +186,34 @@ export function SilaOperationsDashboard({
             : "Analyze metrics, track fleet telemetry, delegate tasks, and prepare executive reports in one unified dashboard."
         }
         action={
-          onToggleDemo ? (
+          <div className="flex flex-wrap items-center gap-3">
             <Button
-              variant={isDemoMode ? "danger" : "gold"}
+              data-sila-new-event="shortcut"
+              variant="gold"
               size="lg"
-              leadingIcon={<Map className="size-5" aria-hidden />}
-              onClick={onToggleDemo}
+              leadingIcon={<Plus className="size-5" aria-hidden />}
+              aria-controls="section-intake"
+              onClick={requestNewEvent}
             >
-              {isDemoMode
-                ? isArabic
-                  ? "إيقاف العرض التوضيحي"
-                  : "Stop Investor Demo"
-                : isArabic
-                  ? "بدء العرض التوضيحي الحي"
-                  : "Start Investor Demo"}
+              {newEventLabel(isArabic)}
             </Button>
-          ) : undefined
+            {onToggleDemo ? (
+              <Button
+                variant={isDemoMode ? "danger" : "gold"}
+                size="lg"
+                leadingIcon={<Map className="size-5" aria-hidden />}
+                onClick={onToggleDemo}
+              >
+                {isDemoMode
+                  ? isArabic
+                    ? "إيقاف العرض التوضيحي"
+                    : "Stop Investor Demo"
+                  : isArabic
+                    ? "بدء العرض التوضيحي الحي"
+                    : "Start Investor Demo"}
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -305,7 +330,7 @@ export function SilaOperationsDashboard({
       <IconTabNav
         tabs={tabs}
         value={activeTab}
-        onChange={setActiveTab}
+        onChange={changeTab}
         layoutId="sila-tabs"
         ariaLabel={isArabic ? "أقسام العمليات" : "Operations sections"}
       />
@@ -342,9 +367,8 @@ export function SilaOperationsDashboard({
           }
         >
           <IntakeHowTo isArabic={isArabic} />
-          <IntakeAccessCheck session={session} isArabic={isArabic} />
         </Section>
-        <OrganizerWorkspace session={session} isArabic={isArabic} />
+        <OrganizerWorkspace session={session} isArabic={isArabic} newEventRequest={newEventShortcut.newEventRequest} onNewEventRequestTaken={newEventShortcut.acknowledgeNewEventRequest} />
         {intakes.length > 0 ? (
           <details className="rounded-lg border border-hairline p-4">
             <summary className="cursor-pointer text-sm font-semibold text-ink">
@@ -652,13 +676,13 @@ function SupplierQuotesSection({
 export function IntakeHowTo({ isArabic }: { isArabic: boolean }) {
   const steps = isArabic
     ? [
-        `اضغط «${EVENT_SETUP_HEADING_AR}» واختر المؤسسة.`,
+        `اضغط «${NEW_EVENT_LABEL_AR}» واختر المؤسسة، أو اختر فعالية قائمة لعرضها وتعديلها.`,
         "أدخل اسم الفعالية والموقع ونطاق الفنادق، وأعداد كبار الشخصيات والضيوف العاديين والمحتاجين لسيارات، ثم مواعيد الفعالية ووصول الضيوف ومغادرتهم بتوقيت الرياض.",
         "اضغط «حفظ وفتح خطة الفعالية»؛ يُجهَّز مقترح خطة استرشادي تلقائياً (محسوب بالقواعد إذا لم يُهيأ مزود الذكاء الاصطناعي).",
         "راجع أقسام الخطة الخمسة ومسودة طلب العروض، ثم اضغط «اعتماد الخطة وتفعيل التشغيل». لا يبدأ التشغيل قبل هذا الاعتماد، والخطة اليدوية تبقى يدوية."
       ]
     : [
-        `Press «${EVENT_SETUP_HEADING_AR} · ${EVENT_SETUP_HEADING_EN}» and choose the organization.`,
+        `Press «${NEW_EVENT_LABEL_EN}» and choose the organization, or choose an existing event to view and edit it.`,
         "Enter the event name, location and hotel zone; the VIP, regular and vehicle-needing guest counts; then the event, guest arrival and departure times in Riyadh time.",
         "Press “Save & open event plan”. An advisory plan is prepared automatically (rules-based when no AI provider is configured).",
         "Review the five plan sections and the RFQ draft, then press “Approve plan & unlock operations”. Nothing starts before that approval, and a manual plan stays manual."
@@ -677,38 +701,19 @@ export function IntakeHowTo({ isArabic }: { isArabic: boolean }) {
   );
 }
 
-/** Mirrors OrganizerWorkspace: owners/admins of a non-vendor organization see the new-event button. */
-export function canCreateEvents(organizations: OrganizationDto[]) {
-  return organizations.some(
-    (org) => ["OWNER", "ADMIN"].includes(org.myRole ?? "") && org.kind !== "VENDOR"
-  );
+/**
+ * SILA-DASHBOARD-003: the hero «New event / activity» shortcut. It opens the
+ * Intake tab; the dashboard then issues a one-shot request (useNewEventRequest)
+ * the embedded OrganizerWorkspace answers with its canonical form (or the
+ * role explanation) and acknowledges. It grants nothing.
+ */
+export function silaNewEventShortcut(): { tab: SilaTab; issueRequest: true } {
+  return { tab: "intake", issueRequest: true };
 }
 
-/** Explains a hidden new-event button; grants nothing and claims nothing. */
-export function IntakeAccessNote({
-  organizations,
-  isArabic
-}: {
-  organizations: OrganizationDto[];
-  isArabic: boolean;
-}) {
-  if (canCreateEvents(organizations)) return null;
-  return (
-    <p role="note" data-intake-no-access className="mt-3 rounded-md border border-warn/40 bg-warn/10 p-3 text-sm text-ink">
-      {isArabic
-        ? `لا يظهر لك زر «${EVENT_SETUP_HEADING_AR}» لأن حسابك ليس مالكاً أو مديراً في مؤسسة منظِّمة. اطلب من المشرف العام لمضياف أو من مالك المؤسسة إضافتك بدور «مدير» (اختر المؤسسة ← أعضاء المؤسسة والصلاحيات)؛ وإلى ذلك يمكنك متابعة الفعاليات المصرح لك بها وتعديلها حسب صلاحياتك.`
-        : `The «${EVENT_SETUP_HEADING_AR}» button is not shown because your account is not an owner or admin of an organizing company. Ask the Midyaf Super Admin or that organization's owner to add you as an Admin (choose the organization → Organization members & roles); until then you can follow and edit only the events you were given access to.`}
-    </p>
-  );
-}
-
-function IntakeAccessCheck({ session, isArabic }: { session: Session | null; isArabic: boolean }) {
-  const orgs = useWorkspaceResource<{ organizations: OrganizationDto[] }>(
-    session?.accessToken ?? "",
-    session ? "/organizations" : null
-  );
-  if (!orgs.data) return null;
-  return <IntakeAccessNote organizations={orgs.data.organizations} isArabic={isArabic} />;
+/** Ordinary tab navigation withdraws any request not yet taken, so returning to Intake never reopens the form by itself. */
+export function silaTabChange(tab: SilaTab): { tab: SilaTab; withdrawRequest: true } {
+  return { tab, withdrawRequest: true };
 }
 
 /** The current event's tasks with honest empty/unassigned/missing states. */
