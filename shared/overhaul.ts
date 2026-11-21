@@ -1153,7 +1153,31 @@ export type EventPlanDto = {
   approvedBy: PersonDto | null;
   approvedAt: string | null;
   createdAt: string;
+  /** SIX-TASKS #4: true once the plan was edited inline ("AI-Generated (Edited)"). */
+  edited?: boolean;
+  /** SIX-TASKS #1/#4: what the current viewer may do with this plan (server-computed). */
+  viewerCanApprove?: boolean;
+  viewerCanEdit?: boolean;
 };
+
+/**
+ * SIX-TASKS #1: GET /api/workspace/plans/awaiting-approval
+ * The latest DRAFT plan of each open event the viewer may approve: the
+ * event's client (CLIENT_VIEWER), the organizing company's admins and project
+ * manager, and the Super Admin. Vendors always receive an empty list.
+ */
+export type PlanApprovalQueueItem = {
+  event: {
+    id: string;
+    name: string;
+    organizationName: string | null;
+    startAt: string | null;
+    operationalStatus: OperationalStatus;
+    hasApprovedPlan: boolean;
+  };
+  plan: EventPlanDto;
+};
+export type PlanApprovalQueueResponse = { items: PlanApprovalQueueItem[] };
 
 export type EventMemberDto = {
   id: string;
