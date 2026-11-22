@@ -84,29 +84,61 @@ async function foreignKeyEdges(db: Db, schema: string): Promise<ForeignKeyEdge[]
   return rows.map((row) => ({ child: row.child, parent: row.parent, columns: [...row.columns], nullable: Boolean(row.nullable) }));
 }
 
-async function primaryKeyColumns(db: Db, schema: string, table: string): Promise<string[]> {
-  const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
-    `SELECT a.attname AS name FROM pg_index i
+/** Primary-key columns of several tables, in one round trip. */
+async function primaryKeys(db: Db, schema: string, tables: string[]): Promise<Map<string, string[]>> {
+  const keys = new Map<string, string[]>();
+  if (!tables.length) return keys;
+  const rows = await db.$queryRawUnsafe<Array<{ table: string; name: string }>>(
+    `SELECT c.relname AS "table", a.attname AS name FROM pg_index i
      JOIN pg_class c ON c.oid = i.indrelid JOIN pg_namespace n ON n.oid = c.relnamespace
      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
-     WHERE i.indisprimary AND n.nspname = $1 AND c.relname = $2`,
+     WHERE i.indisprimary AND n.nspname = $1 AND c.relname = ANY($2::text[])
+     ORDER BY c.relname, a.attnum`,
     schema,
-    table
+    tables
   );
-  return rows.map((row) => row.name);
+  for (const row of rows) keys.set(row.table, [...(keys.get(row.table) ?? []), row.name]);
+  return keys;
 }
 
-/** Insertable (non-generated) columns of a table. */
-async function insertableColumns(db: Db, schema: string, table: string): Promise<string[]> {
-  const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
-    `SELECT a.attname AS name FROM pg_attribute a
+/** Insertable (non-generated) columns of every table of a schema, in one round trip. */
+async function insertableColumns(db: Db, schema: string): Promise<Map<string, string[]>> {
+  const rows = await db.$queryRawUnsafe<Array<{ table: string; name: string }>>(
+    `SELECT c.relname AS "table", a.attname AS name FROM pg_attribute a
      JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
-     WHERE n.nspname = $1 AND c.relname = $2 AND a.attnum > 0 AND NOT a.attisdropped AND a.attgenerated = ''
-     ORDER BY a.attnum`,
-    schema,
-    table
+     WHERE n.nspname = $1 AND c.relkind IN ('r', 'p') AND a.attnum > 0 AND NOT a.attisdropped AND a.attgenerated = ''
+     ORDER BY c.relname, a.attnum`,
+    schema
   );
-  return rows.map((row) => row.name);
+  const columns = new Map<string, string[]>();
+  for (const row of rows) columns.set(row.table, [...(columns.get(row.table) ?? []), row.name]);
+  return columns;
+}
+
+/** Total rows of several tables, in one round trip. */
+async function totalRows(db: Db, schema: string, tables: string[]): Promise<number> {
+  if (!tables.length) return 0;
+  const counts = tables.map((table) => `SELECT count(*) AS n FROM ${quoteIdent(schema)}.${quoteIdent(table)}`).join(" UNION ALL ");
+  const rows = await db.$queryRawUnsafe<Array<{ n: bigint | number | string | null }>>(
+    `SELECT COALESCE(SUM(n), 0) AS n FROM (${counts}) AS counts`
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+const BLOCK_TAG = "$midyaf_demo_block$";
+
+/**
+ * Runs statements server-side in ONE round trip, still inside the caller's
+ * transaction. Statement by statement, a reset over a WAN link to Neon took
+ * 72 s (SIX-TASKS Neon review branch, 2026-11-22). The statements hold only
+ * quoted catalog identifiers and NULL, never request data.
+ */
+async function runBlock(db: Db, statements: string[]) {
+  if (!statements.length) return;
+  if (statements.some((statement) => statement.includes(BLOCK_TAG))) {
+    throw new HttpError(500, "Unexpected identifier in the demo reset");
+  }
+  await db.$executeRawUnsafe(`DO ${BLOCK_TAG} BEGIN\n${statements.map((statement) => `${statement};`).join("\n")}\nEND ${BLOCK_TAG}`);
 }
 
 /** Strongly connected components (Tarjan), for finding foreign-key cycles. */
@@ -193,13 +225,6 @@ export async function readBaselineInfo(db: Db): Promise<BaselineInfo | null> {
   return row ? { capturedAt: new Date(row.captured_at).toISOString(), tables: Number(row.tables), rows: Number(row.rows) } : null;
 }
 
-async function countRows(db: Db, schema: string, table: string) {
-  const rows = await db.$queryRawUnsafe<Array<{ n: bigint | number }>>(
-    `SELECT count(*) AS n FROM ${quoteIdent(schema)}.${quoteIdent(table)}`
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-
 /** Replaces the stored baseline with the current state of every application table. */
 export async function captureBaseline(db: Db): Promise<BaselineInfo> {
   await lock(db);
@@ -208,21 +233,15 @@ export async function captureBaseline(db: Db): Promise<BaselineInfo> {
   const tables = await listTables(db, schema);
   if (tables.length === 0) throw new HttpError(409, "No application tables found");
   await db.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(base)}`);
-  // Drop the previous baseline tables (including tables that no longer exist).
-  for (const old of await listTables(db, base)) {
-    await db.$executeRawUnsafe(`DROP TABLE IF EXISTS ${quoteIdent(base)}.${quoteIdent(old)}`);
-  }
-  let rows = 0;
-  for (const table of tables) {
-    await db.$executeRawUnsafe(
-      `CREATE TABLE ${quoteIdent(base)}.${quoteIdent(table)} AS TABLE ${quoteIdent(schema)}.${quoteIdent(table)}`
-    );
-    rows += await countRows(db, base, table);
-  }
-  await db.$executeRawUnsafe(`DROP TABLE IF EXISTS ${quoteIdent(base)}.${quoteIdent(META_TABLE)}`);
-  await db.$executeRawUnsafe(
+  // Drop the previous baseline tables (including tables that no longer exist),
+  // then copy every application table.
+  const old = await listTables(db, base);
+  await runBlock(db, [
+    ...[...old, META_TABLE].map((table) => `DROP TABLE IF EXISTS ${quoteIdent(base)}.${quoteIdent(table)}`),
+    ...tables.map((table) => `CREATE TABLE ${quoteIdent(base)}.${quoteIdent(table)} AS TABLE ${quoteIdent(schema)}.${quoteIdent(table)}`),
     `CREATE TABLE ${quoteIdent(base)}.${quoteIdent(META_TABLE)} (captured_at timestamptz NOT NULL, tables integer NOT NULL, rows bigint NOT NULL)`
-  );
+  ]);
+  const rows = await totalRows(db, base, tables);
   const capturedAt = new Date();
   await db.$executeRawUnsafe(
     `INSERT INTO ${quoteIdent(base)}.${quoteIdent(META_TABLE)} (captured_at, tables, rows) VALUES ($1, $2, $3)`,
@@ -249,11 +268,9 @@ export async function restoreBaseline(db: Db): Promise<{ removed: number; restor
   const baseTables = new Set(await listTables(db, base));
   const plan = planRestore(tables, await foreignKeyEdges(db, schema));
 
-  let removed = 0;
-  for (const table of tables) removed += await countRows(db, schema, table);
-  await db.$executeRawUnsafe(
-    `TRUNCATE ${tables.map((table) => `${quoteIdent(schema)}.${quoteIdent(table)}`).join(", ")}`
-  );
+  const removed = await totalRows(db, schema, tables);
+  const targetColumns = await insertableColumns(db, schema);
+  const baseColumns = await insertableColumns(db, base);
 
   const deferredColumns = new Map<string, Set<string>>();
   for (const edge of plan.deferred) {
@@ -262,38 +279,40 @@ export async function restoreBaseline(db: Db): Promise<{ removed: number; restor
     deferredColumns.set(edge.child, set);
   }
 
-  let restored = 0;
+  const statements = [`TRUNCATE ${tables.map((table) => `${quoteIdent(schema)}.${quoteIdent(table)}`).join(", ")}`];
   const restoredColumns = new Map<string, string[]>();
   for (const table of plan.order) {
     if (!baseTables.has(table)) continue;
-    const target = await insertableColumns(db, schema, table);
-    const available = new Set(await insertableColumns(db, base, table));
-    const shared = target.filter((column) => available.has(column));
+    const available = new Set(baseColumns.get(table) ?? []);
+    const shared = (targetColumns.get(table) ?? []).filter((column) => available.has(column));
     if (!shared.length) continue;
     restoredColumns.set(table, shared);
     const later = deferredColumns.get(table) ?? new Set<string>();
     const columns = shared.map(quoteIdent).join(", ");
     const values = shared.map((column) => (later.has(column) ? "NULL" : quoteIdent(column))).join(", ");
-    restored += await db.$executeRawUnsafe(
+    statements.push(
       `INSERT INTO ${quoteIdent(schema)}.${quoteIdent(table)} (${columns}) SELECT ${values} FROM ${quoteIdent(base)}.${quoteIdent(table)}`
     );
   }
 
-  // Fill the deferred cyclic references now that every row exists.
-  for (const [table, later] of deferredColumns) {
-    const shared = restoredColumns.get(table);
-    if (!shared) continue;
-    const columns = [...later].filter((column) => shared.includes(column));
+  // Fill the deferred cyclic references once every row exists.
+  const deferredTables = [...deferredColumns.keys()].filter((table) => restoredColumns.has(table));
+  const keysByTable = await primaryKeys(db, schema, deferredTables);
+  for (const table of deferredTables) {
+    const shared = restoredColumns.get(table)!;
+    const columns = [...deferredColumns.get(table)!].filter((column) => shared.includes(column));
     if (!columns.length) continue;
-    const keys = await primaryKeyColumns(db, schema, table);
+    const keys = keysByTable.get(table) ?? [];
     if (!keys.length) throw new HttpError(409, `Demo reset cannot restore ${table}: it has no primary key`);
-    const target = `${quoteIdent(schema)}.${quoteIdent(table)}`;
-    await db.$executeRawUnsafe(
-      `UPDATE ${target} AS t SET ${columns.map((column) => `${quoteIdent(column)} = b.${quoteIdent(column)}`).join(", ")}
+    statements.push(
+      `UPDATE ${quoteIdent(schema)}.${quoteIdent(table)} AS t SET ${columns.map((column) => `${quoteIdent(column)} = b.${quoteIdent(column)}`).join(", ")}
        FROM ${quoteIdent(base)}.${quoteIdent(table)} AS b
        WHERE ${keys.map((key) => `t.${quoteIdent(key)} = b.${quoteIdent(key)}`).join(" AND ")}
          AND (${columns.map((column) => `b.${quoteIdent(column)} IS NOT NULL`).join(" OR ")})`
     );
   }
+
+  await runBlock(db, statements);
+  const restored = await totalRows(db, schema, [...restoredColumns.keys()]);
   return { removed, restored, baseline };
 }
