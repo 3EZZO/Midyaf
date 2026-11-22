@@ -118,7 +118,7 @@ export function KpiTile({
             />
           ) : null}
           {icon ? (
-            <span className="grid size-9 place-items-center rounded-lg border border-hairline bg-surface-1 text-gold-500">
+            <span className="grid size-9 place-items-center rounded-md border border-gold-500/30 bg-gold-500/10 text-gold-300">
               {icon}
             </span>
           ) : null}
@@ -126,7 +126,7 @@ export function KpiTile({
       </div>
 
       <div className="flex items-end justify-between gap-3">
-        <div className={cn("font-bold tabular-nums tracking-tight text-ink leading-none", s.value)}>{shown}</div>
+        <div className={cn("font-english font-bold tabular-nums tracking-tight text-ink leading-none", s.value)}>{shown}</div>
         {sparkline?.length ? <Sparkline data={sparkline} className="shrink-0" /> : null}
       </div>
 

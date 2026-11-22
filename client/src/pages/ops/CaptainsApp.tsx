@@ -1,4 +1,6 @@
 import {OperationalEventEntry} from '../../components/EventRadar';
+import { CarFront } from "lucide-react";
+import { EmptyState } from "../../components/ui/EmptyState";
 // Captain (driver) field app (phone-first).
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -55,7 +57,7 @@ function readGpsPref(): boolean | null {
 
 export function CaptainsApp(props:PortalProps){
  const ui=useOpsText();
- const legacy=props.data.events.length>0&&props.data.drivers.length>0?<LegacyCaptainsApp {...props}/>:<p>{ui.isArabic?'لا توجد رحلات مسندة حاليًا':'No assigned trips yet'}</p>;
+ const legacy=props.data.events.length>0&&props.data.drivers.length>0?<LegacyCaptainsApp {...props}/>:<EmptyState className="mx-auto max-w-md" icon={<CarFront className="size-5" aria-hidden />} title={ui.isArabic?'لا توجد رحلات مسندة حاليًا':'No assigned trips yet'} description={ui.isArabic?'ستظهر هنا رحلتك التالية فور إسنادها إليك من غرفة العمليات.':'Your next trip appears here as soon as operations assigns it to you.'}/>;
  if(props.isDemoMode)return legacy;
  return <OperationalEventEntry session={props.session} isArabic={ui.isArabic} mode="radar">{legacy}</OperationalEventEntry>;
 }

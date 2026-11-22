@@ -31,7 +31,7 @@ export function StackedBars({
     <div style={{ direction: "ltr", height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} layout={layout} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap={10}>
-          <CartesianGrid stroke={c.grid} horizontal={layout === "horizontal"} vertical={layout === "vertical"} />
+          <CartesianGrid stroke={c.grid} strokeDasharray="4 6" horizontal={layout === "horizontal"} vertical={layout === "vertical"} />
           {layout === "vertical" ? (
             <>
               <XAxis type="number" tick={tickStyle()} axisLine={false} tickLine={false} allowDecimals={false} />

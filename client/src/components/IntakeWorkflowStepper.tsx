@@ -81,7 +81,7 @@ export function IntakeWorkflowStepper({
   ];
 
   return (
-    <div className="rounded-lg border border-midyaf-gold/25 bg-[#121626] p-4 shadow-sm bg-[#121626] animate-fadeInDown">
+    <div className="rounded-lg border border-midyaf-gold/25 bg-[#15171E] p-4 shadow-sm bg-[#15171E] animate-fadeInDown">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <span className="grid size-6 place-items-center rounded-lg bg-midyaf-gold/20 text-midyaf-gold font-black text-xs">

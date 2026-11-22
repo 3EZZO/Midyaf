@@ -348,13 +348,13 @@ export function RiyadhMap({
         if (!pickup || !dropoff) continue;
         const delayed = task.status === "DELAYED";
         L.polyline([pickup, dropoff], {
-          color: delayed ? "#FB7185" : "#D4AF37",
+          color: delayed ? "#F46B7A" : "#C9A44C",
           weight: 6,
           opacity: 0.3,
           interactive: false
         }).addTo(routes);
         L.polyline([pickup, dropoff], {
-          color: delayed ? "#FB7185" : "#34D399",
+          color: delayed ? "#F46B7A" : "#34D399",
           weight: 2.5,
           opacity: 0.9,
           interactive: false,

@@ -6,20 +6,20 @@ import plexArabic400 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-
 import plexArabic700 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url";
 import plexLatin400 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-400-normal.woff2?url";
 import plexLatin700 from "@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-700-normal.woff2?url";
-import interLatin from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import jakartaLatin from "@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2?url";
 import { money } from "./format";
 
 /** Print tokens: the brand's Obsidian + gold on a white sheet. */
 const PRINT = {
-  obsidian: "#090C15",
-  obsidian2: "#121626",
-  gold: "#D4AF37",
-  goldDark: "#A88820",
+  obsidian: "#0D0E12",
+  obsidian2: "#15171E",
+  gold: "#C9A44C",
+  goldDark: "#9E7B2F",
   ink: "#0F172A",
   inkMuted: "#475569",
-  inkFaint: "#94A3B8",
+  inkFaint: "#B6BCCB",
   hairline: "#E2E8F0",
-  surface: "#F8FAFC",
+  surface: "#F6F4EE",
   ok: "#047857"
 } as const;
 
@@ -34,7 +34,7 @@ function printFontFaces() {
     face("IBM Plex Sans Arabic", plexArabic700, "700", arabicRange),
     face("IBM Plex Sans Arabic", plexLatin400, "400"),
     face("IBM Plex Sans Arabic", plexLatin700, "700"),
-    face("Inter Variable", interLatin, "100 900")
+    face("Plus Jakarta Sans Variable", jakartaLatin, "200 800")
   ].join("\n");
 }
 
@@ -182,7 +182,7 @@ export function exportPlanAsPdf(
         ${printFontFaces()}
         @page { size: A4 portrait; margin: 18mm 15mm; }
         body {
-          font-family: ${isArabic ? "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif" : "'Inter Variable', 'IBM Plex Sans Arabic', 'Segoe UI', Arial, sans-serif"};
+          font-family: ${isArabic ? "'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif" : "'Plus Jakarta Sans Variable', 'IBM Plex Sans Arabic', 'Segoe UI', Arial, sans-serif"};
           font-variant-numeric: tabular-nums;
           color: ${PRINT.ink};
           background: #ffffff;

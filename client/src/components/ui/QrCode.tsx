@@ -32,7 +32,7 @@ export function QrCode({
         level="M"
         marginSize={0}
         bgColor="#FFFFFF"
-        fgColor="#090C15"
+        fgColor="#0D0E12"
         title={label}
         role="img"
         aria-label={label}

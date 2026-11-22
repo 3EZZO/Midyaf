@@ -29,7 +29,7 @@ export function PortalHero({
             {badge}
           </Badge>
         ) : null}
-        <h1 className="mt-3 text-display-sm text-ink">{title}</h1>
+        <h1 className="mt-3 font-display text-display-sm text-ink">{title}</h1>
         {body ? <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">{body}</p> : null}
       </div>
       {/* Bounded to the row so a multi-button action wraps instead of widening the page on phones. */}

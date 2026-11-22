@@ -8,7 +8,7 @@ import type { StatusTone } from "@shared/statusMeta";
  * legacy names (purple/green/red/slate/blue) still used at ~77 call sites.
  */
 export const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-label ring-1 ring-inset whitespace-nowrap",
+  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-label ring-1 ring-inset whitespace-nowrap",
   {
     variants: {
       tone: {
@@ -16,13 +16,13 @@ export const badgeVariants = cva(
         warn: "bg-warn/10 text-warn ring-warn/25",
         danger: "bg-danger/10 text-danger ring-danger/25",
         info: "bg-info/10 text-info ring-info/25",
-        neutral: "bg-white/5 text-ink-muted ring-white/10",
-        gold: "bg-gold-500/10 text-gold-300 ring-gold-500/25",
+        neutral: "bg-ink/5 text-ink-muted ring-ink/10",
+        gold: "bg-gold-500/10 text-gold-300 ring-gold-500/30",
         // legacy aliases
-        purple: "bg-surface-3 text-ink ring-white/10",
+        purple: "bg-surface-3 text-ink ring-ink/10",
         green: "bg-ok/10 text-ok ring-ok/25",
         red: "bg-danger/10 text-danger ring-danger/25",
-        slate: "bg-white/5 text-ink-muted ring-white/10",
+        slate: "bg-ink/5 text-ink-muted ring-ink/10",
         blue: "bg-info/10 text-info ring-info/25"
       },
       size: {

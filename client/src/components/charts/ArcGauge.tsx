@@ -41,7 +41,7 @@ export function ArcGauge({
 
   // Below ~96px the gauge is an inline indicator: thin ring, small value, no captions.
   const compact = size < 96;
-  const stroke = compact ? 5 : 12;
+  const stroke = compact ? 5 : 10;
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
@@ -49,6 +49,11 @@ export function ArcGauge({
   const start = 135; // degrees, clockwise from +x
   const circumference = 2 * Math.PI * r;
   const arcLen = (sweep / 360) * circumference;
+  // Segments ride a thin inner ring so they never collide with the value arc.
+  const segStroke = 3;
+  const segR = r - stroke / 2 - 6;
+  const segCircumference = 2 * Math.PI * segR;
+  const segArcLen = (sweep / 360) * segCircumference;
   const pct = Math.max(0, Math.min(100, shown)) / 100;
 
   const toneClass = {
@@ -87,21 +92,21 @@ export function ArcGauge({
             strokeDasharray={`${arcLen} ${circumference}`}
             strokeLinecap="round"
           />
-          {segments && total > 0
+          {segments && total > 0 && !compact
             ? segments.map((seg, i) => {
-                const len = (seg.value / total) * arcLen;
+                const len = (seg.value / total) * segArcLen;
                 const el = (
                   <circle
                     key={i}
                     cx={cx}
                     cy={cy}
-                    r={r}
+                    r={segR}
                     fill="none"
                     className={seg.className}
-                    strokeWidth={stroke}
-                    strokeDasharray={`${Math.max(0, len - 3)} ${circumference}`}
+                    strokeWidth={segStroke}
+                    strokeDasharray={`${Math.max(0, len - 4)} ${segCircumference}`}
                     strokeDashoffset={-offset}
-                    opacity={0.35}
+                    strokeLinecap="round"
                   />
                 );
                 offset += len;
