@@ -111,6 +111,7 @@ import { liveEvents, type LiveSource } from "./lib/liveEvents";
 import { exportPlanAsPdf, sharePlanLink } from "./lib/planExport";
 import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
+import { restoreProjectorMode, toggleProjectorMode } from "./lib/projectorMode";
 
 const sessionStorageKey = "midyaf.session";
 
@@ -323,24 +324,10 @@ export function App() {
     const handler = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "p") {
         event.preventDefault();
-        const root = document.documentElement;
-        const next = root.dataset.density === "projector" ? "" : "projector";
-        if (next) root.dataset.density = next;
-        else delete root.dataset.density;
-        try {
-          window.localStorage.setItem("midyaf.density", next);
-        } catch {
-          // ignore
-        }
+        toggleProjectorMode();
       }
     };
-    try {
-      if (window.localStorage.getItem("midyaf.density") === "projector") {
-        document.documentElement.dataset.density = "projector";
-      }
-    } catch {
-      // ignore
-    }
+    restoreProjectorMode();
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);

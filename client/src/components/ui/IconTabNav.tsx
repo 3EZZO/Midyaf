@@ -168,7 +168,7 @@ export function IconTabNav<T extends string>({
                     "relative inline-flex min-h-10 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold",
                     "transition-colors duration-base focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none",
                     "disabled:opacity-40",
-                    active ? "text-ink" : "text-ink-muted hover:text-ink hover:bg-white/5"
+                    active ? "text-ink" : "text-ink-muted hover:text-ink hover:bg-ink/5"
                   )}
                 >
                   {active ? (

@@ -58,7 +58,7 @@ export function Dialog({
           className={cn(
             "fixed inset-0 m-auto flex h-fit max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col",
             layer,
-            "rounded-lg border border-hairline bg-surface-2 shadow-dropdown animate-scale-in",
+            "rounded-xl border border-hairline bg-surface-2 shadow-dropdown animate-scale-in",
             "focus:outline-none",
             sizes[size],
             className
@@ -77,7 +77,7 @@ export function Dialog({
               {headerAction}
               <DialogPrimitive.Close
                 aria-label={closeLabel}
-                className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+                className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
               >
                 <X className="size-4" />
               </DialogPrimitive.Close>
@@ -126,7 +126,7 @@ export function Sheet({
             </div>
             <DialogPrimitive.Close
               aria-label={closeLabel}
-              className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-white/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+              className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
             >
               <X className="size-4" />
             </DialogPrimitive.Close>

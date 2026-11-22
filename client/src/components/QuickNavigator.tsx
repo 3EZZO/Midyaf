@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import type { PortalKey } from "@shared/domain";
 import { COMMAND_ITEMS, type CommandItem } from "../lib/commandItems";
 import { smoothScrollToSection } from "../lib/navigation";
+import { toggleProjectorMode } from "../lib/projectorMode";
 import { cn } from "../lib/cn";
 import { Kbd } from "./ui/Kbd";
 
@@ -91,6 +92,9 @@ export function QuickNavigator({
         break;
       case "war-room":
         onOpenWarRoom?.();
+        break;
+      case "projector":
+        toggleProjectorMode();
         break;
     }
   }

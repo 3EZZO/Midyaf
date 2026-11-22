@@ -13,6 +13,7 @@ import {
   FileDown,
   Languages,
   LayoutDashboard,
+  Projector,
   Radar,
   Settings2,
   Share2,
@@ -23,7 +24,7 @@ import {
 import type { PortalKey } from "@shared/domain";
 
 export type CommandCategory = "portal" | "section" | "action";
-export type CommandAction = "export-pdf" | "share-plan" | "switch-lang" | "war-room";
+export type CommandAction = "export-pdf" | "share-plan" | "switch-lang" | "war-room" | "projector";
 
 export interface CommandItem {
   id: string;
@@ -215,6 +216,17 @@ export const COMMAND_ITEMS: CommandItem[] = [
     shortcut: "Lang",
     keywordsEn: ["language", "arabic", "english", "translate"],
     keywordsAr: ["لغة", "عربي", "انجليزي", "ترجمة"]
+  },
+  {
+    id: "act-projector",
+    titleEn: "Projector Mode (larger type, stronger contrast)",
+    titleAr: "وضع العرض على الشاشة الكبيرة (خط أكبر وتباين أعلى)",
+    category: "action",
+    actionType: "projector",
+    icon: Projector,
+    shortcut: "Ctrl+Shift+P",
+    keywordsEn: ["projector", "presentation", "big screen", "contrast", "zoom"],
+    keywordsAr: ["عرض", "بروجكتر", "شاشة كبيرة", "تباين", "تكبير"]
   },
   {
     demoOnly: true,
