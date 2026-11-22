@@ -1,0 +1,180 @@
+/* ══════════════════════════════════════════════════════════════════════
+   MIDYAF — QASR OBSIDIAN SIGNATURE STYLES (Lux-owned: P2 & P4)
+   Motion strictly for state changes, live events, and narration.
+   Zero decorative hover motion. Honours prefers-reduced-motion.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── P2: TopBar brass reset progress line ── */
+@keyframes qasrResetSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.qasr-reset-track {
+  position: relative;
+  overflow: hidden;
+  background: rgb(var(--gold-500) / 0.16);
+}
+
+.qasr-reset-bar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--gold-500)) 35%,
+    rgb(var(--gold-300)) 65%,
+    transparent 100%
+  );
+  animation: qasrResetSweep 1.35s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform;
+}
+
+.qasr-reset-bar[data-stage="refreshing"] {
+  width: 52%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--gold-300)) 40%,
+    rgb(var(--status-ok)) 80%,
+    transparent 100%
+  );
+}
+
+/* ── P2: Viewing-as RBAC role ribbon ── */
+@keyframes qasrRibbonReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qasr-role-ribbon {
+  animation: qasrRibbonReveal 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── P4: Riyadh dusk arrival field (static atmospheric depth, zero idle drift) ── */
+.qasr-dusk-field {
+  background-image:
+    radial-gradient(ellipse 85% 45% at 50% 105%, var(--brass-aura, rgb(var(--gold-500) / 0.14)), transparent 65%),
+    radial-gradient(ellipse 60% 35% at 85% 15%, rgb(var(--gold-700) / 0.08), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 15% 25%, rgb(var(--surface-3) / 0.45), transparent 65%);
+}
+
+/* ── P4: Client one-click approval 450ms brass -> emerald ceremonial seal ── */
+@keyframes qasrSealStamp {
+  0% {
+    border-color: rgb(var(--gold-500) / 0.85);
+    box-shadow: 0 0 0 1px rgb(var(--gold-500) / 0.55), 0 0 28px rgb(var(--gold-500) / 0.25);
+  }
+  55% {
+    border-color: rgb(var(--gold-300) / 0.9);
+    box-shadow: 0 0 0 2px rgb(var(--status-ok) / 0.4), 0 0 32px rgb(var(--status-ok) / 0.22);
+  }
+  100% {
+    border-color: rgb(var(--status-ok) / 0.8);
+    box-shadow: 0 0 0 1px rgb(var(--status-ok) / 0.55), 0 0 20px rgb(var(--status-ok) / 0.18);
+  }
+}
+
+@keyframes qasrSealBadgeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.qasr-approval-sealed-card {
+  animation: qasrSealStamp 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.qasr-approval-seal-badge {
+  animation: qasrSealBadgeIn 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── P4: War Room spotlight & Act Title Card sweep ── */
+.qasr-warroom-panel {
+  transition:
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qasr-warroom-panel[data-panel-spotlight="focused"] {
+  opacity: 1;
+  border-color: rgb(var(--gold-500) / 0.78);
+  box-shadow:
+    0 0 0 1px rgb(var(--gold-500) / 0.55),
+    0 0 30px rgb(var(--gold-500) / 0.22);
+}
+
+.qasr-warroom-panel[data-panel-spotlight="dimmed"] {
+  opacity: 0.8;
+}
+
+@keyframes qasrActRuleSweep {
+  from {
+    transform: scaleX(0);
+    opacity: 0.2;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.qasr-act-rule {
+  transform-origin: center;
+  animation: qasrActRuleSweep 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── P4: Boarding Pass warm ivory QR pod (sunlit airport scan reliability) ── */
+.qasr-ivory-qr-pod {
+  background: #f6f4ee;
+  border: 1px solid rgb(var(--gold-500) / 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ── Reduced motion guard ── */
+@media (prefers-reduced-motion: reduce) {
+  .qasr-reset-bar {
+    animation: none;
+    transform: none;
+    width: 65%;
+    background: rgb(var(--gold-500));
+  }
+
+  .qasr-reset-bar[data-stage="refreshing"] {
+    width: 92%;
+    background: rgb(var(--gold-300));
+  }
+
+  .qasr-role-ribbon,
+  .qasr-approval-sealed-card,
+  .qasr-approval-seal-badge,
+  .qasr-act-rule {
+    animation: none;
+  }
+
+  .qasr-approval-sealed-card {
+    border-color: rgb(var(--status-ok) / 0.8);
+  }
+
+  .qasr-warroom-panel {
+    transition: none;
+  }
+}

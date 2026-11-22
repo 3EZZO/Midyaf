@@ -26,7 +26,9 @@ vi.mock("../components/warroom", () => ({
 
 import { IconRail, PORTAL_RAIL_ID, PORTAL_RAIL_LIST_ID, railToggleCopy } from "./IconRail";
 import { ShellFrame } from "./ShellFrame";
-import { BottomTabBar } from "./BottomTabBar";
+import { BottomTabBar, partitionBottomTabs } from "./BottomTabBar";
+import { resetStageCopy } from "./TopBar";
+import type { DemoStatusDto } from "@shared/demo";
 
 const portals: PortalKey[] = ["admin", "sila_operations", "company", "client"];
 
@@ -177,5 +179,81 @@ describe("ShellFrame & BottomTabBar integration", () => {
     );
     expect(bottomHtml).toContain("lg:hidden");
     expect(bottomHtml).toContain("Admin &amp; Owners Dashboard");
+    expect(bottomHtml).not.toContain("data-bottom-tab-more");
+    // 12px floor: no text-[11px] in IconRail
+    expect(collapsedHtml).not.toContain("text-[11px]");
+  });
+
+  it("partitions >4 portals into 4 primary BottomTabBar tabs + More sheet and renders Viewing-as ribbon & TopBar reset progress", () => {
+    const ninePortals: PortalKey[] = [
+      "admin",
+      "company",
+      "client",
+      "sila_operations",
+      "guest",
+      "captain",
+      "coordinator",
+      "supplier",
+      "messages"
+    ];
+    const parts = partitionBottomTabs(ninePortals);
+    expect(parts.primary).toEqual(["admin", "company", "client", "sila_operations"]);
+    expect(parts.overflow).toEqual(["guest", "captain", "coordinator", "supplier", "messages"]);
+
+    const overflowHtml = renderToStaticMarkup(
+      <BottomTabBar
+        allowedPortals={ninePortals}
+        portal="supplier"
+        setPortal={() => undefined}
+        isArabic={true}
+      />
+    );
+    expect(overflowHtml).toContain("data-bottom-tab-more");
+    expect(overflowHtml).toContain("المزيد");
+
+    const demoStatus: DemoStatusDto = {
+      enabled: true,
+      canSwitch: true,
+      canReset: true,
+      activePersona: "client",
+      origin: { id: "u-admin", name: "Midyaf Admin" },
+      personas: [
+        { key: "admin", role: "SUPER_ADMIN", name: "Admin", portal: "admin", labelEn: "Midyaf Owner (Super Admin)", labelAr: "مالك مضياف (المشرف العام)", available: true },
+        { key: "client", role: "CLIENT", name: "Client", portal: "client", labelEn: "Client", labelAr: "العميل", available: true }
+      ],
+      lastResetAt: null,
+      baselineCapturedAt: "2026-11-22T06:00:00.000Z"
+    };
+
+    const switchedHtml = renderToStaticMarkup(
+      <TooltipProvider>
+        <ShellFrame
+          isArabic={false}
+          session={session}
+          allowedPortals={portals}
+          portal="client"
+          setPortal={() => undefined}
+          isQuickNavOpen={false}
+          setIsQuickNavOpen={() => undefined}
+          onLanguageToggle={() => undefined}
+          onLogout={() => undefined}
+          investorDemoStatus={demoStatus}
+          demoResetPhase="restoring"
+          onSwitchDemoPersona={() => undefined}
+          onCaptureDemoBaseline={() => undefined}
+          onResetDemoData={() => undefined}
+        >
+          <div>Client body</div>
+        </ShellFrame>
+      </TooltipProvider>
+    );
+
+    expect(switchedHtml).toContain('data-role-ribbon="client"');
+    expect(switchedHtml).toContain("Viewing as: Client");
+    expect(switchedHtml).toContain("data-role-ribbon-return");
+    expect(switchedHtml).toContain('data-demo-reset-progress="restoring"');
+    expect(switchedHtml).toContain("Restoring baseline");
+    expect(resetStageCopy("refreshing", true)).toBe("جارٍ تحديث البوابات…");
+    expect(resetStageCopy("idle", false)).toBeNull();
   });
 });

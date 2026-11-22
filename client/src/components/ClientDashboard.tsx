@@ -10,7 +10,7 @@ import { useWorkspaceResource } from "../lib/workspaceApi";
 import { Funnel } from "./charts";
 import { PlanApprovalQueue, canShowApprovalQueue } from "./PlanApprovalQueue";
 import { Badge, Button, EmptyState, IconTabNav, Input, KpiTile, Section, StatusPill, Surface, useToast } from "./ui";
-import { PortalHero } from "./ui/PortalHero";
+import { SaduRibbon } from "./ui/SaduRibbon";
 
 type Tab = "amendments" | "chat" | "reports";
 
@@ -97,23 +97,29 @@ export function ClientDashboard({
   ];
 
   return (
-    <div className="space-y-6">
-      <PortalHero
-        badge={
-          <span className="inline-flex items-center gap-1.5">
-            <Building2 className="size-3.5" aria-hidden />
-            {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
-          </span>
-        }
-        title={isArabic ? `مرحباً بك: ${config.clientName} — ${config.clientEntity}` : `Welcome: ${config.clientName} — ${config.clientEntity}`}
-        body={
-          isArabic
+    <div className="space-y-5">
+      {/* Qasr P4: Compact royal hospitality welcome header so the decision card sits immediately above the fold */}
+      <header className="space-y-2.5" data-client-compact-hero>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 space-y-1">
+            <Badge tone="gold" size="sm" className="max-w-full whitespace-normal [&_svg]:shrink-0">
+              <Building2 className="size-3.5" aria-hidden />
+              {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
+            </Badge>
+            <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
+              {isArabic ? `مرحباً بك: ${config.clientName} — ${config.clientEntity}` : `Welcome: ${config.clientName} — ${config.clientEntity}`}
+            </h1>
+          </div>
+        </div>
+        <p className="hidden max-w-3xl text-sm leading-relaxed text-ink-muted sm:block">
+          {isArabic
             ? `لوحة المتابعة الخاصة بفعالية (${config.eventTitle}) تحت إشراف الشركة المنظمة (صلة)، تتيح لك الاطلاع الفوري على التقارير، تعديلات الجداول، والتواصل مع العمليات.`
-            : `Executive dashboard for (${config.eventTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`
-        }
-      />
+            : `Executive dashboard for (${config.eventTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`}
+        </p>
+        <SaduRibbon variant="hairline" className="opacity-70" />
+      </header>
 
-      {/* SIX-TASKS #1: One-click plan approval queue + workspace events for CLIENT-role & authorized viewers */}
+      {/* SIX-TASKS #1 / Qasr P4: One-click plan approval decision card above the fold */}
       <PlanApprovalQueue
         session={session}
         isArabic={isArabic}

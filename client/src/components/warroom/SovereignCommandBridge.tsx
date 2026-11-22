@@ -30,6 +30,8 @@ import { RadarSweep } from "./RadarSweep";
 import { Scorecard } from "./Scorecard";
 import { VipDossierDialog } from "./VipDossierDialog";
 import { WarRoomHeader } from "./WarRoomHeader";
+import { resolvePanelSpotlight, useActiveHighlightPanel } from "./usePanelHighlight";
+import "../../styles/signature.css";
 
 export type SovereignCommandBridgeProps = {
   isOpen: boolean;
@@ -97,6 +99,8 @@ export function SovereignCommandBridge({
   }, [scripted, selectedDriverId, selectedDriver, state.convoys]);
 
   const sla = slaSample(tasks);
+  const activeHighlightPanel = useActiveHighlightPanel();
+  const mapSpotlight = resolvePanelSpotlight("map", activeHighlightPanel);
 
   // Narrator hotkeys, scoped to the open War Room. Ctrl/Cmd chords belong to the app shell.
   const onKeyDown = useCallback(
@@ -163,6 +167,7 @@ export function SovereignCommandBridge({
 
   return (
     <div
+      data-warroom-spotlight={activeHighlightPanel ?? "none"}
       className={cn(
         "fixed inset-0 z-warroom flex flex-col command-deck-bg text-ink",
         isArabic ? "font-arabic" : "font-english"
@@ -200,7 +205,11 @@ export function SovereignCommandBridge({
 
         <section className="flex min-h-[420px] flex-col gap-3 lg:col-span-6 lg:min-h-0">
           {/* No backdrop-filter on this wrapper: it would trap the map's fixed-position fullscreen fallback. */}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gold-500/25 bg-surface-2">
+          <div
+            data-panel="map"
+            data-panel-spotlight={mapSpotlight}
+            className="qasr-warroom-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gold-500/25 bg-surface-2"
+          >
             <RiyadhMap
               event={event}
               drivers={drivers}

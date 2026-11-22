@@ -169,6 +169,7 @@ export function IconRail({
                 ) : null}
                 <Icon
                   className={cn("relative size-5 shrink-0", active && "text-gold-500")}
+                  strokeWidth={1.6}
                   aria-hidden
                 />
                 {!collapsed ? (
@@ -192,7 +193,7 @@ export function IconRail({
                   )}
                 >
                   <span className="block font-semibold text-ink">{portalLabel}</span>
-                  <span className="block text-[11px] text-ink-muted">{categoryLabel}</span>
+                  <span className="block text-xs text-ink-muted">{categoryLabel}</span>
                 </span>
               ) : null}
             </li>

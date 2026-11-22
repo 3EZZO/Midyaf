@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Crown, Volume2, VolumeX, X } from "lucide-react";
 import type { Driver } from "@shared/domain";
 import { Badge, ConnectionDot, IconButton, Kbd, Tooltip } from "../ui";
+import { SaduRibbon } from "../ui/SaduRibbon";
 import { ArcGauge } from "../charts";
 import { fleetUtilisation } from "../../lib/metrics";
 import type { DirectorState } from "../../lib/demo/director";
@@ -40,13 +41,16 @@ export function WarRoomHeader({
   const scripted = isDemoMode && state.scriptId !== null;
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-6 border-b border-hairline bg-surface-1/90 px-4">
+    <header className="relative flex h-16 shrink-0 items-center gap-6 border-b border-hairline bg-surface-1/90 px-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 opacity-75">
+        <SaduRibbon variant="hairline" />
+      </div>
       <div className="flex items-center gap-3">
         <span className="grid size-9 place-items-center rounded-lg border border-gold-500/40 bg-gold-500/10 text-gold-300">
-          <Crown className="size-4" />
+          <Crown className="size-4" strokeWidth={1.6} />
         </span>
         <div className="leading-tight">
-          <p className="text-xs font-bold uppercase tracking-label text-gold-300">
+          <p className="text-xs font-bold uppercase tracking-label text-gold-300 rtl:normal-case rtl:tracking-normal">
             {isArabic ? "مركز العمليات" : "Operations Center"}
           </p>
           <p className="text-xs text-ink-muted">

@@ -43,6 +43,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
+import type { DemoResetPhase } from "./shell/InvestorDemoSwitcher";
 import {
   ApplicantRegistration,
   StandaloneOnboardingFrame,
@@ -184,6 +185,7 @@ export function App() {
   // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
   const [demoStatus, setDemoStatus] = useState<DemoStatusDto | null>(null);
   const [demoBusy, setDemoBusy] = useState(false);
+  const [demoResetPhase, setDemoResetPhase] = useState<DemoResetPhase>("idle");
   const [demoStatusRev, setDemoStatusRev] = useState(0);
   const pendingPortalRef = useRef<PortalKey | null>(null);
   const lastHandledResetAtRef = useRef<string | null>(null);
@@ -486,13 +488,14 @@ export function App() {
         pushLog(`${p("Demo data reset", "تمت إعادة ضبط بيانات العرض")} · ${stamp()}`);
         if (payload?.resetAt && lastHandledResetAtRef.current === payload.resetAt) return;
         if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+        setDemoResetPhase("refreshing");
         toast.info(
           isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
           isArabic ? "جارٍ تحديث جميع البيانات إلى نقطة البداية." : "Refreshing all data back to the saved start point."
         );
         setWorkspaceRevision((n) => n + 1);
         setDemoStatusRev((n) => n + 1);
-        void refreshData();
+        void refreshData().finally(() => setDemoResetPhase("idle"));
       }
     }
   });
@@ -650,6 +653,7 @@ export function App() {
         setIsQuickNavOpen={setIsQuickNavOpen}
         investorDemoStatus={demoStatus}
         investorDemoBusy={demoBusy}
+        demoResetPhase={demoResetPhase}
         onSwitchDemoPersona={handleSwitchDemoPersona}
         onCaptureDemoBaseline={handleCaptureDemoBaseline}
         onResetDemoData={handleResetDemoData}
@@ -705,6 +709,7 @@ export function App() {
       setIsQuickNavOpen={setIsQuickNavOpen}
       investorDemoStatus={demoStatus}
       investorDemoBusy={demoBusy}
+      demoResetPhase={demoResetPhase}
       onSwitchDemoPersona={handleSwitchDemoPersona}
       onCaptureDemoBaseline={handleCaptureDemoBaseline}
       onResetDemoData={handleResetDemoData}
@@ -818,6 +823,7 @@ export function App() {
     const activeSession = sessionRef.current;
     if (!activeSession) return;
     setDemoBusy(true);
+    setDemoResetPhase("restoring");
     try {
       const result = await resetDemoData(activeSession.accessToken);
       lastHandledResetAtRef.current = result.resetAt;
@@ -826,6 +832,7 @@ export function App() {
       } catch {
         // ignore storage errors
       }
+      setDemoResetPhase("refreshing");
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
       await refreshData();
@@ -841,6 +848,7 @@ export function App() {
         error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
       );
     } finally {
+      setDemoResetPhase("idle");
       setDemoBusy(false);
     }
   }

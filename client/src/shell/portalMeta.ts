@@ -38,6 +38,19 @@ export const portalCategory: Record<PortalKey, { en: string; ar: string }> = {
   messages: { en: "Inbox", ar: "البريد" }
 };
 
+/** Concise 1-word labels for compact mobile BottomTabBar slots (never clip at 390px). */
+export const portalShortLabel: Record<PortalKey, { en: string; ar: string }> = {
+  admin: { en: "Admin", ar: "الملاك" },
+  company: { en: "Organizer", ar: "المنظمة" },
+  client: { en: "Client", ar: "العميل" },
+  sila_operations: { en: "Ops", ar: "العمليات" },
+  guest: { en: "Guest", ar: "الضيف" },
+  captain: { en: "Captain", ar: "الكابتن" },
+  coordinator: { en: "Field", ar: "المنسق" },
+  supplier: { en: "Supplier", ar: "المورد" },
+  messages: { en: "Inbox", ar: "الرسائل" }
+};
+
 export const portalMeta: Record<PortalKey, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
   admin: {
     titleEn: "Midyaf Admin Dashboard",
