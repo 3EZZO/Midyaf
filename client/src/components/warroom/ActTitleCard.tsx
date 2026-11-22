@@ -49,7 +49,7 @@ export function ActTitleCard({
           role="status"
           aria-live="polite"
         >
-          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gold-500/45 bg-surface-0/92 shadow-dropdown backdrop-blur-md">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gold-500/45 bg-surface-0/92 shadow-luxury backdrop-blur-md">
             <SaduRibbon variant="crest" />
             <div className="px-8 py-7 text-center sm:px-10">
               <div
@@ -61,10 +61,7 @@ export function ActTitleCard({
                 {isArabic ? "وصول الفعالية" : "Event Arrival"} ·{" "}
                 {state.actIndex + 1}/{state.actCount}
               </div>
-              <h2
-                className="mt-2.5 text-display-md text-ink"
-                style={{ fontFamily: "var(--m-font-display, inherit)" }}
-              >
+              <h2 className="mt-2.5 font-display text-display-md text-ink">
                 {pick(state.actTitle, isArabic)}
               </h2>
               {state.actSubtitle ? (

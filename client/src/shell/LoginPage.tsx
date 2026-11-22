@@ -146,8 +146,7 @@ export function LoginPage({
               variants={entrance.rise(0.2)}
               initial={reduced ? false : "initial"}
               animate="animate"
-              className="text-display-md text-ink"
-              style={{ fontFamily: "var(--m-font-display, inherit)" }}
+              className="font-display text-display-md text-ink"
             >
               {t("heroTitle")}
             </motion.h1>
@@ -224,7 +223,7 @@ export function LoginPage({
           initial={reduced ? false : "initial"}
           animate="animate"
           onSubmit={(event) => void handleSubmit(event)}
-          className="overflow-hidden rounded-xl border border-hairline bg-surface-2/95 shadow-dropdown backdrop-blur-md"
+          className="overflow-hidden rounded-xl border border-hairline-strong bg-surface-2/95 shadow-luxury backdrop-blur-md"
           aria-labelledby="login-title"
         >
           <SaduRibbon variant="hairline" className="opacity-90" />

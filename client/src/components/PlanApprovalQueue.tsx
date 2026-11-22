@@ -237,6 +237,7 @@ export function PlanApprovalQueueView({
                 <Surface
                   padding="none"
                   tone={sealed ? "ok" : "gold"}
+                  focal={!sealed}
                   data-approval-queue-item={plan.id}
                   data-approval-sealed={sealed ? "true" : undefined}
                   className={cn(

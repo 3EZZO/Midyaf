@@ -80,7 +80,7 @@ export function BoardingPass({
       data-boarding-pass
       data-boarding-pass-layout="vertical"
       className={cn(
-        "overflow-hidden rounded-xl border border-gold-500/50 bg-surface-2 shadow-dropdown",
+        "overflow-hidden rounded-xl border border-gold-500/50 bg-surface-2 shadow-luxury",
         className
       )}
       aria-label={isArabic ? "بطاقة الوصول" : "Arrival pass"}
@@ -113,10 +113,7 @@ export function BoardingPass({
           >
             {isArabic ? "الضيف" : "Guest"}
           </p>
-          <h3
-            className="mt-1 text-2xl font-bold leading-snug text-ink"
-            style={{ fontFamily: "var(--m-font-display, inherit)" }}
-          >
+          <h3 className="mt-1 font-display text-2xl font-bold leading-snug text-ink">
             {guestName}
           </h3>
           {guestTitle ? (
