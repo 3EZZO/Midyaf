@@ -1,5 +1,16 @@
 import { useId, useState } from "react";
-import { CalendarDays, CheckCircle2, ChevronDown, Eye, FileCheck, RefreshCw } from "lucide-react";
+import {
+  BedDouble,
+  CalendarDays,
+  Car,
+  CheckCircle2,
+  ChevronDown,
+  Eye,
+  FileCheck,
+  RefreshCw,
+  ShieldCheck,
+  Users
+} from "lucide-react";
 import type { Session } from "@shared/domain";
 import type { PlanApprovalQueueItem, PlanApprovalQueueResponse } from "@shared/overhaul";
 import { planProvenanceLabel } from "@shared/planEditing";
@@ -7,7 +18,9 @@ import { cn } from "../lib/cn";
 import { shortDate } from "../lib/format";
 import { useWorkspaceResource, workspaceRequest } from "../lib/workspaceApi";
 import { approvePlan, planSections, type PlanSection } from "../lib/workspaceWorkflow";
+import "../styles/signature.css";
 import { Badge, Button, EmptyState, Section, StatusPill, Surface, useToast } from "./ui";
+import { SaduRibbon } from "./ui/SaduRibbon";
 
 const PLAN_SECTION_LABELS: Record<PlanSection, { en: string; ar: string }> = {
   logistics: { en: "Logistics plan", ar: "الخطة اللوجستية" },
@@ -17,6 +30,8 @@ const PLAN_SECTION_LABELS: Record<PlanSection, { en: string; ar: string }> = {
   scopeOfWork: { en: "Scope of work", ar: "نطاق العمل" }
 };
 
+export const APPROVAL_SEAL_MS = 450;
+
 /** Whether a queue item may display the one-click Approve action. */
 export function canApproveQueueItem(item: PlanApprovalQueueItem): boolean {
   return item.plan.status === "DRAFT" && item.plan.viewerCanApprove === true;
@@ -25,6 +40,77 @@ export function canApproveQueueItem(item: PlanApprovalQueueItem): boolean {
 /** Suppliers never receive or act on plan approvals. */
 export function canShowApprovalQueue(session: Session | null | undefined): boolean {
   return Boolean(session?.accessToken && session.user.role !== "SUPPLIER");
+}
+
+export type PlanKeyFigure = {
+  id: "rooms" | "vehicles" | "teams";
+  labelEn: string;
+  labelAr: string;
+  value: number;
+  detailEn?: string;
+  detailAr?: string;
+};
+
+/** Derives a compact, factual executive strip from the plan JSON (no invented values). */
+export function extractPlanKeyFigures(content: unknown): PlanKeyFigure[] {
+  if (!content || typeof content !== "object") return [];
+  const obj = content as Record<string, unknown>;
+  const figures: PlanKeyFigure[] = [];
+
+  if (obj.hotelDistribution && typeof obj.hotelDistribution === "object") {
+    const h = obj.hotelDistribution as Record<string, unknown>;
+    const vip = typeof h.vipSingleRooms === "number" ? h.vipSingleRooms : 0;
+    const reg = typeof h.regularTwinRooms === "number" ? h.regularTwinRooms : 0;
+    const total = vip + reg;
+    if (total > 0) {
+      figures.push({
+        id: "rooms",
+        labelEn: "Hotel rooms",
+        labelAr: "غرف الفنادق",
+        value: total,
+        detailEn: vip > 0 ? `${vip} VIP` : undefined,
+        detailAr: vip > 0 ? `${vip} VIP` : undefined
+      });
+    }
+  }
+
+  if (obj.vehicleRequirements && typeof obj.vehicleRequirements === "object") {
+    const v = obj.vehicleRequirements as Record<string, unknown>;
+    const vip = typeof v.vip === "number" ? v.vip : 0;
+    const shuttle = typeof v.shuttle === "number" ? v.shuttle : 0;
+    const total = vip + shuttle;
+    if (total > 0) {
+      figures.push({
+        id: "vehicles",
+        labelEn: "Fleet vehicles",
+        labelAr: "مركبات الأسطول",
+        value: total,
+        detailEn: vip > 0 ? `${vip} VIP` : undefined,
+        detailAr: vip > 0 ? `${vip} VIP` : undefined
+      });
+    }
+  }
+
+  if (Array.isArray(obj.teamRequirements) && obj.teamRequirements.length > 0) {
+    const staff = obj.teamRequirements.reduce<number>((sum, item) => {
+      if (item && typeof item === "object" && typeof (item as Record<string, unknown>).minimumPeople === "number") {
+        return sum + ((item as Record<string, unknown>).minimumPeople as number);
+      }
+      return sum;
+    }, 0);
+    if (staff > 0) {
+      figures.push({
+        id: "teams",
+        labelEn: "Field staff",
+        labelAr: "الكوادر الميدانية",
+        value: staff,
+        detailEn: `${obj.teamRequirements.length} teams`,
+        detailAr: `${obj.teamRequirements.length} فرق`
+      });
+    }
+  }
+
+  return figures;
 }
 
 function PlanPreviewValue({ value }: { value: unknown }) {
@@ -63,6 +149,7 @@ export function PlanApprovalQueueView({
   loading = false,
   error,
   approvingPlanId = null,
+  sealedPlanId = null,
   isArabic,
   onApprove,
   onRefresh,
@@ -72,6 +159,8 @@ export function PlanApprovalQueueView({
   loading?: boolean;
   error?: string;
   approvingPlanId?: string | null;
+  /** Plan currently displaying the 450ms brass->emerald ceremonial approval seal. */
+  sealedPlanId?: string | null;
   isArabic: boolean;
   onApprove?: (item: PlanApprovalQueueItem) => void;
   onRefresh?: () => void;
@@ -94,7 +183,7 @@ export function PlanApprovalQueueView({
       action={
         <div className="flex items-center gap-2">
           {items.length > 0 ? (
-            <Badge tone="warn" size="sm" data-approval-queue-count={items.length}>
+            <Badge tone="gold" size="sm" data-approval-queue-count={items.length}>
               {items.length}
             </Badge>
           ) : null}
@@ -139,108 +228,168 @@ export function PlanApprovalQueueView({
             const detailsId = `${idPrefix}-plan-${plan.id}`;
             const provenance = planProvenanceLabel(plan, isArabic);
             const busy = approvingPlanId === plan.id;
+            const sealed = sealedPlanId === plan.id;
             const sections = planSections(plan.content);
+            const keyFigures = extractPlanKeyFigures(plan.content);
 
             return (
               <li key={`${event.id}:${plan.id}`}>
                 <Surface
-                  padding="sm"
-                  tone="warn"
+                  padding="none"
+                  tone={sealed ? "ok" : "gold"}
                   data-approval-queue-item={plan.id}
-                  className="space-y-3"
+                  data-approval-sealed={sealed ? "true" : undefined}
+                  className={cn(
+                    "overflow-hidden border transition-colors duration-base motion-reduce:transition-none",
+                    sealed
+                      ? "qasr-approval-sealed-card border-ok/75"
+                      : "border-gold-500/35"
+                  )}
                 >
-                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-bold text-ink">{event.name}</h3>
-                        <Badge tone="gold" size="sm" data-plan-provenance>
-                          {provenance}
-                        </Badge>
-                        <Badge tone="neutral" size="sm">
-                          {isArabic ? `إصدار ${plan.version}` : `v${plan.version}`}
-                        </Badge>
-                        <StatusPill status={event.operationalStatus} size="sm" />
+                  <SaduRibbon variant="hairline" className={cn(sealed ? "opacity-45" : "opacity-85")} />
+
+                  <div className="space-y-3 p-4">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-bold text-ink">{event.name}</h3>
+                          <Badge tone="gold" size="sm" data-plan-provenance>
+                            {provenance}
+                          </Badge>
+                          <Badge tone="neutral" size="sm">
+                            {isArabic ? `إصدار ${plan.version}` : `v${plan.version}`}
+                          </Badge>
+                          <StatusPill status={event.operationalStatus} size="sm" />
+                        </div>
+                        <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+                          {event.organizationName ? <span>{event.organizationName}</span> : null}
+                          {event.startAt ? (
+                            <span className="inline-flex items-center gap-1 font-tnum">
+                              <CalendarDays className="size-3.5 text-gold-500" aria-hidden />
+                              {shortDate(event.startAt, isArabic ? "ar" : "en")}
+                            </span>
+                          ) : null}
+                        </p>
                       </div>
-                      <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                        {event.organizationName ? <span>{event.organizationName}</span> : null}
-                        {event.startAt ? (
-                          <span className="inline-flex items-center gap-1 font-tnum">
-                            <CalendarDays className="size-3.5 text-gold-500" aria-hidden />
-                            {shortDate(event.startAt, isArabic ? "ar" : "en")}
-                          </span>
-                        ) : null}
-                      </p>
-                    </div>
 
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-expanded={expanded}
-                        aria-controls={detailsId}
-                        leadingIcon={<Eye className="size-4" aria-hidden />}
-                        trailingIcon={
-                          <ChevronDown
-                            className={cn(
-                              "size-3.5 transition-transform duration-base motion-reduce:transition-none",
-                              expanded && "rotate-180"
-                            )}
-                            aria-hidden
-                          />
-                        }
-                        onClick={() => setExpandedPlanId(expanded ? null : plan.id)}
-                      >
-                        {expanded
-                          ? isArabic
-                            ? "إخفاء الخطة"
-                            : "Hide plan"
-                          : isArabic
-                            ? "عرض الخطة"
-                            : "View plan"}
-                      </Button>
-
-                      {approvable && onApprove ? (
-                        <Button
-                          size="sm"
-                          variant="gold"
-                          loading={busy}
-                          disabled={Boolean(approvingPlanId)}
-                          leadingIcon={<CheckCircle2 className="size-4" aria-hidden />}
-                          data-approve-plan={plan.id}
-                          onClick={() => onApprove(item)}
-                        >
-                          {isArabic ? "اعتماد الخطة" : "Approve"}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <p className="rounded-lg border border-hairline bg-surface-1 p-3 text-sm leading-relaxed text-ink-muted">
-                    {plan.summary}
-                  </p>
-
-                  <div
-                    id={detailsId}
-                    aria-hidden={!expanded || undefined}
-                    className={cn(
-                      "grid transition-[grid-template-rows,opacity,visibility] duration-base ease-out motion-reduce:transition-none",
-                      expanded ? "grid-rows-[1fr] opacity-100 visible" : "grid-rows-[0fr] opacity-0 invisible"
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="grid gap-3 pt-1 md:grid-cols-2">
-                        {sections.map(({ key, value }) => (
-                          <div
-                            key={key}
-                            data-plan-preview-section={key}
-                            className="rounded-lg border border-hairline bg-surface-1 p-3 text-xs"
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {sealed ? (
+                          <span
+                            role="status"
+                            data-approval-seal-badge={plan.id}
+                            className="qasr-approval-seal-badge inline-flex items-center gap-1.5 rounded-lg border border-ok/60 bg-ok/15 px-3 py-1.5 text-xs font-bold text-ok"
                           >
-                            <h4 className="mb-1.5 font-semibold text-gold-300">
-                              {isArabic ? PLAN_SECTION_LABELS[key].ar : PLAN_SECTION_LABELS[key].en}
-                            </h4>
-                            <PlanPreviewValue value={value} />
-                          </div>
-                        ))}
+                            <ShieldCheck className="size-4 shrink-0" aria-hidden />
+                            {isArabic ? "تم الاعتماد · جارٍ فتح التشغيل" : "Approved · Unlocking ops"}
+                          </span>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              aria-expanded={expanded}
+                              aria-controls={detailsId}
+                              leadingIcon={<Eye className="size-4" aria-hidden />}
+                              trailingIcon={
+                                <ChevronDown
+                                  className={cn(
+                                    "size-3.5 transition-transform duration-base motion-reduce:transition-none",
+                                    expanded && "rotate-180"
+                                  )}
+                                  aria-hidden
+                                />
+                              }
+                              onClick={() => setExpandedPlanId(expanded ? null : plan.id)}
+                            >
+                              {expanded
+                                ? isArabic
+                                  ? "إخفاء الخطة"
+                                  : "Hide plan"
+                                : isArabic
+                                  ? "عرض الخطة"
+                                  : "View plan"}
+                            </Button>
+
+                            {approvable && onApprove ? (
+                              <Button
+                                size="sm"
+                                variant="gold"
+                                loading={busy}
+                                disabled={Boolean(approvingPlanId || sealedPlanId)}
+                                leadingIcon={<CheckCircle2 className="size-4" aria-hidden />}
+                                data-approve-plan={plan.id}
+                                onClick={() => onApprove(item)}
+                              >
+                                {isArabic ? "اعتماد الخطة" : "Approve"}
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Executive key-figure strip derived directly from the plan content */}
+                    {keyFigures.length > 0 ? (
+                      <dl
+                        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                        data-approval-key-figures
+                      >
+                        {keyFigures.map((fig) => {
+                          const Icon = fig.id === "rooms" ? BedDouble : fig.id === "vehicles" ? Car : Users;
+                          return (
+                            <div
+                              key={fig.id}
+                              className="flex items-center gap-2.5 rounded-lg border border-hairline bg-surface-1/90 px-3 py-2"
+                            >
+                              <span className="grid size-8 shrink-0 place-items-center rounded-md border border-hairline bg-surface-2 text-gold-500">
+                                <Icon className="size-4" strokeWidth={1.6} aria-hidden />
+                              </span>
+                              <div className="min-w-0">
+                                <dt className="truncate text-xs text-ink-muted">
+                                  {isArabic ? fig.labelAr : fig.labelEn}
+                                </dt>
+                                <dd className="flex items-baseline gap-1.5 font-tnum text-sm font-bold text-ink">
+                                  <span>{fig.value}</span>
+                                  {fig.detailEn ? (
+                                    <span className="text-xs font-medium text-gold-300">
+                                      {isArabic ? fig.detailAr : fig.detailEn}
+                                    </span>
+                                  ) : null}
+                                </dd>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    ) : null}
+
+                    <p className="rounded-lg border border-hairline bg-surface-1 p-3 text-sm leading-relaxed text-ink-muted">
+                      {plan.summary}
+                    </p>
+
+                    <div
+                      id={detailsId}
+                      aria-hidden={!expanded || undefined}
+                      className={cn(
+                        "grid transition-[grid-template-rows,opacity,visibility] duration-base ease-out motion-reduce:transition-none",
+                        expanded ? "grid-rows-[1fr] opacity-100 visible" : "grid-rows-[0fr] opacity-0 invisible"
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="grid gap-3 pt-1 md:grid-cols-2">
+                          {sections.map(({ key, value }) => (
+                            <div
+                              key={key}
+                              data-plan-preview-section={key}
+                              className="rounded-lg border border-hairline bg-surface-1 p-3 text-xs"
+                            >
+                              <h4 className="mb-1.5 font-semibold text-gold-300">
+                                {isArabic ? PLAN_SECTION_LABELS[key].ar : PLAN_SECTION_LABELS[key].en}
+                              </h4>
+                              <PlanPreviewValue value={value} />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -257,6 +406,8 @@ export function PlanApprovalQueueView({
 /**
  * Connected client/admin queue backed by GET /api/workspace/plans/awaiting-approval
  * and POST /api/workspace/events/:eventId/plans/:planId/approve.
+ * Plays a 450ms brass->emerald approval seal (skipped under prefers-reduced-motion)
+ * before refreshing the queue.
  */
 export function PlanApprovalQueue({
   session,
@@ -272,6 +423,7 @@ export function PlanApprovalQueue({
   const toast = useToast();
   const [revision, setRevision] = useState(0);
   const [approvingPlanId, setApprovingPlanId] = useState<string | null>(null);
+  const [sealedPlanId, setSealedPlanId] = useState<string | null>(null);
   const enabled = canShowApprovalQueue(session);
 
   const resource = useWorkspaceResource<PlanApprovalQueueResponse>(
@@ -295,12 +447,23 @@ export function PlanApprovalQueue({
         item.event.id,
         item.plan.id
       );
+      setApprovingPlanId(null);
+      setSealedPlanId(item.plan.id);
+
+      const reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (!reducedMotion) {
+        await new Promise((resolve) => window.setTimeout(resolve, APPROVAL_SEAL_MS));
+      }
+
       toast.success(
         isArabic ? "تم اعتماد الخطة بنجاح" : "Plan approved",
         isArabic
           ? `تم اعتماد خطة «${item.event.name}» وفتح التشغيل.`
           : `Approved plan for “${item.event.name}” and unlocked operations.`
       );
+      setSealedPlanId(null);
       setRevision((n) => n + 1);
       onApproved?.();
     } catch (err) {
@@ -308,8 +471,8 @@ export function PlanApprovalQueue({
         isArabic ? "تعذر اعتماد الخطة" : "Could not approve plan",
         err instanceof Error ? err.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
       );
-    } finally {
       setApprovingPlanId(null);
+      setSealedPlanId(null);
     }
   }
 
@@ -319,6 +482,7 @@ export function PlanApprovalQueue({
       loading={!resource.data && !resource.error}
       error={resource.error}
       approvingPlanId={approvingPlanId}
+      sealedPlanId={sealedPlanId}
       isArabic={isArabic}
       onApprove={(item) => void handleApprove(item)}
       onRefresh={() => setRevision((n) => n + 1)}

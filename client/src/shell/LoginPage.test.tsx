@@ -87,6 +87,9 @@ describe("LoginPage render", () => {
 
   it("renders a prominent Launch Live Demo button in EN and AR without signing in directly", () => {
     const { html: en, onLogin } = render(false);
+    expect(en).toContain('data-login-arrival="qasr-dusk"');
+    expect(en).toContain("data-brass-horizon");
+    expect(en).toContain('data-sadu-ribbon="hairline"');
     expect(en).toContain("data-launch-live-demo");
     expect(en).toContain("Launch Live Demo");
     expect(onLogin).not.toHaveBeenCalled();
