@@ -122,7 +122,13 @@ export function App() {
   const p = (english: string, arabic: string) =>
     pickText(isArabic, english, arabic);
   const toast = useTacticalToast();
-  const [portal, setPortal] = useState<PortalKey>("sila_operations");
+  const [session, setSession] = useState<Session | null>(() =>
+    loadStoredSession()
+  );
+  const [portal, setPortal] = useState<PortalKey>(() => {
+    const stored = loadStoredSession();
+    return stored ? initialPortalForRole(stored.user.role) : "sila_operations";
+  });
   const [isOnboarding, setIsOnboarding] = useState(
     window.location.hash.startsWith("#onboarding")
   );
@@ -166,9 +172,6 @@ export function App() {
   const [data, setData] = useState<MidyafData | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const normalDataRef = useRef<MidyafData | null>(null);
-  const [session, setSession] = useState<Session | null>(() =>
-    loadStoredSession()
-  );
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -355,7 +358,9 @@ export function App() {
       if (allowed.includes(current)) return current;
       return initialPortalForRole(session.user.role);
     });
-    void loadSessionData(session);
+    if (!session.user.onboardingPending) {
+      void loadSessionData(session);
+    }
   }, [session?.accessToken]);
 
   // SIX-TASKS #6: Query GET /api/demo/status for the signed-in session (404 -> hide switcher).

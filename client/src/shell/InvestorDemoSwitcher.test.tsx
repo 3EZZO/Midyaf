@@ -104,8 +104,8 @@ describe("InvestorDemoSwitcher SSR", () => {
     expect(html).toContain("Reset Demo Data");
     expect(html).toContain("data-demo-last-reset");
     expect(html).toContain("data-demo-baseline-at");
-    expect(html).toContain("end-0");
-    expect(html).toContain("max-w-[calc(100vw-1.5rem)]");
+    expect(html).toContain("sm:end-0");
+    expect(html).toContain("fixed inset-x-3 top-16");
   });
 
   it("shows unavailable reset hint instead of Reset when baselineCapturedAt is null (EN & AR)", () => {
