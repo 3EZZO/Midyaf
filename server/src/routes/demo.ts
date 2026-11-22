@@ -15,6 +15,7 @@ import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { requireAuth, signTokens } from "../middleware/auth.js";
 import { captureBaseline, DEMO_TRANSACTION, readBaselineInfo, restoreBaseline } from "../services/demoBaseline.js";
+import { prepareInvestorDemo } from "../services/investorDemoPrep.js";
 import type { AuthenticatedUser, AuthRequest } from "../types/auth.js";
 import { DEMO_ACCOUNTS } from "../utils/demoProvisioning.js";
 import { asyncHandler, HttpError } from "../utils/http.js";
@@ -182,6 +183,29 @@ router.post(
     req.app.get("io")?.emit?.("demo:reset", { resetAt: result.resetAt });
     const body: DemoResetResponse = { ok: true, resetAt: result.resetAt, removed: result.removed, restored: result.restored };
     res.json(body);
+  })
+);
+
+router.post(
+  "/prepare",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const origin = await requireOrigin(req.user!);
+    demoResetSchema.parse(req.body);
+    const changes = await prisma.$transaction(async (tx) => {
+      const made = await prepareInvestorDemo(tx, origin.id);
+      await tx.auditLog.create({
+        data: {
+          actorUserId: origin.id,
+          actorRole: Role.SUPER_ADMIN,
+          action: "demo.prepare",
+          entityType: "DEMO",
+          entityId: "prepare",
+          metadata: { changes: made.join(",") }
+        }
+      });
+      return made;
+    }, DEMO_TRANSACTION);
+    res.json({ ok: true, changes });
   })
 );
 

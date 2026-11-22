@@ -23,7 +23,7 @@ vi.mock("../env.js", async (importOriginal) => {
 const { signTokens } = await import("../middleware/auth.js");
 const { HttpError } = await import("../utils/http.js");
 const demoRouter = (await import("./demo.js")).default;
-const { parentFirstOrder } = await import("../services/demoBaseline.js");
+const { parentFirstOrder, planRestore } = await import("../services/demoBaseline.js");
 const { DEMO_ACCOUNTS } = await import("../utils/demoProvisioning.js");
 
 const users = DEMO_ACCOUNTS.map((account, index) => ({
@@ -144,8 +144,23 @@ describe("baseline restore order", () => {
     expect(order.indexOf("Trip")).toBeLessThan(order.indexOf("TripPassenger"));
   });
 
-  it("refuses self references and cycles instead of half-restoring", () => {
-    expect(() => parentFirstOrder(["Task"], [{ child: "Task", parent: "Task" }])).toThrow(/self-referencing/);
+  it("defers nullable references inside a cycle (Event.approvedPlanId <-> EventPlan.eventId)", () => {
+    const plan = planRestore(
+      ["User", "Event", "EventPlan"],
+      [
+        { child: "Event", parent: "EventPlan", columns: ["approvedPlanId"], nullable: true },
+        { child: "EventPlan", parent: "Event", columns: ["eventId"], nullable: false },
+        { child: "EventPlan", parent: "User", columns: ["generatedById"], nullable: false },
+        { child: "Event", parent: "User", columns: ["organizerId"], nullable: false }
+      ]
+    );
+    expect(plan.deferred.map((edge) => `${edge.child}.${edge.columns.join()}`)).toEqual(["Event.approvedPlanId"]);
+    expect(plan.order.indexOf("Event")).toBeLessThan(plan.order.indexOf("EventPlan"));
+    expect(plan.order[0]).toBe("User");
+  });
+
+  it("refuses required self references and required cycles instead of half-restoring", () => {
+    expect(() => parentFirstOrder(["Task"], [{ child: "Task", parent: "Task" }])).toThrow(/self-reference/);
     expect(() =>
       parentFirstOrder(["A", "B"], [{ child: "A", parent: "B" }, { child: "B", parent: "A" }])
     ).toThrow(/cycle/);

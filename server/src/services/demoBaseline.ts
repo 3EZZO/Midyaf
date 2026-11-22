@@ -53,17 +53,37 @@ async function listTables(db: Db, schema: string): Promise<string[]> {
   return rows.map((row) => row.name).filter((name) => !EXCLUDED_TABLES.has(name) && name !== META_TABLE);
 }
 
-async function foreignKeyEdges(db: Db, schema: string): Promise<Array<{ child: string; parent: string }>> {
-  return db.$queryRawUnsafe<Array<{ child: string; parent: string }>>(
-    `SELECT DISTINCT cl.relname AS child, pl.relname AS parent
+export type ForeignKeyEdge = { child: string; parent: string; columns: string[]; nullable: boolean };
+
+async function foreignKeyEdges(db: Db, schema: string): Promise<ForeignKeyEdge[]> {
+  const rows = await db.$queryRawUnsafe<Array<{ child: string; parent: string; columns: string[]; nullable: boolean }>>(
+    `SELECT cl.relname AS child, pl.relname AS parent,
+            array_agg(a.attname ORDER BY k.ord) AS columns,
+            bool_and(NOT a.attnotnull) AS nullable
      FROM pg_constraint co
      JOIN pg_class cl ON cl.oid = co.conrelid
      JOIN pg_class pl ON pl.oid = co.confrelid
      JOIN pg_namespace n ON n.oid = cl.relnamespace
      JOIN pg_namespace pn ON pn.oid = pl.relnamespace
-     WHERE co.contype = 'f' AND n.nspname = $1 AND pn.nspname = $1`,
+     CROSS JOIN LATERAL unnest(co.conkey) WITH ORDINALITY AS k(attnum, ord)
+     JOIN pg_attribute a ON a.attrelid = co.conrelid AND a.attnum = k.attnum
+     WHERE co.contype = 'f' AND n.nspname = $1 AND pn.nspname = $1
+     GROUP BY co.oid, cl.relname, pl.relname`,
     schema
   );
+  return rows.map((row) => ({ child: row.child, parent: row.parent, columns: [...row.columns], nullable: Boolean(row.nullable) }));
+}
+
+async function primaryKeyColumns(db: Db, schema: string, table: string): Promise<string[]> {
+  const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
+    `SELECT a.attname AS name FROM pg_index i
+     JOIN pg_class c ON c.oid = i.indrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+     JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
+     WHERE i.indisprimary AND n.nspname = $1 AND c.relname = $2`,
+    schema,
+    table
+  );
+  return rows.map((row) => row.name);
 }
 
 /** Insertable (non-generated) columns of a table. */
@@ -79,24 +99,56 @@ async function insertableColumns(db: Db, schema: string, table: string): Promise
   return rows.map((row) => row.name);
 }
 
+/** Strongly connected components (Tarjan), for finding foreign-key cycles. */
+function components(tables: string[], edges: ForeignKeyEdge[]): Map<string, number> {
+  const next = new Map<string, string[]>(tables.map((table) => [table, []]));
+  for (const edge of edges) if (next.has(edge.child) && next.has(edge.parent)) next.get(edge.child)!.push(edge.parent);
+  const index = new Map<string, number>(), low = new Map<string, number>(), component = new Map<string, number>();
+  const stack: string[] = [], onStack = new Set<string>();
+  let counter = 0, id = 0;
+  const visit = (table: string) => {
+    index.set(table, counter); low.set(table, counter); counter += 1;
+    stack.push(table); onStack.add(table);
+    for (const parent of next.get(table)!) {
+      if (!index.has(parent)) { visit(parent); low.set(table, Math.min(low.get(table)!, low.get(parent)!)); }
+      else if (onStack.has(parent)) low.set(table, Math.min(low.get(table)!, index.get(parent)!));
+    }
+    if (low.get(table) === index.get(table)) {
+      let member: string;
+      do { member = stack.pop()!; onStack.delete(member); component.set(member, id); } while (member !== table);
+      id += 1;
+    }
+  };
+  for (const table of [...tables].sort()) if (!index.has(table)) visit(table);
+  return component;
+}
+
+export type RestorePlan = { order: string[]; deferred: ForeignKeyEdge[] };
+
 /**
- * Parent-first order. A table that references itself, or a cycle between
- * tables, cannot be restored row-blind: refuse instead of half-restoring.
+ * Parent-first insert order. Foreign keys inside a cycle (including a table
+ * referencing itself) are inserted as NULL and filled in after every row
+ * exists; that needs their columns to be nullable. A cycle through a required
+ * column cannot be restored row-blind: refuse instead of half-restoring.
  */
-export function parentFirstOrder(tables: string[], edges: Array<{ child: string; parent: string }>): string[] {
+export function planRestore(tables: string[], edges: ForeignKeyEdge[]): RestorePlan {
   const known = new Set(tables);
+  const relevant = edges.filter((edge) => known.has(edge.child) && known.has(edge.parent));
+  const component = components(tables, relevant);
+  const deferred: ForeignKeyEdge[] = [];
   const parents = new Map<string, Set<string>>(tables.map((table) => [table, new Set<string>()]));
-  for (const { child, parent } of edges) {
-    if (!known.has(child) || !known.has(parent)) continue;
-    if (child === parent) throw new HttpError(409, `Demo reset cannot restore the self-referencing table ${child}`);
-    parents.get(child)!.add(parent);
+  for (const edge of relevant) {
+    const cyclic = edge.child === edge.parent || component.get(edge.child) === component.get(edge.parent);
+    if (cyclic && edge.nullable) { deferred.push(edge); continue; }
+    if (edge.child === edge.parent) throw new HttpError(409, `Demo reset cannot restore the required self-reference on ${edge.child}`);
+    parents.get(edge.child)!.add(edge.parent);
   }
   const order: string[] = [];
   const done = new Set<string>();
   const visiting = new Set<string>();
   const visit = (table: string) => {
     if (done.has(table)) return;
-    if (visiting.has(table)) throw new HttpError(409, "Demo reset found a foreign-key cycle; refusing to restore");
+    if (visiting.has(table)) throw new HttpError(409, "Demo reset found a foreign-key cycle through required columns; refusing to restore");
     visiting.add(table);
     for (const parent of [...parents.get(table)!].sort()) visit(parent);
     visiting.delete(table);
@@ -104,7 +156,12 @@ export function parentFirstOrder(tables: string[], edges: Array<{ child: string;
     order.push(table);
   };
   for (const table of [...tables].sort()) visit(table);
-  return order;
+  return { order, deferred };
+}
+
+/** Back-compatible order only (tests and diagnostics). */
+export function parentFirstOrder(tables: string[], edges: Array<Pick<ForeignKeyEdge, "child" | "parent"> & Partial<ForeignKeyEdge>>): string[] {
+  return planRestore(tables, edges.map((edge) => ({ columns: [], nullable: false, ...edge }))).order;
 }
 
 export type BaselineInfo = { capturedAt: string; tables: number; rows: number };
@@ -180,7 +237,7 @@ export async function restoreBaseline(db: Db): Promise<{ removed: number; restor
   const base = baselineSchemaFor(schema);
   const tables = await listTables(db, schema);
   const baseTables = new Set(await listTables(db, base));
-  const order = parentFirstOrder(tables, await foreignKeyEdges(db, schema));
+  const plan = planRestore(tables, await foreignKeyEdges(db, schema));
 
   let removed = 0;
   for (const table of tables) removed += await countRows(db, schema, table);
@@ -188,15 +245,44 @@ export async function restoreBaseline(db: Db): Promise<{ removed: number; restor
     `TRUNCATE ${tables.map((table) => `${quoteIdent(schema)}.${quoteIdent(table)}`).join(", ")}`
   );
 
+  const deferredColumns = new Map<string, Set<string>>();
+  for (const edge of plan.deferred) {
+    const set = deferredColumns.get(edge.child) ?? new Set<string>();
+    for (const column of edge.columns) set.add(column);
+    deferredColumns.set(edge.child, set);
+  }
+
   let restored = 0;
-  for (const table of order) {
+  const restoredColumns = new Map<string, string[]>();
+  for (const table of plan.order) {
     if (!baseTables.has(table)) continue;
     const target = await insertableColumns(db, schema, table);
     const available = new Set(await insertableColumns(db, base, table));
-    const columns = target.filter((column) => available.has(column)).map(quoteIdent).join(", ");
-    if (!columns) continue;
+    const shared = target.filter((column) => available.has(column));
+    if (!shared.length) continue;
+    restoredColumns.set(table, shared);
+    const later = deferredColumns.get(table) ?? new Set<string>();
+    const columns = shared.map(quoteIdent).join(", ");
+    const values = shared.map((column) => (later.has(column) ? "NULL" : quoteIdent(column))).join(", ");
     restored += await db.$executeRawUnsafe(
-      `INSERT INTO ${quoteIdent(schema)}.${quoteIdent(table)} (${columns}) SELECT ${columns} FROM ${quoteIdent(base)}.${quoteIdent(table)}`
+      `INSERT INTO ${quoteIdent(schema)}.${quoteIdent(table)} (${columns}) SELECT ${values} FROM ${quoteIdent(base)}.${quoteIdent(table)}`
+    );
+  }
+
+  // Fill the deferred cyclic references now that every row exists.
+  for (const [table, later] of deferredColumns) {
+    const shared = restoredColumns.get(table);
+    if (!shared) continue;
+    const columns = [...later].filter((column) => shared.includes(column));
+    if (!columns.length) continue;
+    const keys = await primaryKeyColumns(db, schema, table);
+    if (!keys.length) throw new HttpError(409, `Demo reset cannot restore ${table}: it has no primary key`);
+    const target = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+    await db.$executeRawUnsafe(
+      `UPDATE ${target} AS t SET ${columns.map((column) => `${quoteIdent(column)} = b.${quoteIdent(column)}`).join(", ")}
+       FROM ${quoteIdent(base)}.${quoteIdent(table)} AS b
+       WHERE ${keys.map((key) => `t.${quoteIdent(key)} = b.${quoteIdent(key)}`).join(" AND ")}
+         AND (${columns.map((column) => `b.${quoteIdent(column)} IS NOT NULL`).join(" OR ")})`
     );
   }
   return { removed, restored, baseline };

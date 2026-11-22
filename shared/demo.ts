@@ -14,6 +14,10 @@ import type { PortalKey, Role, Session } from "./domain.js";
  * GET  /api/demo/status            -> DemoStatusDto   (any signed-in user)
  * POST /api/demo/switch {persona}  -> Session JSON    ({ user, accessToken, refreshToken })
  * POST /api/demo/reset  {confirm:true} -> DemoResetResponse
+ * POST /api/demo/prepare {confirm:true} -> DemoPrepareResponse
+ *   Idempotent readiness: makes the client persona a viewer of the planning
+ *   event (its "Plans awaiting approval" queue) and the company persona an
+ *   admin of the demo organizing company. Run once, then save the baseline.
  * POST /api/demo/baseline {confirm:true} -> DemoBaselineResponse
  *   Saves the CURRENT data as the state every reset returns to. Do this once
  *   when the demo looks exactly right before a pitch.
@@ -68,6 +72,8 @@ export const demoSwitchSchema = z.object({ persona: z.enum(DEMO_PERSONA_KEYS) })
 export const demoResetSchema = z.object({ confirm: z.literal(true) }).strict();
 
 export type DemoSwitchResponse = Session;
+
+export type DemoPrepareResponse = { ok: true; changes: Array<"client-planning-membership" | "company-org-admin"> };
 
 export type DemoBaselineResponse = { ok: true; capturedAt: string; tables: number; rows: number };
 
