@@ -5,6 +5,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Projector,
   RotateCcw,
   Search,
   Shield,
@@ -19,6 +20,7 @@ import { Kbd } from "../components/ui/Kbd";
 import { Tooltip } from "../components/ui/Tooltip";
 import { cn } from "../lib/cn";
 import { fade } from "../lib/motion";
+import { toggleProjectorMode, useProjectorMode } from "../lib/projectorMode";
 import { useSocketContext } from "../lib/useSocket";
 import { PORTAL_RAIL_ID, railToggleCopy } from "./IconRail";
 import { InvestorDemoSwitcher, type DemoResetPhase } from "./InvestorDemoSwitcher";
@@ -100,6 +102,8 @@ export function TopBar({
   const Icon = portalIcons[portal];
   const { name, initials } = displayNameFor(session, isArabic);
   const { status } = useSocketContext();
+  const projectorOn = useProjectorMode();
+  const projectorLabel = isArabic ? "وضع العرض" : "Projector mode";
   const railCopy = railToggleCopy(Boolean(railCollapsed), isArabic);
   const RailIcon = isArabic
     ? railCollapsed
@@ -230,6 +234,36 @@ export function TopBar({
             <Kbd>K</Kbd>
           </span>
         </Button>
+
+        {/* Qasr P5 / P2: Compact projector mode toggle (hidden on phones) */}
+        <Tooltip
+          content={
+            <span className="flex items-center gap-2">
+              {projectorLabel}
+              <Kbd>Ctrl</Kbd>
+              <Kbd>Shift</Kbd>
+              <Kbd>P</Kbd>
+            </span>
+          }
+        >
+          <button
+            type="button"
+            onClick={() => toggleProjectorMode()}
+            aria-label={projectorLabel}
+            aria-pressed={projectorOn}
+            title={`${projectorLabel} (Ctrl+Shift+P)`}
+            data-projector-toggle
+            className={cn(
+              "hidden size-9 shrink-0 place-items-center rounded-lg border transition-colors duration-base md:grid",
+              "focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none",
+              projectorOn
+                ? "border-gold-500/60 bg-gold-500/15 text-gold-300 shadow-glow"
+                : "border-hairline bg-surface-2 text-ink-muted hover:border-gold-500/40 hover:bg-surface-3 hover:text-ink"
+            )}
+          >
+            <Projector className="size-4" strokeWidth={1.6} aria-hidden />
+          </button>
+        </Tooltip>
 
         {isDemoMode ? (
           <>

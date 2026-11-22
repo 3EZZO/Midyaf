@@ -143,6 +143,9 @@ describe("ShellFrame & BottomTabBar integration", () => {
 
     expect(expandedHtml).toContain("lg:ps-64");
     expect(expandedHtml).toContain("data-topbar-rail-toggle");
+    expect(expandedHtml).toContain("data-projector-toggle");
+    expect(expandedHtml).toContain('aria-label="Projector mode"');
+    expect(expandedHtml).toContain('aria-pressed="false"');
     expect(expandedHtml).toContain('aria-expanded="true"');
     expect(expandedHtml).toContain(`aria-controls="${PORTAL_RAIL_ID}"`);
 
@@ -167,6 +170,7 @@ describe("ShellFrame & BottomTabBar integration", () => {
 
     expect(collapsedHtml).toContain("lg:ps-[72px]");
     expect(collapsedHtml).toContain('aria-label="توسيع القائمة الجانبية"');
+    expect(collapsedHtml).toContain('aria-label="وضع العرض"');
 
     // Mobile BottomTabBar stays intact
     const bottomHtml = renderToStaticMarkup(
