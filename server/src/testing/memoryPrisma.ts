@@ -433,6 +433,8 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
             ? value.toLowerCase().includes(String(operand).toLowerCase())
             : value.includes(String(operand));
         }
+        case "startsWith":
+          return typeof value === "string" && value.startsWith(String(operand));
         case "mode":
           return true;
         default:

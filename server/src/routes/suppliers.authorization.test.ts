@@ -271,8 +271,8 @@ describe("GET /suppliers/me/requests", () => {
   it("shows the HOTEL supplier the deterministic 15-room demo estimate", async () => {
     const { status, body } = await http.get("/api/suppliers/me/requests", actors.hotel);
     expect(status).toBe(200);
-    expect(body.requests).toHaveLength(1);
-    expect(body.requests[0]).toMatchObject({
+    const demo = body.requests.find((r: any) => r.intakeId === DEMO.intakeId);
+    expect(demo).toMatchObject({
       intakeId: DEMO.intakeId,
       eventCode: "DEMO-SUMMIT-01",
       category: "HOTEL",
@@ -288,19 +288,28 @@ describe("GET /suppliers/me/requests", () => {
     expectNoSecrets(body);
   });
 
-  it("matches the stored category: CAR=9, CATERING none", async () => {
+  it("matches the stored category: CAR=9 for the demo, CATERING none", async () => {
     const car = await http.get("/api/suppliers/me/requests", actors.car);
-    expect(car.body.requests.map((r: any) => r.estimatedQuantity)).toEqual([9]);
+    expect(car.body.requests.find((r: any) => r.intakeId === DEMO.intakeId).estimatedQuantity).toBe(9);
     const catering = await http.get("/api/suppliers/me/requests", actors.catering);
     expect(catering.body).toEqual({ linked: true, requests: [] });
   });
 
-  it("never lists other quoting intakes, and hides the demo request once it closes", async () => {
+  // SIX-TASKS #5: the single-intake allow-list is gone (D-011 approved). Every
+  // QUOTING intake linked to an event reaches matching suppliers, as an opaque
+  // code with aggregate demand only; closed intakes disappear.
+  it("lists every quoting intake by opaque code only, and hides each one once it closes", async () => {
     const open = await http.get("/api/suppliers/me/requests", actors.hotel);
-    expect(JSON.stringify(open.body)).not.toContain("int_other");
+    const other = open.body.requests.find((r: any) => r.intakeId === "int_other");
+    expect(other).toMatchObject({ category: "HOTEL", scope: "HOTEL_ROOMS", estimatedQuantity: 25, status: "QUOTING" });
+    expect(other.eventCode).toMatch(/^EVT-[0-9A-F]{8}$/);
+    expect(JSON.stringify(open.body)).not.toContain("evt_other");
+    expect(JSON.stringify(open.body)).not.toContain("Elsewhere");
+    expectNoSecrets(open.body);
 
-    memory.current.rows("activityIntake").find((i) => i.id === DEMO.intakeId)!.status =
-      ActivityStatus.CONTRACTING;
+    for (const id of [DEMO.intakeId, "int_other"]) {
+      memory.current.rows("activityIntake").find((i) => i.id === id)!.status = ActivityStatus.CONTRACTING;
+    }
     const closed = await http.get("/api/suppliers/me/requests", actors.hotel);
     expect(closed.body.requests).toEqual([]);
   });
@@ -310,7 +319,7 @@ describe("GET /suppliers/me/requests", () => {
       "/api/suppliers/me/requests?category=CAR&supplierId=sup_car",
       actors.hotel
     );
-    expect(body.requests.map((r: any) => r.category)).toEqual(["HOTEL"]);
+    expect(new Set(body.requests.map((r: any) => r.category))).toEqual(new Set(["HOTEL"]));
   });
 });
 

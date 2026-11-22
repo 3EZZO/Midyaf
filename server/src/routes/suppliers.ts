@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { NextFunction, Response } from "express";
-import { QuoteStatus, Role, SupplierCategory } from "@prisma/client";
+import { ActivityStatus, QuoteStatus, Role, SupplierCategory } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -10,7 +10,6 @@ import type { AuthRequest } from "../types/auth.js";
 import { recordAuditLog } from "../services/auditLog.js";
 import {
   MAX_SUPPLIER_PAGE_SIZE,
-  SUPPLIER_DEMO_REQUESTS,
   SUPPLIER_REQUEST_CURRENCY,
   computeQuoteTerms,
   evaluateSupplierRequest,
@@ -61,6 +60,25 @@ const ownEventSelect = {
   currency: true,
   timezone: true
 } as const;
+
+/**
+ * SIX-TASKS #5: every QUOTING intake linked to an event is a candidate (newest
+ * first, bounded); evaluateSupplierRequest then keeps only those whose demand
+ * matches the supplier's stored category. Replaces the single-intake allow-list.
+ */
+async function supplierRequestCandidates() {
+  const intakes = await prisma.activityIntake.findMany({
+    where: { status: ActivityStatus.QUOTING, eventId: { not: null } },
+    orderBy: [{ submittedAt: "desc" }, { id: "asc" }],
+    take: MAX_SUPPLIER_PAGE_SIZE
+  });
+  const eventIds = [...new Set(intakes.map((intake) => intake.eventId).filter((id): id is string => Boolean(id)))];
+  const events = eventIds.length
+    ? await prisma.event.findMany({ where: { id: { in: eventIds } }, select: ownEventSelect })
+    : [];
+  const byId = new Map(events.map((event) => [event.id, event]));
+  return intakes.map((intake) => ({ intake, event: intake.eventId ? byId.get(intake.eventId) ?? null : null }));
+}
 
 const ownQuoteSelect = {
   id: true,
@@ -161,16 +179,7 @@ router.get(
     }
 
     const requests = [];
-    for (const entry of SUPPLIER_DEMO_REQUESTS) {
-      const intake = await prisma.activityIntake.findUnique({
-        where: { id: entry.intakeId }
-      });
-      const event = intake?.eventId
-        ? await prisma.event.findUnique({
-            where: { id: intake.eventId },
-            select: ownEventSelect
-          })
-        : null;
+    for (const { intake, event } of await supplierRequestCandidates()) {
       const eligible = evaluateSupplierRequest(intake, event, supplier.category);
       if (!eligible) continue;
 
@@ -513,16 +522,7 @@ router.get(
 
     // Same allow-list and stored-category eligibility the supplier sees.
     const requests: Array<ReturnType<typeof toAdminRequestDto>> = [];
-    for (const entry of SUPPLIER_DEMO_REQUESTS) {
-      const intake = await prisma.activityIntake.findUnique({
-        where: { id: entry.intakeId }
-      });
-      const event = intake?.eventId
-        ? await prisma.event.findUnique({
-            where: { id: intake.eventId },
-            select: ownEventSelect
-          })
-        : null;
+    for (const { intake, event } of await supplierRequestCandidates()) {
       const eligible = evaluateSupplierRequest(intake, event, supplier.category);
       if (!eligible) continue;
 
