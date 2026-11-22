@@ -1,12 +1,15 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Building2, CheckCircle2, Clock, Download, FileText, Lock, MessageSquare, Send, ShieldCheck, Users } from "lucide-react";
-import type { ClientMessage, ClientPermissionConfig, MidyafData, ScheduleAmendment } from "@shared/domain";
+import { Building2, CalendarDays, CheckCircle2, Clock, Download, FileText, Lock, MessageSquare, Send, ShieldCheck, Users } from "lucide-react";
+import type { ClientMessage, ClientPermissionConfig, MidyafData, ScheduleAmendment, Session } from "@shared/domain";
 import { DEFAULT_CLIENT_CONFIG, DEFAULT_CLIENT_MESSAGES, DEFAULT_SCHEDULE_AMENDMENTS } from "@shared/constants";
-import { integer, shortTime } from "../lib/format";
+import type { WorkspaceEventDto } from "@shared/overhaul";
+import { integer, shortDate, shortTime } from "../lib/format";
 import { deriveClientKpis, guestFunnel, slaSample } from "../lib/metrics";
 import { localizeAmendmentType } from "../lib/localizeDomain";
+import { useWorkspaceResource } from "../lib/workspaceApi";
 import { Funnel } from "./charts";
-import { Badge, Button, EmptyState, IconTabNav, Input, KpiTile, Section, Surface, useToast } from "./ui";
+import { PlanApprovalQueue, canShowApprovalQueue } from "./PlanApprovalQueue";
+import { Badge, Button, EmptyState, IconTabNav, Input, KpiTile, Section, StatusPill, Surface, useToast } from "./ui";
 import { PortalHero } from "./ui/PortalHero";
 
 type Tab = "amendments" | "chat" | "reports";
@@ -22,16 +25,20 @@ function Locked({ text }: { text: string }) {
 
 export function ClientDashboard({
   data,
+  session = null,
   isArabic = true,
   config = DEFAULT_CLIENT_CONFIG,
   isDemoMode = false,
-  onDownloadReport
+  onDownloadReport,
+  onPlanApproved
 }: {
   data: MidyafData;
+  session?: Session | null;
   isArabic?: boolean;
   config?: ClientPermissionConfig;
   isDemoMode?: boolean;
   onDownloadReport?: () => void;
+  onPlanApproved?: () => void;
 }) {
   const toast = useToast();
   const event = data.events[0];
@@ -41,6 +48,15 @@ export function ClientDashboard({
   const [messages, setMessages] = useState<ClientMessage[]>(DEFAULT_CLIENT_MESSAGES);
   const [newMessageText, setNewMessageText] = useState("");
   const [amendments] = useState<ScheduleAmendment[]>(DEFAULT_SCHEDULE_AMENDMENTS);
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
+  const workspaceEnabled = canShowApprovalQueue(session);
+  const workspaceEvents = useWorkspaceResource<{ events: WorkspaceEventDto[] }>(
+    session?.accessToken ?? "",
+    workspaceEnabled ? "/events" : null,
+    workspaceRevision,
+    "/workspace",
+    true
+  );
 
   // ── Selectors ──
   const kpis = useMemo(() => deriveClientKpis(data, isDemoMode), [data, isDemoMode]);
@@ -97,6 +113,68 @@ export function ClientDashboard({
         }
       />
 
+      {/* SIX-TASKS #1: One-click plan approval queue + workspace events for CLIENT-role & authorized viewers */}
+      <PlanApprovalQueue
+        session={session}
+        isArabic={isArabic}
+        onApproved={() => {
+          setWorkspaceRevision((n) => n + 1);
+          onPlanApproved?.();
+        }}
+      />
+
+      {workspaceEnabled ? (
+        <Section
+          id="section-client-events"
+          title={isArabic ? "فعالياتك المرتبطة" : "Your workspace events"}
+          eyebrow={isArabic ? "من مساحة العمل" : "From workspace"}
+          isArabic={isArabic}
+        >
+          {workspaceEvents.error ? (
+            <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+              {workspaceEvents.error}
+            </p>
+          ) : !workspaceEvents.data ? (
+            <p role="status" className="text-sm text-ink-muted">
+              {isArabic ? "جارٍ تحميل الفعاليات…" : "Loading events…"}
+            </p>
+          ) : workspaceEvents.data.events.length === 0 ? (
+            <EmptyState
+              compact
+              icon={<CalendarDays className="size-4" aria-hidden />}
+              title={isArabic ? "لا توجد فعاليات مرتبطة بحسابك حالياً" : "No workspace events assigned yet"}
+            />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2" data-client-workspace-events>
+              {workspaceEvents.data.events.map((wsEvent) => (
+                <Surface key={wsEvent.id} padding="sm" className="space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-ink">{wsEvent.name}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <Badge size="sm" tone={wsEvent.planApproved ? "ok" : "warn"}>
+                        {wsEvent.planApproved
+                          ? isArabic
+                            ? "الخطة معتمدة"
+                            : "Plan approved"
+                          : isArabic
+                            ? "بانتظار الاعتماد"
+                            : "Awaiting approval"}
+                      </Badge>
+                      <StatusPill status={wsEvent.operationalStatus} size="sm" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-ink-muted">
+                    {wsEvent.locationLabel} · {integer(wsEvent.vipGuestCount + wsEvent.regularGuestCount)}{" "}
+                    {isArabic ? "ضيف" : "guests"}
+                    {wsEvent.startAt ? ` · ${shortDate(wsEvent.startAt, isArabic ? "ar" : "en")}` : ""}
+                  </p>
+                </Surface>
+              ))}
+            </div>
+          )}
+        </Section>
+      ) : null}
+
       {/* Permissions transparency */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-hairline bg-surface-2 p-3.5 text-sm">
         <span className="inline-flex items-center gap-2 font-semibold text-ink">
@@ -120,7 +198,12 @@ export function ClientDashboard({
             <KpiTile label={isArabic ? "المهام المكتملة" : "Tasks Completed"} value={`${integer(kpis.tasksCompleted.completed)} / ${integer(kpis.tasksCompleted.total)}`} detail={isArabic ? `${integer(sla.delayed)} متأخرة` : `${integer(sla.delayed)} delayed`} tone={sla.delayed ? "warn" : "none"} size="lg" />
             <KpiTile label={isArabic ? "الحوادث الحرجة" : "Critical Incidents"} value={kpis.openIssues.value} detail={kpis.openIssues.value === 0 ? (isArabic ? "سجل تشغيلي نظيف 100%" : "100% clean incident record") : isArabic ? "بلاغات مفتوحة" : "Open issues"} tone={kpis.openIssues.value === 0 ? "ok" : "danger"} size="lg" />
           </div>
-          <Section title={isArabic ? "رحلة الوفود" : "Delegation journey"} eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}>
+          <Section
+            id="section-client-journey"
+            title={isArabic ? "رحلة الوفود" : "Delegation journey"}
+            eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}
+            isArabic={isArabic}
+          >
             <Funnel stages={funnel} isArabic={isArabic} className="max-w-2xl" />
           </Section>
         </>
@@ -128,11 +211,21 @@ export function ClientDashboard({
         <Locked text={isArabic ? "عرض مؤشرات الأداء مقفل حالياً بناءً على إعدادات شركة صلة." : "Performance data view is currently restricted by Sila."} />
       )}
 
-      {tabs.length ? <IconTabNav tabs={tabs} value={activeTab} onChange={setActiveTab} layoutId="client-tabs" /> : null}
+      {tabs.length ? (
+        <IconTabNav
+          tabs={tabs}
+          value={activeTab}
+          onChange={setActiveTab}
+          layoutId="client-tabs"
+          storageId="client-tabs"
+          isArabic={isArabic}
+          ariaLabel={isArabic ? "أقسام بوابة العميل" : "Client portal sections"}
+        />
+      ) : null}
 
       {activeTab === "amendments" &&
         (config.canViewScheduleAmendments ? (
-          <Section id="section-client-amendments" title={isArabic ? "التعديلات المباشرة" : "Schedule Amendments"}>
+          <Section id="section-client-amendments" title={isArabic ? "التعديلات المباشرة" : "Schedule Amendments"} isArabic={isArabic}>
             {amendments.length === 0 ? (
               <EmptyState compact title={isArabic ? "لا توجد تعديلات" : "No amendments"} />
             ) : (
@@ -172,7 +265,7 @@ export function ClientDashboard({
 
       {activeTab === "chat" &&
         (config.canCommunicateLogistics ? (
-          <Section id="section-client-chat" title={isArabic ? "القناة المباشرة مع مدير العمليات اللوجستية (صلة)" : "Direct Channel with Sila Logistics Manager"}>
+          <Section id="section-client-chat" title={isArabic ? "القناة المباشرة مع مدير العمليات اللوجستية (صلة)" : "Direct Channel with Sila Logistics Manager"} isArabic={isArabic}>
             <ul className="mb-4 max-h-72 space-y-3 overflow-y-auto p-1">
               {messages.map((m) => {
                 const fromClient = m.senderRole === "CLIENT";
@@ -211,6 +304,7 @@ export function ClientDashboard({
           <Section
             id="section-client-reports"
             title={isArabic ? "التقارير التنفيذية" : "Executive Reports"}
+            isArabic={isArabic}
             action={
               onDownloadReport ? (
                 <Button size="sm" variant="gold" leadingIcon={<Download className="size-4" aria-hidden />} onClick={onDownloadReport}>

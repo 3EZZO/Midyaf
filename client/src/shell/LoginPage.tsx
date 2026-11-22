@@ -1,10 +1,13 @@
 import { ApplicantRegistration } from "../components/OnboardingWorkspace";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Globe2, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, Globe2, Package, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { OnboardingKind } from "@shared/overhaul";
+import type { Session } from "@shared/domain";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
+import { INVESTOR_DEMO_ADMIN_EMAIL } from "../lib/investorDemoApi";
 import { entrance } from "../lib/motion";
 import { cn } from "../lib/cn";
 import { DEMO_PERSONAS, demoPersonasEnabled, selectPersona } from "./demoPersonas";
@@ -14,19 +17,26 @@ export function LoginPage({
   error,
   isLoading,
   onLanguageToggle,
-  onLogin
+  onLogin,
+  onOpenRegistration,
+  onRegistered
 }: {
   isArabic: boolean;
   error: string | null;
   isLoading: boolean;
   onLanguageToggle: () => void;
   onLogin: (email: string, password: string) => Promise<void>;
+  /** Standalone top-level navigation to /register/supplier or /register/client. */
+  onOpenRegistration?: (kind: OnboardingKind) => void;
+  onRegistered?: (session: Session) => void;
 }) {
   const { t } = useTranslation();
-  const [join, setJoin] = useState(false);
+  const [joinKind, setJoinKind] = useState<OnboardingKind | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [demoPrompt, setDemoPrompt] = useState(false);
   const [showPersonas] = useState(() => demoPersonasEnabled());
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -34,7 +44,34 @@ export function LoginPage({
     await onLogin(email, password);
   }
 
-  if (join) return <ApplicantRegistration isArabic={isArabic} onLogin={onLogin} onBack={() => setJoin(false)}/>;
+  function handleLaunchLiveDemo() {
+    setEmail(INVESTOR_DEMO_ADMIN_EMAIL);
+    setPassword("");
+    setDemoPrompt(true);
+    passwordInputRef.current?.focus();
+  }
+
+  function openRegistration(kind: OnboardingKind) {
+    if (onOpenRegistration) {
+      onOpenRegistration(kind);
+    } else {
+      setJoinKind(kind);
+    }
+  }
+
+  if (joinKind) {
+    return (
+      <ApplicantRegistration
+        isArabic={isArabic}
+        fixedKind={joinKind}
+        onRegistered={onRegistered}
+        onLogin={onLogin}
+        onLanguageToggle={onLanguageToggle}
+        onSwitchKind={(other) => setJoinKind(other)}
+        onBack={() => setJoinKind(null)}
+      />
+    );
+  }
 
   const features = [
     { icon: Sparkles, label: isArabic ? "تخطيط ذكي" : "AI Planning" },
@@ -44,7 +81,6 @@ export function LoginPage({
 
   return (
     <div className={cn("relative min-h-screen overflow-hidden bg-surface-1 text-ink", isArabic ? "font-arabic" : "font-english")}>
-      <button className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded border border-gold-500 bg-surface-2 px-4 py-2 text-ink" onClick={() => setJoin(true)}>{isArabic ? "تسجيل مورد / عميل منظم فعاليات" : "Register a vendor / event organizer"}</button>
       {/* Obsidian field: one slow gold horizon line. Visual only — the form is live at t=0. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgb(var(--gold-500)/0.10),transparent_60%)]" />
@@ -114,6 +150,26 @@ export function LoginPage({
               </span>
             ))}
           </motion.div>
+
+          {/* SIX-TASKS #6: Prominent Investor Live Demo launcher (prefills Super Admin email only) */}
+          <motion.div
+            variants={entrance.rise(0.55)}
+            initial={reduced ? false : "initial"}
+            animate="animate"
+            className="pt-1"
+          >
+            <Button
+              type="button"
+              variant="gold"
+              size="lg"
+              disabled={isLoading}
+              data-launch-live-demo
+              leadingIcon={<Play className="size-4 fill-current" aria-hidden />}
+              onClick={handleLaunchLiveDemo}
+            >
+              {isArabic ? "تشغيل العرض المباشر" : "Launch Live Demo"}
+            </Button>
+          </motion.div>
         </section>
 
         <motion.form
@@ -136,6 +192,18 @@ export function LoginPage({
             </div>
           </div>
 
+          {demoPrompt ? (
+            <p
+              role="status"
+              data-live-demo-hint
+              className="mt-4 rounded-lg border border-gold-500/40 bg-gold-500/10 p-3 text-xs text-gold-300"
+            >
+              {isArabic
+                ? `تم تجهيز حساب المشرف العام للعرض (${INVESTOR_DEMO_ADMIN_EMAIL}). أدخل كلمة المرور ثم اضغط «تسجيل الدخول» لفتح شريط التبديل الفوري للأدوار.`
+                : `Demo Super Admin email (${INVESTOR_DEMO_ADMIN_EMAIL}) filled. Enter your password and sign in to access the one-click Investor Demo switcher.`}
+            </p>
+          ) : null}
+
           <div className="mt-6 space-y-4">
             <Field label={t("email")} required>
               <Input
@@ -151,6 +219,7 @@ export function LoginPage({
             </Field>
             <Field label={t("password")} required error={error ?? undefined}>
               <Input
+                ref={passwordInputRef}
                 type="password"
                 autoComplete="current-password"
                 value={password}
@@ -165,6 +234,39 @@ export function LoginPage({
           <Button type="submit" variant="gold" size="lg" loading={isLoading} className="mt-6 w-full">
             {isLoading ? t("signingIn") : t("signIn")}
           </Button>
+
+          {/* SIX-TASKS #3: Two standalone registration entry points */}
+          <div className="mt-5 border-t border-hairline pt-4">
+            <p className="mb-2.5 text-xs font-semibold text-ink-muted">
+              {isArabic ? "جديد في مضياف؟ سجّل حسابك المستقل:" : "New to Midyaf? Create a standalone account:"}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                disabled={isLoading}
+                data-register-entry="supplier"
+                leadingIcon={<Package className="size-4" aria-hidden />}
+                onClick={() => openRegistration("VENDOR")}
+                className="w-full"
+              >
+                {isArabic ? "تسجيل كمورد" : "Register as a supplier"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                disabled={isLoading}
+                data-register-entry="client"
+                leadingIcon={<Building2 className="size-4" aria-hidden />}
+                onClick={() => openRegistration("CLIENT")}
+                className="w-full"
+              >
+                {isArabic ? "تسجيل كعميل" : "Register as a client"}
+              </Button>
+            </div>
+          </div>
 
           {showPersonas ? (
             <div className="mt-6 border-t border-hairline pt-5">

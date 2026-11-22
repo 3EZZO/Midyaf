@@ -269,8 +269,10 @@ export function SilaOperationsDashboard({
       {/* Charts row */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Section
+          id="section-sila-fleet-gauge"
           title={isArabic ? "استغلال الأسطول" : "Fleet utilisation"}
           bodyClassName="flex flex-col items-center gap-3"
+          isArabic={isArabic}
         >
           <ArcGauge
             value={fleet.percent}
@@ -305,12 +307,18 @@ export function SilaOperationsDashboard({
           </dl>
         </Section>
         <Section
+          id="section-sila-guest-funnel"
           title={isArabic ? "رحلة الضيوف" : "Guest journey"}
           eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}
+          isArabic={isArabic}
         >
           <Funnel stages={funnel} isArabic={isArabic} />
         </Section>
-        <Section title={isArabic ? "المهام حسب المنطقة" : "Tasks by zone"}>
+        <Section
+          id="section-sila-tasks-zone"
+          title={isArabic ? "المهام حسب المنطقة" : "Tasks by zone"}
+          isArabic={isArabic}
+        >
           {zoneRows.length ? (
             <StackedBars
               rows={zoneRows}
@@ -332,6 +340,8 @@ export function SilaOperationsDashboard({
         value={activeTab}
         onChange={changeTab}
         layoutId="sila-tabs"
+        storageId="sila-tabs"
+        isArabic={isArabic}
         ariaLabel={isArabic ? "أقسام العمليات" : "Operations sections"}
       />
 
