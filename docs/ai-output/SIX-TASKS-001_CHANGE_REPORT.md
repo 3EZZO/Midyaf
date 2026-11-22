@@ -113,6 +113,14 @@ Top-up pass (8/8): Arabic tooltips on the collapsed rail; Send RFQ badge AR 390;
    - Switched to the client: "Plans awaiting approval" showed v2, and one click approved it.
    - **Reset Demo Data** from the UI: `POST /api/demo/reset` took **0.74 s** on Render, and the screens had reloaded about 3 s after the click. v2 was back in the client's queue.
    - Switched back to the Super Admin. AR/RTL and EN/LTR were both correct, with 0 console errors.
+   - Second pass, covering the remaining workflows (11:18 UTC):
+     - **#2:** the sidebar collapses to the icon rail with tooltips, and stays collapsed after a reload.
+     - **#3:** the admin's supplier and client registration section lists the VENDOR and CLIENT applications. The public sign-up form was not submitted, so no live account was created; Lux checked those pages on this same build.
+     - **#4:** as the company, Edit AI Plan renamed a phase of v2 and saved it. v2 then showed "(معدّلة)" (Edited), and v1 was kept unchanged.
+     - **#5:** the supplier workspace loads the open request, the sealed quote, services and bookings.
+   - Reset Demo Data then undid the edit; v2 is back to the start-point content.
+   - The supplier can read this event's plans by fixture design: a VENDOR VIEW membership, with the internal RFQ draft stripped.
+   - The session was left as the Super Admin in AR, with 0 console errors.
 6. **Installed PWA.**
    - The live `sw.js` is served with `max-age=0` and precaches the new bundle only.
    - Installed apps show the update banner when they next open; one tap loads the new version.
