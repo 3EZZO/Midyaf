@@ -3,6 +3,7 @@ import { Router } from "express";
 import type { Server } from "socket.io";
 import {generateWorkspacePlan} from '../services/workspacePlanning.js';
 import {
+  ActivityStatus,
   EventMemberRole,
   EventPermission,
   EventPlanSource,
@@ -12,7 +13,8 @@ import {
   MessageClass,
   OperationalStatus,
   Prisma,
-  Role
+  Role,
+  SupplierCategory
 } from "@prisma/client";
 import { z } from "zod";
 import {
@@ -45,6 +47,8 @@ import {
 } from "../../../shared/overhaul.js";
 import { applyPlanEdit, editablePlanSchema, isEditedPlanContent } from "../../../shared/planEditing.js";
 import { prisma } from "../db.js";
+import { SUPPLIER_RFQ_SUBMITTER_PREFIX } from "../utils/legacyWorkspaceBoundary.js";
+import { deriveSupplierDemand, opaqueReference } from "../utils/supplierPortal.js";
 import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
@@ -991,6 +995,116 @@ router.get(
       });
     }
     res.json({ items });
+  })
+);
+
+/**
+ * SIX-TASKS #5 "Send RFQ to suppliers". Once a plan is approved, the event
+ * team (or the Super Admin) opens ONE supplier request for the event: a
+ * QUOTING intake linked to the event, marked as dispatched. Matching verified
+ * suppliers see it in their portal as an opaque code with aggregate demand
+ * only, submit sealed quotes, and the Super Admin (D-011 key holder) opens the
+ * vault, approves and contracts through the existing supplier pipeline.
+ * Repeating the call is idempotent. Clients and vendors cannot send.
+ */
+async function supplierRequestFor(eventId: string) {
+  const intake = await prisma.activityIntake.findFirst({
+    where: { eventId, submittedBy: { startsWith: SUPPLIER_RFQ_SUBMITTER_PREFIX } },
+    select: { id: true, status: true, submittedAt: true },
+    orderBy: { submittedAt: "desc" }
+  });
+  return intake
+    ? { intakeId: intake.id, reference: opaqueReference("REQ", intake.id), status: intake.status, sentAt: intake.submittedAt.toISOString() }
+    : null;
+}
+
+router.get(
+  "/events/:eventId/rfq/dispatch",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    requirePermission(access, EventPermission.VIEW);
+    if (!canViewRfq(access)) throw new HttpError(403, "RFQ drafts are internal to the event team");
+    res.json({ supplierRequest: await supplierRequestFor(access.event.id) });
+  })
+);
+
+router.post(
+  "/events/:eventId/rfq/send",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    if (!canEditPlan(access)) throw new HttpError(403, "Sending the RFQ needs the EDIT permission for the event");
+    requireEventOpen(access);
+    requirePlanApproved(access);
+    planApproveSchema.parse(req.body);
+    const event = access.event;
+    const vip = event.vipGuestCount;
+    const regular = event.regularGuestCount;
+    if (vip + regular <= 0) throw new HttpError(409, "Set the guest counts before sending the RFQ");
+
+    const result = await prisma.$transaction(async (tx) => {
+      await lockRow(tx, "Event", event.id);
+      const existing = await tx.activityIntake.findFirst({
+        where: { eventId: event.id, submittedBy: { startsWith: SUPPLIER_RFQ_SUBMITTER_PREFIX } },
+        select: { id: true, status: true },
+        orderBy: { submittedAt: "desc" }
+      });
+      if (existing) {
+        const reopenable: ActivityStatus[] = [ActivityStatus.DRAFT, ActivityStatus.AI_PLANNING, ActivityStatus.PLAN_CONFIRMED];
+        if (reopenable.includes(existing.status)) {
+          await tx.activityIntake.update({ where: { id: existing.id }, data: { status: ActivityStatus.QUOTING } });
+        }
+        return { intakeId: existing.id, created: false, notified: 0 };
+      }
+      const intake = await tx.activityIntake.create({
+        data: {
+          eventId: event.id,
+          activityName: event.name.slice(0, 200),
+          activityPlace: (event.locationLabel ?? event.venue ?? "—").slice(0, 200),
+          visitorCount: vip + regular,
+          vipVisitorCount: vip,
+          normalVisitorCount: regular,
+          status: ActivityStatus.QUOTING,
+          submittedAt: new Date(),
+          submittedBy: `${SUPPLIER_RFQ_SUBMITTER_PREFIX}${event.approvedPlanId ?? event.id}`
+        },
+        select: { id: true, visitorCount: true, vipVisitorCount: true, normalVisitorCount: true, ticketType: true }
+      });
+      // Tell matching verified suppliers; generic text and an opaque reference only.
+      const categories = Object.values(SupplierCategory).filter((category) => deriveSupplierDemand(intake, category));
+      const suppliers = categories.length
+        ? await tx.supplier.findMany({
+            where: { category: { in: categories }, verified: true, userId: { not: null } },
+            select: { userId: true },
+            take: 500
+          })
+        : [];
+      const reference = opaqueReference("REQ", intake.id);
+      const recipients = [...new Set(suppliers.map((row) => row.userId).filter((id): id is string => Boolean(id)))];
+      if (recipients.length) {
+        await tx.notification.createMany({
+          data: recipients.map((userId) => ({
+            userId,
+            title: "New request for quotation",
+            body: `A new request (${reference}) matches your category. Submit your sealed quote from the supplier portal.`,
+            metadata: { kind: "SUPPLIER_RFQ", reference }
+          }))
+        });
+      }
+      await writeWorkspaceAudit(tx, req, {
+        action: "workspace.rfq.send",
+        entityType: "ACTIVITY_INTAKE",
+        entityId: intake.id,
+        eventId: event.id,
+        metadata: { planId: event.approvedPlanId, categories: categories.join(","), notifiedSuppliers: recipients.length, support: access.support }
+      });
+      return { intakeId: intake.id, created: true, notified: recipients.length };
+    }, WORKSPACE_TRANSACTION);
+
+    res.status(result.created ? 201 : 200).json({
+      supplierRequest: await supplierRequestFor(event.id),
+      created: result.created,
+      notifiedSuppliers: result.notified
+    });
   })
 );
 

@@ -223,6 +223,9 @@ describe("POST /suppliers/me/requests/:intakeId/quotes", () => {
   });
 
   it("denies inaccessible requests with the same 404 before any write", async () => {
+    // SIX-TASKS #5: any QUOTING request is open to matching suppliers; one that
+    // was never opened for quotes stays inaccessible.
+    memory.current.rows("activityIntake").find((i) => i.id === "int_other")!.status = ActivityStatus.PLAN_CONFIRMED;
     const paths = [
       "/api/suppliers/me/requests/int_other/quotes",
       "/api/suppliers/me/requests/int_missing/quotes",
@@ -293,6 +296,7 @@ describe("POST /suppliers/me/requests/:intakeId/notes", () => {
   it("rejects extra fields, blank text and inaccessible requests", async () => {
     expect((await http.post(NOTES, actors.hotel, { text: "x", supplierId: "sup_hotel2" })).status).toBe(400);
     expect((await http.post(NOTES, actors.hotel, { text: "   " })).status).toBe(400);
+    memory.current.rows("activityIntake").find((i) => i.id === "int_other")!.status = ActivityStatus.PLAN_CONFIRMED;
     expect(
       (await http.post("/api/suppliers/me/requests/int_other/notes", actors.hotel, { text: "x" })).status
     ).toBe(404);
