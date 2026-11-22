@@ -120,9 +120,11 @@ router.post(
       throw new HttpError(401, "Refresh token user no longer exists");
     }
 
+    // SIX-TASKS #6: a switched demo session keeps its origin across refreshes.
+    const demoOrigin = typeof payload.demoOrigin === "string" ? payload.demoOrigin : undefined;
     res.json({
       user,
-      ...signTokens(user)
+      ...signTokens(user, { demoOrigin })
     });
   })
 );

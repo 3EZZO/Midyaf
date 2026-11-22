@@ -10,6 +10,7 @@ type TokenPayload = JwtPayload & {
   email: string;
   role: Role;
   onboardingPending?: boolean;
+  demoOrigin?: string;
 };
 
 const accessOptions: SignOptions = {
@@ -20,9 +21,13 @@ const refreshOptions: SignOptions = {
   expiresIn: env.JWT_REFRESH_TTL as SignOptions["expiresIn"]
 };
 
-export function signTokens(user: Pick<User, "id" | "email" | "role"> & { onboardingPending?: boolean }) {
+export function signTokens(
+  user: Pick<User, "id" | "email" | "role"> & { onboardingPending?: boolean },
+  options: { demoOrigin?: string } = {}
+) {
   const payload = {
     ...(user.onboardingPending ? { onboardingPending: true } : {}),
+    ...(options.demoOrigin ? { demoOrigin: options.demoOrigin } : {}),
     sub: user.id,
     email: user.email,
     role: user.role
@@ -82,7 +87,13 @@ export function verifyAccessToken(token: string): AuthenticatedUser {
     throw new Error("Access token is missing required claims");
   }
 
-  return { id: payload.sub, email: payload.email, role: payload.role, ...(payload.onboardingPending === true ? { onboardingPending: true } : {}) };
+  return {
+    id: payload.sub,
+    email: payload.email,
+    role: payload.role,
+    ...(payload.onboardingPending === true ? { onboardingPending: true } : {}),
+    ...(typeof payload.demoOrigin === "string" ? { demoOriginId: payload.demoOrigin } : {})
+  };
 }
 
 export function requireRole(roles: Role[]) {

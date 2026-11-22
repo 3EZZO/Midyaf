@@ -26,7 +26,13 @@ const schema = z.object({
   AWS_S3_BUCKET: z.string().default("midyaf-assets"),
   HYPERPAY_ENTITY_ID: z.string().optional(),
   HYPERPAY_ACCESS_TOKEN: z.string().optional(),
-  HYPERPAY_BASE_URL: z.string().default("https://eu-test.oppwa.com")
+  HYPERPAY_BASE_URL: z.string().default("https://eu-test.oppwa.com"),
+  // SIX-TASKS #6: one-click investor demo (persona switching + reset). Off
+  // unless explicitly "true"; switching still needs a signed-in Super Admin.
+  DEMO_MODE_ENABLED: z
+    .string()
+    .default("false")
+    .transform((value) => value === "true")
 });
 
 export const env = schema.parse(process.env);

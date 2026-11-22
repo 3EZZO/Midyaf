@@ -484,6 +484,19 @@ function fromRules(rules: RfqRules): RfqRequirements {
  */
 export function rfqRequirementsFromPlan(source: EventPlanSource, content: unknown, rules: RfqRules): RfqRequirements {
   const record = content && typeof content === "object" && !Array.isArray(content) ? (content as Record<string, unknown>) : {};
+  // SIX-TASKS #4: an inline-edited plan (any source) carries its own edited
+  // hotel/fleet/team numbers and line items; those are authoritative.
+  if (record.edited && typeof record.edited === "object") {
+    const stored = rulesShape.safeParse(record);
+    const items = z.array(storedManualPlanItemSchema).max(40).safeParse(record.items);
+    if (stored.success) {
+      return {
+        ...fromRules(stored.data),
+        quantitiesFrom: "PLAN_ITEMS",
+        items: items.success ? items.data.map((item) => ({ category: item.category, quantity: item.quantity, note: item.note ?? null })) : []
+      };
+    }
+  }
   if (source === "MANUAL") {
     const items = z.array(storedManualPlanItemSchema).min(1).max(40).safeParse(record.items);
     if (items.success) {
