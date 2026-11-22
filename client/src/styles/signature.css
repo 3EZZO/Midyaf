@@ -1,0 +1,80 @@
+/* ══════════════════════════════════════════════════════════════════════
+   MIDYAF — QASR OBSIDIAN SIGNATURE STYLES (Lux-owned: P2 & P4)
+   Motion strictly for state changes, live events, and narration.
+   Zero decorative hover motion. Honours prefers-reduced-motion.
+   ══════════════════════════════════════════════════════════════════════ */
+
+@keyframes qasrResetSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+.qasr-reset-track {
+  position: relative;
+  overflow: hidden;
+  background: rgb(var(--gold-500) / 0.16);
+}
+
+.qasr-reset-bar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--gold-500)) 35%,
+    rgb(var(--gold-300)) 65%,
+    transparent 100%
+  );
+  animation: qasrResetSweep 1.35s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform;
+}
+
+.qasr-reset-bar[data-stage="refreshing"] {
+  width: 52%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--gold-300)) 40%,
+    rgb(var(--status-ok)) 80%,
+    transparent 100%
+  );
+}
+
+@keyframes qasrRibbonReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qasr-role-ribbon {
+  animation: qasrRibbonReveal 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qasr-reset-bar {
+    animation: none;
+    transform: none;
+    width: 65%;
+    background: rgb(var(--gold-500));
+  }
+
+  .qasr-reset-bar[data-stage="refreshing"] {
+    width: 92%;
+    background: rgb(var(--gold-300));
+  }
+
+  .qasr-role-ribbon {
+    animation: none;
+  }
+}
