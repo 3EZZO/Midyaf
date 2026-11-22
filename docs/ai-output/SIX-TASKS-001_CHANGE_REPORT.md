@@ -92,17 +92,34 @@ Tests that changed on purpose: three SUPPLIER-001 allow-list assertions (`suppli
 
 Top-up pass (8/8): Arabic tooltips on the collapsed rail; Send RFQ badge AR 390; supplier portal and sealed quote in Arabic; /register/supplier EN 390; /register/client AR 390; reset AR 1440 and 390. **Total: 36/36 PASS**, 0 page errors. The server was left at the saved baseline.
 
-## Go-live runbook (needs the owner's explicit go-ahead at each step)
+## Go-live (done on 2026-11-22, with the owner's go-ahead)
 
-1. Done on 2026-11-22: review branch `six-tasks-001-review-20261122`, SQL applied, smoke 34/34. Delete the branch once live is verified.
-2. Apply the same SQL to the live database. It is additive and only adds an enum value.
-3. Open a PR from `feat/six-tasks` and merge it to `main`. Render auto-deploys. Set `DEMO_MODE_ENABLED=true` on the Render service.
-4. Signed in as the Super Admin: call `POST /api/demo/prepare`, check the pitch looks right, then use "Save current state as demo start point". Before each pitch, use "Reset Demo Data".
-5. Reload the installed PWA, because the service worker caches the previous bundle.
+1. **Review branch.** `six-tasks-001-review-20261122` was a fresh copy of production. The SQL was applied there and the smoke run passed 34/34. The branch was deleted after the live checks.
+2. **Live database.** A restore-point branch, `pre-six-tasks-20261122`, was taken first. `prisma/six-tasks-001-additive.sql` was then applied to the production branch:
+   - The `Role` enum gained `CLIENT`; nothing else changed. The user counts per role were unchanged.
+   - `prisma migrate diff` between production and the code's schema is empty.
+   - The restore point was deleted after the live checks below passed.
+3. **Deploy.**
+   - PR #7 merged to `main` (a56cb92), and Render deployed it.
+   - The live site serves the same client bundle that was tested locally (`index-Bk4wUmgX.js`).
+   - The owner set `DEMO_MODE_ENABLED=true` on the Render service and confirmed the deploy.
+4. **Demo start point.** Prepare and the start point were run on live with the same compiled services and audit rows as the Admin buttons; the actor was the Super Admin.
+   - Prepare changed `client-planning-membership`, `planning-event-reopened` and `planning-draft-plan`.
+   - The planning event is PLANNING. v1 is SUPERSEDED and v2 is a DRAFT for the client.
+   - The start point holds 47 tables and 1365 rows.
+   - A scripted reset run from Riyadh took 7.0 s. Afterwards every table matched the start point row for row; the only extra row is the reset's own `demo.reset` audit entry.
+5. **Browser pass on the live site** (owner's Chrome, signed in as Super Admin):
+   - Demo status was enabled, with all 9 personas available.
+   - Switched to the client: "Plans awaiting approval" showed v2, and one click approved it.
+   - **Reset Demo Data** from the UI: `POST /api/demo/reset` took **0.74 s** on Render, and the screens had reloaded about 3 s after the click. v2 was back in the client's queue.
+   - Switched back to the Super Admin. AR/RTL and EN/LTR were both correct, with 0 console errors.
+6. **Installed PWA.**
+   - The live `sw.js` is served with `max-age=0` and precaches the new bundle only.
+   - Installed apps show the update banner when they next open; one tap loads the new version.
 
 ## Known limits
 
-- Timings above were measured from Riyadh against Neon us-west-2, so every query crossed a WAN link. After a reset the UI also reloads the Admin data before closing the dialog (about 25 s in total over that link). On Render the service and the database are both in Oregon (render.yaml sets no region, so Render's default; Neon us-west-2), so both should be much faster. Check this once in step 4 of the runbook.
+- The review-branch timings above were measured from Riyadh against Neon us-west-2, so every query crossed a WAN link. On Render, where the service and the database are both in Oregon, the reset takes 0.74 s (see Go-live step 5).
 
 - Supplier demand for a dispatched RFQ is the deterministic estimate from the guest counts, not the edited plan quantities. The RFQ draft does follow the edits.
 - The approval queue for the Super Admin writes one support-audit row per listing that returns items.
