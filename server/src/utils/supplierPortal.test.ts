@@ -87,8 +87,14 @@ describe("evaluateSupplierRequest", () => {
     });
   });
 
-  it("denies other intakes, unlinked intakes, other events and closed statuses", () => {
-    expect(evaluateSupplierRequest({ ...intake, id: "other" }, event, SupplierCategory.HOTEL)).toBeNull();
+  it("opens any QUOTING intake linked to its event, under an opaque code (SIX-TASKS #5)", () => {
+    const other = evaluateSupplierRequest({ ...intake, id: "other", eventId: "evt_x" }, { ...event, id: "evt_x" }, SupplierCategory.HOTEL);
+    expect(other).toMatchObject({ intakeId: "other", eventId: "evt_x" });
+    expect(other!.eventCode).toMatch(/^EVT-[0-9A-F]{8}$/);
+  });
+
+  it("denies unlinked intakes, mismatched events, a moved demo intake and closed statuses", () => {
+    expect(evaluateSupplierRequest({ ...intake, id: "other", eventId: "evt_y" }, event, SupplierCategory.HOTEL)).toBeNull();
     expect(evaluateSupplierRequest({ ...intake, eventId: null }, event, SupplierCategory.HOTEL)).toBeNull();
     expect(evaluateSupplierRequest({ ...intake, eventId: "evt_x" }, { ...event, id: "evt_x" }, SupplierCategory.HOTEL)).toBeNull();
     expect(evaluateSupplierRequest(intake, null, SupplierCategory.HOTEL)).toBeNull();

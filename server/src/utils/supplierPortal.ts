@@ -8,9 +8,11 @@ import { HttpError } from "./http.js";
 
 /**
  * SUPPLIER-001 policy (D-018/D-019/D-020). Suppliers see only their own
- * profile, services and bookings, plus sanitized demand for the explicitly
- * allow-listed synthetic demo intake while it is QUOTING and matches their
- * STORED category. Nothing a caller sends (category, names, ids of other
+ * profile, services and bookings, plus sanitized demand (opaque codes and
+ * aggregate quantities only) for intakes that are QUOTING, linked to an event
+ * and match their STORED category. SIX-TASKS #5: the single-intake demo
+ * allow-list is now only a display alias (its fixed code); D-011 is approved,
+ * so every QUOTING request reaches the matching suppliers. Nothing a caller sends (category, names, ids of other
  * events) can widen that. D-011 (approved 2026-10-31): supplier terms stay
  * sealed for everyone except the Super Admin, the single key holder, who
  * opens the vault and approves and contracts through the operations routes.
@@ -141,9 +143,9 @@ type EventForEligibility = {
 };
 
 /**
- * An intake is open to a supplier only when it is allow-listed, still linked
- * to its allow-listed event, that event exists, the intake is QUOTING and the
- * supplier's stored category has positive deterministic demand.
+ * An intake is open to a supplier only when it is linked to an existing event,
+ * it is QUOTING and the supplier's stored category has positive deterministic
+ * demand. The allow-listed demo intake must still be linked to its own event.
  */
 export function evaluateSupplierRequest(
   intake: IntakeForEligibility | null | undefined,
@@ -151,9 +153,9 @@ export function evaluateSupplierRequest(
   category: SupplierCategory
 ): EligibleRequest | null {
   if (!intake || !event) return null;
+  if (!intake.eventId || intake.eventId !== event.id) return null;
   const entry = allowlistEntry(intake.id);
-  if (!entry) return null;
-  if (intake.eventId !== entry.eventId || event.id !== entry.eventId) return null;
+  if (entry && event.id !== entry.eventId) return null;
   if (intake.status !== ActivityStatus.QUOTING) return null;
 
   const demand = deriveSupplierDemand(intake, category);
@@ -162,7 +164,7 @@ export function evaluateSupplierRequest(
   return {
     intakeId: intake.id,
     eventId: event.id,
-    eventCode: entry.eventCode,
+    eventCode: entry?.eventCode ?? opaqueReference("EVT", event.id),
     eventDate: event.date,
     currency: SUPPLIER_REQUEST_CURRENCY,
     timezone: event.timezone,

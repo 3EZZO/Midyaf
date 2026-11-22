@@ -1,4 +1,5 @@
 import { OnboardingWorkspace } from "./OnboardingWorkspace";
+import { PlanApprovalQueue } from "./PlanApprovalQueue";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   Banknote,
@@ -27,9 +28,11 @@ import type {
   Session
 } from "@shared/domain";
 import { DEFAULT_COMPLAINTS } from "@shared/constants";
+import type { PlanApprovalQueueResponse } from "@shared/overhaul";
 import { compact, integer, money, shortDate, shortTime } from "../lib/format";
 import { deriveExecutiveKpis, fleetUtilisation, slaSample } from "../lib/metrics";
 import { localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
+import { useWorkspaceResource } from "../lib/workspaceApi";
 import { AreaTrend, EventHistogram } from "./charts";
 import {
   Badge,
@@ -151,6 +154,14 @@ export function AdminExecutiveDashboard({
 
   // Plans
   const [planFilter, setPlanFilter] = useState<"ALL" | "APPROVED" | "PENDING">("ALL");
+  const [queueRevision, setQueueRevision] = useState(0);
+  const approvalQueue = useWorkspaceResource<PlanApprovalQueueResponse>(
+    session?.accessToken ?? "",
+    session ? "/plans/awaiting-approval" : null,
+    queueRevision,
+    "/workspace",
+    true
+  );
 
   // ── Every number on screen comes from selectors ──
   const kpis = useMemo(() => deriveExecutiveKpis(data, { isDemoMode }), [data, isDemoMode]);
@@ -160,7 +171,8 @@ export function AdminExecutiveDashboard({
 
   const submitterList = adminSubmitterRows(data.activityIntakes, isArabic);
   const plansList = adminPlanRows(data.activityIntakes, data.aiPlans, isArabic);
-  const pendingPlans = plansList.filter((p) => p.status === "PENDING").length;
+  // SIX-TASKS #1: attention count comes from GET /api/workspace/plans/awaiting-approval
+  const pendingPlans = approvalQueue.data?.items.length ?? 0;
   const filteredPlans = plansList.filter((p) => planFilter === "ALL" || p.status === planFilter);
   const filteredComplaints = complaints.filter((c) => complaintFilter === "ALL" || c.status === complaintFilter);
   const pipeline = data.activityIntakes.filter((act) => act.status !== "OPERATIONS_OPEN");
@@ -281,51 +293,58 @@ export function AdminExecutiveDashboard({
       />
 
       {/* Financial overview */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile
-          label={isArabic ? "إجمالي العمولات المحققة لمضياف" : "Platform Commissions"}
-          value={kpis.commission.value}
-          format="money"
-          delta={kpis.commission.delta}
-          detail={isArabic ? "مقارنة بالأسبوع السابق" : "vs previous week"}
-          sparkline={kpis.commission.series.points}
-          source={kpis.commission.source}
-          icon={<Banknote className="size-4" aria-hidden />}
-          tone="gold"
-        />
-        <KpiTile
-          label={isArabic ? "إجمالي قيمة العقود" : "Total Contracted Spend"}
-          value={kpis.contractedSpend.value}
-          format="money"
-          detail={
-            isArabic
-              ? `عبر ${integer(kpis.contractedSpend.categories)} فئات موردين`
-              : `Across ${integer(kpis.contractedSpend.categories)} vendor categories`
-          }
-          sparkline={kpis.contractedSpend.series.points}
-          source={kpis.contractedSpend.source}
-          icon={<ReceiptText className="size-4" aria-hidden />}
-        />
-        <KpiTile
-          label={isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
-          value={kpis.marginPercent.value}
-          format="percent"
-          detail={isArabic ? "العمولات ÷ قيمة العقود" : "Commission ÷ contracted spend"}
-          icon={<TrendingUp className="size-4" aria-hidden />}
-        />
-        <KpiTile
-          label={isArabic ? "قيمة عقود غير موقعة" : "Unsigned contract value"}
-          value={kpis.pendingReceivables.value}
-          format="money"
-          detail={
-            isArabic
-              ? `${integer(kpis.pendingReceivables.count)} عقود بانتظار التوقيع`
-              : `${integer(kpis.pendingReceivables.count)} contracts pending signature`
-          }
-          icon={<Clock className="size-4" aria-hidden />}
-          tone={kpis.pendingReceivables.count ? "warn" : "none"}
-        />
-      </div>
+      <Section
+        id="section-admin-kpis"
+        title={isArabic ? "المؤشرات المالية" : "Financial overview"}
+        eyebrow={isArabic ? "ملخص العمولات والعقود" : "Commissions & contracts"}
+        isArabic={isArabic}
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiTile
+            label={isArabic ? "إجمالي العمولات المحققة لمضياف" : "Platform Commissions"}
+            value={kpis.commission.value}
+            format="money"
+            delta={kpis.commission.delta}
+            detail={isArabic ? "مقارنة بالأسبوع السابق" : "vs previous week"}
+            sparkline={kpis.commission.series.points}
+            source={kpis.commission.source}
+            icon={<Banknote className="size-4" aria-hidden />}
+            tone="gold"
+          />
+          <KpiTile
+            label={isArabic ? "إجمالي قيمة العقود" : "Total Contracted Spend"}
+            value={kpis.contractedSpend.value}
+            format="money"
+            detail={
+              isArabic
+                ? `عبر ${integer(kpis.contractedSpend.categories)} فئات موردين`
+                : `Across ${integer(kpis.contractedSpend.categories)} vendor categories`
+            }
+            sparkline={kpis.contractedSpend.series.points}
+            source={kpis.contractedSpend.source}
+            icon={<ReceiptText className="size-4" aria-hidden />}
+          />
+          <KpiTile
+            label={isArabic ? "معدل هامش عمولة مضياف" : "Avg Commission Margin"}
+            value={kpis.marginPercent.value}
+            format="percent"
+            detail={isArabic ? "العمولات ÷ قيمة العقود" : "Commission ÷ contracted spend"}
+            icon={<TrendingUp className="size-4" aria-hidden />}
+          />
+          <KpiTile
+            label={isArabic ? "قيمة عقود غير موقعة" : "Unsigned contract value"}
+            value={kpis.pendingReceivables.value}
+            format="money"
+            detail={
+              isArabic
+                ? `${integer(kpis.pendingReceivables.count)} عقود بانتظار التوقيع`
+                : `${integer(kpis.pendingReceivables.count)} contracts pending signature`
+            }
+            icon={<Clock className="size-4" aria-hidden />}
+            tone={kpis.pendingReceivables.count ? "warn" : "none"}
+          />
+        </div>
+      </Section>
 
       {/* Owner decisions + live pulse */}
       <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
@@ -333,6 +352,7 @@ export function AdminExecutiveDashboard({
           id="section-admin-attention"
           title={isArabic ? "بانتظار قرارك" : "Needs your decision"}
           eyebrow={isArabic ? "من البيانات الحالية" : "From current data"}
+          isArabic={isArabic}
         >
           <div className="grid gap-3 sm:grid-cols-3" data-admin-attention>
             {attention.map((item) => {
@@ -358,7 +378,12 @@ export function AdminExecutiveDashboard({
             })}
           </div>
         </Section>
-        <Section title={isArabic ? "نبض المنظومة" : "System pulse"} eyebrow={isArabic ? "الأحداث المباشرة" : "Live events"}>
+        <Section
+          id="section-admin-pulse"
+          title={isArabic ? "نبض المنظومة" : "System pulse"}
+          eyebrow={isArabic ? "الأحداث المباشرة" : "Live events"}
+          isArabic={isArabic}
+        >
           <EventHistogram isArabic={isArabic} />
           <dl className="mt-5 grid grid-cols-3 gap-3 text-center">
             <div className="rounded-lg bg-surface-1 p-3">
@@ -378,8 +403,10 @@ export function AdminExecutiveDashboard({
       </div>
 
       <Section
+        id="section-admin-trend"
         title={isArabic ? "منحنى العمولات وقيمة العقود (30 يوماً)" : "Commission & contract value — 30 days"}
         eyebrow={kpis.commission.source === "derived" ? (isArabic ? "سلسلة مشتقة من الإجمالي" : "Series derived from totals") : (isArabic ? "بيانات حية" : "Live data")}
+        isArabic={isArabic}
         action={
           <div className="flex flex-wrap items-center gap-4 text-xs text-ink-muted">
             <span className="flex items-center gap-1.5">
@@ -399,9 +426,17 @@ export function AdminExecutiveDashboard({
         />
       </Section>
 
-      {session?.user.role === "SUPER_ADMIN" && !isDemoMode ? <OnboardingWorkspace session={session} isArabic={isArabic} /> : null}
+      {session?.user.role === "SUPER_ADMIN" ? <OnboardingWorkspace session={session} isArabic={isArabic} /> : null}
 
-      <IconTabNav tabs={tabs} value={activeTab} onChange={setActiveTab} layoutId="admin-tabs" ariaLabel={isArabic ? "أقسام لوحة الملاك" : "Admin sections"} />
+      <IconTabNav
+        tabs={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        layoutId="admin-tabs"
+        storageId="admin-tabs"
+        isArabic={isArabic}
+        ariaLabel={isArabic ? "أقسام لوحة الملاك" : "Admin sections"}
+      />
 
       {activeTab === "submitters" && (
         <Section
@@ -491,6 +526,13 @@ export function AdminExecutiveDashboard({
       )}
 
       {activeTab === "plans" && (
+        <div className="space-y-4">
+        <PlanApprovalQueue
+          session={session}
+          isArabic={isArabic}
+          sectionId="section-admin-plans-queue"
+          onApproved={() => setQueueRevision((n) => n + 1)}
+        />
         <Section
           id="section-admin-plans"
           title={isArabic ? "مصفوفة الخطط اللوجستية" : "Logistics Plans Matrix"}
@@ -564,6 +606,7 @@ export function AdminExecutiveDashboard({
             </div>
           )}
         </Section>
+        </div>
       )}
 
       {activeTab === "complaints" && (

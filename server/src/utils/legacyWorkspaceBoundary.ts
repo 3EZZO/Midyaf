@@ -9,25 +9,31 @@ import type { AuthRequest } from '../types/auth.js';
  * Legacy global-role APIs receive neither the records nor their indirect JSON references.
  * This boundary runs before legacy handlers, including downloads and AI calls.
  */
-export type LegacyBoundary = { ids: Set<string>; workspaceUsers: Set<string>; users: Map<string,string>; drivers: Set<string>; replacements: Map<string,string> };
+export type LegacyBoundary = { ids: Set<string>; workspaceUsers: Set<string>; users: Map<string,string>; drivers: Set<string>; replacements: Map<string,string>;
+ /** SIX-TASKS #5: rows of RFQs dispatched from an approved workspace plan to suppliers (intakes, their quotes, contracts, plans). */
+ supplierRequests?: Set<string>; allowRows?: Set<string> };
+/** Marks an intake created by POST /workspace/events/:id/rfq/send. */
+export const SUPPLIER_RFQ_SUBMITTER_PREFIX = 'rfq:';
 export async function loadLegacyBoundary(): Promise<LegacyBoundary> {
  const events=await prisma.event.findMany({where:{organizationId:{not:null}},select:{id:true,organizationId:true},take:10001});
  if(events.length>10000)throw new HttpError(503,'Workspace boundary capacity exceeded');
  const eventIds=events.filter(e=>Boolean(e.organizationId)).map(e=>e.id);
  const [enrolled,organizations,applications,documents]=await Promise.all([
-  prisma.user.findMany({where:{onboardingKind:{not:null}},select:{id:true},take:10001}),
+  prisma.user.findMany({where:{onboardingKind:{not:null}},select:{id:true,role:true,onboardingPending:true},take:10001}),
   prisma.organization.findMany({select:{id:true},take:10001}),
   prisma.onboardingApplication.findMany({select:{id:true},take:10001}),
   prisma.onboardingDocument.findMany({select:{id:true},take:10001})
  ]);
  if([enrolled,organizations,applications,documents].some(rows=>rows.length>10000))throw new HttpError(503,'Workspace boundary capacity exceeded');
- const boundary:LegacyBoundary={ids:new Set([...eventIds,...organizations.map(row=>row.id),...applications.map(row=>row.id),...documents.map(row=>row.id)]),workspaceUsers:new Set(enrolled.map(row=>row.id)),users:new Map(),drivers:new Set(),replacements:new Map()};
+ const activatedVendors=enrolled.filter(row=>row.role==='SUPPLIER'&&!row.onboardingPending).map(row=>row.id);
+ const legacySupplierUsers=new Set(activatedVendors.length?(await prisma.supplier.findMany({where:{userId:{in:activatedVendors}},select:{userId:true},take:10001})).map(row=>row.userId).filter((id):id is string=>Boolean(id)):[]);
+ const boundary:LegacyBoundary={ids:new Set([...eventIds,...organizations.map(row=>row.id),...applications.map(row=>row.id),...documents.map(row=>row.id)]),workspaceUsers:new Set(enrolled.filter(row=>!legacySupplierUsers.has(row.id)).map(row=>row.id)),users:new Map(),drivers:new Set(),replacements:new Map(),supplierRequests:new Set()};
  if(!eventIds.length)return boundary;
  const where={eventId:{in:eventIds}},select={id:true} as const,take=10001;
  const results=await Promise.allSettled([
   prisma.guest.findMany({where,select:{id:true,userId:true},take}),
   prisma.task.findMany({where,select,take}),prisma.booking.findMany({where,select,take}),
-  prisma.activityIntake.findMany({where,select,take}),prisma.fileAsset.findMany({where,select,take}),
+  prisma.activityIntake.findMany({where,select:{id:true,submittedBy:true},take}),prisma.fileAsset.findMany({where,select,take}),
   prisma.auditLog.findMany({where,select,take}),
   prisma.eventGuest.findMany({where:{...where,privacyMasked:true},select:{id:true,guestId:true,guestCode:true,fullName:true,contactPhone:true,contactEmail:true,hotelName:true,ticketNumber:true},take}),
   prisma.trip.findMany({where:{...where,passengers:{some:{eventGuest:{privacyMasked:true}}}},select:{id:true,driverId:true},take})
@@ -43,10 +49,14 @@ export async function loadLegacyBoundary(): Promise<LegacyBoundary> {
  }
  for(const trip of trips)if(trip.driverId)boundary.drivers.add(trip.driverId);
  const intakeIds=intakes.map(row=>row.id),guestIds=guests.map(row=>row.id);
+ const dispatched=new Set(intakes.filter(row=>typeof (row as {submittedBy?:string}).submittedBy==='string'&&(row as {submittedBy:string}).submittedBy.startsWith(SUPPLIER_RFQ_SUBMITTER_PREFIX)).map(row=>row.id));
+ for(const id of dispatched)boundary.supplierRequests!.add(id);
  const [plans,quotes,journeys,riders]=await Promise.all([
-  prisma.aiLogisticsPlan.findMany({where:{intakeId:{in:intakeIds}},select,take}),prisma.vendorQuote.findMany({where:{intakeId:{in:intakeIds}},select,take}),prisma.guestJourneyRecord.findMany({where:{guestId:{in:guestIds}},select,take}),prisma.hospitalityRider.findMany({where:{guestId:{in:guestIds}},select,take})
+  prisma.aiLogisticsPlan.findMany({where:{intakeId:{in:intakeIds}},select:{id:true,intakeId:true},take}),prisma.vendorQuote.findMany({where:{intakeId:{in:intakeIds}},select:{id:true,intakeId:true},take}),prisma.guestJourneyRecord.findMany({where:{guestId:{in:guestIds}},select,take}),prisma.hospitalityRider.findMany({where:{guestId:{in:guestIds}},select,take})
  ]);
- const contracts=await prisma.vendorContract.findMany({where:{quoteId:{in:quotes.map(q=>q.id)}},select,take});
+ const contracts=await prisma.vendorContract.findMany({where:{quoteId:{in:quotes.map(q=>q.id)}},select:{id:true,quoteId:true},take});
+ const dispatchedQuotes=new Set(quotes.filter(q=>dispatched.has(q.intakeId)).map(q=>q.id));
+ for(const row of [...plans.filter(p=>dispatched.has(p.intakeId)),...quotes.filter(q=>dispatched.has(q.intakeId)),...contracts.filter(c=>dispatchedQuotes.has(c.quoteId))])boundary.supplierRequests!.add(row.id);
  for(const rows of [plans,quotes,journeys,riders,contracts]){if(rows.length>10000)throw new HttpError(503,'Workspace boundary capacity exceeded');for(const row of rows)boundary.ids.add(row.id);}
  return boundary;
 }
@@ -75,7 +85,8 @@ export function sanitizeLegacyPayload(value:unknown,boundary:LegacyBoundary):unk
   if(Array.isArray(node))return node.map(item=>visit(item,depth+1)).filter(item=>item!==OMIT);
   const row:Record<string,unknown>=Object.fromEntries(Object.entries(node));
   if(Object.entries(row).some(([key,ref])=>['id','userId','actorUserId'].includes(key)&&typeof ref==='string'&&boundary.workspaceUsers.has(ref)))return OMIT;
-  if(Object.entries(row).some(([key,ref])=>refs.has(key)&&typeof ref==='string'&&boundary.ids.has(ref)))return OMIT;
+  const allowed=typeof row.id==='string'&&Boolean(boundary.allowRows?.has(row.id));
+  if(!allowed&&Object.entries(row).some(([key,ref])=>refs.has(key)&&typeof ref==='string'&&boundary.ids.has(ref)))return OMIT;
   const userId=typeof row.id==='string'?row.id:typeof row.userId==='string'?row.userId:null;
   if(userId&&boundary.users.has(userId))return {id:userId,name:boundary.users.get(userId),email:'',phone:'',role:row.role};
   const driver=(typeof row.id==='string'&&boundary.drivers.has(row.id))||(typeof row.driverId==='string'&&boundary.drivers.has(row.driverId));
@@ -99,11 +110,20 @@ const scopedMessageResponses=new WeakSet<object>();
 /** Called only after the scoped thread router validates participation, current
  * event access and its grant-aware privacy redactor. Lists are never exempt. */
 export function markScopedMessageResponse(req:AuthRequest){scopedMessageResponses.add(req);}
+/** SIX-TASKS #5: dispatched supplier RFQs are open to the Super Admin and to supplier self-service routes only. */
+export function withSupplierRequestAccess(boundary:LegacyBoundary,req:Pick<AuthRequest,'user'|'baseUrl'|'path'>):LegacyBoundary {
+ const rows=boundary.supplierRequests;
+ if(!rows?.size)return boundary;
+ const supplierSelf=req.user?.role==='SUPPLIER'&&/^(?:\/api)?\/suppliers\/me(?:\/|$)/.test(`${req.baseUrl}${req.path}`);
+ if(req.user?.role!=='SUPER_ADMIN'&&!supplierSelf)return boundary;
+ return {...boundary,ids:new Set([...boundary.ids].filter(id=>!rows.has(id))),allowRows:rows};
+}
 export const legacyWorkspaceBoundary:RequestHandler=(req:AuthRequest,res,next)=>{
  if(checked.has(req)||req.path==='/health'){next();return;}
  Promise.resolve().then(async()=>{
   if(!req.user)requireAuth(req,res,()=>undefined);
-  const boundary=await loadLegacyBoundary();checked.add(req);
+  const loaded=await loadLegacyBoundary();checked.add(req);
+  const boundary=withSupplierRequestAccess(loaded,req);
   const protectedIds=new Set([...boundary.ids,...boundary.drivers,...[...boundary.users.keys(),...boundary.workspaceUsers].filter(id=>id!==req.user!.id)]);
   const pathIds=req.path.split('/').map(part=>decodeURIComponent(part));
   if(pathIds.some(id=>protectedIds.has(id))||references(req.query,protectedIds)||references(req.body,protectedIds))throw new HttpError(404,'Record not found');
@@ -113,7 +133,8 @@ export const legacyWorkspaceBoundary:RequestHandler=(req:AuthRequest,res,next)=>
    throw new HttpError(409,'Use the event workspace for scoped operations');
   }
   const json=res.json.bind(res);
-  const outputBoundary=/messages\/conversations\/[^/]+/.test(`${req.baseUrl}${req.path}`)?{...boundary,workspaceUsers:new Set<string>()}:boundary;
+  const ownOutput={...boundary,workspaceUsers:new Set([...boundary.workspaceUsers].filter(id=>id!==req.user!.id))};
+  const outputBoundary=/messages\/conversations\/[^/]+/.test(`${req.baseUrl}${req.path}`)?{...boundary,workspaceUsers:new Set<string>()}:ownOutput;
   res.json=(body:unknown)=>json(scopedMessageResponses.has(req)?body:sanitizeLegacyPayload(body,outputBoundary));
  }).then(()=>next(),next);
 };

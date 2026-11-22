@@ -275,7 +275,7 @@ describe("new applicant enrollment",()=>{
     expect((await transition(id,"CONTRACT_SIGNED",{confirmSignedContract:true})).status).toBe(200);
     expect((await transition(id,"ACTIVE")).status).toBe(200);
     const user=memory.current.rows("user").find(u=>u.id===applicant.id)!;
-    expect(user).toMatchObject({onboardingPending:false,role:kind==="VENDOR"?"SUPPLIER":"COMPANY_ORGANIZER"});
+    expect(user).toMatchObject({onboardingPending:false,role:kind==="VENDOR"?"SUPPLIER":"CLIENT"});
     if(kind==="VENDOR")expect(memory.current.rows("supplier").some(s=>s.userId===applicant.id)).toBe(true);
     const refreshed=await http.post("/api/auth/refresh",undefined,{refreshToken:enrolled.body.refreshToken});
     expect(refreshed.status).toBe(200);expect(verifyAccessToken(refreshed.body.accessToken).onboardingPending).not.toBe(true);

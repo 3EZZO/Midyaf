@@ -72,6 +72,28 @@ describe("LoginPage render", () => {
 
     expect(html).not.toContain(DEMO_PERSONAS[0].titleEn);
   });
+
+  it("renders separate standalone supplier and client registration buttons in EN and AR", () => {
+    const { html: en } = render(false);
+    expect(en).toContain("Register as a supplier");
+    expect(en).toContain("Register as a client");
+    expect(en).not.toContain("Register a vendor / event organizer");
+
+    const { html: ar } = render(true);
+    expect(ar).toContain("تسجيل كمورد");
+    expect(ar).toContain("تسجيل كعميل");
+    expect(ar).not.toContain("تسجيل مورد / عميل منظم فعاليات");
+  });
+
+  it("renders a prominent Launch Live Demo button in EN and AR without signing in directly", () => {
+    const { html: en, onLogin } = render(false);
+    expect(en).toContain("data-launch-live-demo");
+    expect(en).toContain("Launch Live Demo");
+    expect(onLogin).not.toHaveBeenCalled();
+
+    const { html: ar } = render(true);
+    expect(ar).toContain("تشغيل العرض المباشر");
+  });
 });
 
 describe("LoginPage wiring (source)", () => {

@@ -210,7 +210,7 @@ it("creates an event once, generates a locked advisory draft with an RFQ, and un
 
   // Only an authorized approver; an organization member without event access cannot.
   expect([403, 404]).toContain((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.orgMember, { confirm: true })).status);
-  expect((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.sa, { confirm: true })).status).toBe(403);
+  // SIX-TASKS #1: the Super Admin may now approve too (covered in sixTasksPlans.test.ts).
   expect((await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.owner, {})).status).toBe(400);
   const approved = await http.post(`/w/events/${eventId}/plans/${plan.id}/approve`, a.owner, { confirm: true });
   expect(approved.status).toBe(200);

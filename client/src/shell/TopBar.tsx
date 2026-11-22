@@ -1,6 +1,16 @@
 import { AnimatePresence, motion } from "motion/react";
-import { LogOut, Search, Shield, Sparkles } from "lucide-react";
+import {
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Search,
+  Shield,
+  Sparkles
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { PortalKey, Role, Session } from "@shared/domain";
 import { Button, IconButton } from "../components/ui/Button";
 import { ConnectionDot, connectionLabel } from "../components/ui/ConnectionDot";
@@ -9,6 +19,8 @@ import { Tooltip } from "../components/ui/Tooltip";
 import { cn } from "../lib/cn";
 import { fade } from "../lib/motion";
 import { useSocketContext } from "../lib/useSocket";
+import { PORTAL_RAIL_ID, railToggleCopy } from "./IconRail";
+import { InvestorDemoSwitcher } from "./InvestorDemoSwitcher";
 import { portalIcons, portalMeta } from "./portalMeta";
 
 // Privileged roles are shown by title rather than personal name on shared screens.
@@ -38,6 +50,13 @@ export function TopBar({
   portal,
   isDemoMode,
   ticker,
+  railCollapsed,
+  onToggleRail,
+  investorDemoStatus,
+  investorDemoBusy,
+  onSwitchDemoPersona,
+  onCaptureDemoBaseline,
+  onResetDemoData,
   onOpenQuickNav,
   onOpenWarRoom,
   onLanguageToggle,
@@ -48,6 +67,13 @@ export function TopBar({
   portal: PortalKey;
   isDemoMode?: boolean;
   ticker?: string;
+  railCollapsed?: boolean;
+  onToggleRail?: () => void;
+  investorDemoStatus?: DemoStatusDto | null;
+  investorDemoBusy?: boolean;
+  onSwitchDemoPersona?: (persona: DemoPersonaDto) => Promise<void> | void;
+  onCaptureDemoBaseline?: () => Promise<void> | void;
+  onResetDemoData?: () => Promise<void> | void;
   onOpenQuickNav: () => void;
   onOpenWarRoom?: () => void;
   onLanguageToggle: () => void;
@@ -58,6 +84,14 @@ export function TopBar({
   const Icon = portalIcons[portal];
   const { name, initials } = displayNameFor(session, isArabic);
   const { status } = useSocketContext();
+  const railCopy = railToggleCopy(Boolean(railCollapsed), isArabic);
+  const RailIcon = isArabic
+    ? railCollapsed
+      ? PanelRightOpen
+      : PanelRightClose
+    : railCollapsed
+      ? PanelLeftOpen
+      : PanelLeftClose;
   // Without a live ticker the pill states the link honestly: it must never
   // claim "connected" while the server is unreachable.
   const idleText =
@@ -74,6 +108,26 @@ export function TopBar({
       // spans both, so controls never paint outside it.
       style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(4rem + env(safe-area-inset-top))" }}
     >
+      {/* Desktop rail collapse/expand shortcut (mirrors the rail's own toggle) */}
+      {onToggleRail ? (
+        <button
+          type="button"
+          onClick={onToggleRail}
+          aria-expanded={!railCollapsed}
+          aria-controls={PORTAL_RAIL_ID}
+          aria-label={railCopy.label}
+          title={railCopy.label}
+          data-topbar-rail-toggle
+          className={cn(
+            "hidden size-9 shrink-0 place-items-center rounded-lg border border-hairline bg-surface-2 text-ink-muted lg:grid",
+            "transition-colors duration-base hover:border-gold-500/40 hover:bg-surface-3 hover:text-ink",
+            "focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none"
+          )}
+        >
+          <RailIcon className="size-4" aria-hidden />
+        </button>
+      ) : null}
+
       {/* Brand mark (mobile only — the rail carries it on desktop) */}
       <img src="/midyaf-icon.png" alt={t("brand")} className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-gold-500/40 lg:hidden" />
 
@@ -106,7 +160,21 @@ export function TopBar({
       </div>
 
       {/* Controls keep their size; the portal title above truncates instead. */}
-      <div className="ms-auto flex shrink-0 items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {investorDemoStatus?.canSwitch &&
+        onSwitchDemoPersona &&
+        onCaptureDemoBaseline &&
+        onResetDemoData ? (
+          <InvestorDemoSwitcher
+            status={investorDemoStatus}
+            isArabic={isArabic}
+            busy={investorDemoBusy}
+            onSwitchPersona={onSwitchDemoPersona}
+            onCaptureBaseline={onCaptureDemoBaseline}
+            onResetDemo={onResetDemoData}
+          />
+        ) : null}
+
         <Button variant="ghost" size="sm" onClick={onOpenQuickNav} className="gap-2 px-2.5">
           <Search className="size-4 text-gold-500" aria-hidden />
           <span className="hidden sm:inline">{isArabic ? "بحث سريع" : "Quick jump"}</span>

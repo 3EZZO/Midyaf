@@ -16,6 +16,8 @@ enum Role {
   COORDINATOR
   LOGISTICS_MANAGER
   COMPANY_ORGANIZER
+  /// SIX-TASKS #3: an activated client applicant (no longer an organizing-company role).
+  CLIENT
 }
 
 enum EventStatus {

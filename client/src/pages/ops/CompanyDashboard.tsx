@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Building2, CalendarClock, CheckCircle2, Plus, Radio, Users } from "lucide-react";
 import type { WorkspaceEventDto } from "@shared/overhaul";
 import { OrganizerWorkspace, newEventLabel, useNewEventRequest } from "../../components/OrganizerWorkspace";
-import { Button, KpiTile, SkeletonKpiRow } from "../../components/ui";
+import { Button, KpiTile, Section, SkeletonKpiRow } from "../../components/ui";
 import { PortalHero } from "../../components/ui/PortalHero";
 import { categorizeEvents } from "../../lib/workspaceWorkflow";
 import { useWorkspaceResource } from "../../lib/workspaceApi";
@@ -73,7 +73,16 @@ export function CompanyDashboard({ session }: PortalProps) {
       body={ar ? "أدخل فعالية أو نشاطاً جديداً، ثم تابع تخطيطه واعتماده وتشغيله. افتح أي فعالية أدناه لعرضها أو تعديلها." : "Enter a new event or activity, then follow its planning, approval and operations. Open any event below to view or edit it."}
       action={session ? <Button data-company-new-event="shortcut" variant="gold" size="lg" leadingIcon={<Plus className="size-5" aria-hidden />} aria-controls="organizer-event-entry" onClick={newEventShortcut.requestNewEvent}>{newEventLabel(ar)}</Button> : undefined}
     />
-    {session ? <CompanyEventSummary resource={events} isArabic={ar} /> : null}
+    {session ? (
+      <Section
+        id="section-company-summary"
+        title={ar ? "ملخص الفعاليات" : "Event summary"}
+        eyebrow={ar ? "الأرقام المصرح بها" : "Scoped overview"}
+        isArabic={ar}
+      >
+        <CompanyEventSummary resource={events} isArabic={ar} />
+      </Section>
+    ) : null}
     <OrganizerWorkspace session={session} isArabic={ar} newEventRequest={newEventShortcut.newEventRequest} onNewEventRequestTaken={newEventShortcut.acknowledgeNewEventRequest} showNewEventButton={false} onEventsChanged={() => setRevision(n => n + 1)} />
   </div>;
 }

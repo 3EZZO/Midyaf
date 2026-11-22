@@ -43,10 +43,22 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
-import { OnboardingWorkspace } from "./components/OnboardingWorkspace";
+import {
+  ApplicantRegistration,
+  StandaloneOnboardingFrame,
+  registrationKindFromPath,
+  registrationPathForKind
+} from "./components/OnboardingWorkspace";
 import { InviteAcceptance } from "./components/EventTeams";
 import { useWorkspaceResource } from "./lib/workspaceApi";
-import type { WorkspaceEventDto } from "@shared/overhaul";
+import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
+import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
+import {
+  captureDemoBaseline,
+  fetchDemoStatus,
+  resetDemoData,
+  switchDemoPersona
+} from "./lib/investorDemoApi";
 import { LoginPage } from "./shell/LoginPage";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
@@ -110,30 +122,56 @@ export function App() {
   const p = (english: string, arabic: string) =>
     pickText(isArabic, english, arabic);
   const toast = useTacticalToast();
-  const [portal, setPortal] = useState<PortalKey>("sila_operations");
+  const [session, setSession] = useState<Session | null>(() =>
+    loadStoredSession()
+  );
+  const [portal, setPortal] = useState<PortalKey>(() => {
+    const stored = loadStoredSession();
+    return stored ? initialPortalForRole(stored.user.role) : "sila_operations";
+  });
   const [isOnboarding, setIsOnboarding] = useState(
     window.location.hash.startsWith("#onboarding")
+  );
+  // SIX-TASKS #3: Standalone /register/supplier and /register/client routes
+  const [registrationKind, setRegistrationKind] = useState<OnboardingKind | null>(() =>
+    registrationKindFromPath(window.location.pathname)
   );
   // Dev-only design-system gallery (see pages/DesignSystemPreview).
   const [isDesignPreview, setIsDesignPreview] = useState(
     import.meta.env.DEV && window.location.hash === "#design"
   );
 
+  const navigateRegistration = useCallback((kind: OnboardingKind | null) => {
+    setRegistrationKind(kind);
+    try {
+      const target = kind ? registrationPathForKind(kind) : "/";
+      if (window.location.pathname !== target) {
+        window.history.pushState({}, "", target);
+      }
+    } catch {
+      // ignore history errors in restricted contexts
+    }
+  }, []);
+
   useEffect(() => {
     const handleHash = () => {
       setIsOnboarding(window.location.hash.startsWith("#onboarding"));
       setIsDesignPreview(import.meta.env.DEV && window.location.hash === "#design");
     };
+    const handlePopState = () => {
+      setRegistrationKind(registrationKindFromPath(window.location.pathname));
+    };
     window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("hashchange", handleHash);
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   const [data, setData] = useState<MidyafData | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const normalDataRef = useRef<MidyafData | null>(null);
-  const [session, setSession] = useState<Session | null>(() =>
-    loadStoredSession()
-  );
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -142,6 +180,12 @@ export function App() {
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
   const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
+  // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
+  const [demoStatus, setDemoStatus] = useState<DemoStatusDto | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoStatusRev, setDemoStatusRev] = useState(0);
+  const pendingPortalRef = useRef<PortalKey | null>(null);
+  const lastHandledResetAtRef = useRef<string | null>(null);
   const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
   const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
   const rolePortals = session ? portalsByRole[session.user.role] : [];
@@ -302,18 +346,39 @@ export function App() {
   useEffect(() => {
     if (!session) {
       setData(null);
+      setDemoStatus(null);
       return;
     }
 
-    setPortal((current) =>
-      portalsByRole[session.user.role].includes(current)
-        ? current
-        : portalsByRole[session.user.role].includes("sila_operations")
-        ? "sila_operations"
-        : portalsByRole[session.user.role][0]
-    );
-    void loadSessionData(session);
+    const requestedPortal = pendingPortalRef.current;
+    pendingPortalRef.current = null;
+    setPortal((current) => {
+      const allowed = portalsByRole[session.user.role];
+      if (requestedPortal && allowed.includes(requestedPortal)) return requestedPortal;
+      if (allowed.includes(current)) return current;
+      return initialPortalForRole(session.user.role);
+    });
+    if (!session.user.onboardingPending) {
+      void loadSessionData(session);
+    }
   }, [session?.accessToken]);
+
+  // SIX-TASKS #6: Query GET /api/demo/status for the signed-in session (404 -> hide switcher).
+  useEffect(() => {
+    if (!session?.accessToken || session.user.onboardingPending) {
+      setDemoStatus(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetchDemoStatus(session.accessToken, controller.signal)
+      .then((next) => {
+        if (!controller.signal.aborted) setDemoStatus(next);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setDemoStatus(null);
+      });
+    return () => controller.abort();
+  }, [session?.accessToken, session?.user.onboardingPending, demoStatusRev]);
 
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
@@ -429,6 +494,18 @@ export function App() {
       },
       "fleet:diverted": (payload) => {
         pushLog(`${p("Fleet diverted", "تم تحويل مسار الأسطول")} · ${payload.message}`);
+      },
+      "demo:reset": (payload) => {
+        pushLog(`${p("Demo data reset", "تمت إعادة ضبط بيانات العرض")} · ${stamp()}`);
+        if (payload?.resetAt && lastHandledResetAtRef.current === payload.resetAt) return;
+        if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+        toast.info(
+          isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+          isArabic ? "جارٍ تحديث جميع البيانات إلى نقطة البداية." : "Refreshing all data back to the saved start point."
+        );
+        setWorkspaceRevision((n) => n + 1);
+        setDemoStatusRev((n) => n + 1);
+        void refreshData();
       }
     }
   });
@@ -496,6 +573,25 @@ export function App() {
         />
       );
     }
+    if (registrationKind) {
+      return (
+        <ApplicantRegistration
+          isArabic={isArabic}
+          fixedKind={registrationKind}
+          onLanguageToggle={() =>
+            void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
+          }
+          onRegistered={(nextSession) => {
+            navigateRegistration(null);
+            installSession(nextSession);
+            setPortal(initialPortalForRole(nextSession.user.role));
+          }}
+          onLogin={handleLogin}
+          onSwitchKind={(other) => navigateRegistration(other)}
+          onBack={() => navigateRegistration(null)}
+        />
+      );
+    }
     return (
       <LoginPage
         isArabic={isArabic}
@@ -504,12 +600,34 @@ export function App() {
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
+        onOpenRegistration={(kind) => navigateRegistration(kind)}
+        onRegistered={(nextSession) => {
+          navigateRegistration(null);
+          installSession(nextSession);
+          setPortal(initialPortalForRole(nextSession.user.role));
+        }}
         onLogin={handleLogin}
       />
     );
   }
 
-  if (session.user.onboardingPending) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><button onClick={handleLogout}>{isArabic ? "تسجيل الخروج" : "Sign out"}</button><OnboardingWorkspace session={session} isArabic={isArabic} onRefresh={async()=>{const next=await refreshSession(session.refreshToken);installSession(next);setPortal(initialPortalForRole(next.user.role));}}/></main>;
+  if (session.user.onboardingPending) {
+    return (
+      <StandaloneOnboardingFrame
+        session={session}
+        isArabic={isArabic}
+        onLanguageToggle={() =>
+          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
+        }
+        onLogout={handleLogout}
+        onRefresh={async () => {
+          const next = await refreshSession(session.refreshToken);
+          installSession(next);
+          setPortal(initialPortalForRole(next.user.role));
+        }}
+      />
+    );
+  }
   const inviteToken = new URLSearchParams(window.location.hash.slice(1)).get("workspace-invite");
   if (inviteToken) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><InviteAcceptance token={session.accessToken} isArabic={isArabic} inviteToken={inviteToken} onAccepted={()=>{setJustJoinedWorkspace(true);setWorkspaceRevision(n=>n+1);setPortal("company");}}/></main>;
 
@@ -543,6 +661,11 @@ export function App() {
         setIsWarRoomOpen={setIsWarRoomOpen}
         isQuickNavOpen={isQuickNavOpen}
         setIsQuickNavOpen={setIsQuickNavOpen}
+        investorDemoStatus={demoStatus}
+        investorDemoBusy={demoBusy}
+        onSwitchDemoPersona={handleSwitchDemoPersona}
+        onCaptureDemoBaseline={handleCaptureDemoBaseline}
+        onResetDemoData={handleResetDemoData}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
@@ -593,6 +716,11 @@ export function App() {
       setIsWarRoomOpen={setIsWarRoomOpen}
       isQuickNavOpen={isQuickNavOpen}
       setIsQuickNavOpen={setIsQuickNavOpen}
+      investorDemoStatus={demoStatus}
+      investorDemoBusy={demoBusy}
+      onSwitchDemoPersona={handleSwitchDemoPersona}
+      onCaptureDemoBaseline={handleCaptureDemoBaseline}
+      onResetDemoData={handleResetDemoData}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
       onLanguageToggle={() =>
@@ -600,7 +728,7 @@ export function App() {
       }
       onLogout={handleLogout}
     >
-      <ErrorBoundary resetKey={portal} isArabic={isArabic}>
+      <ErrorBoundary key={workspaceRevision} resetKey={`${portal}:${workspaceRevision}`} isArabic={isArabic}>
         <Suspense fallback={<PortalSkeleton />}>{renderPortal(portal, portalProps, isArabic)}</Suspense>
       </ErrorBoundary>
     </ShellFrame>
@@ -647,7 +775,87 @@ export function App() {
     setIsWarRoomOpen(false);
     setSession(null);
     setData(null);
+    setDemoStatus(null);
     setRealtimeLog([]);
+  }
+
+  async function handleSwitchDemoPersona(persona: DemoPersonaDto) {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const nextSession = await switchDemoPersona(activeSession.accessToken, persona.key);
+      pendingPortalRef.current = persona.portal;
+      setPortal(persona.portal);
+      installSession(nextSession);
+      setWorkspaceRevision((n) => n + 1);
+      setDemoStatusRev((n) => n + 1);
+      toast.success(
+        isArabic ? "تم تبديل دور العرض" : "Switched demo role",
+        isArabic ? persona.labelAr : persona.labelEn
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر تبديل الدور" : "Could not switch persona",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  async function handleCaptureDemoBaseline() {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const result = await captureDemoBaseline(activeSession.accessToken);
+      setDemoStatusRev((n) => n + 1);
+      toast.success(
+        isArabic ? "تم حفظ نقطة بداية العرض" : "Demo start point saved",
+        isArabic
+          ? `تم حفظ ${result.rows} سجلاً عبر ${result.tables} جداول.`
+          : `Captured ${result.rows} rows across ${result.tables} tables.`
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر حفظ نقطة البداية" : "Could not save demo start point",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  async function handleResetDemoData() {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const result = await resetDemoData(activeSession.accessToken);
+      lastHandledResetAtRef.current = result.resetAt;
+      try {
+        window.sessionStorage.removeItem(`midyaf_data_${activeSession.user.id}`);
+      } catch {
+        // ignore storage errors
+      }
+      setWorkspaceRevision((n) => n + 1);
+      setDemoStatusRev((n) => n + 1);
+      await refreshData();
+      toast.success(
+        isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+        isArabic
+          ? `تمت استعادة ${result.restored} سجلاً وإزالة ${result.removed} سجلاً.`
+          : `Restored ${result.restored} rows and cleared ${result.removed} rows.`
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر إعادة ضبط البيانات" : "Could not reset demo data",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
   }
 
   async function loadSessionData(activeSession: Session) {
@@ -1268,8 +1476,10 @@ function renderPortal(
       return (
         <ClientDashboard
           data={props.data}
+          session={props.session ?? null}
           isArabic={isArabic}
           isDemoMode={props.isDemoMode ?? false}
+          onPlanApproved={() => void props.refreshData()}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) void props.downloadReport(report.id);

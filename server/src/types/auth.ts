@@ -6,6 +6,8 @@ export type AuthenticatedUser = {
   id: string;
   email: string;
   role: Role;
+  /** SIX-TASKS #6: the Super Admin who started this switched demo session. */
+  demoOriginId?: string;
 };
 
 export interface AuthRequest extends Request {

@@ -2,7 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
 import type { Server } from "socket.io";
 import {generateWorkspacePlan} from '../services/workspacePlanning.js';
+import { contentWithRfq, rfqForPlan, toJsonObject } from "../utils/workspacePlanRfq.js";
 import {
+  ActivityStatus,
   EventMemberRole,
   EventPermission,
   EventPlanSource,
@@ -12,7 +14,8 @@ import {
   MessageClass,
   OperationalStatus,
   Prisma,
-  Role
+  Role,
+  SupplierCategory
 } from "@prisma/client";
 import { z } from "zod";
 import {
@@ -32,17 +35,18 @@ import {
   idSchema,
   memberAvailabilitySchema,
   planApproveSchema,
+  type PlanApprovalQueueItem,
   planGenerateSchema,
-  buildRfqDraft,
   rfqDraftFromPlanContent,
-  rfqRequirementsFromPlan,
   type EventMemberDto,
   type EventPlanDto,
-  type RfqDraftDto,
   type EventScopeField,
   type EventUpdateInput
 } from "../../../shared/overhaul.js";
+import { applyPlanEdit, editablePlanSchema, isEditedPlanContent } from "../../../shared/planEditing.js";
 import { prisma } from "../db.js";
+import { SUPPLIER_RFQ_SUBMITTER_PREFIX } from "../utils/legacyWorkspaceBoundary.js";
+import { deriveSupplierDemand, opaqueReference } from "../utils/supplierPortal.js";
 import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
@@ -55,7 +59,6 @@ import {
   WORKSPACE_TRANSACTION,
   assertCanGrant,
   eventMessagingPolicy,
-  buildAdvisoryPlan,
   categoriesForScopeChange,
   hasEventRole,
   isOrgAdminRole,
@@ -338,12 +341,6 @@ function sameValue(a: unknown, b: unknown) {
   return (a ?? null) === (b ?? null);
 }
 
-/** Plain JSON copy (Dates become ISO strings) for a Json column. */
-function toJsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
-  const copy: unknown = JSON.parse(JSON.stringify(value));
-  if (!copy || typeof copy !== "object" || Array.isArray(copy)) return {};
-  return copy as Prisma.InputJsonObject;
-}
 
 function isScopeField(field: string): field is EventScopeField {
   return (EVENT_SCOPE_FIELDS as readonly string[]).includes(field);
@@ -588,47 +585,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * SIX-TASKS #1 (owner rule: easiest path, anyone authorized approves): the
+ * event's client (CLIENT_VIEWER), the organizing company's admins, its project
+ * manager holding EDIT, and the Midyaf Super Admin (support access, audited).
+ * Vendors never approve.
+ */
+function canApprovePlan(access: EventAccess) {
+  if (hasEventRole(access, [EventMemberRole.VENDOR])) return false;
+  if (access.support) return access.actor.role === Role.SUPER_ADMIN;
+  if (access.isOrgAdmin) return true;
+  if (hasEventRole(access, [EventMemberRole.CLIENT_VIEWER])) return true;
+  return hasEventRole(access, PLAN_APPROVER_ROLES) && access.permissions.has(EventPermission.EDIT);
+}
+
+/** SIX-TASKS #4: inline editing needs EDIT; clients and vendors only view. */
+function canEditPlan(access: EventAccess) {
+  return access.permissions.has(EventPermission.EDIT) && !hasEventRole(access, RFQ_HIDDEN_ROLES);
+}
+
 function planDtoFor(access: EventAccess, plan: EventPlanRow): EventPlanDto {
-  const dto = toPlanDto(plan);
+  const base = toPlanDto(plan);
+  const open = access.event.operationalStatus !== OperationalStatus.COMPLETED;
+  const dto: EventPlanDto = {
+    ...base,
+    edited: isEditedPlanContent(base.content),
+    viewerCanApprove: open && plan.status === EventPlanStatus.DRAFT && canApprovePlan(access),
+    viewerCanEdit: open && canEditPlan(access)
+  };
   if (canViewRfq(access) || !isRecord(dto.content) || !("rfqDraft" in dto.content)) return dto;
   const { rfqDraft: _internal, ...content } = dto.content;
   return { ...dto, content };
-}
-
-/**
- * Server-side, deterministic: quantities come from the plan's validated items
- * (manual / stored rules) or from the rules over the current event counts
- * (AI plans). Nothing from the request body is used.
- */
-function rfqForPlan(
-  event: OrgEventRow,
-  plan: { id: string; version: number; source: EventPlanRow["source"]; content: unknown },
-  now: Date
-): RfqDraftDto {
-  return buildRfqDraft({
-    eventId: event.id,
-    planId: plan.id,
-    planVersion: plan.version,
-    planSource: plan.source,
-    event: {
-      locationLabel: event.locationLabel,
-      venue: event.venue,
-      hotelZone: event.hotelZone,
-      vipGuestCount: event.vipGuestCount,
-      regularGuestCount: event.regularGuestCount,
-      carCount: event.carCount,
-      startAt: event.startAt,
-      endAt: event.endAt,
-      arrivalStartAt: event.arrivalStartAt,
-      departureEndAt: event.departureEndAt
-    },
-    requirements: rfqRequirementsFromPlan(plan.source, plan.content, buildAdvisoryPlan(event).content),
-    generatedAt: now
-  });
-}
-
-function contentWithRfq(content: unknown, rfq: RfqDraftDto): Prisma.InputJsonObject {
-  return toJsonObject({ ...(isRecord(content) ? content : {}), rfqDraft: rfq });
 }
 
 router.get(
@@ -724,11 +711,9 @@ router.post(
   "/events/:eventId/plans/:planId/approve",
   asyncHandler(async (req: AuthRequest, res) => {
     const access = await loadEventAccess(req, req.params.eventId);
-    requireNotSupport(access, "approve a plan");
-    const approver =
-      access.isOrgAdmin ||
-      (hasEventRole(access, PLAN_APPROVER_ROLES) && access.permissions.has(EventPermission.EDIT));
-    if (!approver) throw new HttpError(403, "Only an organization admin or the project manager can approve plans");
+    if (!canApprovePlan(access)) {
+      throw new HttpError(403, "Only the client, the organizing company's admin or project manager, or the Super Admin can approve plans");
+    }
     requireEventOpen(access);
     planApproveSchema.parse(req.body);
     const planId = parseRouteId(req.params.planId, () => new HttpError(404, "Plan not found"));
@@ -763,7 +748,16 @@ router.post(
           entityId: plan.id,
           eventId: access.event.id,
           after: { status: EventPlanStatus.APPROVED, version: plan.version },
-          metadata: { superseded: superseded.count }
+          metadata: {
+            superseded: superseded.count,
+            approverKind: access.support
+              ? "SUPER_ADMIN"
+              : hasEventRole(access, [EventMemberRole.CLIENT_VIEWER])
+                ? "CLIENT"
+                : access.isOrgAdmin
+                  ? "ORGANIZER_ADMIN"
+                  : "PROJECT_MANAGER"
+          }
         });
         const event = await reloadEvent(tx, access.event.id);
         const stored = await tx.eventPlan.findUniqueOrThrow({ where: { id: plan.id }, select: EVENT_PLAN_SELECT });
@@ -774,6 +768,298 @@ router.post(
       });
 
     res.json({ event: eventResponse(result.event, access), plan: planDtoFor(access, result.plan) });
+  })
+);
+
+/**
+ * SIX-TASKS #4 inline edit of a generated or manual plan. A DRAFT is updated
+ * in place; an APPROVED/SUPERSEDED plan yields a new DRAFT version (the
+ * approved plan stays operational until the new draft is approved). The
+ * provenance is kept and the plan is marked edited; the RFQ draft is
+ * re-derived from the edited quantities in the same transaction.
+ */
+router.patch(
+  "/events/:eventId/plans/:planId",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    if (!canEditPlan(access)) throw new HttpError(403, "Editing a plan needs the EDIT permission for the event");
+    requireEventOpen(access);
+    const edit = editablePlanSchema.parse(req.body);
+    const planId = parseRouteId(req.params.planId, () => new HttpError(404, "Plan not found"));
+
+    const result = await prisma
+      .$transaction(async (tx) => {
+        await lockRow(tx, "Event", access.event.id);
+        const event = await reloadEvent(tx, access.event.id);
+        const source = await tx.eventPlan.findFirst({
+          where: { id: planId, eventId: event.id },
+          select: { id: true, version: true, status: true, source: true, advisory: true, content: true }
+        });
+        if (!source) throw new HttpError(404, "Plan not found");
+
+        const now = new Date();
+        const content = applyPlanEdit(source.content, edit, {
+          at: now.toISOString(),
+          byUserId: access.actor.id,
+          fromPlanId: source.id,
+          fromVersion: source.version,
+          originalSource: source.source
+        });
+
+        let target: { id: string; version: number; source: EventPlanSource };
+        let created = false;
+        if (source.status === EventPlanStatus.DRAFT) {
+          const updated = await tx.eventPlan.updateMany({
+            where: { id: source.id, status: EventPlanStatus.DRAFT },
+            data: { summary: edit.summary.slice(0, 2000), content: toJsonObject(content) }
+          });
+          if (updated.count !== 1) throw new HttpError(409, "The plan changed; refresh and try again");
+          target = { id: source.id, version: source.version, source: source.source };
+        } else {
+          const latest = await tx.eventPlan.findFirst({
+            where: { eventId: event.id },
+            select: { version: true },
+            orderBy: { version: "desc" }
+          });
+          target = await tx.eventPlan.create({
+            data: {
+              eventId: event.id,
+              version: (latest?.version ?? 0) + 1,
+              status: EventPlanStatus.DRAFT,
+              source: source.source,
+              advisory: source.advisory,
+              summary: edit.summary.slice(0, 2000),
+              content: toJsonObject(content),
+              generatedById: access.actor.id
+            },
+            select: { id: true, version: true, source: true }
+          });
+          created = true;
+        }
+
+        const rfq = rfqForPlan(event, { ...target, content }, now);
+        const stored = await tx.eventPlan.update({
+          where: { id: target.id },
+          data: { content: contentWithRfq(content, rfq) },
+          select: EVENT_PLAN_SELECT
+        });
+        await writeWorkspaceAudit(tx, req, {
+          action: "workspace.plan.edit",
+          entityType: "EVENT_PLAN",
+          entityId: target.id,
+          eventId: event.id,
+          metadata: { version: target.version, fromPlanId: source.id, fromVersion: source.version, created, support: access.support }
+        });
+        return { plan: stored, created };
+      }, WORKSPACE_TRANSACTION)
+      .catch((error: unknown) => {
+        throw toWorkspaceHttpError(error, "Another change to this plan happened at the same time; retry");
+      });
+
+    res.status(result.created ? 201 : 200).json({ plan: planDtoFor(access, result.plan), created: result.created });
+  })
+);
+
+/**
+ * SIX-TASKS #1 approval queue: the latest plan of each open event, when it is
+ * a DRAFT the viewer may approve. Clients see their events; organizer admins
+ * and project managers theirs; the Super Admin every organization event (one
+ * support audit row per listing). Vendors and field roles get an empty list.
+ */
+router.get(
+  "/plans/awaiting-approval",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const actor = req.user!;
+    const superAdmin = actor.role === Role.SUPER_ADMIN;
+    if (actor.role === Role.SUPPLIER || actor.role === Role.DRIVER || actor.role === Role.GUEST) {
+      res.json({ items: [] });
+      return;
+    }
+    const events = await prisma.event.findMany({
+      where: {
+        organizationId: { not: null },
+        operationalStatus: { not: OperationalStatus.COMPLETED },
+        plans: { some: { status: EventPlanStatus.DRAFT } },
+        ...(superAdmin
+          ? {}
+          : {
+              OR: [
+                { organization: { memberships: { some: { userId: actor.id, status: MembershipStatus.ACTIVE } } } },
+                { memberships: { some: { userId: actor.id, status: MembershipStatus.ACTIVE } } }
+              ]
+            })
+      },
+      select: {
+        ...WORKSPACE_EVENT_SELECT,
+        organization: {
+          select: {
+            name: true,
+            memberships: { where: { userId: actor.id, status: MembershipStatus.ACTIVE }, select: { role: true } }
+          }
+        },
+        memberships: {
+          where: { userId: actor.id, status: MembershipStatus.ACTIVE },
+          select: { id: true, role: true, permissions: true, canReceive: true, available: true }
+        },
+        plans: { orderBy: { version: "desc" }, take: 1, select: EVENT_PLAN_SELECT }
+      },
+      orderBy: [{ startAt: "asc" }, { createdAt: "asc" }],
+      take: 100
+    });
+
+    const items: PlanApprovalQueueItem[] = [];
+    for (const row of events) {
+      const latest = row.plans[0];
+      if (!row.organizationId || !latest || latest.status !== EventPlanStatus.DRAFT) continue;
+      const { organization, memberships, plans: _plans, ...eventFields } = row;
+      const organizationRole = organization?.memberships[0]?.role ?? null;
+      const membershipRow = memberships[0] ?? null;
+      const isOrgAdmin = isOrgAdminRole(organizationRole);
+      const membership = membershipRow ? { ...membershipRow, permissions: [...new Set(membershipRow.permissions)] } : null;
+      const support = !isOrgAdmin && !membership && superAdmin;
+      const access: EventAccess = {
+        actor,
+        event: { ...eventFields, organizationId: row.organizationId },
+        organizationRole,
+        membership,
+        isOrgAdmin,
+        support,
+        guestId: null,
+        permissions: new Set(isOrgAdmin || support ? ALL_PERMISSIONS : membership?.permissions ?? [])
+      };
+      if (!canApprovePlan(access)) continue;
+      items.push({
+        event: {
+          id: row.id,
+          name: row.name,
+          organizationName: organization?.name ?? null,
+          startAt: row.startAt ? row.startAt.toISOString() : null,
+          operationalStatus: row.operationalStatus,
+          hasApprovedPlan: Boolean(row.approvedPlanId)
+        },
+        plan: planDtoFor(access, latest)
+      });
+    }
+
+    if (superAdmin && items.length > 0) {
+      await writeWorkspaceAudit(prisma, req, {
+        action: "workspace.support_plan_queue",
+        entityType: "EVENT_PLAN",
+        entityId: "awaiting-approval",
+        metadata: { count: items.length }
+      });
+    }
+    res.json({ items });
+  })
+);
+
+/**
+ * SIX-TASKS #5 "Send RFQ to suppliers". Once a plan is approved, the event
+ * team (or the Super Admin) opens ONE supplier request for the event: a
+ * QUOTING intake linked to the event, marked as dispatched. Matching verified
+ * suppliers see it in their portal as an opaque code with aggregate demand
+ * only, submit sealed quotes, and the Super Admin (D-011 key holder) opens the
+ * vault, approves and contracts through the existing supplier pipeline.
+ * Repeating the call is idempotent. Clients and vendors cannot send.
+ */
+async function supplierRequestFor(eventId: string) {
+  const intake = await prisma.activityIntake.findFirst({
+    where: { eventId, submittedBy: { startsWith: SUPPLIER_RFQ_SUBMITTER_PREFIX } },
+    select: { id: true, status: true, submittedAt: true },
+    orderBy: { submittedAt: "desc" }
+  });
+  return intake
+    ? { intakeId: intake.id, reference: opaqueReference("REQ", intake.id), status: intake.status, sentAt: intake.submittedAt.toISOString() }
+    : null;
+}
+
+router.get(
+  "/events/:eventId/rfq/dispatch",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    requirePermission(access, EventPermission.VIEW);
+    if (!canViewRfq(access)) throw new HttpError(403, "RFQ drafts are internal to the event team");
+    res.json({ supplierRequest: await supplierRequestFor(access.event.id) });
+  })
+);
+
+router.post(
+  "/events/:eventId/rfq/send",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const access = await loadEventAccess(req, req.params.eventId);
+    if (!canEditPlan(access)) throw new HttpError(403, "Sending the RFQ needs the EDIT permission for the event");
+    requireEventOpen(access);
+    requirePlanApproved(access);
+    planApproveSchema.parse(req.body);
+    const event = access.event;
+    const vip = event.vipGuestCount;
+    const regular = event.regularGuestCount;
+    if (vip + regular <= 0) throw new HttpError(409, "Set the guest counts before sending the RFQ");
+
+    const result = await prisma.$transaction(async (tx) => {
+      await lockRow(tx, "Event", event.id);
+      const existing = await tx.activityIntake.findFirst({
+        where: { eventId: event.id, submittedBy: { startsWith: SUPPLIER_RFQ_SUBMITTER_PREFIX } },
+        select: { id: true, status: true },
+        orderBy: { submittedAt: "desc" }
+      });
+      if (existing) {
+        const reopenable: ActivityStatus[] = [ActivityStatus.DRAFT, ActivityStatus.AI_PLANNING, ActivityStatus.PLAN_CONFIRMED];
+        if (reopenable.includes(existing.status)) {
+          await tx.activityIntake.update({ where: { id: existing.id }, data: { status: ActivityStatus.QUOTING } });
+        }
+        return { intakeId: existing.id, created: false, notified: 0 };
+      }
+      const intake = await tx.activityIntake.create({
+        data: {
+          eventId: event.id,
+          activityName: event.name.slice(0, 200),
+          activityPlace: (event.locationLabel ?? event.venue ?? "—").slice(0, 200),
+          visitorCount: vip + regular,
+          vipVisitorCount: vip,
+          normalVisitorCount: regular,
+          status: ActivityStatus.QUOTING,
+          submittedAt: new Date(),
+          submittedBy: `${SUPPLIER_RFQ_SUBMITTER_PREFIX}${event.approvedPlanId ?? event.id}`
+        },
+        select: { id: true, visitorCount: true, vipVisitorCount: true, normalVisitorCount: true, ticketType: true }
+      });
+      // Tell matching verified suppliers; generic text and an opaque reference only.
+      const categories = Object.values(SupplierCategory).filter((category) => deriveSupplierDemand(intake, category));
+      const suppliers = categories.length
+        ? await tx.supplier.findMany({
+            where: { category: { in: categories }, verified: true, userId: { not: null } },
+            select: { userId: true },
+            take: 500
+          })
+        : [];
+      const reference = opaqueReference("REQ", intake.id);
+      const recipients = [...new Set(suppliers.map((row) => row.userId).filter((id): id is string => Boolean(id)))];
+      if (recipients.length) {
+        await tx.notification.createMany({
+          data: recipients.map((userId) => ({
+            userId,
+            title: "New request for quotation",
+            body: `A new request (${reference}) matches your category. Submit your sealed quote from the supplier portal.`,
+            metadata: { kind: "SUPPLIER_RFQ", reference }
+          }))
+        });
+      }
+      await writeWorkspaceAudit(tx, req, {
+        action: "workspace.rfq.send",
+        entityType: "ACTIVITY_INTAKE",
+        entityId: intake.id,
+        eventId: event.id,
+        metadata: { planId: event.approvedPlanId, categories: categories.join(","), notifiedSuppliers: recipients.length, support: access.support }
+      });
+      return { intakeId: intake.id, created: true, notified: recipients.length };
+    }, WORKSPACE_TRANSACTION);
+
+    res.status(result.created ? 201 : 200).json({
+      supplierRequest: await supplierRequestFor(event.id),
+      created: result.created,
+      notifiedSuppliers: result.notified
+    });
   })
 );
 

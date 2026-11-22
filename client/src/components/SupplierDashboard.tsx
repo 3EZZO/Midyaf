@@ -428,7 +428,7 @@ export function SupplierWorkspaceView({
         <StatTile label={copy.myBookings} value={dashboard.bookings.length} icon={<CalendarDays className="size-4" />} />
       </div>
 
-      <Section title={copy.openRequests}>
+      <Section id="section-supplier-requests" title={copy.openRequests} isArabic={isArabic}>
         {requests.length ? (
           <div className="space-y-4">
             {requests.map((request) => (
@@ -446,7 +446,7 @@ export function SupplierWorkspaceView({
         )}
       </Section>
 
-      <Section title={copy.myQuotes}>
+      <Section id="section-supplier-quotes" title={copy.myQuotes} isArabic={isArabic}>
         {quotes.length ? (
           <ul className="space-y-2">
             {quotes.map((quote) => (
@@ -461,7 +461,7 @@ export function SupplierWorkspaceView({
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title={copy.myServices}>
+        <Section id="section-supplier-services" title={copy.myServices} isArabic={isArabic}>
           {dashboard.services.length ? (
             <ul className="space-y-2">
               {dashboard.services.map((service) => (
@@ -490,7 +490,7 @@ export function SupplierWorkspaceView({
           )}
         </Section>
 
-        <Section title={copy.myBookings}>
+        <Section id="section-supplier-bookings" title={copy.myBookings} isArabic={isArabic}>
           {dashboard.bookings.length ? (
             <ul className="space-y-2">
               {dashboard.bookings.map((booking) => (

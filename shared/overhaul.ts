@@ -484,6 +484,19 @@ function fromRules(rules: RfqRules): RfqRequirements {
  */
 export function rfqRequirementsFromPlan(source: EventPlanSource, content: unknown, rules: RfqRules): RfqRequirements {
   const record = content && typeof content === "object" && !Array.isArray(content) ? (content as Record<string, unknown>) : {};
+  // SIX-TASKS #4: an inline-edited plan (any source) carries its own edited
+  // hotel/fleet/team numbers and line items; those are authoritative.
+  if (record.edited && typeof record.edited === "object") {
+    const stored = rulesShape.safeParse(record);
+    const items = z.array(storedManualPlanItemSchema).max(40).safeParse(record.items);
+    if (stored.success) {
+      return {
+        ...fromRules(stored.data),
+        quantitiesFrom: "PLAN_ITEMS",
+        items: items.success ? items.data.map((item) => ({ category: item.category, quantity: item.quantity, note: item.note ?? null })) : []
+      };
+    }
+  }
   if (source === "MANUAL") {
     const items = z.array(storedManualPlanItemSchema).min(1).max(40).safeParse(record.items);
     if (items.success) {
@@ -1153,7 +1166,31 @@ export type EventPlanDto = {
   approvedBy: PersonDto | null;
   approvedAt: string | null;
   createdAt: string;
+  /** SIX-TASKS #4: true once the plan was edited inline ("AI-Generated (Edited)"). */
+  edited?: boolean;
+  /** SIX-TASKS #1/#4: what the current viewer may do with this plan (server-computed). */
+  viewerCanApprove?: boolean;
+  viewerCanEdit?: boolean;
 };
+
+/**
+ * SIX-TASKS #1: GET /api/workspace/plans/awaiting-approval
+ * The latest DRAFT plan of each open event the viewer may approve: the
+ * event's client (CLIENT_VIEWER), the organizing company's admins and project
+ * manager, and the Super Admin. Vendors always receive an empty list.
+ */
+export type PlanApprovalQueueItem = {
+  event: {
+    id: string;
+    name: string;
+    organizationName: string | null;
+    startAt: string | null;
+    operationalStatus: OperationalStatus;
+    hasApprovedPlan: boolean;
+  };
+  plan: EventPlanDto;
+};
+export type PlanApprovalQueueResponse = { items: PlanApprovalQueueItem[] };
 
 export type EventMemberDto = {
   id: string;
