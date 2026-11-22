@@ -10,11 +10,17 @@ import { DEFAULT_COMPLAINTS } from "@shared/constants";
  * and each plan approval targets that activity's own plan.
  */
 
+const queueState = vi.hoisted(() => ({ items: [] as unknown[] }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } })
 }));
 vi.mock("./charts", () => ({ AreaTrend: () => null, EventHistogram: () => null }));
 vi.mock("./OnboardingWorkspace", () => ({ OnboardingWorkspace: () => <div data-onboarding /> }));
+vi.mock("../lib/workspaceApi", () => ({
+  useWorkspaceResource: (_token: string, path: string | null) =>
+    path === "/plans/awaiting-approval" ? { data: { items: queueState.items } } : {},
+  workspaceRequest: vi.fn()
+}));
 
 import {
   AdminExecutiveDashboard,
@@ -58,8 +64,14 @@ const emptyData = {
   auditLogs: []
 } as unknown as MidyafData;
 
-const render = (data: MidyafData = emptyData, isArabic = false, isDemoMode = false) =>
-  renderToStaticMarkup(<AdminExecutiveDashboard data={data} session={null} isArabic={isArabic} isDemoMode={isDemoMode} />);
+const adminSession = {
+  accessToken: "synthetic-admin-token",
+  refreshToken: "synthetic-refresh",
+  user: { id: "u-admin", role: "SUPER_ADMIN", name: "Admin", email: "admin@example.test", phone: "", language: "en" }
+} as unknown as Parameters<typeof AdminExecutiveDashboard>[0]["session"];
+
+const render = (data: MidyafData = emptyData, isArabic = false, isDemoMode = false, session = null as Parameters<typeof AdminExecutiveDashboard>[0]["session"]) =>
+  renderToStaticMarkup(<AdminExecutiveDashboard data={data} session={session} isArabic={isArabic} isDemoMode={isDemoMode} />);
 
 describe("admin data selectors", () => {
   it("keeps missing submitter details visibly unrecorded instead of inventing them", () => {
@@ -130,13 +142,18 @@ describe("AdminExecutiveDashboard", () => {
     expect(html).toContain("Not recorded");
   });
 
-  it("counts pending plans in the decision group and survives a dataset without events", () => {
+  it("counts pending plans from /plans/awaiting-approval in the decision group and survives a dataset without events", () => {
+    queueState.items = [
+      { event: { id: "e1", name: "Event 1", organizationName: "Org", startAt: null, operationalStatus: "PLANNING", hasApprovedPlan: false }, plan: { id: "p1" } },
+      { event: { id: "e2", name: "Event 2", organizationName: "Org", startAt: null, operationalStatus: "PLANNING", hasApprovedPlan: false }, plan: { id: "p2" } }
+    ];
     const data = {
       ...emptyData,
-      activityIntakes: [intake({ id: "a" }), intake({ id: "b" })],
-      aiPlans: [plan({ id: "p_a", intakeId: "a" })]
+      activityIntakes: [intake({ id: "a" })],
+      aiPlans: []
     } as MidyafData;
-    const html = render(data);
+    const html = render(data, false, false, adminSession);
+    queueState.items = [];
     expect(html).toMatch(/aria-label="Plans awaiting approval: 2"/);
   });
 

@@ -30,6 +30,16 @@ it('offers approval only to approvers and only for drafts',()=>{
  expect(card({canApprove:false})).not.toContain('Approve plan');
  expect(renderToStaticMarkup(<PlanCard plan={{...plan,status:'APPROVED'}} ar={false} busy={false} canApprove canDraftRfq={false} onApprove={()=>{}} onDraftRfq={()=>{}}/>)).not.toContain('Approve plan');
 });
+it('respects server-computed viewerCanApprove for CLIENT_VIEWER and hides Approve from vendors',()=>{
+ state.plans=[{...plan,viewerCanApprove:true}];
+ const clientEvent={...testEvent,access:{...testEvent.access,organizationRole:null,eventRole:'CLIENT_VIEWER' as const,permissions:['VIEW' as const]}};
+ const clientHtml=renderToStaticMarkup(<EventPlanEditor token="t" eventId="evt_test" isArabic={false} event={clientEvent} onChange={()=>{}}/>);
+ expect(clientHtml).toContain('Approve plan &amp; unlock operations');
+ state.plans=[{...plan,viewerCanApprove:false}];
+ const vendorEvent={...testEvent,access:{...testEvent.access,organizationRole:null,eventRole:'VENDOR' as const,permissions:['VIEW' as const]}};
+ const vendorHtml=renderToStaticMarkup(<EventPlanEditor token="t" eventId="evt_test" isArabic={false} event={vendorEvent} onChange={()=>{}}/>);
+ expect(vendorHtml).not.toContain('Approve plan');
+});
 it('renders the RFQ panel in Arabic',()=>{
  const html=renderToStaticMarkup(<RfqDraftPanel rfq={rfq} ar/>);
  expect(html).toContain('مسودة طلب عروض الأسعار');expect(html).toContain('لم تُرسل لأي مورد');expect(html).toContain('يحدده المورد');

@@ -1,4 +1,5 @@
 import { OnboardingWorkspace } from "./OnboardingWorkspace";
+import { PlanApprovalQueue } from "./PlanApprovalQueue";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   Banknote,
@@ -27,9 +28,11 @@ import type {
   Session
 } from "@shared/domain";
 import { DEFAULT_COMPLAINTS } from "@shared/constants";
+import type { PlanApprovalQueueResponse } from "@shared/overhaul";
 import { compact, integer, money, shortDate, shortTime } from "../lib/format";
 import { deriveExecutiveKpis, fleetUtilisation, slaSample } from "../lib/metrics";
 import { localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
+import { useWorkspaceResource } from "../lib/workspaceApi";
 import { AreaTrend, EventHistogram } from "./charts";
 import {
   Badge,
@@ -151,6 +154,14 @@ export function AdminExecutiveDashboard({
 
   // Plans
   const [planFilter, setPlanFilter] = useState<"ALL" | "APPROVED" | "PENDING">("ALL");
+  const [queueRevision, setQueueRevision] = useState(0);
+  const approvalQueue = useWorkspaceResource<PlanApprovalQueueResponse>(
+    session?.accessToken ?? "",
+    session ? "/plans/awaiting-approval" : null,
+    queueRevision,
+    "/workspace",
+    true
+  );
 
   // ── Every number on screen comes from selectors ──
   const kpis = useMemo(() => deriveExecutiveKpis(data, { isDemoMode }), [data, isDemoMode]);
@@ -160,7 +171,8 @@ export function AdminExecutiveDashboard({
 
   const submitterList = adminSubmitterRows(data.activityIntakes, isArabic);
   const plansList = adminPlanRows(data.activityIntakes, data.aiPlans, isArabic);
-  const pendingPlans = plansList.filter((p) => p.status === "PENDING").length;
+  // SIX-TASKS #1: attention count comes from GET /api/workspace/plans/awaiting-approval
+  const pendingPlans = approvalQueue.data?.items.length ?? 0;
   const filteredPlans = plansList.filter((p) => planFilter === "ALL" || p.status === planFilter);
   const filteredComplaints = complaints.filter((c) => complaintFilter === "ALL" || c.status === complaintFilter);
   const pipeline = data.activityIntakes.filter((act) => act.status !== "OPERATIONS_OPEN");
@@ -514,6 +526,13 @@ export function AdminExecutiveDashboard({
       )}
 
       {activeTab === "plans" && (
+        <div className="space-y-4">
+        <PlanApprovalQueue
+          session={session}
+          isArabic={isArabic}
+          sectionId="section-admin-plans-queue"
+          onApproved={() => setQueueRevision((n) => n + 1)}
+        />
         <Section
           id="section-admin-plans"
           title={isArabic ? "مصفوفة الخطط اللوجستية" : "Logistics Plans Matrix"}
@@ -587,6 +606,7 @@ export function AdminExecutiveDashboard({
             </div>
           )}
         </Section>
+        </div>
       )}
 
       {activeTab === "complaints" && (

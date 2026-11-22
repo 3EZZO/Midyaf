@@ -39,7 +39,13 @@ export function EventPlanEditor({ token, eventId, isArabic: ar, event, onChange,
   const request = (path: string, body?: unknown, method?: string) => workspaceRequest(token, path, body, method);
   const open = event.operationalStatus !== "COMPLETED";
   const canEdit = event.access.permissions.includes("EDIT") && open;
-  const canApprove = !event.access.support && open && (["OWNER", "ADMIN"].includes(event.access.organizationRole ?? "") || (event.access.eventRole === "PROJECT_MANAGER" && event.access.permissions.includes("EDIT")));
+  const canApproveFallback =
+    !event.access.support &&
+    event.access.eventRole !== "VENDOR" &&
+    open &&
+    (["OWNER", "ADMIN"].includes(event.access.organizationRole ?? "") ||
+      (event.access.eventRole === "PROJECT_MANAGER" && event.access.permissions.includes("EDIT")) ||
+      event.access.eventRole === "CLIENT_VIEWER");
   const canDraftRfq = canEdit && !event.access.support && canViewRfq(event) && !event.contractSigned;
   async function act(path: string, body: unknown) {
     setBusy(true); setError("");
@@ -68,7 +74,7 @@ export function EventPlanEditor({ token, eventId, isArabic: ar, event, onChange,
     {(error || resource.error) && <p role="alert" className="text-red-500">{error || resource.error}</p>}
     {!resource.data && !resource.error && <p role="status">{ar ? "جارٍ تحميل الخطط…" : "Loading plans…"}</p>}
     {resource.data?.plans.length === 0 && !generationError && <p>{ar ? "أنشئ مقترحاً أو أدخل خطة يدوية" : "Generate an advisory plan or enter a manual plan"}</p>}
-    <div className="space-y-4">{resource.data?.plans.map(plan => <PlanCard key={plan.id} plan={plan} ar={ar} busy={busy} canApprove={canApprove} canDraftRfq={canDraftRfq && plan.status !== 'SUPERSEDED'} onApprove={() => void approve(plan.id)} onDraftRfq={() => void act(`/plans/${plan.id}/rfq`, {})} />)}</div>
+    <div className="space-y-4">{resource.data?.plans.map(plan => <PlanCard key={plan.id} plan={plan} ar={ar} busy={busy} canApprove={plan.viewerCanApprove !== undefined ? plan.viewerCanApprove === true : canApproveFallback} canDraftRfq={canDraftRfq && plan.status !== 'SUPERSEDED'} onApprove={() => void approve(plan.id)} onDraftRfq={() => void act(`/plans/${plan.id}/rfq`, {})} />)}</div>
   </Section>;
 }
 

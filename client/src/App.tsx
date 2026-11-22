@@ -1268,8 +1268,10 @@ function renderPortal(
       return (
         <ClientDashboard
           data={props.data}
+          session={props.session ?? null}
           isArabic={isArabic}
           isDemoMode={props.isDemoMode ?? false}
+          onPlanApproved={() => void props.refreshData()}
           onDownloadReport={() => {
             const report = props.data.companyReports[0];
             if (report) void props.downloadReport(report.id);
