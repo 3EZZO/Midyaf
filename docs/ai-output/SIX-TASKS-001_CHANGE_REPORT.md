@@ -64,10 +64,24 @@ Fixes:
 | `npx vitest run` (integration) | 1396 passed, 1 skipped (pre-existing) |
 | `npm run build:server` + `build:client` (integration) | PASS. `npm run build`'s `prisma generate` hit an EPERM because a local server held the engine DLL in the shared node_modules; this was environmental and the generated client was current. |
 | Real-PostgreSQL API smoke, local throwaway DB provisioned with the live fixture writers (`scratch/six-tasks/smoke.mjs`) | 34/34 across all six workflows, including reset |
-| Browser verification AR/RTL + EN/LTR (Lux) | See section "Browser verification" (appended when complete) |
+| Browser verification AR/RTL + EN/LTR (Lux), production build, fresh profile, service workers blocked | Pass 1 found 4 UI defects and 0 API defects, all fixed in 97da78d: mobile switcher clipped, reload reset the Super Admin portal, a spurious bootstrap 403 for applicants, and Badge dropped data attributes. Final pass on merge 84dd73e: 28/28, plus top-up 8/8, so **36/36 PASS** across all six workflows in AR/RTL and EN/LTR at 1440 and 390 px. 0 page errors; the only console 401 was the deliberate check that the wiped test account can no longer sign in. |
 | Neon dev branch | Not run: blocked on a Neon CLI login (`npx neonctl auth`) |
 
 Tests that changed on purpose: three SUPPLIER-001 allow-list assertions (`suppliers.authorization`, `supplierQuotes.authorization`, `supplierPortal`) now assert the new rule, keeping their privacy and denial checks. The activated-client role assertion in `onboarding.test.ts` now expects `CLIENT`. One SA-cannot-approve assertion in `workspaceEvents.test.ts` follows the owner's new rule.
+
+## Browser verification (Lux, final pass on 84dd73e)
+
+| Workflow | Arabic / RTL | English / LTR |
+|---|---|---|
+| #6 Login + Launch Live Demo + persona switcher (9 personas) | 1440 PASS, 390 PASS (menu within viewport) | 1440 PASS, 390 PASS |
+| #2 Collapsible rail and sections, persistence across reload | 1440 PASS (rail on the right edge), 390 PASS | 1440 PASS (256→72 px, title and aria-label on 9/9), 390 PASS |
+| #4 Edit AI Plan (prefilled, PATCH 200, "(Edited)" badge, persists after reload) | 1440 PASS | 1440 PASS, 390 PASS |
+| #1 Client "Plans awaiting approval" + one-click approve; supplier shows no approval UI | 1440 PASS, 390 PASS | 1440 PASS (supplier guard PASS) |
+| #5 Send RFQ → supplier sees REQ/EVT code → sealed quote → admin vault and directory | 1440 PASS (badge and toast) | 1440 PASS (end to end) |
+| #3 Standalone /register/client and /register/supplier, onboarding frame, admin review | 1440 PASS, 390 PASS | 1440 PASS |
+| #6 Reset Demo Data (dialog, toast, queue restored, RFQ gone, test registration removed) | 1440 PASS, 390 dialog PASS | 1440 PASS |
+
+Top-up pass (8/8): Arabic tooltips on the collapsed rail; Send RFQ badge AR 390; supplier portal and sealed quote in Arabic; /register/supplier EN 390; /register/client AR 390; reset AR 1440 and 390. **Total: 36/36 PASS**, 0 page errors. The server was left at the saved baseline.
 
 ## Go-live runbook (needs the owner's explicit go-ahead at each step)
 
