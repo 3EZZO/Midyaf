@@ -53,6 +53,8 @@ Fixes:
 - Contract in `shared/demo.ts`; router in `server/src/routes/demo.ts`. Every route returns 404 unless `DEMO_MODE_ENABLED=true`.
 - `POST /api/demo/switch {persona}` issues a session for one of nine certified synthetic personas. The caller must be the signed-in Super Admin, or a switched session whose origin is re-checked to still be `SUPER_ADMIN`. The token carries `demoOrigin`, and refresh keeps it. The presenter signs in once; switching then needs no logout and no credentials. A passwordless public entry point was deliberately not built, because the site and repository are public.
 - `POST /api/demo/prepare` is an idempotent readiness step. It makes the client persona a viewer of the planning event, which the fixture had omitted and which left the client approval queue empty. It also ensures the company persona is an admin of the demo organizing company. These rows live outside the `ovh2_` namespace.
+  - If the planning event is no longer PLANNING (on live it had been taken to COMPLETED on 2026-11-10), prepare restores its certified fixture scope and status, supersedes the stale approved plan and writes a `demo.prepare.reopen_event` audit row with the before and after values. An event with a signed contract is refused.
+  - If the planning event has no DRAFT, prepare adds the next version: a rules-based advisory plan with its RFQ draft, built like "Generate plan" (`demo_plan_planning_v<n>`).
 - `POST /api/demo/baseline` saves the current state into the `<schema>_demo_baseline` schema. `POST /api/demo/reset` restores it in a single transaction: it truncates the tables, re-inserts parent-first, and fills nullable cyclic foreign keys afterwards (for example `Event.approvedPlanId`). Turning on demo mode therefore declares the database disposable.
 - UI (Lux): a "Launch Live Demo" button on the login page, a persona switcher in the top bar, and save-start-point and reset dialogs. The UI refreshes on the `demo:reset` socket event.
 
@@ -61,13 +63,20 @@ Fixes:
 | Check | Result |
 |---|---|
 | `npm run check` (integration) | PASS |
-| `npx vitest run` (integration) | 1396 passed, 1 skipped (pre-existing) |
+| `npx vitest run` (integration, after the Neon fixes) | 1400 passed, 1 skipped (pre-existing) |
 | `npm run build:server` + `build:client` (integration) | PASS. `npm run build`'s `prisma generate` hit an EPERM because a local server held the engine DLL in the shared node_modules; this was environmental and the generated client was current. |
 | Real-PostgreSQL API smoke, local throwaway DB provisioned with the live fixture writers (`scratch/six-tasks/smoke.mjs`) | 34/34 across all six workflows, including reset |
 | Browser verification AR/RTL + EN/LTR (Lux), production build, fresh profile, service workers blocked | Pass 1 found 4 UI defects and 0 API defects, all fixed in 97da78d: mobile switcher clipped, reload reset the Super Admin portal, a spurious bootstrap 403 for applicants, and Badge dropped data attributes. Final pass on merge 84dd73e: 28/28, plus top-up 8/8, so **36/36 PASS** across all six workflows in AR/RTL and EN/LTR at 1440 and 390 px. 0 page errors; the only console 401 was the deliberate check that the wiped test account can no longer sign in. |
-| Neon dev branch | Not run: blocked on a Neon CLI login (`npx neonctl auth`) |
+| Neon review branch `six-tasks-001-review-20261122` of `midyaf-demo` production (copy of live data) | Additive SQL applied; the `midyaf` schema then matches the integration Prisma schema exactly (`prisma migrate diff`: empty). The first smoke run found 2 defects that the local fixture could not show, and Lux's browser pass found a slow reset (see below). After the fixes, the branch was reset to a fresh copy of production and the whole run repeated: **34/34**, with save start point 4.6 s and Reset Demo Data 8.2 s over a WAN link (was 72 s). After reset, all 47 tables match the saved start point row for row; the only extra row is the reset's own `demo.reset` audit entry. Branch-only throwaway persona passwords were used; live passwords were not touched. |
+| Browser verification on the Neon review branch (Lux) | 12/12 PASS in AR/RTL and EN/LTR: client queue and one-click approval of the v2 draft, Edit AI Plan, Send RFQ, supplier sealed quote, cross-organization isolation with the extra live rows (a second workspace event, the legacy DEMO-SUMMIT-01 event), and Reset Demo Data. 0 console, page or network errors. Re-check after the reset rewrite (7274615): 3/3 PASS (AR/RTL 1440, EN/LTR 390); `POST /api/demo/reset` 9.1 s and 9.5 s. |
 
 Tests that changed on purpose: three SUPPLIER-001 allow-list assertions (`suppliers.authorization`, `supplierQuotes.authorization`, `supplierPortal`) now assert the new rule, keeping their privacy and denial checks. The activated-client role assertion in `onboarding.test.ts` now expects `CLIENT`. One SA-cannot-approve assertion in `workspaceEvents.test.ts` follows the owner's new rule.
+
+## Defects found on the Neon review branch (fixed in b993093, 7006f36 and 7274615)
+
+1. **Baseline and reset found no tables on Neon.** Neon does not apply Prisma's `search_path`, so `current_schema()` returned `public` instead of `midyaf`. Baseline and reset now take the schema from `DATABASE_URL`, like the app's other raw queries.
+2. **The live demo was "used up".** On 2026-11-10 the company persona changed the planning event's scope to 50 VIP, 100 regular guests and 150 cars, approved its plan, made it ACTIVE, moved its dates and completed it. The client approval queue was empty, and editing and sending the RFQ were blocked. `prepare` now reopens the event as described in section 6.
+3. **Reset Demo Data took 72 s** (found by Lux in the browser): about four round trips per table inside one transaction. Catalog reads and row counts are now single queries, and the truncate, inserts and deferred updates run server-side in one block in the same transaction: 8.2 s over the same link.
 
 ## Browser verification (Lux, final pass on 84dd73e)
 
@@ -85,13 +94,15 @@ Top-up pass (8/8): Arabic tooltips on the collapsed rail; Send RFQ badge AR 390;
 
 ## Go-live runbook (needs the owner's explicit go-ahead at each step)
 
-1. Create a Neon branch of `midyaf-demo`. Apply `prisma/six-tasks-001-additive.sql` over a DIRECT connection. Run the integration build against the branch with `DEMO_MODE_ENABLED=true`, then run `smoke.mjs` (it needs the persona passwords from the owner's private store).
+1. Done on 2026-11-22: review branch `six-tasks-001-review-20261122`, SQL applied, smoke 34/34. Delete the branch once live is verified.
 2. Apply the same SQL to the live database. It is additive and only adds an enum value.
 3. Open a PR from `feat/six-tasks` and merge it to `main`. Render auto-deploys. Set `DEMO_MODE_ENABLED=true` on the Render service.
 4. Signed in as the Super Admin: call `POST /api/demo/prepare`, check the pitch looks right, then use "Save current state as demo start point". Before each pitch, use "Reset Demo Data".
 5. Reload the installed PWA, because the service worker caches the previous bundle.
 
 ## Known limits
+
+- Timings above were measured from Riyadh against Neon us-west-2, so every query crossed a WAN link. After a reset the UI also reloads the Admin data before closing the dialog (about 25 s in total over that link). On Render the service and the database are both in Oregon (render.yaml sets no region, so Render's default; Neon us-west-2), so both should be much faster. Check this once in step 4 of the runbook.
 
 - Supplier demand for a dispatched RFQ is the deterministic estimate from the guest counts, not the edited plan quantities. The RFQ draft does follow the edits.
 - The approval queue for the Super Admin writes one support-audit row per listing that returns items.
