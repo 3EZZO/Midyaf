@@ -3,9 +3,9 @@
  * the design system. Recharts needs concrete colour strings.
  */
 function token(name: string, alpha = 1) {
-  if (typeof document === "undefined") return `rgb(212 175 55 / ${alpha})`;
+  if (typeof document === "undefined") return `rgb(201 164 76 / ${alpha})`;
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v ? `rgb(${v} / ${alpha})` : `rgb(212 175 55 / ${alpha})`;
+  return v ? `rgb(${v} / ${alpha})` : `rgb(201 164 76 / ${alpha})`;
 }
 
 export const chartColors = () => ({
@@ -14,7 +14,8 @@ export const chartColors = () => ({
   pearl: token("--ink"),
   muted: token("--ink-muted"),
   faint: token("--ink-faint"),
-  grid: token("--surface-3"),
+  // 8% ivory, drawn dashed: present but quiet on a projector.
+  grid: token("--ink", 0.08),
   surface: token("--surface-2"),
   ok: token("--status-ok"),
   warn: token("--status-warn"),
@@ -28,9 +29,9 @@ export const tickStyle = () => ({ fill: token("--ink-faint"), fontSize: 12, font
 export const tooltipStyle = () => ({
   contentStyle: {
     background: token("--surface-2"),
-    border: `1px solid rgb(255 255 255 / 0.08)`,
-    borderRadius: 8,
-    boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
+    border: `1px solid rgb(246 244 238 / 0.12)`,
+    borderRadius: 10,
+    boxShadow: "inset 0 1px 0 rgba(246,244,238,0.06), 0 18px 40px rgba(0,0,0,0.6)",
     fontSize: 12,
     color: token("--ink")
   },

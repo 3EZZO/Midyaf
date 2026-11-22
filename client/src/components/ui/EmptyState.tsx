@@ -31,14 +31,14 @@ export function EmptyState({
     >
       <span
         className={cn(
-          "grid place-items-center rounded-lg border border-hairline bg-surface-1 text-ink-faint",
+          "grid place-items-center rounded-md border border-gold-500/30 bg-gold-500/10 text-gold-300",
           compact ? "size-9" : "size-12"
         )}
         aria-hidden
       >
         {icon ?? <Inbox className={compact ? "size-4" : "size-5"} />}
       </span>
-      <p className={cn("font-semibold text-ink", compact ? "text-sm" : "text-base")}>
+      <p className={cn("font-display font-semibold text-ink", compact ? "text-sm" : "text-base")}>
         {title ?? (isArabic ? "لا توجد بيانات بعد" : "Nothing here yet")}
       </p>
       {description ? <p className="max-w-sm text-sm text-ink-muted">{description}</p> : null}
