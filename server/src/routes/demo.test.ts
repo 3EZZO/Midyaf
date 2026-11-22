@@ -209,6 +209,32 @@ describe("investor demo prepare", () => {
     expect(memory.current.rows("eventPlan").filter((row) => row.eventId === planningId)).toHaveLength(2);
   });
 
+  it("reopens a planning event that was walked to COMPLETED (live 2026-11-10) with the certified scope", async () => {
+    seedLive();
+    Object.assign(memory.current.rows("event")[0], {
+      operationalStatus: "COMPLETED", vipGuestCount: 50, regularGuestCount: 100, carCount: 150,
+      startAt: new Date("2026-11-25T06:00:00.000Z"), endAt: new Date("2026-11-28T18:00:00.000Z")
+    });
+    const changes = await prepareInvestorDemo(memory.current.prisma as never, admin.id);
+    expect(changes).toEqual(["client-planning-membership", "planning-event-reopened", "planning-draft-plan", "company-org-admin"]);
+    const reopened = memory.current.rows("event")[0];
+    expect(reopened).toMatchObject({ operationalStatus: "PLANNING", vipGuestCount: 3, regularGuestCount: 20, carCount: 6, approvedPlanId: null, planApprovedAt: null });
+    expect(reopened.startAt).toEqual(new Date("2026-12-06T06:00:00.000Z"));
+    const plans = memory.current.rows("eventPlan");
+    expect(plans.find((row) => row.id === "ovh2_plan_planning_v1")!.status).toBe("SUPERSEDED");
+    expect(plans.find((row) => row.status === "DRAFT")).toMatchObject({ id: "demo_plan_planning_v2", version: 2 });
+    const audit = memory.current.rows("auditLog").find((row) => row.action === "demo.prepare.reopen_event")!;
+    expect(audit).toMatchObject({ actorUserId: admin.id, eventId: planningId, metadata: { supersededPlans: 1 } });
+    expect(audit.beforeData).toMatchObject({ operationalStatus: "COMPLETED", vipGuestCount: 50, approvedPlanId: "ovh2_plan_planning_v1" });
+    expect(await prepareInvestorDemo(memory.current.prisma as never, admin.id)).toEqual([]);
+  });
+
+  it("refuses to reopen a planning event whose contract was signed", async () => {
+    seedLive();
+    Object.assign(memory.current.rows("event")[0], { operationalStatus: "ACTIVE", contractSignedAt: new Date("2026-11-20T00:00:00.000Z") });
+    await expect(prepareInvestorDemo(memory.current.prisma as never, admin.id)).rejects.toThrow(/signed contract/);
+  });
+
   it("leaves an existing draft alone (fresh fixture)", async () => {
     seedLive();
     memory.current.rows("eventPlan")[0].status = "DRAFT";
