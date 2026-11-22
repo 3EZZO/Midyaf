@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, Plus, RefreshCw } from "lucide-react";
 import type { Session } from "@shared/domain";
 import type { OrganizationDto, WorkspaceEventDto } from "@shared/overhaul";
-import { OnboardingWorkspace } from "./OnboardingWorkspace";
 import { Section } from "./Section";
 import { EventWorkspace } from "./EventWorkspace";
 import { OrganizationMembers, canManageMembers } from "./OrganizationMembers";
@@ -112,7 +111,7 @@ export function useNewEventRequest(sessionKey: string | null | undefined) {
  */
 export function OrganizerWorkspace({ session, isArabic, newEventRequest = 0, onNewEventRequestTaken, showNewEventButton = true, onEventsChanged }: { session?: Session | null; isArabic: boolean; newEventRequest?: number; onNewEventRequestTaken?: (id: number) => void; showNewEventButton?: boolean; onEventsChanged?: () => void }) {
   if (!session) return <p>{isArabic ? "سجل الدخول لعرض فعاليات المؤسسة" : "Sign in to view organization events"}</p>;
-  return <div className="space-y-4"><OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} isSuperAdmin={session.user.role === "SUPER_ADMIN"} currentUserId={session.user.id} newEventRequest={newEventRequest} onNewEventRequestTaken={onNewEventRequestTaken} showNewEventButton={showNewEventButton} onEventsChanged={onEventsChanged} /><details className="rounded-lg border border-hairline bg-surface-2 p-4"><summary className="cursor-pointer text-sm font-semibold text-ink">{isArabic?"تسجيل الموردين والعملاء":"Vendor / client registration"}</summary><div className="mt-3"><OnboardingWorkspace key={session.accessToken} session={session} isArabic={isArabic}/></div></details></div>;
+  return <div className="space-y-4"><OrganizerContent key={session.accessToken} token={session.accessToken} isArabic={isArabic} isSuperAdmin={session.user.role === "SUPER_ADMIN"} currentUserId={session.user.id} newEventRequest={newEventRequest} onNewEventRequestTaken={onNewEventRequestTaken} showNewEventButton={showNewEventButton} onEventsChanged={onEventsChanged} /></div>;
 }
 
 /** The new-event action. Disabled (never a forbidden form) while access is unknown or missing. */

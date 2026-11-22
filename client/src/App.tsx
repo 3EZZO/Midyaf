@@ -43,10 +43,15 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
-import { OnboardingWorkspace } from "./components/OnboardingWorkspace";
+import {
+  ApplicantRegistration,
+  StandaloneOnboardingFrame,
+  registrationKindFromPath,
+  registrationPathForKind
+} from "./components/OnboardingWorkspace";
 import { InviteAcceptance } from "./components/EventTeams";
 import { useWorkspaceResource } from "./lib/workspaceApi";
-import type { WorkspaceEventDto } from "@shared/overhaul";
+import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
 import { LoginPage } from "./shell/LoginPage";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
@@ -114,18 +119,41 @@ export function App() {
   const [isOnboarding, setIsOnboarding] = useState(
     window.location.hash.startsWith("#onboarding")
   );
+  // SIX-TASKS #3: Standalone /register/supplier and /register/client routes
+  const [registrationKind, setRegistrationKind] = useState<OnboardingKind | null>(() =>
+    registrationKindFromPath(window.location.pathname)
+  );
   // Dev-only design-system gallery (see pages/DesignSystemPreview).
   const [isDesignPreview, setIsDesignPreview] = useState(
     import.meta.env.DEV && window.location.hash === "#design"
   );
+
+  const navigateRegistration = useCallback((kind: OnboardingKind | null) => {
+    setRegistrationKind(kind);
+    try {
+      const target = kind ? registrationPathForKind(kind) : "/";
+      if (window.location.pathname !== target) {
+        window.history.pushState({}, "", target);
+      }
+    } catch {
+      // ignore history errors in restricted contexts
+    }
+  }, []);
 
   useEffect(() => {
     const handleHash = () => {
       setIsOnboarding(window.location.hash.startsWith("#onboarding"));
       setIsDesignPreview(import.meta.env.DEV && window.location.hash === "#design");
     };
+    const handlePopState = () => {
+      setRegistrationKind(registrationKindFromPath(window.location.pathname));
+    };
     window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("hashchange", handleHash);
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   const [data, setData] = useState<MidyafData | null>(null);
@@ -496,6 +524,25 @@ export function App() {
         />
       );
     }
+    if (registrationKind) {
+      return (
+        <ApplicantRegistration
+          isArabic={isArabic}
+          fixedKind={registrationKind}
+          onLanguageToggle={() =>
+            void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
+          }
+          onRegistered={(nextSession) => {
+            navigateRegistration(null);
+            installSession(nextSession);
+            setPortal(initialPortalForRole(nextSession.user.role));
+          }}
+          onLogin={handleLogin}
+          onSwitchKind={(other) => navigateRegistration(other)}
+          onBack={() => navigateRegistration(null)}
+        />
+      );
+    }
     return (
       <LoginPage
         isArabic={isArabic}
@@ -504,12 +551,34 @@ export function App() {
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
+        onOpenRegistration={(kind) => navigateRegistration(kind)}
+        onRegistered={(nextSession) => {
+          navigateRegistration(null);
+          installSession(nextSession);
+          setPortal(initialPortalForRole(nextSession.user.role));
+        }}
         onLogin={handleLogin}
       />
     );
   }
 
-  if (session.user.onboardingPending) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><button onClick={handleLogout}>{isArabic ? "تسجيل الخروج" : "Sign out"}</button><OnboardingWorkspace session={session} isArabic={isArabic} onRefresh={async()=>{const next=await refreshSession(session.refreshToken);installSession(next);setPortal(initialPortalForRole(next.user.role));}}/></main>;
+  if (session.user.onboardingPending) {
+    return (
+      <StandaloneOnboardingFrame
+        session={session}
+        isArabic={isArabic}
+        onLanguageToggle={() =>
+          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
+        }
+        onLogout={handleLogout}
+        onRefresh={async () => {
+          const next = await refreshSession(session.refreshToken);
+          installSession(next);
+          setPortal(initialPortalForRole(next.user.role));
+        }}
+      />
+    );
+  }
   const inviteToken = new URLSearchParams(window.location.hash.slice(1)).get("workspace-invite");
   if (inviteToken) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><InviteAcceptance token={session.accessToken} isArabic={isArabic} inviteToken={inviteToken} onAccepted={()=>{setJustJoinedWorkspace(true);setWorkspaceRevision(n=>n+1);setPortal("company");}}/></main>;
 

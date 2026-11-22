@@ -53,6 +53,9 @@ describe('organizer event workspace', () => {
     expect(html).toContain('Open &amp; edit →');
     // The form opens on demand; the dashboard itself carries no second creation form.
     expect(html).not.toContain('data-event-setup');
+    // SIX-TASKS #3: organizing company no longer hosts vendor/client registration.
+    expect(html).not.toContain('Vendor / client registration');
+    expect(html).not.toContain('تسجيل الموردين والعملاء');
   });
 
   it('requires authentication and renders the Arabic entry', () => {

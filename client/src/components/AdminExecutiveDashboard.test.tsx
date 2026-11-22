@@ -157,8 +157,9 @@ describe("AdminExecutiveDashboard", () => {
     expect(html).toMatch(/aria-label="Plans awaiting approval: 2"/);
   });
 
-  it("keeps the scripted demo labelled as such", () => {
+  it("keeps the scripted demo labelled as such and keeps onboarding review visible for SUPER_ADMIN in demo mode", () => {
     expect(render(emptyData, false, true)).toContain("Demo mode");
     expect(render()).not.toContain("Demo mode");
+    expect(render(emptyData, false, true, adminSession)).toContain("data-onboarding");
   });
 });

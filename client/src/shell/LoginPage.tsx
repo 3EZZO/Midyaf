@@ -1,8 +1,10 @@
 import { ApplicantRegistration } from "../components/OnboardingWorkspace";
 import { useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Globe2, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, Globe2, Package, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { OnboardingKind } from "@shared/overhaul";
+import type { Session } from "@shared/domain";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
 import { entrance } from "../lib/motion";
@@ -14,16 +16,21 @@ export function LoginPage({
   error,
   isLoading,
   onLanguageToggle,
-  onLogin
+  onLogin,
+  onOpenRegistration,
+  onRegistered
 }: {
   isArabic: boolean;
   error: string | null;
   isLoading: boolean;
   onLanguageToggle: () => void;
   onLogin: (email: string, password: string) => Promise<void>;
+  /** Standalone top-level navigation to /register/supplier or /register/client. */
+  onOpenRegistration?: (kind: OnboardingKind) => void;
+  onRegistered?: (session: Session) => void;
 }) {
   const { t } = useTranslation();
-  const [join, setJoin] = useState(false);
+  const [joinKind, setJoinKind] = useState<OnboardingKind | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPersonas] = useState(() => demoPersonasEnabled());
@@ -34,7 +41,27 @@ export function LoginPage({
     await onLogin(email, password);
   }
 
-  if (join) return <ApplicantRegistration isArabic={isArabic} onLogin={onLogin} onBack={() => setJoin(false)}/>;
+  function openRegistration(kind: OnboardingKind) {
+    if (onOpenRegistration) {
+      onOpenRegistration(kind);
+    } else {
+      setJoinKind(kind);
+    }
+  }
+
+  if (joinKind) {
+    return (
+      <ApplicantRegistration
+        isArabic={isArabic}
+        fixedKind={joinKind}
+        onRegistered={onRegistered}
+        onLogin={onLogin}
+        onLanguageToggle={onLanguageToggle}
+        onSwitchKind={(other) => setJoinKind(other)}
+        onBack={() => setJoinKind(null)}
+      />
+    );
+  }
 
   const features = [
     { icon: Sparkles, label: isArabic ? "تخطيط ذكي" : "AI Planning" },
@@ -44,7 +71,6 @@ export function LoginPage({
 
   return (
     <div className={cn("relative min-h-screen overflow-hidden bg-surface-1 text-ink", isArabic ? "font-arabic" : "font-english")}>
-      <button className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded border border-gold-500 bg-surface-2 px-4 py-2 text-ink" onClick={() => setJoin(true)}>{isArabic ? "تسجيل مورد / عميل منظم فعاليات" : "Register a vendor / event organizer"}</button>
       {/* Obsidian field: one slow gold horizon line. Visual only — the form is live at t=0. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,rgb(var(--gold-500)/0.10),transparent_60%)]" />
@@ -165,6 +191,39 @@ export function LoginPage({
           <Button type="submit" variant="gold" size="lg" loading={isLoading} className="mt-6 w-full">
             {isLoading ? t("signingIn") : t("signIn")}
           </Button>
+
+          {/* SIX-TASKS #3: Two standalone registration entry points */}
+          <div className="mt-5 border-t border-hairline pt-4">
+            <p className="mb-2.5 text-xs font-semibold text-ink-muted">
+              {isArabic ? "جديد في مضياف؟ سجّل حسابك المستقل:" : "New to Midyaf? Create a standalone account:"}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                disabled={isLoading}
+                data-register-entry="supplier"
+                leadingIcon={<Package className="size-4" aria-hidden />}
+                onClick={() => openRegistration("VENDOR")}
+                className="w-full"
+              >
+                {isArabic ? "تسجيل كمورد" : "Register as a supplier"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                disabled={isLoading}
+                data-register-entry="client"
+                leadingIcon={<Building2 className="size-4" aria-hidden />}
+                onClick={() => openRegistration("CLIENT")}
+                className="w-full"
+              >
+                {isArabic ? "تسجيل كعميل" : "Register as a client"}
+              </Button>
+            </div>
+          </div>
 
           {showPersonas ? (
             <div className="mt-6 border-t border-hairline pt-5">

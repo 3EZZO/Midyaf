@@ -426,7 +426,7 @@ export function AdminExecutiveDashboard({
         />
       </Section>
 
-      {session?.user.role === "SUPER_ADMIN" && !isDemoMode ? <OnboardingWorkspace session={session} isArabic={isArabic} /> : null}
+      {session?.user.role === "SUPER_ADMIN" ? <OnboardingWorkspace session={session} isArabic={isArabic} /> : null}
 
       <IconTabNav
         tabs={tabs}
