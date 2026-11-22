@@ -191,6 +191,11 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+/* Enforce 12px floor even on third-party Leaflet attribution controls */
+.leaflet-container .leaflet-control-attribution {
+  font-size: 12px;
+}
+
 /* ── Reduced motion guard ── */
 @media (prefers-reduced-motion: reduce) {
   .qasr-reset-bar {

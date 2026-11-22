@@ -249,12 +249,12 @@ export function PlanApprovalQueueView({
                       : "border-gold-500/35"
                   )}
                 >
-                  {/* Circular ceremonial stamp (136px) over the card corner on approval (Approval-D1) */}
+                  {/* Circular ceremonial stamp (136px) over the lower-end corner so the green status pill stays unobstructed */}
                   {sealed ? (
                     <div
                       aria-hidden="true"
                       data-approval-stamp={plan.id}
-                      className="qasr-approval-circular-stamp pointer-events-none absolute top-3 end-4 z-10 grid size-[136px] place-items-center rounded-full p-2.5 text-center sm:end-6"
+                      className="qasr-approval-circular-stamp pointer-events-none absolute bottom-3 end-4 z-10 grid size-[136px] place-items-center rounded-full p-2.5 text-center sm:end-6"
                     >
                       <div className="flex size-full flex-col items-center justify-center rounded-full border border-dashed border-current/70 px-2">
                         <span className="font-display text-2xl font-bold leading-none">
