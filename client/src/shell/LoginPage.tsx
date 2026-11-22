@@ -1,12 +1,13 @@
 import { ApplicantRegistration } from "../components/OnboardingWorkspace";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Building2, Globe2, Package, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, Globe2, Package, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { OnboardingKind } from "@shared/overhaul";
 import type { Session } from "@shared/domain";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
+import { INVESTOR_DEMO_ADMIN_EMAIL } from "../lib/investorDemoApi";
 import { entrance } from "../lib/motion";
 import { cn } from "../lib/cn";
 import { DEMO_PERSONAS, demoPersonasEnabled, selectPersona } from "./demoPersonas";
@@ -33,12 +34,21 @@ export function LoginPage({
   const [joinKind, setJoinKind] = useState<OnboardingKind | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [demoPrompt, setDemoPrompt] = useState(false);
   const [showPersonas] = useState(() => demoPersonasEnabled());
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onLogin(email, password);
+  }
+
+  function handleLaunchLiveDemo() {
+    setEmail(INVESTOR_DEMO_ADMIN_EMAIL);
+    setPassword("");
+    setDemoPrompt(true);
+    passwordInputRef.current?.focus();
   }
 
   function openRegistration(kind: OnboardingKind) {
@@ -140,6 +150,26 @@ export function LoginPage({
               </span>
             ))}
           </motion.div>
+
+          {/* SIX-TASKS #6: Prominent Investor Live Demo launcher (prefills Super Admin email only) */}
+          <motion.div
+            variants={entrance.rise(0.55)}
+            initial={reduced ? false : "initial"}
+            animate="animate"
+            className="pt-1"
+          >
+            <Button
+              type="button"
+              variant="gold"
+              size="lg"
+              disabled={isLoading}
+              data-launch-live-demo
+              leadingIcon={<Play className="size-4 fill-current" aria-hidden />}
+              onClick={handleLaunchLiveDemo}
+            >
+              {isArabic ? "تشغيل العرض المباشر" : "Launch Live Demo"}
+            </Button>
+          </motion.div>
         </section>
 
         <motion.form
@@ -162,6 +192,18 @@ export function LoginPage({
             </div>
           </div>
 
+          {demoPrompt ? (
+            <p
+              role="status"
+              data-live-demo-hint
+              className="mt-4 rounded-lg border border-gold-500/40 bg-gold-500/10 p-3 text-xs text-gold-300"
+            >
+              {isArabic
+                ? `تم تجهيز حساب المشرف العام للعرض (${INVESTOR_DEMO_ADMIN_EMAIL}). أدخل كلمة المرور ثم اضغط «تسجيل الدخول» لفتح شريط التبديل الفوري للأدوار.`
+                : `Demo Super Admin email (${INVESTOR_DEMO_ADMIN_EMAIL}) filled. Enter your password and sign in to access the one-click Investor Demo switcher.`}
+            </p>
+          ) : null}
+
           <div className="mt-6 space-y-4">
             <Field label={t("email")} required>
               <Input
@@ -177,6 +219,7 @@ export function LoginPage({
             </Field>
             <Field label={t("password")} required error={error ?? undefined}>
               <Input
+                ref={passwordInputRef}
                 type="password"
                 autoComplete="current-password"
                 value={password}

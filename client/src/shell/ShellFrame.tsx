@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { motion } from "motion/react";
+import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type {
   Driver,
   Event,
@@ -41,6 +42,12 @@ export type ShellFrameProps = {
   onLogout: () => void;
   /** Initial desktop rail collapsed state when no persisted preference exists. */
   defaultRailCollapsed?: boolean;
+  /** SIX-TASKS #6: One-click Investor Demo status & handlers. */
+  investorDemoStatus?: DemoStatusDto | null;
+  investorDemoBusy?: boolean;
+  onSwitchDemoPersona?: (persona: DemoPersonaDto) => Promise<void> | void;
+  onCaptureDemoBaseline?: () => Promise<void> | void;
+  onResetDemoData?: () => Promise<void> | void;
 };
 
 /**
@@ -68,7 +75,12 @@ export function ShellFrame({
   onSharePlan,
   onLanguageToggle,
   onLogout,
-  defaultRailCollapsed = false
+  defaultRailCollapsed = false,
+  investorDemoStatus,
+  investorDemoBusy,
+  onSwitchDemoPersona,
+  onCaptureDemoBaseline,
+  onResetDemoData
 }: ShellFrameProps) {
   const { collapsed: railCollapsed, toggle: toggleRail } = usePersistedCollapse(
     RAIL_STORAGE_KEY,
@@ -110,6 +122,11 @@ export function ShellFrame({
           ticker={realtimeLog[0]}
           railCollapsed={railCollapsed}
           onToggleRail={toggleRail}
+          investorDemoStatus={investorDemoStatus}
+          investorDemoBusy={investorDemoBusy}
+          onSwitchDemoPersona={onSwitchDemoPersona}
+          onCaptureDemoBaseline={onCaptureDemoBaseline}
+          onResetDemoData={onResetDemoData}
           onOpenQuickNav={() => setIsQuickNavOpen(true)}
           onOpenWarRoom={() => setIsWarRoomOpen?.(true)}
           onLanguageToggle={onLanguageToggle}

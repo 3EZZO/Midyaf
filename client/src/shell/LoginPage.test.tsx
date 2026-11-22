@@ -84,6 +84,16 @@ describe("LoginPage render", () => {
     expect(ar).toContain("تسجيل كعميل");
     expect(ar).not.toContain("تسجيل مورد / عميل منظم فعاليات");
   });
+
+  it("renders a prominent Launch Live Demo button in EN and AR without signing in directly", () => {
+    const { html: en, onLogin } = render(false);
+    expect(en).toContain("data-launch-live-demo");
+    expect(en).toContain("Launch Live Demo");
+    expect(onLogin).not.toHaveBeenCalled();
+
+    const { html: ar } = render(true);
+    expect(ar).toContain("تشغيل العرض المباشر");
+  });
 });
 
 describe("LoginPage wiring (source)", () => {

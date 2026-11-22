@@ -38,6 +38,7 @@ export type ServerEvents = {
   "alert:delay": { taskId: string };
   "geofence:transition": GeofenceTransitionEvent;
   "fleet:diverted": { message: string };
+  "demo:reset": { resetAt: string };
 };
 
 export type ServerEventName = keyof ServerEvents;
@@ -56,7 +57,8 @@ const EVENT_NAMES: ServerEventName[] = [
   "guest:arrived",
   "alert:delay",
   "geofence:transition",
-  "fleet:diverted"
+  "fleet:diverted",
+  "demo:reset"
 ];
 
 /** `connect_error` message the server sends when the handshake token is rejected. */

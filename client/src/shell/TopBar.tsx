@@ -10,6 +10,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { PortalKey, Role, Session } from "@shared/domain";
 import { Button, IconButton } from "../components/ui/Button";
 import { ConnectionDot, connectionLabel } from "../components/ui/ConnectionDot";
@@ -19,6 +20,7 @@ import { cn } from "../lib/cn";
 import { fade } from "../lib/motion";
 import { useSocketContext } from "../lib/useSocket";
 import { PORTAL_RAIL_ID, railToggleCopy } from "./IconRail";
+import { InvestorDemoSwitcher } from "./InvestorDemoSwitcher";
 import { portalIcons, portalMeta } from "./portalMeta";
 
 // Privileged roles are shown by title rather than personal name on shared screens.
@@ -50,6 +52,11 @@ export function TopBar({
   ticker,
   railCollapsed,
   onToggleRail,
+  investorDemoStatus,
+  investorDemoBusy,
+  onSwitchDemoPersona,
+  onCaptureDemoBaseline,
+  onResetDemoData,
   onOpenQuickNav,
   onOpenWarRoom,
   onLanguageToggle,
@@ -62,6 +69,11 @@ export function TopBar({
   ticker?: string;
   railCollapsed?: boolean;
   onToggleRail?: () => void;
+  investorDemoStatus?: DemoStatusDto | null;
+  investorDemoBusy?: boolean;
+  onSwitchDemoPersona?: (persona: DemoPersonaDto) => Promise<void> | void;
+  onCaptureDemoBaseline?: () => Promise<void> | void;
+  onResetDemoData?: () => Promise<void> | void;
   onOpenQuickNav: () => void;
   onOpenWarRoom?: () => void;
   onLanguageToggle: () => void;
@@ -148,7 +160,21 @@ export function TopBar({
       </div>
 
       {/* Controls keep their size; the portal title above truncates instead. */}
-      <div className="ms-auto flex shrink-0 items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {investorDemoStatus?.canSwitch &&
+        onSwitchDemoPersona &&
+        onCaptureDemoBaseline &&
+        onResetDemoData ? (
+          <InvestorDemoSwitcher
+            status={investorDemoStatus}
+            isArabic={isArabic}
+            busy={investorDemoBusy}
+            onSwitchPersona={onSwitchDemoPersona}
+            onCaptureBaseline={onCaptureDemoBaseline}
+            onResetDemo={onResetDemoData}
+          />
+        ) : null}
+
         <Button variant="ghost" size="sm" onClick={onOpenQuickNav} className="gap-2 px-2.5">
           <Search className="size-4 text-gold-500" aria-hidden />
           <span className="hidden sm:inline">{isArabic ? "بحث سريع" : "Quick jump"}</span>

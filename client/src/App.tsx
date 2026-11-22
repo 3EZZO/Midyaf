@@ -51,7 +51,14 @@ import {
 } from "./components/OnboardingWorkspace";
 import { InviteAcceptance } from "./components/EventTeams";
 import { useWorkspaceResource } from "./lib/workspaceApi";
+import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
+import {
+  captureDemoBaseline,
+  fetchDemoStatus,
+  resetDemoData,
+  switchDemoPersona
+} from "./lib/investorDemoApi";
 import { LoginPage } from "./shell/LoginPage";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
@@ -170,6 +177,12 @@ export function App() {
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
   const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
+  // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
+  const [demoStatus, setDemoStatus] = useState<DemoStatusDto | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoStatusRev, setDemoStatusRev] = useState(0);
+  const pendingPortalRef = useRef<PortalKey | null>(null);
+  const lastHandledResetAtRef = useRef<string | null>(null);
   const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
   const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
   const rolePortals = session ? portalsByRole[session.user.role] : [];
@@ -330,18 +343,37 @@ export function App() {
   useEffect(() => {
     if (!session) {
       setData(null);
+      setDemoStatus(null);
       return;
     }
 
-    setPortal((current) =>
-      portalsByRole[session.user.role].includes(current)
-        ? current
-        : portalsByRole[session.user.role].includes("sila_operations")
-        ? "sila_operations"
-        : portalsByRole[session.user.role][0]
-    );
+    const requestedPortal = pendingPortalRef.current;
+    pendingPortalRef.current = null;
+    setPortal((current) => {
+      const allowed = portalsByRole[session.user.role];
+      if (requestedPortal && allowed.includes(requestedPortal)) return requestedPortal;
+      if (allowed.includes(current)) return current;
+      return initialPortalForRole(session.user.role);
+    });
     void loadSessionData(session);
   }, [session?.accessToken]);
+
+  // SIX-TASKS #6: Query GET /api/demo/status for the signed-in session (404 -> hide switcher).
+  useEffect(() => {
+    if (!session?.accessToken || session.user.onboardingPending) {
+      setDemoStatus(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetchDemoStatus(session.accessToken, controller.signal)
+      .then((next) => {
+        if (!controller.signal.aborted) setDemoStatus(next);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setDemoStatus(null);
+      });
+    return () => controller.abort();
+  }, [session?.accessToken, session?.user.onboardingPending, demoStatusRev]);
 
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
@@ -457,6 +489,18 @@ export function App() {
       },
       "fleet:diverted": (payload) => {
         pushLog(`${p("Fleet diverted", "تم تحويل مسار الأسطول")} · ${payload.message}`);
+      },
+      "demo:reset": (payload) => {
+        pushLog(`${p("Demo data reset", "تمت إعادة ضبط بيانات العرض")} · ${stamp()}`);
+        if (payload?.resetAt && lastHandledResetAtRef.current === payload.resetAt) return;
+        if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+        toast.info(
+          isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+          isArabic ? "جارٍ تحديث جميع البيانات إلى نقطة البداية." : "Refreshing all data back to the saved start point."
+        );
+        setWorkspaceRevision((n) => n + 1);
+        setDemoStatusRev((n) => n + 1);
+        void refreshData();
       }
     }
   });
@@ -612,6 +656,11 @@ export function App() {
         setIsWarRoomOpen={setIsWarRoomOpen}
         isQuickNavOpen={isQuickNavOpen}
         setIsQuickNavOpen={setIsQuickNavOpen}
+        investorDemoStatus={demoStatus}
+        investorDemoBusy={demoBusy}
+        onSwitchDemoPersona={handleSwitchDemoPersona}
+        onCaptureDemoBaseline={handleCaptureDemoBaseline}
+        onResetDemoData={handleResetDemoData}
         onLanguageToggle={() =>
           void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
         }
@@ -662,6 +711,11 @@ export function App() {
       setIsWarRoomOpen={setIsWarRoomOpen}
       isQuickNavOpen={isQuickNavOpen}
       setIsQuickNavOpen={setIsQuickNavOpen}
+      investorDemoStatus={demoStatus}
+      investorDemoBusy={demoBusy}
+      onSwitchDemoPersona={handleSwitchDemoPersona}
+      onCaptureDemoBaseline={handleCaptureDemoBaseline}
+      onResetDemoData={handleResetDemoData}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
       onLanguageToggle={() =>
@@ -669,7 +723,7 @@ export function App() {
       }
       onLogout={handleLogout}
     >
-      <ErrorBoundary resetKey={portal} isArabic={isArabic}>
+      <ErrorBoundary key={workspaceRevision} resetKey={`${portal}:${workspaceRevision}`} isArabic={isArabic}>
         <Suspense fallback={<PortalSkeleton />}>{renderPortal(portal, portalProps, isArabic)}</Suspense>
       </ErrorBoundary>
     </ShellFrame>
@@ -716,7 +770,87 @@ export function App() {
     setIsWarRoomOpen(false);
     setSession(null);
     setData(null);
+    setDemoStatus(null);
     setRealtimeLog([]);
+  }
+
+  async function handleSwitchDemoPersona(persona: DemoPersonaDto) {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const nextSession = await switchDemoPersona(activeSession.accessToken, persona.key);
+      pendingPortalRef.current = persona.portal;
+      setPortal(persona.portal);
+      installSession(nextSession);
+      setWorkspaceRevision((n) => n + 1);
+      setDemoStatusRev((n) => n + 1);
+      toast.success(
+        isArabic ? "تم تبديل دور العرض" : "Switched demo role",
+        isArabic ? persona.labelAr : persona.labelEn
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر تبديل الدور" : "Could not switch persona",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  async function handleCaptureDemoBaseline() {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const result = await captureDemoBaseline(activeSession.accessToken);
+      setDemoStatusRev((n) => n + 1);
+      toast.success(
+        isArabic ? "تم حفظ نقطة بداية العرض" : "Demo start point saved",
+        isArabic
+          ? `تم حفظ ${result.rows} سجلاً عبر ${result.tables} جداول.`
+          : `Captured ${result.rows} rows across ${result.tables} tables.`
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر حفظ نقطة البداية" : "Could not save demo start point",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
+  }
+
+  async function handleResetDemoData() {
+    const activeSession = sessionRef.current;
+    if (!activeSession) return;
+    setDemoBusy(true);
+    try {
+      const result = await resetDemoData(activeSession.accessToken);
+      lastHandledResetAtRef.current = result.resetAt;
+      try {
+        window.sessionStorage.removeItem(`midyaf_data_${activeSession.user.id}`);
+      } catch {
+        // ignore storage errors
+      }
+      setWorkspaceRevision((n) => n + 1);
+      setDemoStatusRev((n) => n + 1);
+      await refreshData();
+      toast.success(
+        isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+        isArabic
+          ? `تمت استعادة ${result.restored} سجلاً وإزالة ${result.removed} سجلاً.`
+          : `Restored ${result.restored} rows and cleared ${result.removed} rows.`
+      );
+    } catch (error) {
+      toast.alert(
+        isArabic ? "تعذر إعادة ضبط البيانات" : "Could not reset demo data",
+        error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
+      );
+    } finally {
+      setDemoBusy(false);
+    }
   }
 
   async function loadSessionData(activeSession: Session) {
