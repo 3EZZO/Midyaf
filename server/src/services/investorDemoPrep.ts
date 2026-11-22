@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { DEMO_ACCOUNTS } from "../utils/demoProvisioning.js";
-import { OVERHAUL_IDS } from "../utils/overhaulDemo.js";
+import { OVERHAUL_IDS, overhaulEventScope } from "../utils/overhaulDemo.js";
 import { HttpError } from "../utils/http.js";
 import { buildAdvisoryPlan, WORKSPACE_EVENT_SELECT } from "../utils/workspacePolicy.js";
 import { contentWithRfq, rfqForPlan } from "../utils/workspacePlanRfq.js";
@@ -14,11 +14,17 @@ import { contentWithRfq, rfqForPlan } from "../utils/workspacePlanRfq.js";
  *  - client persona: CLIENT_VIEWER (VIEW) on the planning event;
  *  - company persona: ADMIN of the demo organizing company (as granted live
  *    for ORG-MEMBERS), so it can create and edit events during the pitch;
+ *  - the planning event back in PLANNING with its certified scope, only if
+ *    it was moved on (see reopenPlanningEvent);
  *  - a DRAFT plan on the planning event for the client to approve, only if
  *    none exists (see ensurePlanningDraft).
  * No account, password or financial record is created or changed.
  */
-export type DemoPrepChange = "client-planning-membership" | "company-org-admin" | "planning-draft-plan";
+export type DemoPrepChange =
+  | "client-planning-membership"
+  | "company-org-admin"
+  | "planning-event-reopened"
+  | "planning-draft-plan";
 
 const emailOf = (key: string) => DEMO_ACCOUNTS.find((account) => account.key === key)!.email;
 
@@ -54,6 +60,7 @@ export async function prepareInvestorDemo(tx: Prisma.TransactionClient, actorId:
     throw new HttpError(409, "The client persona already has another role on the planning event");
   }
 
+  if (await reopenPlanningEvent(tx, actorId)) changes.push("planning-event-reopened");
   if (await ensurePlanningDraft(tx, company.id)) changes.push("planning-draft-plan");
 
   const orgRole = await tx.organizationMembership.findUnique({
@@ -67,6 +74,46 @@ export async function prepareInvestorDemo(tx: Prisma.TransactionClient, actorId:
     changes.push("company-org-admin");
   }
   return changes;
+}
+
+/**
+ * The pitch starts from the planning stage. On the live demo database the
+ * planning event had been walked through its whole lifecycle on 2026-11-10
+ * (scope changed, plan approved, ACTIVE, dates moved, COMPLETED), which blocks
+ * approval, editing and the RFQ. When it is no longer PLANNING, restore the
+ * certified scope and status, and supersede its approved plan so operations
+ * are locked again until the client approves the new draft. Plans, guests and
+ * history are kept; the before and after values are audited.
+ */
+async function reopenPlanningEvent(tx: Prisma.TransactionClient, actorId: string): Promise<boolean> {
+  const planningId = OVERHAUL_IDS.events.planning;
+  const event = await tx.event.findUnique({
+    where: { id: planningId },
+    select: {
+      operationalStatus: true, vipGuestCount: true, regularGuestCount: true, carCount: true, startAt: true, endAt: true,
+      arrivalStartAt: true, departureEndAt: true, approvedPlanId: true, planApprovedAt: true, contractSignedAt: true
+    }
+  });
+  if (!event) throw new HttpError(409, "The demo fixture is not present in this database");
+  if (event.operationalStatus === "PLANNING") return false;
+  if (event.contractSignedAt) throw new HttpError(409, "The demo planning event has a signed contract; restore the demo fixture instead");
+  const scope = overhaulEventScope("planning");
+  const superseded = await tx.eventPlan.updateMany({ where: { eventId: planningId, status: "APPROVED" }, data: { status: "SUPERSEDED" } });
+  await tx.event.update({ where: { id: planningId }, data: { ...scope, approvedPlanId: null, planApprovedAt: null } });
+  await tx.auditLog.create({
+    data: {
+      actorUserId: actorId,
+      actorRole: "SUPER_ADMIN",
+      action: "demo.prepare.reopen_event",
+      entityType: "EVENT",
+      entityId: planningId,
+      eventId: planningId,
+      beforeData: JSON.parse(JSON.stringify(event)),
+      afterData: JSON.parse(JSON.stringify({ ...scope, approvedPlanId: null, planApprovedAt: null })),
+      metadata: { supersededPlans: superseded.count }
+    }
+  });
+  return true;
 }
 
 /**

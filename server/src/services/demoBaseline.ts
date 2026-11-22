@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { HttpError } from "../utils/http.js";
+import { databaseSchemaName } from "../utils/supplierPortal.js";
 
 /**
  * SIX-TASKS #6 deterministic investor-demo reset.
@@ -33,10 +34,19 @@ export function baselineSchemaFor(schema: string) {
   return `${schema}_demo_baseline`;
 }
 
+/**
+ * The application schema, from DATABASE_URL's `schema` parameter like every
+ * other raw query in the app. current_schema() is not reliable: Neon does not
+ * apply Prisma's search_path, so it reports "public" there (seen on the
+ * SIX-TASKS Neon review branch, 2026-11-22).
+ */
 async function currentSchema(db: Db): Promise<string> {
-  const rows = await db.$queryRawUnsafe<Array<{ schema: string }>>("SELECT current_schema() AS schema");
-  const schema = rows[0]?.schema;
-  if (!schema) throw new HttpError(500, "Unable to resolve the database schema");
+  const schema = databaseSchemaName();
+  const rows = await db.$queryRawUnsafe<Array<{ found: boolean }>>(
+    "SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = $1) AS found",
+    schema
+  );
+  if (!rows[0]?.found) throw new HttpError(500, `The database schema ${schema} does not exist`);
   return schema;
 }
 

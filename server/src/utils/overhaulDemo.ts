@@ -221,6 +221,24 @@ const EVENTS: EventSpec[] = [
   { key: "planning", name: "Overhaul Demo Expo (Synthetic)", operationalStatus: "PLANNING", start: "2026-12-06T06:00:00.000Z", end: "2026-12-08T18:00:00.000Z", vip: 3, regular: 20, cars: 6, signed: false }
 ];
 
+/** The certified scope of a fixture event (what "prepare" restores for the pitch). */
+export function overhaulEventScope(key: EventSpec["key"]) {
+  const spec = EVENTS.find((event) => event.key === key)!;
+  const startAt = at(spec.start);
+  const endAt = at(spec.end);
+  return {
+    operationalStatus: spec.operationalStatus,
+    vipGuestCount: spec.vip,
+    regularGuestCount: spec.regular,
+    carCount: spec.cars,
+    date: startAt,
+    startAt,
+    endAt,
+    arrivalStartAt: new Date(startAt.getTime() - 24 * 3600_000),
+    departureEndAt: new Date(endAt.getTime() + 24 * 3600_000)
+  };
+}
+
 export const OVERHAUL_IDS = {
   organizerOrg: ns("org_events"),
   vendorOrg: ns("org_vendor"),
