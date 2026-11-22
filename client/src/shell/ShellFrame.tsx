@@ -11,6 +11,7 @@ import type {
 import { QuickNavigator } from "../components/QuickNavigator";
 import { SovereignCommandBridge } from "../components/warroom";
 import { cn } from "../lib/cn";
+import { RAIL_STORAGE_KEY, usePersistedCollapse } from "../lib/collapsibleStorage";
 import { portalSwitch } from "../lib/motion";
 import { BottomTabBar } from "./BottomTabBar";
 import { IconRail } from "./IconRail";
@@ -38,6 +39,8 @@ export type ShellFrameProps = {
   onSharePlan?: () => void;
   onLanguageToggle: () => void;
   onLogout: () => void;
+  /** Initial desktop rail collapsed state when no persisted preference exists. */
+  defaultRailCollapsed?: boolean;
 };
 
 /**
@@ -64,8 +67,14 @@ export function ShellFrame({
   onExportPdf,
   onSharePlan,
   onLanguageToggle,
-  onLogout
+  onLogout,
+  defaultRailCollapsed = false
 }: ShellFrameProps) {
+  const { collapsed: railCollapsed, toggle: toggleRail } = usePersistedCollapse(
+    RAIL_STORAGE_KEY,
+    defaultRailCollapsed
+  );
+
   // A portal is a new page: start it at the top, not at the previous scroll offset.
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -83,15 +92,24 @@ export function ShellFrame({
         portal={portal}
         setPortal={setPortal}
         isArabic={isArabic}
+        collapsed={railCollapsed}
+        onToggleCollapse={toggleRail}
       />
 
-      <div className="flex min-h-screen flex-col lg:ps-[72px]">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[padding] duration-slow ease-out motion-reduce:transition-none",
+          railCollapsed ? "lg:ps-[72px]" : "lg:ps-64"
+        )}
+      >
         <TopBar
           isArabic={isArabic}
           session={session}
           portal={portal}
           isDemoMode={isDemoMode}
           ticker={realtimeLog[0]}
+          railCollapsed={railCollapsed}
+          onToggleRail={toggleRail}
           onOpenQuickNav={() => setIsQuickNavOpen(true)}
           onOpenWarRoom={() => setIsWarRoomOpen?.(true)}
           onLanguageToggle={onLanguageToggle}

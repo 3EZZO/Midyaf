@@ -1,5 +1,5 @@
-export function isArabicLanguage(language: string) {
-  return language.startsWith("ar");
+export function isArabicLanguage(language?: string) {
+  return Boolean(language && language.startsWith("ar"));
 }
 
 export function pickText(isArabic: boolean, english: string, arabic: string) {

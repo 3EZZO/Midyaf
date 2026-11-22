@@ -120,7 +120,12 @@ export function ClientDashboard({
             <KpiTile label={isArabic ? "المهام المكتملة" : "Tasks Completed"} value={`${integer(kpis.tasksCompleted.completed)} / ${integer(kpis.tasksCompleted.total)}`} detail={isArabic ? `${integer(sla.delayed)} متأخرة` : `${integer(sla.delayed)} delayed`} tone={sla.delayed ? "warn" : "none"} size="lg" />
             <KpiTile label={isArabic ? "الحوادث الحرجة" : "Critical Incidents"} value={kpis.openIssues.value} detail={kpis.openIssues.value === 0 ? (isArabic ? "سجل تشغيلي نظيف 100%" : "100% clean incident record") : isArabic ? "بلاغات مفتوحة" : "Open issues"} tone={kpis.openIssues.value === 0 ? "ok" : "danger"} size="lg" />
           </div>
-          <Section title={isArabic ? "رحلة الوفود" : "Delegation journey"} eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}>
+          <Section
+            id="section-client-journey"
+            title={isArabic ? "رحلة الوفود" : "Delegation journey"}
+            eyebrow={isArabic ? "من الدعوة إلى الوصول" : "Invitation to arrival"}
+            isArabic={isArabic}
+          >
             <Funnel stages={funnel} isArabic={isArabic} className="max-w-2xl" />
           </Section>
         </>
@@ -128,11 +133,21 @@ export function ClientDashboard({
         <Locked text={isArabic ? "عرض مؤشرات الأداء مقفل حالياً بناءً على إعدادات شركة صلة." : "Performance data view is currently restricted by Sila."} />
       )}
 
-      {tabs.length ? <IconTabNav tabs={tabs} value={activeTab} onChange={setActiveTab} layoutId="client-tabs" /> : null}
+      {tabs.length ? (
+        <IconTabNav
+          tabs={tabs}
+          value={activeTab}
+          onChange={setActiveTab}
+          layoutId="client-tabs"
+          storageId="client-tabs"
+          isArabic={isArabic}
+          ariaLabel={isArabic ? "أقسام بوابة العميل" : "Client portal sections"}
+        />
+      ) : null}
 
       {activeTab === "amendments" &&
         (config.canViewScheduleAmendments ? (
-          <Section id="section-client-amendments" title={isArabic ? "التعديلات المباشرة" : "Schedule Amendments"}>
+          <Section id="section-client-amendments" title={isArabic ? "التعديلات المباشرة" : "Schedule Amendments"} isArabic={isArabic}>
             {amendments.length === 0 ? (
               <EmptyState compact title={isArabic ? "لا توجد تعديلات" : "No amendments"} />
             ) : (
@@ -172,7 +187,7 @@ export function ClientDashboard({
 
       {activeTab === "chat" &&
         (config.canCommunicateLogistics ? (
-          <Section id="section-client-chat" title={isArabic ? "القناة المباشرة مع مدير العمليات اللوجستية (صلة)" : "Direct Channel with Sila Logistics Manager"}>
+          <Section id="section-client-chat" title={isArabic ? "القناة المباشرة مع مدير العمليات اللوجستية (صلة)" : "Direct Channel with Sila Logistics Manager"} isArabic={isArabic}>
             <ul className="mb-4 max-h-72 space-y-3 overflow-y-auto p-1">
               {messages.map((m) => {
                 const fromClient = m.senderRole === "CLIENT";
@@ -211,6 +226,7 @@ export function ClientDashboard({
           <Section
             id="section-client-reports"
             title={isArabic ? "التقارير التنفيذية" : "Executive Reports"}
+            isArabic={isArabic}
             action={
               onDownloadReport ? (
                 <Button size="sm" variant="gold" leadingIcon={<Download className="size-4" aria-hidden />} onClick={onDownloadReport}>
