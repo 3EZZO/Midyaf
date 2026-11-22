@@ -25,6 +25,8 @@ const { HttpError } = await import("../utils/http.js");
 const demoRouter = (await import("./demo.js")).default;
 const { parentFirstOrder, planRestore } = await import("../services/demoBaseline.js");
 const { DEMO_ACCOUNTS } = await import("../utils/demoProvisioning.js");
+const { prepareInvestorDemo } = await import("../services/investorDemoPrep.js");
+const { OVERHAUL_IDS } = await import("../utils/overhaulDemo.js");
 
 const users = DEMO_ACCOUNTS.map((account, index) => ({
   id: `u_demo_${index}`,
@@ -164,5 +166,53 @@ describe("baseline restore order", () => {
     expect(() =>
       parentFirstOrder(["A", "B"], [{ child: "A", parent: "B" }, { child: "B", parent: "A" }])
     ).toThrow(/cycle/);
+  });
+});
+
+describe("investor demo prepare", () => {
+  const planningId = OVERHAUL_IDS.events.planning;
+  const company = users.find((user) => user.email === "company@midyaf.local")!;
+  const client = users.find((user) => user.email === "client.vip@tourism.gov.sa")!;
+  const event = {
+    id: planningId, organizationId: OVERHAUL_IDS.organizerOrg, organizerId: company.id, name: "Synthetic planning event",
+    brief: null, venue: "Synthetic hall", venueLat: null, venueLng: null, locationLabel: "Riyadh", hotelZone: "Synthetic zone",
+    planningMode: "ADVISORY", operationalStatus: "PLANNING", messagingPolicy: "OPEN", vipGuestCount: 6, regularGuestCount: 40, carCount: 0,
+    startAt: new Date("2026-12-05T06:00:00.000Z"), endAt: new Date("2026-12-07T18:00:00.000Z"), arrivalStartAt: null, departureEndAt: null,
+    approvedPlanId: "ovh2_plan_planning_v1", planApprovedAt: new Date("2026-11-10T08:40:02.586Z"), contractSignedAt: null
+  };
+  // The live demo database on 2026-11-22: the fixture's planning draft had already been approved.
+  const approvedV1 = {
+    id: "ovh2_plan_planning_v1", eventId: planningId, version: 1, status: "APPROVED", source: "DETERMINISTIC_ADVISORY", advisory: true,
+    summary: "Synthetic advisory", content: { generator: "deterministic-advisory" }, generatedById: company.id, approvedById: client.id
+  };
+  const seedLive = () =>
+    memory.current.seed({
+      user: structuredClone(users),
+      auditLog: [],
+      organization: [{ id: OVERHAUL_IDS.organizerOrg, name: "Synthetic Organizer" }],
+      event: [structuredClone(event)],
+      eventPlan: [structuredClone(approvedV1)],
+      eventMembership: [],
+      organizationMembership: []
+    });
+
+  it("adds a client-approvable advisory DRAFT when the planning plan was already approved, once", async () => {
+    seedLive();
+    const changes = await prepareInvestorDemo(memory.current.prisma as never, admin.id);
+    expect(changes).toEqual(["client-planning-membership", "planning-draft-plan", "company-org-admin"]);
+    const plans = memory.current.rows("eventPlan").filter((row) => row.eventId === planningId);
+    const draft = plans.find((row) => row.status === "DRAFT")!;
+    expect(draft).toMatchObject({ id: "demo_plan_planning_v2", version: 2, source: "DETERMINISTIC_ADVISORY", advisory: true, generatedById: company.id });
+    expect((draft.content as { rfqDraft?: { planId: string; lines: unknown[] } }).rfqDraft).toMatchObject({ planId: "demo_plan_planning_v2" });
+    expect(plans.find((row) => row.id === "ovh2_plan_planning_v1")!.status).toBe("APPROVED");
+    expect(await prepareInvestorDemo(memory.current.prisma as never, admin.id)).toEqual([]);
+    expect(memory.current.rows("eventPlan").filter((row) => row.eventId === planningId)).toHaveLength(2);
+  });
+
+  it("leaves an existing draft alone (fresh fixture)", async () => {
+    seedLive();
+    memory.current.rows("eventPlan")[0].status = "DRAFT";
+    expect(await prepareInvestorDemo(memory.current.prisma as never, admin.id)).not.toContain("planning-draft-plan");
+    expect(memory.current.rows("eventPlan")).toHaveLength(1);
   });
 });

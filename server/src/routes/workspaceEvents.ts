@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
 import type { Server } from "socket.io";
 import {generateWorkspacePlan} from '../services/workspacePlanning.js';
+import { contentWithRfq, rfqForPlan, toJsonObject } from "../utils/workspacePlanRfq.js";
 import {
   ActivityStatus,
   EventMemberRole,
@@ -36,12 +37,9 @@ import {
   planApproveSchema,
   type PlanApprovalQueueItem,
   planGenerateSchema,
-  buildRfqDraft,
   rfqDraftFromPlanContent,
-  rfqRequirementsFromPlan,
   type EventMemberDto,
   type EventPlanDto,
-  type RfqDraftDto,
   type EventScopeField,
   type EventUpdateInput
 } from "../../../shared/overhaul.js";
@@ -61,7 +59,6 @@ import {
   WORKSPACE_TRANSACTION,
   assertCanGrant,
   eventMessagingPolicy,
-  buildAdvisoryPlan,
   categoriesForScopeChange,
   hasEventRole,
   isOrgAdminRole,
@@ -344,12 +341,6 @@ function sameValue(a: unknown, b: unknown) {
   return (a ?? null) === (b ?? null);
 }
 
-/** Plain JSON copy (Dates become ISO strings) for a Json column. */
-function toJsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
-  const copy: unknown = JSON.parse(JSON.stringify(value));
-  if (!copy || typeof copy !== "object" || Array.isArray(copy)) return {};
-  return copy as Prisma.InputJsonObject;
-}
 
 function isScopeField(field: string): field is EventScopeField {
   return (EVENT_SCOPE_FIELDS as readonly string[]).includes(field);
@@ -625,42 +616,6 @@ function planDtoFor(access: EventAccess, plan: EventPlanRow): EventPlanDto {
   if (canViewRfq(access) || !isRecord(dto.content) || !("rfqDraft" in dto.content)) return dto;
   const { rfqDraft: _internal, ...content } = dto.content;
   return { ...dto, content };
-}
-
-/**
- * Server-side, deterministic: quantities come from the plan's validated items
- * (manual / stored rules) or from the rules over the current event counts
- * (AI plans). Nothing from the request body is used.
- */
-function rfqForPlan(
-  event: OrgEventRow,
-  plan: { id: string; version: number; source: EventPlanRow["source"]; content: unknown },
-  now: Date
-): RfqDraftDto {
-  return buildRfqDraft({
-    eventId: event.id,
-    planId: plan.id,
-    planVersion: plan.version,
-    planSource: plan.source,
-    event: {
-      locationLabel: event.locationLabel,
-      venue: event.venue,
-      hotelZone: event.hotelZone,
-      vipGuestCount: event.vipGuestCount,
-      regularGuestCount: event.regularGuestCount,
-      carCount: event.carCount,
-      startAt: event.startAt,
-      endAt: event.endAt,
-      arrivalStartAt: event.arrivalStartAt,
-      departureEndAt: event.departureEndAt
-    },
-    requirements: rfqRequirementsFromPlan(plan.source, plan.content, buildAdvisoryPlan(event).content),
-    generatedAt: now
-  });
-}
-
-function contentWithRfq(content: unknown, rfq: RfqDraftDto): Prisma.InputJsonObject {
-  return toJsonObject({ ...(isRecord(content) ? content : {}), rfqDraft: rfq });
 }
 
 router.get(
