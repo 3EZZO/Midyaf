@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ArrowDown, ArrowUp, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, Pencil, Plus, Save, Send, Trash2, X } from "lucide-react";
 import {
   EVENT_SUBTEAMS,
   rfqDraftFromPlanContent,
@@ -17,11 +17,54 @@ import {
   type EditablePlanInput,
   type PlanEditResponse
 } from "@shared/planEditing";
+import { ApiError } from "../lib/api";
 import { Section } from "./Section";
 import { workspaceButton, workspaceInput, type WorkspaceProps } from "./OrganizerWorkspace";
 import { useWorkspaceResource, workspaceRequest } from "../lib/workspaceApi";
 import { approvePlan, canViewRfq, generateAdvisoryPlan, planSections, type PlanSection } from "../lib/workspaceWorkflow";
 import { Badge, Button, useToast } from "./ui";
+
+export type RfqSupplierRequestDto = {
+  intakeId: string;
+  reference: string;
+  status: string;
+  sentAt: string;
+};
+
+export type RfqDispatchResponse = {
+  supplierRequest: RfqSupplierRequestDto | null;
+};
+
+export type RfqSendResponse = {
+  supplierRequest: RfqSupplierRequestDto;
+  created: boolean;
+  notifiedSuppliers: number;
+};
+
+/** Friendly bilingual error messages for POST /api/workspace/events/:eventId/rfq/send. */
+export function rfqSendErrorMessage(error: unknown, ar: boolean): string {
+  const status = error instanceof ApiError ? error.status : 0;
+  if (status === 423) {
+    return ar
+      ? "يجب اعتماد الخطة أولاً قبل إرسال طلب التسعير للموردين."
+      : "Approve the plan first before sending the RFQ to suppliers.";
+  }
+  if (status === 403) {
+    return ar
+      ? "لا تملك صلاحية التعديل لإرسال طلب التسعير للموردين."
+      : "EDIT permission is required to send the RFQ to suppliers.";
+  }
+  if (status === 409) {
+    return ar
+      ? "لا يمكن إرسال طلب التسعير عندما تكون أعداد الضيوف صفراً."
+      : "Guest counts must be greater than zero before sending an RFQ to suppliers.";
+  }
+  return error instanceof Error
+    ? error.message
+    : ar
+      ? "تعذر إرسال طلب التسعير للموردين."
+      : "Could not send RFQ to suppliers.";
+}
 
 const ITEM_CATEGORIES = ["VEHICLES", "HOTEL_ROOMS", "TICKETS", "STAFF", "OTHER"] as const;
 type ItemCategory = (typeof ITEM_CATEGORIES)[number];
@@ -160,9 +203,21 @@ export function validateEditablePlan(
 export function EventPlanEditor({ token, eventId, isArabic: ar, event, onChange, onApproved, initialError = null, initialManual = false }: WorkspaceProps & { event: WorkspaceEventDto; onChange: () => void; onApproved?: (event: WorkspaceEventDto) => void; initialError?: string | null; initialManual?: boolean }) {
   const toast = useToast();
   const [revision, refresh] = useState(0); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [manual, setManual] = useState(initialManual);
+  const [sendingRfq, setSendingRfq] = useState(false);
+  const [rfqSendError, setRfqSendError] = useState<string | null>(null);
+  const [sentSupplierRequest, setSentSupplierRequest] = useState<RfqSupplierRequestDto | null>(null);
   // A failed automatic generation after event creation: the event exists, only generation is retried.
   const [generationError, setGenerationError] = useState<string | null>(initialError);
   const resource = useWorkspaceResource<{ plans: EventPlanDto[] }>(token, `/events/${eventId}/plans`, revision, '/workspace', true);
+  const viewerSeesRfq = canViewRfq(event);
+  const rfqDispatch = useWorkspaceResource<RfqDispatchResponse>(
+    token,
+    viewerSeesRfq ? `/events/${eventId}/rfq/dispatch` : null,
+    revision,
+    "/workspace",
+    true
+  );
+  const supplierRequest = sentSupplierRequest ?? rfqDispatch.data?.supplierRequest ?? null;
   const request = (path: string, body?: unknown, method?: string) => workspaceRequest(token, path, body, method);
   const open = event.operationalStatus !== "COMPLETED";
   const canEdit = event.access.permissions.includes("EDIT") && open;
@@ -173,7 +228,37 @@ export function EventPlanEditor({ token, eventId, isArabic: ar, event, onChange,
     (["OWNER", "ADMIN"].includes(event.access.organizationRole ?? "") ||
       (event.access.eventRole === "PROJECT_MANAGER" && event.access.permissions.includes("EDIT")) ||
       event.access.eventRole === "CLIENT_VIEWER");
-  const canDraftRfq = canEdit && !event.access.support && canViewRfq(event) && !event.contractSigned;
+  const canDraftRfq = canEdit && !event.access.support && viewerSeesRfq && !event.contractSigned;
+  const canSendRfq = canEdit && !event.access.support && viewerSeesRfq;
+
+  async function sendRfqToSuppliers() {
+    setSendingRfq(true);
+    setRfqSendError(null);
+    try {
+      const response = await workspaceRequest<RfqSendResponse>(
+        token,
+        `/events/${eventId}/rfq/send`,
+        { confirm: true },
+        "POST"
+      );
+      setSentSupplierRequest(response.supplierRequest);
+      const count = response.notifiedSuppliers;
+      toast.success(
+        ar ? `أُرسل إلى ${count} من الموردين المطابقين` : `Sent to ${count} matching suppliers`,
+        ar
+          ? `المرجع: ${response.supplierRequest.reference} · الحالة: ${response.supplierRequest.status}`
+          : `Reference: ${response.supplierRequest.reference} · Status: ${response.supplierRequest.status}`
+      );
+      refresh((n) => n + 1);
+      onChange();
+    } catch (err) {
+      const msg = rfqSendErrorMessage(err, ar);
+      setRfqSendError(msg);
+      toast.alert(ar ? "تعذر إرسال طلب التسعير" : "Could not send RFQ", msg);
+    } finally {
+      setSendingRfq(false);
+    }
+  }
   async function act(path: string, body: unknown) {
     setBusy(true); setError("");
     try { await request(`/events/${eventId}${path}`, body); refresh(n => n + 1); onChange(); return true; }
@@ -234,8 +319,14 @@ export function EventPlanEditor({ token, eventId, isArabic: ar, event, onChange,
           busy={busy}
           canApprove={plan.viewerCanApprove !== undefined ? plan.viewerCanApprove === true : canApproveFallback}
           canDraftRfq={canDraftRfq && plan.status !== "SUPERSEDED"}
+          canSendRfq={canSendRfq && plan.status !== "SUPERSEDED"}
+          planApproved={event.planApproved}
+          supplierRequest={supplierRequest}
+          sendingRfq={sendingRfq}
+          rfqSendError={rfqSendError}
           onApprove={() => void approve(plan.id)}
           onDraftRfq={() => void act(`/plans/${plan.id}/rfq`, {})}
+          onSendRfq={() => void sendRfqToSuppliers()}
           onSaveEdit={(payload) => savePlanEdit(plan.id, payload)}
         />
       ))}
@@ -771,8 +862,14 @@ export function PlanCard({
   busy,
   canApprove,
   canDraftRfq,
+  canSendRfq = false,
+  planApproved = false,
+  supplierRequest = null,
+  sendingRfq = false,
+  rfqSendError = null,
   onApprove,
   onDraftRfq,
+  onSendRfq,
   onSaveEdit,
   defaultEditing = false
 }: {
@@ -781,8 +878,14 @@ export function PlanCard({
   busy: boolean;
   canApprove: boolean;
   canDraftRfq: boolean;
+  canSendRfq?: boolean;
+  planApproved?: boolean;
+  supplierRequest?: RfqSupplierRequestDto | null;
+  sendingRfq?: boolean;
+  rfqSendError?: string | null;
   onApprove: () => void;
   onDraftRfq: () => void;
+  onSendRfq?: () => void;
   onSaveEdit?: (payload: EditablePlanInput) => Promise<PlanEditResponse>;
   /** For SSR testing of the open inline editor state. */
   defaultEditing?: boolean;
@@ -814,7 +917,20 @@ export function PlanCard({
     ) : (
       <>
         <div className="grid gap-3 md:grid-cols-2">{planSections(plan.content).map(({ key, value }) => <section key={key} data-plan-section={key} className="rounded border border-hairline p-3"><h4 className="mb-2 font-semibold">{sectionLabels[key][ar ? 1 : 0]}</h4><div className="text-sm"><PlanValue value={value}/></div></section>)}</div>
-        {rfq ? <RfqDraftPanel rfq={rfq} ar={ar} /> : canDraftRfq && <p className="mt-3 text-sm text-ink-muted">{ar ? 'لا توجد مسودة طلب عروض أسعار لهذا الإصدار' : 'No RFQ draft for this version yet'}</p>}
+        {rfq ? (
+          <RfqDraftPanel
+            rfq={rfq}
+            ar={ar}
+            canSendRfq={canSendRfq}
+            planApproved={planApproved}
+            supplierRequest={supplierRequest}
+            sendingRfq={sendingRfq}
+            rfqSendError={rfqSendError}
+            onSendRfq={onSendRfq}
+          />
+        ) : canDraftRfq && (
+          <p className="mt-3 text-sm text-ink-muted">{ar ? 'لا توجد مسودة طلب عروض أسعار لهذا الإصدار' : 'No RFQ draft for this version yet'}</p>
+        )}
       </>
     )}
     <div className="mt-4 flex flex-wrap gap-2">
@@ -838,20 +954,79 @@ export function PlanCard({
 
 const unitLabels: Record<RfqDraftDto['lines'][number]['unit'], [string, string]> = { rooms: ['rooms', 'غرف'], vehicles: ['vehicles', 'مركبات'], people: ['people', 'أفراد'], tickets: ['tickets', 'تذاكر'], items: ['items', 'بنود'] };
 
-/** Read-only RFQ draft: summary, line items, copy and download. It is never sent from here. */
-export function RfqDraftPanel({ rfq, ar }: { rfq: RfqDraftDto; ar: boolean }) {
+/** Read-only RFQ draft with explicit Send-to-Suppliers dispatch once the plan is approved. */
+export function RfqDraftPanel({
+  rfq,
+  ar,
+  canSendRfq = false,
+  planApproved = false,
+  supplierRequest = null,
+  sendingRfq = false,
+  rfqSendError = null,
+  onSendRfq
+}: {
+  rfq: RfqDraftDto;
+  ar: boolean;
+  canSendRfq?: boolean;
+  planApproved?: boolean;
+  supplierRequest?: RfqSupplierRequestDto | null;
+  sendingRfq?: boolean;
+  rfqSendError?: string | null;
+  onSendRfq?: () => void;
+}) {
   const [copied, setCopied] = useState('');
   const text = rfqDraftText(rfq);
   function copy() { void navigator.clipboard?.writeText(text).then(() => setCopied(ar ? 'نُسخت المسودة' : 'Draft copied'), () => setCopied(ar ? 'تعذر النسخ' : 'Copy failed')); }
   function download() { const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = `${rfq.reference}.txt`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
   return <section className="mt-4 rounded border border-gold-500/40 p-3" data-rfq-reference={rfq.reference} aria-label={ar ? 'مسودة طلب عروض الأسعار' : 'RFQ draft'}>
-    <h4 className="font-semibold">{ar ? 'مسودة طلب عروض الأسعار' : 'RFQ draft'} · {rfq.reference}</h4>
-    <p className="text-sm font-semibold text-gold-500">{ar ? 'مسودة — لم تُرسل لأي مورد. الإرسال خطوة منفصلة وصريحة.' : 'Draft — not sent to any vendor. Sending is a separate, explicit step.'}</p>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h4 className="font-semibold">{ar ? 'مسودة طلب عروض الأسعار' : 'RFQ draft'} · {rfq.reference}</h4>
+      {supplierRequest ? (
+        <Badge tone="ok" size="sm" data-rfq-sent={supplierRequest.reference}>
+          <CheckCircle2 className="size-3.5" aria-hidden />
+          {ar
+            ? `أُرسل للموردين · ${supplierRequest.reference} · ${supplierRequest.status}`
+            : `Sent to suppliers · ${supplierRequest.reference} · ${supplierRequest.status}`}
+        </Badge>
+      ) : null}
+    </div>
+    {!supplierRequest ? (
+      <p className="text-sm font-semibold text-gold-500">{ar ? 'مسودة — لم تُرسل لأي مورد. الإرسال خطوة منفصلة وصريحة.' : 'Draft — not sent to any vendor. Sending is a separate, explicit step.'}</p>
+    ) : null}
     <p className="text-xs text-ink-muted">{ar ? 'الإصدار' : 'Plan version'} {rfq.planVersion} · {rfq.quantitiesFrom === 'PLAN_ITEMS' ? (ar ? 'الكميات من بنود الخطة' : 'Quantities from the plan items') : (ar ? 'الكميات محسوبة بالقواعد من أعداد الفعالية' : 'Quantities computed by rules from the event counts')} · {rfq.scope.serviceDays} {ar ? 'يوم خدمة' : 'service day(s)'}{rfq.scope.hotelZone ? ` · ${rfq.scope.hotelZone}` : ''}</p>
     <table className="mt-2 w-full text-sm"><thead><tr><th className="text-start">{ar ? 'البند' : 'Item'}</th><th className="text-start">{ar ? 'الكمية' : 'Quantity'}</th><th className="text-start">{ar ? 'الأيام' : 'Days'}</th><th className="text-start">{ar ? 'سعر الوحدة' : 'Unit price'}</th></tr></thead>
       <tbody>{rfq.lines.map((line, i) => <tr key={i} data-rfq-category={line.category}><td>{line.description}</td><td>{line.quantity} {unitLabels[line.unit][ar ? 1 : 0]}</td><td>{line.serviceDays ?? '—'}</td><td>{ar ? 'يحدده المورد' : 'Vendor to quote'}</td></tr>)}</tbody></table>
     {rfq.lines.length === 0 && <p className="text-sm">{ar ? 'لا توجد بنود بكميات' : 'No quantified line items'}</p>}
     <ul className="mt-2 list-disc ps-5 text-xs text-ink-muted">{rfq.notes.map(note => <li key={note}>{note}</li>)}</ul>
-    <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={workspaceButton} onClick={copy}>{ar ? 'نسخ المسودة' : 'Copy draft'}</button><button type="button" className={workspaceButton} onClick={download}>{ar ? 'تنزيل المسودة' : 'Download draft'}</button>{copied && <span role="status" className="self-center text-xs">{copied}</span>}</div>
+    {rfqSendError ? (
+      <p role="alert" className="mt-2 rounded border border-danger/40 bg-danger/10 p-2 text-xs text-danger">
+        {rfqSendError}
+      </p>
+    ) : null}
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {!supplierRequest && canSendRfq && onSendRfq ? (
+        <>
+          <Button
+            size="sm"
+            variant="gold"
+            disabled={!planApproved || sendingRfq}
+            loading={sendingRfq}
+            data-rfq-send
+            leadingIcon={<Send className="size-3.5" aria-hidden />}
+            onClick={onSendRfq}
+          >
+            {ar ? "إرسال طلب التسعير للموردين" : "Send RFQ to suppliers"}
+          </Button>
+          {!planApproved ? (
+            <span className="text-xs text-ink-muted">
+              {ar ? "يُفعَّل الإرسال بعد اعتماد الخطة." : "Enabled once the plan is approved."}
+            </span>
+          ) : null}
+        </>
+      ) : null}
+      <button type="button" className={workspaceButton} onClick={copy}>{ar ? 'نسخ المسودة' : 'Copy draft'}</button>
+      <button type="button" className={workspaceButton} onClick={download}>{ar ? 'تنزيل المسودة' : 'Download draft'}</button>
+      {copied && <span role="status" className="self-center text-xs">{copied}</span>}
+    </div>
   </section>;
 }

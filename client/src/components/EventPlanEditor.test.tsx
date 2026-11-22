@@ -4,6 +4,7 @@ import { buildRfqDraft, rfqRequirementsFromPlan, type EventPlanDto } from '@shar
 import { testEvent } from '../lib/workspaceWorkflow.test';
 const state=vi.hoisted(()=>({ plans:[] as unknown[] }));
 vi.mock('../lib/workspaceApi',()=>({useWorkspaceResource:()=>({data:{plans:state.plans}}),workspaceRequest:vi.fn()}));
+import { ApiError } from '../lib/api';
 import {
   EventPlanEditor,
   InlinePlanEditor,
@@ -11,6 +12,7 @@ import {
   RfqDraftPanel,
   isoToRiyadhLocal,
   reorderRow,
+  rfqSendErrorMessage,
   riyadhLocalToIso,
   sourceLabel,
   validateEditablePlan
@@ -150,4 +152,41 @@ it('validates editable plan client-side with editablePlanSchema and supports row
   expect(good.payload.scopeOfWork).toEqual(['Hotel hospitality desk']);
   expect(good.payload.items).toEqual([{ category: 'HOTEL_ROOMS', quantity: 12 }]);
  }
+});
+
+it('shows Send RFQ to suppliers disabled before approval, enabled after approval, and replaced by sent badge after dispatch',()=>{
+ const preApproval = renderToStaticMarkup(
+  <RfqDraftPanel rfq={rfq} ar={false} canSendRfq planApproved={false} onSendRfq={()=>{}}/>
+ );
+ expect(preApproval).toContain('Send RFQ to suppliers');
+ expect(preApproval).toMatch(/disabled=""[^>]*data-rfq-send|data-rfq-send[^>]*disabled=""/);
+ expect(preApproval).toContain('Enabled once the plan is approved.');
+
+ const approvedEn = renderToStaticMarkup(
+  <RfqDraftPanel rfq={rfq} ar={false} canSendRfq planApproved onSendRfq={()=>{}}/>
+ );
+ expect(approvedEn).toContain('Send RFQ to suppliers');
+ expect(approvedEn).not.toMatch(/disabled=""[^>]*data-rfq-send/);
+
+ const approvedAr = renderToStaticMarkup(
+  <RfqDraftPanel rfq={rfq} ar canSendRfq planApproved onSendRfq={()=>{}}/>
+ );
+ expect(approvedAr).toContain('إرسال طلب التسعير للموردين');
+
+ const sent = renderToStaticMarkup(
+  <RfqDraftPanel
+   rfq={rfq}
+   ar={false}
+   canSendRfq
+   planApproved
+   supplierRequest={{ intakeId: 'int_1', reference: 'REQ-12345678', status: 'QUOTING', sentAt: '2027-02-01T10:00:00Z' }}
+   onSendRfq={()=>{}}
+  />
+ );
+ expect(sent).toContain('Sent to suppliers · REQ-12345678 · QUOTING');
+ expect(sent).not.toContain('data-rfq-send');
+
+ expect(rfqSendErrorMessage(new ApiError('Locked', 423), false)).toContain('Approve the plan first');
+ expect(rfqSendErrorMessage(new ApiError('Forbidden', 403), true)).toContain('صلاحية التعديل');
+ expect(rfqSendErrorMessage(new ApiError('Conflict', 409), false)).toContain('greater than zero');
 });
