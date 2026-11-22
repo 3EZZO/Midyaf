@@ -467,7 +467,7 @@ export function ConversationListView({
                 {item.lastMessage.preview}
               </p>
             ) : null}
-            <p className="mt-1 font-tnum text-[11px] text-ink-faint">{when(item.lastMessageAt, isArabic)}</p>
+            <p className="mt-1 font-tnum text-xs text-ink-faint">{when(item.lastMessageAt, isArabic)}</p>
           </button>
         </li>
       ))}
@@ -523,11 +523,11 @@ export function ThreadView({
                 : "self-start border border-hairline bg-surface-1 text-ink"
             }`}
           >
-            <p className="text-[11px] font-semibold text-ink-muted">
+            <p className="text-xs font-semibold text-ink-muted">
               {message.mine ? copy.you : message.sender.name}
             </p>
             <p className="whitespace-pre-wrap break-words">{message.body}</p>
-            <p className="mt-1 font-tnum text-[11px] text-ink-faint">{when(message.createdAt, isArabic)}</p>
+            <p className="mt-1 font-tnum text-xs text-ink-faint">{when(message.createdAt, isArabic)}</p>
           </li>
         ))}
       </ol>

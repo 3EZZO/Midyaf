@@ -348,7 +348,7 @@ export function QuotesAndContracts({
             {DEMO_CONTRACTS.map((contract) => (
               <div
                 key={contract.id}
-                className="relative overflow-hidden rounded-xl border border-white/5 bg-[#121626] p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+                className="relative overflow-hidden rounded-xl border border-white/5 bg-[#15171E] p-4 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>

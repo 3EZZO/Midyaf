@@ -10,89 +10,106 @@
 :root {
   /* ══ Design tokens (RGB triplets; consumed by tailwind.config.cjs) ══
      Surfaces: 0 backdrop · 1 page · 2 card · 3 raised/selected · 4 hover */
-  --surface-0: 5 7 13;
-  --surface-1: 9 12 21;
-  --surface-2: 18 22 38;
-  --surface-3: 26 31 51;
-  --surface-4: 35 42 69;
+  /* Qasr Obsidian (2026-11-22): warm basalt instead of navy. Each level is a
+     clearly visible step so panels stay separate on a projector. */
+  --surface-0: 7 7 9;
+  --surface-1: 13 14 18;
+  --surface-2: 21 23 30;
+  --surface-3: 30 33 43;
+  --surface-4: 40 44 56;
 
-  --gold-100: 247 236 196;
-  --gold-300: 242 213 117;
-  --gold-500: 212 175 55;
-  --gold-700: 168 136 32;
-  --gold-900: 90 71 17;
+  /* Brushed champagne brass. The Tailwind name stays "gold". */
+  --gold-100: 244 234 208;
+  --gold-300: 230 204 133;
+  --gold-500: 201 164 76;
+  --gold-700: 158 123 47;
+  --gold-900: 84 66 28;
 
-  --ink: 248 250 252;
-  --ink-muted: 148 163 184;
-  --ink-faint: 100 116 139;
+  /* Warm ivory ink. faint = 5.9:1 on surface-0 (AA for small text). */
+  --ink: 246 244 238;
+  --ink-muted: 182 188 203;
+  --ink-faint: 136 144 164;
 
   --status-ok: 52 211 153;
-  --status-warn: 251 191 36;
-  --status-danger: 251 113 133;
-  --status-info: 56 189 248;
-  --status-neutral: 148 163 184;
+  --status-warn: 245 183 66;
+  --status-danger: 244 107 122;
+  --status-info: 92 184 255;
+  --status-neutral: 154 163 181;
+
+  /* Materials */
+  --hairline: rgba(246, 244, 238, 0.10);
+  --hairline-strong: rgba(246, 244, 238, 0.16);
+  --specular: inset 0 1px 0 rgba(246, 244, 238, 0.06);
+  --brass-aura: 0 0 60px rgba(201, 164, 76, 0.10);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  /* 2% stone grain (static SVG noise), dropped in projector mode. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.02 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 
   /* Cadence of the live simulation; map markers glide over exactly one tick
      (see components/map/constants.ts SIM_TICK_MS — keep the two in sync). */
   --sim-tick: 2400ms;
 
   /* ── Obsidian surfaces (legacy hex aliases) ── */
-  --m-purple: #090C15;
-  --m-purple-light: #121626;
-  --m-purple-dark: #05070D;
-  --m-purple-glow: rgba(212, 175, 55, 0.08);
-  --m-gold: #D4AF37;
-  --m-gold-light: #F2D575;
-  --m-gold-dark: #A88820;
-  --m-gold-glow: rgba(212, 175, 55, 0.18);
+  --m-purple: #0D0E12;
+  --m-purple-light: #15171E;
+  --m-purple-dark: #070709;
+  --m-purple-glow: rgba(201, 164, 76, 0.08);
+  --m-gold: #C9A44C;
+  --m-gold-light: #E6CC85;
+  --m-gold-dark: #9E7B2F;
+  --m-gold-glow: rgba(201, 164, 76, 0.18);
 
   /* Legacy surface names, now mapped onto the dark palette.
      pearl = page, ivory = card, smoke = hairline/raised, ink = text. */
-  --m-pearl: #090C15;
-  --m-ivory: #121626;
-  --m-smoke: #1A1F33;
-  --m-ink: #F8FAFC;
-  --m-sand: #232A45;
+  --m-pearl: #0D0E12;
+  --m-ivory: #15171E;
+  --m-smoke: #1E212B;
+  --m-ink: #F6F4EE;
+  --m-sand: #282C38;
 
   /* ── Semantic ── */
   --m-emerald: #34D399;
   --m-emerald-soft: rgba(52, 211, 153, 0.12);
-  --m-ruby: #FB7185;
-  --m-ruby-soft: rgba(251, 113, 133, 0.12);
-  --m-sapphire: #38BDF8;
-  --m-amber: #FBBF24;
+  --m-ruby: #F46B7A;
+  --m-ruby-soft: rgba(244, 107, 122, 0.12);
+  --m-sapphire: #5CB8FF;
+  --m-amber: #F5B742;
 
   /* ── Surfaces ── */
   --m-glass-bg: rgba(18, 22, 38, 0.92);
-  --m-glass-border: rgba(255, 255, 255, 0.06);
+  --m-glass-border: var(--hairline);
   --m-glass-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --m-card-bg: #121626;
-  --m-card-hover-bg: #1A1F33;
-  --m-card-border: rgba(255, 255, 255, 0.06);
-  --m-card-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --m-card-hover-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --m-card-bg: #15171E;
+  --m-card-hover-bg: #1E212B;
+  --m-card-border: var(--hairline);
+  --m-card-shadow: var(--specular), 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --m-card-hover-shadow: var(--specular), 0 1px 2px 0 rgba(0, 0, 0, 0.5);
 
   /* ── Gradients (flat aliases kept for legacy call sites) ── */
   --m-gradient-purple: var(--m-purple);
   --m-gradient-gold: var(--m-gold);
   --m-gradient-hero: var(--m-purple-dark);
-  --m-gradient-accent: linear-gradient(180deg, rgba(212, 175, 55, 0.15) 0%, transparent 100%);
-  --m-gradient-border: linear-gradient(180deg, #D4AF37, #121626);
+  --m-gradient-accent: linear-gradient(180deg, rgba(201, 164, 76, 0.15) 0%, transparent 100%);
+  --m-gradient-border: linear-gradient(180deg, #C9A44C, #15171E);
 
   /* ── Typography ── */
-  --m-font-arabic: 'IBM Plex Sans Arabic', 'Inter Variable', sans-serif;
-  --m-font-latin: 'Inter Variable', 'IBM Plex Sans Arabic', sans-serif;
-  --m-font-display: var(--m-font-arabic);
+  --m-font-arabic: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans Variable', sans-serif;
+  --m-font-latin: 'Plus Jakarta Sans Variable', 'IBM Plex Sans Arabic', sans-serif;
+  /* Arabic display headings; Latin glyphs fall through to Plus Jakarta Sans. */
+  --m-font-display: 'Noto Kufi Arabic', 'Plus Jakarta Sans Variable', 'IBM Plex Sans Arabic', sans-serif;
+  --m-font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
   --m-font-body-ar: var(--m-font-arabic);
   --m-font-body-en: var(--m-font-latin);
 
   /* ── Timing ── */
-  --m-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --m-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --m-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --m-duration-fast: 120ms;
-  --m-duration: 200ms;
-  --m-duration-slow: 400ms;
-  --m-duration-cinematic: 900ms;
+  --m-duration-fast: 180ms;
+  --m-duration: 240ms;
+  --m-duration-slow: 360ms;
+  --m-duration-cinematic: 750ms;
 
   /* ── Elevation ── */
   --m-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -109,10 +126,10 @@
 
 /* Dark-only: the values above are the only theme. */
 
-[data-theme="dark"] .dark\:bg-dark-surface { background: #1A1F33; }
-[data-theme="dark"] .dark\:bg-dark-card { background: rgba(26, 23, 38, 0.70); }
-[data-theme="dark"] .dark\:text-dark-primary { color: #F8FAFC; }
-[data-theme="dark"] .dark\:text-dark-secondary { color: #94A3B8; }
+[data-theme="dark"] .dark\:bg-dark-surface { background: #1E212B; }
+[data-theme="dark"] .dark\:bg-dark-card { background: rgba(21, 23, 30, 0.70); }
+[data-theme="dark"] .dark\:text-dark-primary { color: #F6F4EE; }
+[data-theme="dark"] .dark\:text-dark-secondary { color: #B6BCCB; }
 [data-theme="dark"] .dark\:border-dark { border-color: rgba(255, 255, 255, 0.20); }
 
 /* ══════════════════════════════════════════════════════════
@@ -131,7 +148,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--m-pearl);
+  background: var(--grain), var(--m-pearl);
   color: var(--m-ink);
   font-family: var(--m-font-latin);
   -webkit-font-smoothing: antialiased;
@@ -142,9 +159,28 @@ html[dir="rtl"] body {
   font-family: var(--m-font-arabic);
 }
 
+/* Arabic display face for page and section titles. */
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+.font-display {
+  font-family: var(--m-font-display);
+}
+
+/* Arabic is cursive: tracking breaks the joins, so labels are never tracked in RTL. */
+html[dir="rtl"] [class*="tracking-"] {
+  letter-spacing: 0 !important;
+}
+
+/* Codes, plates, references and timestamps. */
+.font-mono,
+code,
+kbd {
+  font-family: var(--m-font-mono);
+}
+
 /* Projector density: Ctrl+Shift+P scales every rem-based size. */
 html[data-density="projector"] {
-  font-size: 18px;
+  font-size: 18.5px;
 }
 
 /* Numbers always align in tables and KPI tiles. */
@@ -179,7 +215,7 @@ textarea:focus-visible {
 
 /* ── Selection Highlight ── */
 ::selection {
-  background: rgba(212, 175, 55, 0.30);
+  background: rgba(201, 164, 76, 0.30);
   color: var(--m-ink);
 }
 
@@ -194,12 +230,12 @@ textarea:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.25);
+  background: rgba(201, 164, 76, 0.25);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 175, 55, 0.45);
+  background: rgba(201, 164, 76, 0.45);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -268,7 +304,7 @@ textarea:focus-visible {
     opacity: 1;
   }
   50% {
-    box-shadow: 0 0 16px var(--m-gold-glow), 0 0 32px rgba(212, 175, 55, 0.15);
+    box-shadow: 0 0 16px var(--m-gold-glow), 0 0 32px rgba(201, 164, 76, 0.15);
     opacity: 0.85;
   }
 }
@@ -309,10 +345,10 @@ textarea:focus-visible {
 
 @keyframes borderGlow {
   0%, 100% {
-    border-color: rgba(212, 175, 55, 0.30);
+    border-color: rgba(201, 164, 76, 0.30);
   }
   50% {
-    border-color: rgba(212, 175, 55, 0.60);
+    border-color: rgba(201, 164, 76, 0.60);
   }
 }
 
@@ -324,15 +360,15 @@ textarea:focus-visible {
 
 @keyframes targetHighlight {
   0% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
-    outline: 2px solid rgba(212, 175, 55, 0.9);
+    box-shadow: 0 0 0 0 rgba(201, 164, 76, 0.7);
+    outline: 2px solid rgba(201, 164, 76, 0.9);
   }
   50% {
-    box-shadow: 0 0 25px 6px rgba(212, 175, 55, 0.4);
-    outline: 2px solid rgba(212, 175, 55, 1);
+    box-shadow: 0 0 25px 6px rgba(201, 164, 76, 0.4);
+    outline: 2px solid rgba(201, 164, 76, 1);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 0 rgba(201, 164, 76, 0);
     outline: 2px solid transparent;
   }
 }
@@ -392,13 +428,13 @@ textarea:focus-visible {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 30%, rgba(212, 175, 55, 0.12) 50%, transparent 70%);
+  background: linear-gradient(90deg, transparent 30%, rgba(201, 164, 76, 0.12) 50%, transparent 70%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
 
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  animation: none; /* Qasr: no idle decorative motion */
   will-change: transform;
 }
 
@@ -408,7 +444,7 @@ textarea:focus-visible {
 
 .animate-gradientShift {
   background-size: 200% 200%;
-  animation: gradientShift 6s ease infinite;
+  animation: none; /* Qasr: no idle decorative motion */
 }
 
 .animate-slideInLeft {
@@ -420,7 +456,7 @@ textarea:focus-visible {
 }
 
 .animate-borderGlow {
-  animation: borderGlow 2s ease-in-out infinite;
+  animation: none; /* Qasr: no idle decorative motion */
 }
 
 .animate-spinSlow {
@@ -485,7 +521,7 @@ textarea:focus-visible {
 }
 
 [data-theme="dark"] .glass-strong {
-  background: rgba(26, 23, 38, 0.92);
+  background: rgba(21, 23, 30, 0.92);
   border-color: rgba(255, 255, 255, 0.30);
 }
 
@@ -514,7 +550,6 @@ textarea:focus-visible {
 }
 
 .card-hover-lift:hover {
-  transform: translateY(-2px);
   box-shadow: var(--m-card-hover-shadow);
 }
 
@@ -555,7 +590,7 @@ textarea:focus-visible {
 }
 
 .m-input:hover {
-  border-color: rgba(212, 175, 55, 0.40);
+  border-color: rgba(201, 164, 76, 0.40);
 }
 
 .m-input:focus {
@@ -574,11 +609,11 @@ textarea:focus-visible {
 [data-theme="dark"] .m-input {
   background: rgba(9, 12, 21, 0.80);
   border-color: rgba(255, 255, 255, 0.1);
-  color: #F8FAFC;
+  color: #F6F4EE;
 }
 
 [data-theme="dark"] .m-input:focus {
-  background: #090C15;
+  background: #0D0E12;
   border-color: var(--m-gold);
 }
 
@@ -586,7 +621,7 @@ textarea:focus-visible {
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #64748b;
+  color: #8890A4;
   letter-spacing: 0.01em;
   transition: color var(--m-duration) var(--m-ease-out);
 }
@@ -596,7 +631,7 @@ textarea:focus-visible {
 }
 
 [data-theme="dark"] .m-label {
-  color: #94A3B8;
+  color: #B6BCCB;
 }
 
 /* ── Custom Select Arrow ── */
@@ -647,7 +682,7 @@ textarea:focus-visible {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background: #121626; border: 1px solid rgba(255,255,255,0.1);
+  background: #15171E; border: 1px solid rgba(255,255,255,0.1);
   background-size: 200% 200%;
   border: none;
   border-radius: 4px;
@@ -660,7 +695,6 @@ textarea:focus-visible {
 
 .btn-primary:hover {
   box-shadow: none; border-color: rgba(255,255,255,0.2);
-  transform: translateY(-1px);
 }
 
 .btn-primary:active {
@@ -684,7 +718,7 @@ textarea:focus-visible {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background: var(--m-gold); color: #090C15;
+  background: var(--m-gold); color: #0D0E12;
   background-size: 200% 200%;
   border: none;
   border-radius: 4px;
@@ -697,7 +731,6 @@ textarea:focus-visible {
 
 .btn-gold:hover {
   box-shadow: none; background: #E6C553;
-  transform: translateY(-1px);
 }
 
 .btn-gold:active {
@@ -760,7 +793,7 @@ textarea:focus-visible {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.12), transparent);
+  background: linear-gradient(90deg, transparent, rgba(201, 164, 76, 0.12), transparent);
   animation: shimmer 1.8s infinite;
   background-size: 200% 100%;
 }
@@ -828,11 +861,11 @@ textarea:focus-visible {
 }
 
 .midyaf-map-marker-venue {
-  background: #D4AF37;
+  background: #C9A44C;
 }
 
 .midyaf-map-marker-driver {
-  background: #121626;
+  background: #15171E;
 }
 
 .midyaf-map-marker-task {
@@ -855,7 +888,7 @@ textarea:focus-visible {
 .hero-gradient {
   background: var(--m-gradient-hero);
   background-size: 300% 300%;
-  animation: gradientShift 8s ease infinite;
+  animation: none; /* Qasr: no idle decorative motion */
   position: relative;
   overflow: hidden;
 }
@@ -878,7 +911,7 @@ textarea:focus-visible {
 
 .login-bg {
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(201, 164, 76, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(9, 12, 21, 0.05) 0%, transparent 70%),
     var(--m-pearl);
@@ -888,7 +921,7 @@ textarea:focus-visible {
   background: var(--m-glass-bg);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(201, 164, 76, 0.15);
   box-shadow:
     0 24px 80px rgba(9, 12, 21, 0.10),
     0 0 0 1px rgba(255, 255, 255, 0.40) inset;
@@ -897,14 +930,14 @@ textarea:focus-visible {
 
 [data-theme="dark"] .login-bg {
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(201, 164, 76, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
-    #090C15;
+    #0D0E12;
 }
 
 [data-theme="dark"] .login-card {
-  background: rgba(26, 23, 38, 0.85);
-  border-color: rgba(212, 175, 55, 0.12);
+  background: rgba(21, 23, 30, 0.85);
+  border-color: rgba(201, 164, 76, 0.12);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.40),
     0 0 0 1px rgba(255, 255, 255, 0.25) inset;
@@ -920,7 +953,7 @@ textarea:focus-visible {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: shimmer 3s infinite;
+  animation: none; /* Qasr: no idle decorative motion */
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -959,11 +992,11 @@ textarea:focus-visible {
    ══════════════════════════════════════════════════════════ */
 
 .kiosk-bg {
-  background: radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.15), transparent 60%),
+  background: radial-gradient(circle at 50% 30%, rgba(201, 164, 76, 0.15), transparent 60%),
               radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.2), transparent 50%),
               #020617;
   background-size: 200% 200%;
-  animation: kioskPulse 15s ease infinite alternate;
+  animation: none; /* Qasr: no idle decorative motion */
 }
 
 @keyframes kioskPulse {
@@ -982,14 +1015,14 @@ textarea:focus-visible {
 
 /* Premium Card Glows */
 .shadow-luxury {
-  box-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.25), 0 0 15px rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(201, 164, 76, 0.25), 0 0 15px rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(201, 164, 76, 0.3);
   transition: all 0.3s ease;
 }
 
 .shadow-luxury:hover {
-  box-shadow: 0 15px 35px -5px rgba(212, 175, 55, 0.35), 0 0 25px rgba(212, 175, 55, 0.2);
-  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 15px 35px -5px rgba(201, 164, 76, 0.35), 0 0 25px rgba(201, 164, 76, 0.2);
+  border-color: rgba(201, 164, 76, 0.6);
 }
 
 /* Shell header safe-area/height and main tab-bar clearance are owned by
@@ -1005,7 +1038,7 @@ textarea:focus-visible {
    ══════════════════════════════════════════════════════════ */
 
 .command-deck-bg {
-  background: radial-gradient(circle at 50% 10%, rgba(212, 175, 55, 0.12) 0%, transparent 50%),
+  background: radial-gradient(circle at 50% 10%, rgba(201, 164, 76, 0.12) 0%, transparent 50%),
               radial-gradient(circle at 10% 90%, rgba(9, 12, 21, 0.35) 0%, transparent 60%),
               radial-gradient(circle at 90% 90%, rgba(5, 150, 105, 0.15) 0%, transparent 50%),
               #03050C;
@@ -1013,8 +1046,8 @@ textarea:focus-visible {
 
 .radar-sweep-grid {
   background-image: 
-    linear-gradient(rgba(212, 175, 55, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212, 175, 55, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(201, 164, 76, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 164, 76, 0.07) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
@@ -1050,9 +1083,9 @@ textarea:focus-visible {
 .hologram-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(212, 175, 55, 0.08));
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(201, 164, 76, 0.08));
+  border: 1px solid rgba(201, 164, 76, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(201, 164, 76, 0.2);
 }
 
 .hologram-card::after {
@@ -1066,10 +1099,10 @@ textarea:focus-visible {
     60deg,
     transparent 35%,
     rgba(255, 255, 255, 0.2) 50%,
-    rgba(212, 175, 55, 0.25) 55%,
+    rgba(201, 164, 76, 0.25) 55%,
     transparent 65%
   );
-  animation: holoGleam 6s ease-in-out infinite;
+  animation: none; /* Qasr: no idle decorative motion */
   pointer-events: none;
 }
 
@@ -1077,7 +1110,7 @@ textarea:focus-visible {
   background: rgba(10, 12, 22, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(201, 164, 76, 0.2);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
@@ -1102,22 +1135,22 @@ textarea:focus-visible {
 }
 
 .pulse-ring-gold {
-  box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+  box-shadow: 0 0 0 0 rgba(201, 164, 76, 0.7);
   animation: pulseGold 2s infinite;
 }
 
 @keyframes pulseGold {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
+    box-shadow: 0 0 0 0 rgba(201, 164, 76, 0.7);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 14px rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 14px rgba(201, 164, 76, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 0 rgba(201, 164, 76, 0);
   }
 }
 

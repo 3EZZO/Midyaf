@@ -67,7 +67,7 @@ export function SupplierContractWorkflow({
     <div id="section-supplier-contracts" className="rounded-lg border border-midyaf-purple/15 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-[#121626] text-midyaf-gold shadow-none">
+          <div className="grid size-10 place-items-center rounded-xl bg-[#15171E] text-midyaf-gold shadow-none">
             <ShieldCheck size={20} />
           </div>
           <div>
