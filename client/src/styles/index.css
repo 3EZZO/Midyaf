@@ -178,9 +178,32 @@ kbd {
   font-family: var(--m-font-mono);
 }
 
-/* Projector density: Ctrl+Shift+P scales every rem-based size. */
+/* Projector mode (Ctrl+Shift+P, command palette or top bar): larger rem
+   scale, no grain, stronger hairlines, brighter secondary ink and thicker chart
+   strokes, so a lit room 5 m from the screen still reads every figure. */
 html[data-density="projector"] {
   font-size: 18.5px;
+  --hairline: rgba(246, 244, 238, 0.16);
+  --hairline-strong: rgba(246, 244, 238, 0.24);
+  --ink-muted: 202 207 219;
+  --ink-faint: 160 167 185;
+}
+
+html[data-density="projector"] body {
+  background: var(--m-pearl);
+}
+
+html[data-density="projector"] .border-hairline {
+  border-color: rgba(246, 244, 238, 0.16);
+}
+
+html[data-density="projector"] .recharts-area-curve,
+html[data-density="projector"] .recharts-line-curve {
+  stroke-width: 3px;
+}
+
+html[data-density="projector"] .recharts-cartesian-axis-tick-value {
+  font-size: 14px;
 }
 
 /* Numbers always align in tables and KPI tiles. */

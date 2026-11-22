@@ -199,7 +199,7 @@ export function SilaOperationsDashboard({
             </Button>
             {onToggleDemo ? (
               <Button
-                variant={isDemoMode ? "danger" : "gold"}
+                variant={isDemoMode ? "danger" : "outline"}
                 size="lg"
                 leadingIcon={<Map className="size-5" aria-hidden />}
                 onClick={onToggleDemo}
