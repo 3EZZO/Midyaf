@@ -9,6 +9,21 @@ import { portalIcons } from "./portalMeta";
 
 export type DemoResetPhase = "idle" | "restoring" | "refreshing";
 
+/**
+ * Returns false on the originating window while its own reset HTTP call is in
+ * flight (or when the same resetAt was already handled), so only OTHER open
+ * windows show the broadcast info toast while the initiator shows only success.
+ */
+export function shouldShowRemoteResetToast(
+  localResetInFlight: boolean,
+  lastHandledResetAt: string | null,
+  incomingResetAt: string | null | undefined
+): boolean {
+  if (localResetInFlight) return false;
+  if (incomingResetAt && lastHandledResetAt === incomingResetAt) return false;
+  return true;
+}
+
 const PERSONA_SCOPE_COPY: Record<DemoPersonaKey, { en: string; ar: string }> = {
   admin: {
     en: "Full platform governance · Audits, approvals & contracts",

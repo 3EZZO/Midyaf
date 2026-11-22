@@ -20,7 +20,6 @@ import { useWorkspaceResource, workspaceRequest } from "../lib/workspaceApi";
 import { approvePlan, planSections, type PlanSection } from "../lib/workspaceWorkflow";
 import "../styles/signature.css";
 import { Badge, Button, EmptyState, Section, StatusPill, Surface, useToast } from "./ui";
-import { SaduRibbon } from "./ui/SaduRibbon";
 
 const PLAN_SECTION_LABELS: Record<PlanSection, { en: string; ar: string }> = {
   logistics: { en: "Logistics plan", ar: "الخطة اللوجستية" },
@@ -30,7 +29,10 @@ const PLAN_SECTION_LABELS: Record<PlanSection, { en: string; ar: string }> = {
   scopeOfWork: { en: "Scope of work", ar: "نطاق العمل" }
 };
 
-export const APPROVAL_SEAL_MS = 450;
+/** Total hold time so investors clearly read the circular ceremonial stamp before the queue refreshes. */
+export const APPROVAL_SEAL_MS = 1200;
+/** Hold time under prefers-reduced-motion (static stamp, then refresh). */
+export const APPROVAL_SEAL_REDUCED_MS = 600;
 
 /** Whether a queue item may display the one-click Approve action. */
 export function canApproveQueueItem(item: PlanApprovalQueueItem): boolean {
@@ -241,13 +243,32 @@ export function PlanApprovalQueueView({
                   data-approval-queue-item={plan.id}
                   data-approval-sealed={sealed ? "true" : undefined}
                   className={cn(
-                    "overflow-hidden border transition-colors duration-base motion-reduce:transition-none",
+                    "relative overflow-hidden border transition-colors duration-base motion-reduce:transition-none",
                     sealed
                       ? "qasr-approval-sealed-card border-ok/75"
                       : "border-gold-500/35"
                   )}
                 >
-                  <SaduRibbon variant="hairline" className={cn(sealed ? "opacity-45" : "opacity-85")} />
+                  {/* Circular ceremonial stamp (136px) over the card corner on approval (Approval-D1) */}
+                  {sealed ? (
+                    <div
+                      aria-hidden="true"
+                      data-approval-stamp={plan.id}
+                      className="qasr-approval-circular-stamp pointer-events-none absolute top-3 end-4 z-10 grid size-[136px] place-items-center rounded-full p-2.5 text-center sm:end-6"
+                    >
+                      <div className="flex size-full flex-col items-center justify-center rounded-full border border-dashed border-current/70 px-2">
+                        <span className="font-display text-2xl font-bold leading-none">
+                          معتمد
+                        </span>
+                        <span
+                          dir="ltr"
+                          className="mt-1.5 text-xs font-bold uppercase tracking-label"
+                        >
+                          APPROVED
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="space-y-3 p-4">
                     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
@@ -454,9 +475,8 @@ export function PlanApprovalQueue({
       const reducedMotion =
         typeof window !== "undefined" &&
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      if (!reducedMotion) {
-        await new Promise((resolve) => window.setTimeout(resolve, APPROVAL_SEAL_MS));
-      }
+      const holdMs = reducedMotion ? APPROVAL_SEAL_REDUCED_MS : APPROVAL_SEAL_MS;
+      await new Promise((resolve) => window.setTimeout(resolve, holdMs));
 
       toast.success(
         isArabic ? "تم اعتماد الخطة بنجاح" : "Plan approved",

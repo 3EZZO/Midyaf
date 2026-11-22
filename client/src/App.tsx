@@ -43,7 +43,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
-import type { DemoResetPhase } from "./shell/InvestorDemoSwitcher";
+import { shouldShowRemoteResetToast, type DemoResetPhase } from "./shell/InvestorDemoSwitcher";
 import {
   ApplicantRegistration,
   StandaloneOnboardingFrame,
@@ -189,6 +189,7 @@ export function App() {
   const [demoStatusRev, setDemoStatusRev] = useState(0);
   const pendingPortalRef = useRef<PortalKey | null>(null);
   const lastHandledResetAtRef = useRef<string | null>(null);
+  const localResetInFlightRef = useRef(false);
   const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
   const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
   const rolePortals = session ? portalsByRole[session.user.role] : [];
@@ -486,7 +487,16 @@ export function App() {
       },
       "demo:reset": (payload) => {
         pushLog(`${p("Demo data reset", "تمت إعادة ضبط بيانات العرض")} · ${stamp()}`);
-        if (payload?.resetAt && lastHandledResetAtRef.current === payload.resetAt) return;
+        if (
+          !shouldShowRemoteResetToast(
+            localResetInFlightRef.current,
+            lastHandledResetAtRef.current,
+            payload?.resetAt
+          )
+        ) {
+          if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+          return;
+        }
         if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
         setDemoResetPhase("refreshing");
         toast.info(
@@ -822,6 +832,7 @@ export function App() {
   async function handleResetDemoData() {
     const activeSession = sessionRef.current;
     if (!activeSession) return;
+    localResetInFlightRef.current = true;
     setDemoBusy(true);
     setDemoResetPhase("restoring");
     try {
@@ -848,6 +859,7 @@ export function App() {
         error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
       );
     } finally {
+      localResetInFlightRef.current = false;
       setDemoResetPhase("idle");
       setDemoBusy(false);
     }

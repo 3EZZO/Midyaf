@@ -23,6 +23,8 @@ vi.mock("../lib/workspaceApi", () => ({
 vi.mock("./charts", () => ({ Funnel: () => null }));
 
 import {
+  APPROVAL_SEAL_MS,
+  APPROVAL_SEAL_REDUCED_MS,
   PlanApprovalQueue,
   PlanApprovalQueueView,
   canApproveQueueItem,
@@ -202,7 +204,10 @@ describe("PlanApprovalQueueView SSR", () => {
     expect(html).toContain("KAFD");
   });
 
-  it("extracts factual plan key figures and renders the 450ms brass->emerald approval seal state", () => {
+  it("extracts factual plan key figures, uses a single Sadu ribbon per screen, and renders the 136px circular approval stamp", () => {
+    expect(APPROVAL_SEAL_MS).toBe(1200);
+    expect(APPROVAL_SEAL_REDUCED_MS).toBe(600);
+
     const item = makeItem();
     const figures = extractPlanKeyFigures(item.plan.content);
     expect(figures.map((f) => [f.id, f.value])).toEqual([
@@ -219,7 +224,12 @@ describe("PlanApprovalQueueView SSR", () => {
         onApprove={() => undefined}
       />
     );
+    expect(sealedEn).not.toContain("data-sadu-ribbon");
     expect(sealedEn).toContain('data-approval-sealed="true"');
+    expect(sealedEn).toContain('data-approval-stamp="plan_1"');
+    expect(sealedEn).toContain("qasr-approval-circular-stamp");
+    expect(sealedEn).toContain("معتمد");
+    expect(sealedEn).toContain("APPROVED");
     expect(sealedEn).toContain('data-approval-seal-badge="plan_1"');
     expect(sealedEn).toContain("qasr-approval-sealed-card");
     expect(sealedEn).toContain("Approved · Unlocking ops");
@@ -234,5 +244,6 @@ describe("PlanApprovalQueueView SSR", () => {
       />
     );
     expect(sealedAr).toContain("تم الاعتماد · جارٍ فتح التشغيل");
+    expect(sealedAr).toContain('data-approval-stamp="plan_1"');
   });
 });

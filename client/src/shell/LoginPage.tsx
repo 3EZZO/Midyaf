@@ -90,11 +90,6 @@ export function LoginPage({
         isArabic ? "font-arabic" : "font-english"
       )}
     >
-      {/* Top static Sadu architectural hairline */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 opacity-75">
-        <SaduRibbon variant="hairline" />
-      </div>
-
       {/* Riyadh dusk field: one slow champagne-brass horizon line. Visual only — form is live at t=0. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <motion.div

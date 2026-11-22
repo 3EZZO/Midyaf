@@ -12,7 +12,8 @@ import {
   InvestorDemoSwitcher,
   demoPersonaScopeCopy,
   isEditableEventTarget,
-  resolvePersonaHotkey
+  resolvePersonaHotkey,
+  shouldShowRemoteResetToast
 } from "./InvestorDemoSwitcher";
 
 const sampleStatus = (over: Partial<DemoStatusDto> = {}): DemoStatusDto => ({
@@ -175,5 +176,10 @@ describe("InvestorDemoSwitcher SSR", () => {
     // Scope copy is bilingual
     expect(demoPersonaScopeCopy("client", false)).toContain("Client-scoped");
     expect(demoPersonaScopeCopy("client", true)).toContain("فعاليات العميل");
+    // Remote reset broadcast toast suppressed on originating window, kept for other open windows
+    expect(shouldShowRemoteResetToast(true, null, "2026-11-22T18:00:00Z")).toBe(false);
+    expect(shouldShowRemoteResetToast(false, "2026-11-22T18:00:00Z", "2026-11-22T18:00:00Z")).toBe(false);
+    expect(shouldShowRemoteResetToast(false, null, "2026-11-22T18:00:00Z")).toBe(true);
+    expect(shouldShowRemoteResetToast(false, "2026-11-22T17:00:00Z", "2026-11-22T18:00:00Z")).toBe(true);
   });
 });
