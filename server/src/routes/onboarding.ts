@@ -377,7 +377,7 @@ router.post(
           const applicant=await tx.user.findUnique({where:{id:fresh.applicantUserId},select:{onboardingPending:true,onboardingKind:true,role:true}});
           if(applicant?.onboardingPending) {
             if(applicant.onboardingKind!==fresh.kind || applicant.role!==Role.GUEST)throw new HttpError(409,"Applicant account changed");
-            await tx.user.update({where:{id:fresh.applicantUserId},data:{onboardingPending:false,role:fresh.kind===OnboardingKind.VENDOR?Role.SUPPLIER:Role.COMPANY_ORGANIZER}});
+            await tx.user.update({where:{id:fresh.applicantUserId},data:{onboardingPending:false,role:fresh.kind===OnboardingKind.VENDOR?Role.SUPPLIER:Role.CLIENT}});
           }
           if(fresh.kind===OnboardingKind.VENDOR) {
             const profile=await tx.supplier.findUnique({where:{userId:fresh.applicantUserId},select:{id:true}});

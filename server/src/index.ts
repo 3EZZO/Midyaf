@@ -29,6 +29,7 @@ import messagesRouter from "./routes/messages.js";
 import { legacyWorkspaceBoundary } from "./utils/legacyWorkspaceBoundary.js";
 import { requireAuth } from "./middleware/auth.js";
 import workspaceRouter from "./routes/workspace.js";
+import demoRouter from "./routes/demo.js";
 import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
@@ -73,6 +74,8 @@ mount("/riders", ridersRouter);
 mount("/messages", messagesRouter);
 // FULL-OVERHAUL-M2: organization/event workspace (same authenticated router).
 mount("/workspace", workspaceRouter);
+// SIX-TASKS #6: investor demo (404 unless DEMO_MODE_ENABLED=true).
+app.use("/api/demo", demoRouter);
 app.use(["/api/bootstrap", "/bootstrap"], requireAuth, legacyWorkspaceBoundary);
 app.use("/api", bootstrapRouter);
 app.use("/", bootstrapRouter);

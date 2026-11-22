@@ -14,10 +14,13 @@ import type { PortalKey, Role, Session } from "./domain.js";
  * GET  /api/demo/status            -> DemoStatusDto   (any signed-in user)
  * POST /api/demo/switch {persona}  -> Session JSON    ({ user, accessToken, refreshToken })
  * POST /api/demo/reset  {confirm:true} -> DemoResetResponse
+ * POST /api/demo/baseline {confirm:true} -> DemoBaselineResponse
+ *   Saves the CURRENT data as the state every reset returns to. Do this once
+ *   when the demo looks exactly right before a pitch.
  *
  * Errors: 404 when demo mode is disabled; 403 when the session is neither a
  * Super Admin nor a demo session started by one; 409 when a persona account is
- * missing from the database.
+ * missing from the database, or on reset when no baseline was saved yet.
  */
 export const DEMO_PERSONA_KEYS = [
   "admin",
@@ -57,12 +60,16 @@ export type DemoStatusDto = {
   personas: DemoPersonaDto[];
   /** ISO time of the last reset, if any is recorded. */
   lastResetAt: string | null;
+  /** ISO time the reset baseline was saved; null = nothing to reset to yet. */
+  baselineCapturedAt: string | null;
 };
 
 export const demoSwitchSchema = z.object({ persona: z.enum(DEMO_PERSONA_KEYS) }).strict();
 export const demoResetSchema = z.object({ confirm: z.literal(true) }).strict();
 
 export type DemoSwitchResponse = Session;
+
+export type DemoBaselineResponse = { ok: true; capturedAt: string; tables: number; rows: number };
 
 export type DemoResetResponse = {
   ok: true;
