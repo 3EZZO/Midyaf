@@ -106,7 +106,8 @@ export function InvestorDemoSwitcher({
           aria-label={isArabic ? "مبدّل أدوار العرض المباشر" : "Investor Demo switcher"}
           data-investor-demo-menu
           className={cn(
-            "absolute end-0 top-full z-palette mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-lg border border-hairline bg-surface-2 p-2 shadow-dropdown sm:w-80"
+            "fixed inset-x-3 top-16 z-palette rounded-lg border border-hairline bg-surface-2 p-2 shadow-dropdown",
+            "sm:absolute sm:inset-x-auto sm:end-0 sm:top-full sm:mt-2 sm:w-80"
           )}
         >
           <div className="border-b border-hairline px-2 pb-2 pt-1">

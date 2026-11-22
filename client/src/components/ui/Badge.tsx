@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 import type { StatusTone } from "@shared/statusMeta";
@@ -42,8 +42,9 @@ export function Badge({
   tone,
   size,
   className,
-  dot
-}: {
+  dot,
+  ...rest
+}: Omit<HTMLAttributes<HTMLSpanElement>, "children"> & {
   children: ReactNode;
   tone?: BadgeTone | StatusTone;
   size?: VariantProps<typeof badgeVariants>["size"];
@@ -52,7 +53,7 @@ export function Badge({
   dot?: boolean;
 }) {
   return (
-    <span className={cn(badgeVariants({ tone, size }), className)}>
+    <span {...rest} className={cn(badgeVariants({ tone, size }), className)}>
       {dot ? <span className="size-1.5 rounded-full bg-current" aria-hidden /> : null}
       {children}
     </span>
