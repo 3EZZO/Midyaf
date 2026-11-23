@@ -3,6 +3,9 @@ import { z } from "zod";
 
 dotenv.config();
 
+const blankToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 const schema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -17,6 +20,9 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default("gpt-4o"),
   OSRM_BASE_URL: z.string().url().optional(),
   WEATHER_BASE_URL: z.string().url().optional(),
+  // Reverse-proxy hops in front of Express (Render edge + load balancer). Measured
+  // via GET /auth/ip-check; set in Render without a code change.
+  TRUST_PROXY_HOPS: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(5).default(1)),
   ENABLE_CITY: z
     .string()
     .default("true")

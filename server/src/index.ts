@@ -36,8 +36,10 @@ import { telemetryBuffer } from "./services/telemetryBuffer.js";
 import { configureRealtime } from "./services/socketAuthorization.js";
 
 const app = express();
-// Render terminates TLS behind 1 reverse proxy hop; trusting 1 hop gives accurate req.ip for rate limiters and audit logs without allowing X-Forwarded-For spoofing.
-app.set("trust proxy", 1);
+// Trust exactly the reverse-proxy hops Render puts in front of us (TRUST_PROXY_HOPS,
+// default 1) so req.ip is the real client for rate limiters and audit logs while a
+// client-supplied X-Forwarded-For prefix can never be trusted. Never use `true`.
+app.set("trust proxy", env.TRUST_PROXY_HOPS);
 const server = http.createServer(app);
 const allowedOrigins = env.CLIENT_ORIGIN.split(",").map((origin) =>
   origin.trim()
