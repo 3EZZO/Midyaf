@@ -359,6 +359,8 @@ model User {
   language        String         @default("ar")
   avatar          String?
   passwordHash    String
+  /// Plan Ready 1: bumped on password reset so older refresh tokens stop working.
+  tokenVersion    Int            @default(0)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 

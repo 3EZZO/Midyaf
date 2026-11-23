@@ -49,7 +49,7 @@ const many = (model: string, foreign: string, local = "id"): RelationSpec => ({
 export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   user: {
     unique: [["email"]],
-    defaults: { onboardingPending: false, onboardingKind: null },
+    defaults: { onboardingPending: false, onboardingKind: null, tokenVersion: 0 },
     relations: {
       driverProfile: { model: "driver", kind: "one", local: "id", foreign: "userId" },
       supplierProfile: { model: "supplier", kind: "one", local: "id", foreign: "userId" },
@@ -339,6 +339,22 @@ function clone<T>(value: T): T {
 }
 
 /** Prisma ignores undefined fields in write data. */
+/** Resolves Prisma atomic number operations ({ increment | decrement | set }) against the current row. */
+function applyAtomicOps(row: Row, data: Row): Row {
+  const out: Row = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (isObject(value) && ("increment" in value || "decrement" in value || "set" in value)) {
+      const current = typeof row[key] === "number" ? (row[key] as number) : 0;
+      if ("set" in value) out[key] = value.set;
+      else if ("increment" in value) out[key] = current + Number(value.increment);
+      else out[key] = current - Number(value.decrement);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 function defined(data: Row): Row {
   return clone(Object.fromEntries(Object.entries(data ?? {}).filter(([, value]) => value !== undefined)));
 }
@@ -639,7 +655,7 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
             clientVersion: "memory"
           });
         }
-        const next = { ...row, ...defined(args.data), updatedAt: new Date() };
+        const next = { ...row, ...applyAtomicOps(row, defined(args.data)), updatedAt: new Date() };
         assertUnique(model, next, row);
         Object.assign(row, next);
         return project(model, row, args);
@@ -648,7 +664,7 @@ export function createMemoryPrisma(schema: MemorySchema = MIDYAF_MEMORY_SCHEMA) 
         record("updateMany", args);
         const rows = query(model, { where: args.where });
         for (const row of rows) {
-          const next = { ...row, ...defined(args.data), updatedAt: new Date() };
+          const next = { ...row, ...applyAtomicOps(row, defined(args.data)), updatedAt: new Date() };
           assertUnique(model, next, row);
           Object.assign(row, next);
         }

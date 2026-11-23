@@ -11,6 +11,8 @@ type TokenPayload = JwtPayload & {
   role: Role;
   onboardingPending?: boolean;
   demoOrigin?: string;
+  /** Refresh tokens only: the user's tokenVersion when issued (absent = 0). */
+  tv?: number;
 };
 
 const accessOptions: SignOptions = {
@@ -22,7 +24,7 @@ const refreshOptions: SignOptions = {
 };
 
 export function signTokens(
-  user: Pick<User, "id" | "email" | "role"> & { onboardingPending?: boolean },
+  user: Pick<User, "id" | "email" | "role"> & { onboardingPending?: boolean; tokenVersion?: number },
   options: { demoOrigin?: string } = {}
 ) {
   const payload = {
@@ -35,7 +37,9 @@ export function signTokens(
 
   return {
     accessToken: jwt.sign(payload, env.JWT_ACCESS_SECRET, accessOptions),
-    refreshToken: jwt.sign(payload, env.JWT_REFRESH_SECRET, refreshOptions)
+    // Only refresh tokens carry the version: a password reset bumps User.tokenVersion,
+    // so every refresh token issued before it is rejected by /auth/refresh.
+    refreshToken: jwt.sign({ ...payload, tv: user.tokenVersion ?? 0 }, env.JWT_REFRESH_SECRET, refreshOptions)
   };
 }
 

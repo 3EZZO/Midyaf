@@ -140,10 +140,11 @@ router.post(
     const origin = await requireOrigin(req.user!);
     const { persona } = demoSwitchSchema.parse(req.body);
     const account = ACCOUNT_BY_KEY.get(persona as DemoPersonaKey)!;
-    const user = await prisma.user.findUnique({ where: { email: account.email }, select: sessionUserSelect });
-    if (!user || user.role !== account.role) {
+    const found = await prisma.user.findUnique({ where: { email: account.email }, select: { ...sessionUserSelect, tokenVersion: true } });
+    if (!found || found.role !== account.role) {
       throw new HttpError(409, "This demo persona is not available in this database");
     }
+    const { tokenVersion, ...user } = found;
     await prisma.auditLog.create({
       data: {
         actorUserId: origin.id,
@@ -154,7 +155,7 @@ router.post(
         metadata: { persona }
       }
     });
-    res.json({ user, ...signTokens(user, { demoOrigin: origin.id }) });
+    res.json({ user, ...signTokens({ ...user, tokenVersion }, { demoOrigin: origin.id }) });
   })
 );
 

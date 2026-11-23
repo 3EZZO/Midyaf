@@ -155,3 +155,35 @@ describe("Password recovery (PLAN_READY_1 Sprint 1)", () => {
     expect(throttled.status).toBe(429);
   });
 });
+
+describe("Refresh-token invalidation on password reset (PLAN_READY_1 tokenVersion)", () => {
+  it("rejects refresh tokens issued before a reset and accepts those issued after", async () => {
+    const before = await http.post("/auth/login", undefined, { email: "cap@example.test", password: "old-password-1234" });
+    expect(before.status).toBe(200);
+    const staleRefresh = before.body.refreshToken as string;
+    expect(before.body.user).not.toHaveProperty("tokenVersion");
+
+    // Still valid before any reset (version 0 == 0).
+    const okRefresh = await http.post("/auth/refresh", undefined, { refreshToken: staleRefresh });
+    expect(okRefresh.status).toBe(200);
+    expect(okRefresh.body.user).not.toHaveProperty("tokenVersion");
+
+    const issued = await http.post("/users/u_cap/reset-link", actors.sa, {});
+    const reset = await http.post("/auth/reset-password", undefined, {
+      token: issued.body.token,
+      password: "rotated-password-2026"
+    });
+    expect(reset.status).toBe(200);
+    expect(memory.current.rows("user").find((u) => u.id === "u_cap")?.tokenVersion).toBe(1);
+
+    // Every refresh token from before the reset is now dead (incl. the one rotated above).
+    expect((await http.post("/auth/refresh", undefined, { refreshToken: staleRefresh })).status).toBe(401);
+    expect((await http.post("/auth/refresh", undefined, { refreshToken: okRefresh.body.refreshToken })).status).toBe(401);
+
+    // A fresh sign-in carries the new version and refreshes normally.
+    const after = await http.post("/auth/login", undefined, { email: "cap@example.test", password: "rotated-password-2026" });
+    expect(after.status).toBe(200);
+    const refreshed = await http.post("/auth/refresh", undefined, { refreshToken: after.body.refreshToken });
+    expect(refreshed.status).toBe(200);
+  });
+});
