@@ -7,6 +7,13 @@ import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { canSeeNotification, opaqueLegacyScopeNotification } from "../utils/messagingPolicy.js";
+import {
+  getVapidPublicKey,
+  isWebPushConfigured,
+  pushSubscriptionInputSchema,
+  removePushSubscription,
+  savePushSubscription
+} from "../services/webPush.js";
 
 const router = Router();
 const notificationManagerRoles: Role[] = [
@@ -49,6 +56,53 @@ export async function loadVisibleNotifications(
 }
 
 router.use(requireAuth);
+
+router.get(
+  "/push/config",
+  asyncHandler(async (_req, res) => {
+    const enabled = isWebPushConfigured();
+    res.json({
+      enabled,
+      publicKey: enabled ? getVapidPublicKey() : null
+    });
+  })
+);
+
+router.post(
+  "/push/subscribe",
+  asyncHandler(async (req: AuthRequest, res) => {
+    if (!isWebPushConfigured()) {
+      throw new HttpError(503, "Web Push notifications are not enabled on this server");
+    }
+    const body = pushSubscriptionInputSchema.parse(req.body);
+    const saved = await savePushSubscription(req.user!.id, body, req.get("user-agent"));
+    res.status(201).json({ subscribed: true, id: saved.id });
+  })
+);
+
+router.post(
+  "/push/unsubscribe",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const body = z.object({ endpoint: z.string().trim().min(16).max(1024) }).strict().parse(req.body);
+    const result = await removePushSubscription(req.user!.id, body.endpoint);
+    res.json({ unsubscribed: true, removed: result.deletedCount });
+  })
+);
+
+router.delete(
+  "/push/subscribe",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const rawEndpoint =
+      typeof req.body?.endpoint === "string"
+        ? req.body.endpoint
+        : typeof req.query?.endpoint === "string"
+          ? req.query.endpoint
+          : undefined;
+    const { endpoint } = z.object({ endpoint: z.string().trim().min(16).max(1024) }).parse({ endpoint: rawEndpoint });
+    const result = await removePushSubscription(req.user!.id, endpoint);
+    res.json({ unsubscribed: true, removed: result.deletedCount });
+  })
+);
 
 router.get(
   "/",

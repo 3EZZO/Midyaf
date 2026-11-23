@@ -146,6 +146,10 @@ export const MIDYAF_MEMORY_SCHEMA: MemorySchema = {
   vendorContract: {},
   auditLog: {},
   notification: {},
+  pushSubscription: {
+    unique: [["endpoint"]],
+    relations: { user: one("user", "userId") }
+  },
   conversation: {
     unique: [["dedupeKey"]],
     relations: {

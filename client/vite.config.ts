@@ -14,7 +14,8 @@ export default defineConfig({
         "apple-touch-icon.png",
         "icons/apple-touch-icon-v2.png",
         "icons/favicon-v2.svg",
-        "icons/favicon-v2.png"
+        "icons/favicon-v2.png",
+        "sw-push.js"
       ],
       manifest: {
         id: "/",
@@ -52,6 +53,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        importScripts: ["/sw-push.js"],
         // Keep the demo alive on venue Wi-Fi: map tiles and fonts are served
         // from cache once a rehearsal has warmed them.
         // Hosts must match components/map/constants.ts TILE_LAYERS.
