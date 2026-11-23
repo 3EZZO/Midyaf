@@ -1,0 +1,44 @@
+# Plan Ready 1 · Sprint 4 — Event-mode keep-alive ($0).
+#
+# Render Free sleeps after ~15 min idle (≈50 s cold start). During a live event
+# this workflow pings /health every 5 min so captains/VIPs never hit a cold start.
+#
+# OFF by default. It only pings while the repo variable EVENT_MODE == "on".
+#   "event mode" → gh variable set EVENT_MODE --body on  && gh workflow enable event-keepalive.yml && gh workflow run event-keepalive.yml
+#   "event done" → gh variable set EVENT_MODE --body off && gh workflow disable event-keepalive.yml
+#
+# /health runs `SELECT 1`, so it also keeps Neon compute awake — that is why it
+# must not run outside event windows (Neon Free compute-hour budget).
+name: Event keep-alive
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: event-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    if: vars.EVENT_MODE == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Midyaf /health
+        env:
+          HEALTH_URL: https://midyaf.onrender.com/health
+        run: |
+          # First hit after sleep can take ~50 s while Render cold-starts.
+          code=$(curl -sS -o /tmp/health.json -w '%{http_code}' \
+            --retry 3 --retry-delay 15 --retry-all-errors --max-time 90 "$HEALTH_URL" || true)
+          echo "HTTP $code"
+          cat /tmp/health.json 2>/dev/null || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::warning::Midyaf /health returned HTTP $code"
+            exit 1
+          fi
