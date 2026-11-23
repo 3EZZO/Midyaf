@@ -7,6 +7,7 @@ import {
   Car,
   FileText,
   Maximize2,
+  MessageCircle,
   Phone,
   Plane,
   Play,
@@ -27,6 +28,7 @@ import {
 import { useLiveEvent } from "../../lib/liveEvents";
 import { driverRingPosition } from "../../lib/metrics";
 import { fade } from "../../lib/motion";
+import { buildGuestToCaptainWhatsAppUrl } from "../../lib/whatsappHandoff";
 import type { PortalProps } from "../types";
 import { CaptainPhoto } from "./CaptainPhoto";
 import {
@@ -454,17 +456,45 @@ function LegacyGuestJourneyApp({
                 </Badge>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-11 shrink-0"
-              leadingIcon={<Phone className="size-4" />}
-              onClick={() => {
-                window.location.href = `tel:${(assignedDriver?.user.phone ?? journey.driverPhone).replace(/\s+/g, "")}`;
-              }}
-            >
-              {ui.p("Call", "اتصال")}
-            </Button>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {(() => {
+                const captainPhone = assignedDriver?.user.phone ?? journey.driverPhone;
+                const captainName = assignedDriver
+                  ? ui.l(assignedDriver.user.name)
+                  : ui.l(journey.driverName);
+                const whatsappHref = buildGuestToCaptainWhatsAppUrl({
+                  phone: captainPhone,
+                  captainName,
+                  guestName: ui.l(guest.user.name),
+                  arrivalGate: journey.arrivalGate,
+                  arrivalStatus: ui.l(status),
+                  isArabic: ui.isArabic
+                });
+                return whatsappHref ? (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-whatsapp-handoff="guest-to-captain"
+                    className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3.5 text-sm font-semibold text-gold-300 transition-colors hover:border-gold-500 hover:bg-gold-500/20"
+                  >
+                    <MessageCircle className="size-4 shrink-0" aria-hidden />
+                    {ui.p("WhatsApp", "واتساب")}
+                  </a>
+                ) : null;
+              })()}
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-11 shrink-0"
+                leadingIcon={<Phone className="size-4" />}
+                onClick={() => {
+                  window.location.href = `tel:${(assignedDriver?.user.phone ?? journey.driverPhone).replace(/\s+/g, "")}`;
+                }}
+              >
+                {ui.p("Call", "اتصال")}
+              </Button>
+            </div>
           </div>
         </Section>
 
