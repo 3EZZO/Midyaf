@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, FileSignature, KeyRound, Lock, LockOpen, MessageSquareText, RotateCcw, ShieldAlert, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Award, CheckCircle2, FileSignature, KeyRound, Lock, LockOpen, MessageSquareText, RotateCcw, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import type { Session, SupplierSubmissionsView } from "@shared/domain";
 import { ApiError, apiFetch } from "../lib/api";
 import { money, shortDate, shortTime } from "../lib/format";
@@ -69,8 +69,77 @@ export function submissionsCopy(isArabic: boolean) {
     rejectFailed: p("The rejection could not be saved.", "تعذر حفظ الرفض."),
     unavailable: p("This record changed or is no longer available. Refresh to see its current status.", "تغيّر هذا السجل أو لم يعد متاحاً. حدّث لرؤية حالته الحالية."),
     by: p("by", "بواسطة"),
-    quantity: p("Qty", "الكمية")
+    quantity: p("Qty", "الكمية"),
+    ceremonySealedTitle: p(
+      "Sealed Commercial Vault · Super Admin Key Required",
+      "خزنة العروض التجارية المختومة · يتطلب مفتاح المشرف العام"
+    ),
+    ceremonyOpenedTitle: p(
+      "Vault Open · Audited Super Admin Session",
+      "الخزنة مفتوحة · جلسة تدقيق المشرف العام"
+    ),
+    comparisonTitle: p("Sealed-bid price comparison", "مقارنة أسعار العروض المفتوحة"),
+    lowestBid: p("Lowest bid", "أقل سعر"),
+    vendor: p("Vendor", "المورد"),
+    category: p("Category", "التصنيف"),
+    status: p("Status", "الحالة")
   };
+}
+
+export interface VaultComparisonRow {
+  submission: SupplierSubmissionsView["submissions"][number];
+  numericTotal: number;
+  categoryBidCount: number;
+  isLowestInCategory: boolean;
+  variancePercent: number | null;
+}
+
+/**
+ * Pure D-011-compliant comparison builder: operates strictly on server-returned
+ * `submission.terms` (never invents or decodes sealed values).
+ */
+export function buildVaultComparison(
+  submissions: SupplierSubmissionsView["submissions"]
+): VaultComparisonRow[] {
+  const revealed = submissions.filter(
+    (s) => s.terms !== null && s.status !== "REJECTED"
+  );
+  if (revealed.length === 0) return [];
+
+  const lowestByCategory = new Map<string, number>();
+  const countByCategory = new Map<string, number>();
+  for (const s of revealed) {
+    const total = Number(s.terms!.totalPrice);
+    if (!Number.isFinite(total)) continue;
+    countByCategory.set(s.category, (countByCategory.get(s.category) ?? 0) + 1);
+    const prev = lowestByCategory.get(s.category);
+    if (prev === undefined || total < prev) {
+      lowestByCategory.set(s.category, total);
+    }
+  }
+
+  return revealed
+    .map((submission) => {
+      const numericTotal = Number(submission.terms!.totalPrice);
+      const lowest = lowestByCategory.get(submission.category) ?? numericTotal;
+      const categoryBidCount = countByCategory.get(submission.category) ?? 1;
+      const isLowestInCategory = Number.isFinite(numericTotal) && numericTotal <= lowest;
+      const variancePercent =
+        categoryBidCount >= 2 && lowest > 0 && Number.isFinite(numericTotal) && !isLowestInCategory
+          ? Math.round(((numericTotal - lowest) / lowest) * 100)
+          : null;
+      return {
+        submission,
+        numericTotal,
+        categoryBidCount,
+        isLowestInCategory,
+        variancePercent
+      };
+    })
+    .sort((a, b) => {
+      const cat = a.submission.category.localeCompare(b.submission.category);
+      return cat !== 0 ? cat : a.numericTotal - b.numericTotal;
+    });
 }
 
 export function rejectErrorMessage(error: unknown, isArabic: boolean) {
@@ -344,6 +413,21 @@ export function SupplierSubmissionsView({
 }) {
   const copy = submissionsCopy(isArabic);
   const locale = isArabic ? "ar" : "en";
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const comparisonRows = useMemo(
+    () => (state.status === "ready" && state.value.vault.opened && state.value.vault.canApprove ? buildVaultComparison(state.value.submissions) : []),
+    [state]
+  );
+
+  const handleDecide = async (decision: SubmissionDecision) => {
+    const failure = await onDecide(decision);
+    if (!failure && decision.kind === "open") {
+      setOpenedAt(new Date().toISOString());
+    } else if (!failure && decision.kind === "reseal") {
+      setOpenedAt(null);
+    }
+    return failure;
+  };
 
   return (
     <div id="supplier-submissions" className="mt-6 space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
@@ -368,28 +452,67 @@ export function SupplierSubmissionsView({
           </div>
         ) : null}
       </div>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="flex items-start gap-1.5 text-xs text-ink-muted">
-          <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
-          <span>
-            {state.status === "ready" && state.value.vault.opened ? copy.keyHolderOpen : copy.keyHolderSealed}{" "}
-            {copy.excluded}
-          </span>
-        </p>
+
+      {/* Ceremonial Super Admin Vault Header / Audited Open Ribbon (D-011) */}
+      <div
+        data-vault-ceremony={
+          state.status === "ready" && state.value.vault.canOpen
+            ? state.value.vault.opened
+              ? "opened"
+              : "sealed"
+            : undefined
+        }
+        className={
+          state.status === "ready" && state.value.vault.canOpen
+            ? state.value.vault.opened
+              ? "flex flex-wrap items-start justify-between gap-3 rounded-lg border border-ok/40 bg-ok/10 p-3"
+              : "flex flex-wrap items-start justify-between gap-3 rounded-lg border border-gold-500/45 bg-gold-500/10 p-3"
+            : "flex flex-wrap items-start justify-between gap-2"
+        }
+      >
+        <div className="min-w-0 flex-1 space-y-1">
+          {state.status === "ready" && state.value.vault.canOpen ? (
+            <p
+              data-vault-opened-ribbon={state.value.vault.opened ? "true" : undefined}
+              className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-ink"
+            >
+              {state.value.vault.opened ? (
+                <ShieldCheck className="size-4 shrink-0 text-ok" aria-hidden />
+              ) : (
+                <KeyRound className="size-4 shrink-0 text-gold-300" aria-hidden />
+              )}
+              <span>
+                {state.value.vault.opened ? copy.ceremonyOpenedTitle : copy.ceremonySealedTitle}
+              </span>
+              {state.value.vault.opened && openedAt ? (
+                <span className="font-tnum font-normal text-ink-muted" dir="ltr">
+                  · {shortTime(openedAt, locale)}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          <p className="flex items-start gap-1.5 text-xs text-ink-muted">
+            <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
+            <span>
+              {state.status === "ready" && state.value.vault.opened ? copy.keyHolderOpen : copy.keyHolderSealed}{" "}
+              {copy.excluded}
+            </span>
+          </p>
+        </div>
         {state.status === "ready" && state.value.vault.canOpen ? (
           state.value.vault.opened ? (
             <ConfirmAction
               label={copy.reseal}
               icon={<Lock className="size-3.5" aria-hidden />}
               variant="ghost"
-              onConfirm={() => onDecide({ kind: "reseal", id: state.value.intakeId })}
+              onConfirm={() => handleDecide({ kind: "reseal", id: state.value.intakeId })}
             />
           ) : (
             <ConfirmAction
               label={copy.openVault}
               confirmLabel={copy.confirmOpen}
               icon={<KeyRound className="size-3.5" aria-hidden />}
-              onConfirm={() => onDecide({ kind: "open", id: state.value.intakeId })}
+              onConfirm={() => handleDecide({ kind: "open", id: state.value.intakeId })}
             />
           )
         ) : null}
@@ -408,6 +531,82 @@ export function SupplierSubmissionsView({
         </div>
       ) : (
         <>
+          {comparisonRows.length > 0 ? (
+            <div
+              data-vault-comparison
+              className="overflow-x-auto rounded-lg border border-gold-500/30 bg-surface-2"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-hairline px-3 py-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gold-300">
+                  <Award className="size-3.5 text-gold-500" aria-hidden />
+                  {copy.comparisonTitle}
+                </span>
+                <span className="font-tnum text-xs text-ink-muted">
+                  {comparisonRows.length} {isArabic ? "عروض مكشوفة" : "revealed bids"}
+                </span>
+              </div>
+              <table className="w-full border-collapse text-start text-xs">
+                <thead>
+                  <tr className="border-b border-hairline text-ink-muted">
+                    <th className="px-3 py-2 text-start font-semibold">{copy.vendor}</th>
+                    <th className="px-3 py-2 text-start font-semibold">{copy.category}</th>
+                    <th className="px-3 py-2 text-end font-semibold">{copy.unit}</th>
+                    <th className="px-3 py-2 text-end font-semibold">{copy.total}</th>
+                    <th className="px-3 py-2 text-end font-semibold">{copy.commission}</th>
+                    <th className="px-3 py-2 text-end font-semibold">{copy.status}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {comparisonRows.map(({ submission, isLowestInCategory, variancePercent }) => {
+                    const terms = submission.terms!;
+                    return (
+                      <tr
+                        key={submission.quoteId}
+                        data-vault-comparison-row={submission.quoteId}
+                        className={isLowestInCategory ? "bg-ok/5" : undefined}
+                      >
+                        <td className="px-3 py-2 font-semibold text-ink">
+                          {submission.supplier?.name ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-ink-muted">
+                          {categoryLabel(submission.category, isArabic)}
+                        </td>
+                        <td className="px-3 py-2 text-end font-tnum text-ink-muted">
+                          {money(terms.unitPrice, terms.currency)}
+                        </td>
+                        <td className="px-3 py-2 text-end font-tnum font-bold text-ink">
+                          <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                            <span>{money(terms.totalPrice, terms.currency)}</span>
+                            {isLowestInCategory ? (
+                              <Badge tone="ok" size="sm">
+                                {copy.lowestBid}
+                              </Badge>
+                            ) : variancePercent !== null ? (
+                              <Badge tone="warn" size="sm">
+                                +{variancePercent}%
+                              </Badge>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-end font-tnum text-ink-muted">
+                          {terms.commissionPercent}% · {money(terms.commissionAmount, terms.currency)}
+                        </td>
+                        <td className="px-3 py-2 text-end">
+                          <Badge
+                            size="sm"
+                            tone={submission.status === "APPROVED" ? "ok" : "info"}
+                          >
+                            {quoteStatusLabel(submission.status, isArabic)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
           {state.value.submissions.length ? (
             <ul className="space-y-2">
               {state.value.submissions.map((submission) => (
@@ -418,7 +617,7 @@ export function SupplierSubmissionsView({
                     canManage={canManage}
                     canDecide={state.value.vault.canApprove}
                     onReject={onReject}
-                    onDecide={onDecide}
+                    onDecide={handleDecide}
                   />
                 </li>
               ))}

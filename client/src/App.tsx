@@ -61,6 +61,7 @@ import {
   switchDemoPersona
 } from "./lib/investorDemoApi";
 import { LoginPage } from "./shell/LoginPage";
+import { resolvePresenterHotkey } from "./lib/presenterHotkeys";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
 import { GuestSelfOnboarding } from "./pages/GuestSelfOnboarding";
@@ -180,6 +181,7 @@ export function App() {
   const [realtimeLog, setRealtimeLog] = useState<LogEntry[]>([]);
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
   // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
@@ -369,6 +371,69 @@ export function App() {
       });
     return () => controller.abort();
   }, [session?.accessToken, session?.user.onboardingPending, demoStatusRev]);
+
+  const handleLanguageToggle = useCallback(() => {
+    toast.clearTransient();
+    void i18n.changeLanguage(isArabicLanguage(i18n.language) ? "en" : "ar");
+  }, [i18n, toast]);
+
+  const handleLaunchWarRoom = () => {
+    if (isDemoMode) {
+      setIsWarRoomOpen(true);
+      return;
+    }
+    if (canTriggerSimulation) {
+      toggleDemoMode();
+      setIsWarRoomOpen(true);
+      return;
+    }
+    toast.info(
+      isArabic ? "غرفة العمليات تتطلب دور المالك أو العمليات" : "War Room requires Owner or Ops role",
+      isArabic
+        ? "استخدم مبدّل أدوار العرض للانتقال إلى المالك أو العمليات أولاً."
+        : "Switch to Midyaf Owner or Sila Operations in the demo switcher first."
+    );
+  };
+
+  // Guarded presenter single-key hotkeys (?, P, L, W) — demo/presenter mode only.
+  useEffect(() => {
+    const presenterEnabled = Boolean(demoStatus?.canSwitch || isDemoMode);
+    if (!presenterEnabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = resolvePresenterHotkey(event, {
+        enabled: presenterEnabled,
+        isWarRoomOpen,
+        isQuickNavOpen,
+        isShortcutsOpen
+      });
+      if (!action) return;
+      event.preventDefault();
+      if (action === "toggle-shortcuts") {
+        setIsShortcutsOpen((prev) => !prev);
+      } else if (action === "toggle-projector") {
+        toggleProjectorMode();
+      } else if (action === "toggle-language") {
+        handleLanguageToggle();
+      } else if (action === "toggle-warroom") {
+        if (isDemoMode) {
+          setIsWarRoomOpen((prev) => !prev);
+        } else {
+          handleLaunchWarRoom();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    demoStatus?.canSwitch,
+    isDemoMode,
+    isWarRoomOpen,
+    isQuickNavOpen,
+    isShortcutsOpen,
+    canTriggerSimulation,
+    isArabic,
+    handleLanguageToggle
+  ]);
 
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
@@ -578,9 +643,7 @@ export function App() {
         <ApplicantRegistration
           isArabic={isArabic}
           fixedKind={registrationKind}
-          onLanguageToggle={() =>
-            void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-          }
+          onLanguageToggle={handleLanguageToggle}
           onRegistered={(nextSession) => {
             navigateRegistration(null);
             installSession(nextSession);
@@ -597,9 +660,7 @@ export function App() {
         isArabic={isArabic}
         error={authError}
         isLoading={isLoading}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLanguageToggle={handleLanguageToggle}
         onOpenRegistration={(kind) => navigateRegistration(kind)}
         onRegistered={(nextSession) => {
           navigateRegistration(null);
@@ -616,9 +677,7 @@ export function App() {
       <StandaloneOnboardingFrame
         session={session}
         isArabic={isArabic}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLanguageToggle={handleLanguageToggle}
         onLogout={handleLogout}
         onRefresh={async () => {
           const next = await refreshSession(session.refreshToken);
@@ -667,9 +726,10 @@ export function App() {
         onSwitchDemoPersona={handleSwitchDemoPersona}
         onCaptureDemoBaseline={handleCaptureDemoBaseline}
         onResetDemoData={handleResetDemoData}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLaunchWarRoom={handleLaunchWarRoom}
+        isShortcutsOpen={isShortcutsOpen}
+        setIsShortcutsOpen={setIsShortcutsOpen}
+        onLanguageToggle={handleLanguageToggle}
         onLogout={handleLogout}
       >
         {loadError ? (
@@ -723,11 +783,12 @@ export function App() {
       onSwitchDemoPersona={handleSwitchDemoPersona}
       onCaptureDemoBaseline={handleCaptureDemoBaseline}
       onResetDemoData={handleResetDemoData}
+      onLaunchWarRoom={handleLaunchWarRoom}
+      isShortcutsOpen={isShortcutsOpen}
+      setIsShortcutsOpen={setIsShortcutsOpen}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
-      onLanguageToggle={() =>
-        void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-      }
+      onLanguageToggle={handleLanguageToggle}
       onLogout={handleLogout}
     >
       <ErrorBoundary key={workspaceRevision} resetKey={`${portal}:${workspaceRevision}`} isArabic={isArabic}>
@@ -775,6 +836,7 @@ export function App() {
     normalDataRef.current = null;
     setIsDemoMode(false);
     setIsWarRoomOpen(false);
+    setIsShortcutsOpen(false);
     setSession(null);
     setData(null);
     setDemoStatus(null);
@@ -792,10 +854,13 @@ export function App() {
       installSession(nextSession);
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
-      toast.success(
-        isArabic ? "تم تبديل دور العرض" : "Switched demo role",
-        isArabic ? persona.labelAr : persona.labelEn
-      );
+      toast.show({
+        id: "demo-role-switch",
+        type: "success",
+        duration: 2500,
+        title: isArabic ? "تم تبديل دور العرض" : "Switched demo role",
+        message: isArabic ? persona.labelAr : persona.labelEn
+      });
     } catch (error) {
       toast.alert(
         isArabic ? "تعذر تبديل الدور" : "Could not switch persona",
@@ -847,12 +912,15 @@ export function App() {
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
       await refreshData();
-      toast.success(
-        isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
-        isArabic
+      toast.show({
+        id: "demo-data-reset",
+        type: "success",
+        duration: 3400,
+        title: isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+        message: isArabic
           ? `تمت استعادة ${result.restored} سجلاً وإزالة ${result.removed} سجلاً.`
           : `Restored ${result.restored} rows and cleared ${result.removed} rows.`
-      );
+      });
     } catch (error) {
       toast.alert(
         isArabic ? "تعذر إعادة ضبط البيانات" : "Could not reset demo data",

@@ -4,6 +4,7 @@ import type { SupplierSubmissionsView as View } from "@shared/domain";
 import { ApiError } from "../lib/api";
 import {
   SupplierSubmissionsView,
+  buildVaultComparison,
   createSubmissionsController,
   decisionErrorMessage,
   decisionRequest,
@@ -174,6 +175,50 @@ describe("SupplierSubmissionsView", () => {
   it("explains conflicts truthfully", () => {
     expect(rejectErrorMessage(new ApiError("x", 409), false)).toMatch(/changed/);
     expect(rejectErrorMessage(new ApiError("x", 500), false)).toMatch(/could not be saved/);
+  });
+
+  it("builds a D-011 bid comparison table with lowest bid and variance only when vault is opened for Super Admin", () => {
+    // Sealed view never renders comparison table
+    const sealedHtml = render({ status: "ready", value: { ...value, vault: { ...value.vault, canOpen: true } } });
+    expect(sealedHtml).toContain('data-vault-ceremony="sealed"');
+    expect(sealedHtml).not.toContain("data-vault-comparison");
+
+    // Two revealed hotel quotes in the same category
+    const openedMulti: View = {
+      ...value,
+      vault: { keyHolder: "SUPER_ADMIN", opened: true, canOpen: true, canApprove: true },
+      sealedCount: 0,
+      submissions: [
+        {
+          ...value.submissions[0],
+          quoteId: "q_high",
+          supplier: { id: "sup_2", name: "Premium Suites Co", category: "HOTEL" },
+          sealed: false,
+          terms: { unitPrice: "1500.00", totalPrice: "22500.00", commissionPercent: "12.00", commissionAmount: "2700.00", currency: "SAR" }
+        },
+        {
+          ...value.submissions[0],
+          quoteId: "q_low",
+          supplier: { id: "sup_1", name: "Synthetic Hotel Supplier", category: "HOTEL" },
+          sealed: false,
+          terms: { unitPrice: "1200.00", totalPrice: "18000.00", commissionPercent: "12.00", commissionAmount: "2160.00", currency: "SAR" }
+        }
+      ]
+    };
+
+    const rows = buildVaultComparison(openedMulti.submissions);
+    expect(rows.map((r) => r.submission.quoteId)).toEqual(["q_low", "q_high"]);
+    expect(rows[0].isLowestInCategory).toBe(true);
+    expect(rows[0].variancePercent).toBeNull();
+    expect(rows[1].isLowestInCategory).toBe(false);
+    expect(rows[1].variancePercent).toBe(25);
+
+    const openHtml = render({ status: "ready", value: openedMulti });
+    expect(openHtml).toContain('data-vault-ceremony="opened"');
+    expect(openHtml).toContain("data-vault-opened-ribbon");
+    expect(openHtml).toContain("data-vault-comparison");
+    expect(openHtml).toContain("Lowest bid");
+    expect(openHtml).toContain("+25%");
   });
 });
 

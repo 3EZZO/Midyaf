@@ -3,10 +3,12 @@ import { ChevronDown } from "lucide-react";
 import type { WorkspaceEventDto } from "@shared/overhaul";
 import { cn } from "../lib/cn";
 import { sectionStorageKey, usePersistedCollapse } from "../lib/collapsibleStorage";
+import { localizeDemoText } from "../lib/localizeDemo";
 import { useWorkspaceResource, workspaceRequest } from "../lib/workspaceApi";
 import { workspaceTabs, tabUnlocked, type WorkspaceLanding, type WorkspaceTab } from "../lib/workspaceWorkflow";
 import { workspaceButton, workspaceInput, type WorkspaceProps } from "./OrganizerWorkspace";
 import { Section } from "./Section";
+import { EventLifecycleRail } from "./EventLifecycleRail";
 import { EventPlanEditor } from "./EventPlanEditor";
 import { EventPermissions } from "./EventPermissions";
 import { EventVendors } from "./EventVendors";
@@ -56,7 +58,8 @@ export function displayedEvent(bridge: ApprovalBridge | null, scope: string, rev
   if (!event) return <Section title={ar ? 'الفعالية' : 'Event'} collapsible={false} isArabic={ar}><p role={resource.error ? 'alert' : 'status'}>{resource.error ?? (ar ? 'جاري التحميل…' : 'Loading…')}</p><button className={workspaceButton} onClick={() => refresh(n => n+1)}>{ar ? 'إعادة المحاولة' : 'Retry'}</button></Section>;
   const labels: Record<WorkspaceTab,string> = {overview: ar ? 'نظرة عامة' : 'Overview', plan: ar ? 'الخطة' : 'Plan', guests: ar ? 'الضيوف' : 'Guests', vendors: ar ? 'الموردون' : 'Vendors', teams: ar ? 'الفرق' : 'Teams', permissions: ar ? 'الصلاحيات' : 'Permissions', inbox: ar ? 'صندوق البريد' : 'Inbox', radar: ar ? 'الرادار والتتبع' : 'Radar & tracking'};
   const navToggleLabel = navCollapse.collapsed ? (ar ? 'توسيع أقسام الفعالية' : 'Expand event sections') : (ar ? 'طي أقسام الفعالية' : 'Collapse event sections');
-  return <div className="space-y-4"><header><h1 className="text-2xl font-bold">{event.name}</h1><p className="text-sm text-ink-muted">{event.locationLabel} · {event.operationalStatus} · {event.contractSigned ? (ar ? 'العقد موقع — النطاق مقفل' : 'Contract signed — scope locked') : (ar ? 'النطاق قابل للتعديل' : 'Scope editable')}</p></header>
+  return <div className="space-y-4"><header><h1 className="text-2xl font-bold">{localizeDemoText(event.name, ar)}</h1><p className="text-sm text-ink-muted">{localizeDemoText(event.locationLabel, ar)} · {event.operationalStatus} · {event.contractSigned ? (ar ? 'العقد موقع — النطاق مقفل' : 'Contract signed — scope locked') : (ar ? 'النطاق قابل للتعديل' : 'Scope editable')}</p></header>
+   <EventLifecycleRail planApproved={event.planApproved} contractSigned={event.contractSigned} operationalStatus={event.operationalStatus} isArabic={ar} onNavigateTab={nextTab => { if (tabUnlocked(event, nextTab)) setTab(nextTab); }} />
    <div className="rounded-lg border border-hairline bg-surface-2 p-2">
      <div className={cn("flex items-center justify-between gap-2 px-1", !navCollapse.collapsed && "mb-2 border-b border-hairline pb-2")}>
        <span className="text-xs font-semibold text-ink-muted">{ar ? 'أقسام الفعالية' : 'Event sections'}: <strong className="text-ink">{labels[tab]}</strong></span>

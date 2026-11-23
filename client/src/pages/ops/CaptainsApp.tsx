@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Car,
   Clock,
+  ExternalLink,
   ListChecks,
   LocateFixed,
   LocateOff,
   MapPin,
   Navigation,
+  Phone,
   Zap
 } from "lucide-react";
 import type { FileAsset, Task, TaskStatus } from "@shared/domain";
@@ -45,6 +47,39 @@ import {
 } from "./shared";
 
 const GPS_PREF_KEY = "midyaf.captain.gps";
+
+/** High-contrast sunlit action copy for the captain's primary one-thumb button. */
+export function sunlitStepActionLabel(
+  status: TaskStatus,
+  isArabic: boolean
+): string {
+  switch (status) {
+    case "ACCEPTED":
+      return isArabic ? "قبول المهمة" : "Accept Trip";
+    case "EN_ROUTE":
+      return isArabic ? "بدء التوجه للبوابة" : "Start Route to Gate";
+    case "ARRIVED":
+      return isArabic ? "تأكيد الوصول للبوابة" : "Confirm Arrival";
+    case "PICKED_UP":
+      return isArabic ? "الضيف على متن المركبة" : "Guest On Board";
+    case "COMPLETED":
+      return isArabic ? "إنهاء الرحلة" : "Trip Complete";
+    default:
+      return statusActionLabel(status);
+  }
+}
+
+/** Builds a safe external navigation URL for the active trip's target location. */
+export function buildCaptainMapsUrl(
+  task: Pick<Task, "status" | "pickupLocation" | "dropoffLocation">
+): string {
+  const target =
+    task.status === "PICKED_UP"
+      ? task.dropoffLocation || task.pickupLocation
+      : task.pickupLocation || task.dropoffLocation;
+  const query = `${target}, Riyadh, Saudi Arabia`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
 
 function readGpsPref(): boolean | null {
   try {
@@ -154,6 +189,21 @@ function LegacyCaptainsApp({
     () =>
       tasks.filter((t) => t.status !== "COMPLETED" && t.status !== "CANCELLED"),
     [tasks]
+  );
+  const activeTrip = openTasks[0] ?? null;
+  const activeTripNext = activeTrip
+    ? nextTaskStatuses(activeTrip.status).find(
+        (s) => s !== "DELAYED" && s !== "CANCELLED"
+      )
+    : undefined;
+  const coordinatorContact = useMemo(
+    () =>
+      data.users.find(
+        (u) =>
+          (u.role === "COORDINATOR" || u.role === "LOGISTICS_MANAGER") &&
+          Boolean(u.phone?.trim())
+      ) ?? null,
+    [data.users]
   );
 
   async function advance(task: Task, status: TaskStatus) {
@@ -282,6 +332,103 @@ function LegacyCaptainsApp({
           </Button>
         </div>
       </Card>
+
+      {/* One-Thumb Sunlit Action Bar for the active trip (52px primary CTA + oversized tabular ETA + Maps & Call) */}
+      {activeTrip ? (
+        <Card
+          padding="md"
+          tone="gold"
+          data-captain-sunlit-bar
+          className="border-gold-500/50 bg-surface-2 shadow-luxury"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="gold" size="sm">
+                  {ui.p("Active trip", "الرحلة النشطة")}
+                </Badge>
+                <StatusPill
+                  status={activeTrip.status}
+                  size="sm"
+                  live={activeTrip.status === "EN_ROUTE"}
+                />
+              </div>
+              <h2 className="text-base font-bold leading-snug text-ink sm:text-lg">
+                {ui.l(activeTrip.pickupLocation)} → {ui.l(activeTrip.dropoffLocation)}
+              </h2>
+              <p className="text-sm text-ink-muted">
+                {activeTrip.guest
+                  ? ui.l(activeTrip.guest.user.name)
+                  : ui.l(activeTrip.type)}
+              </p>
+            </div>
+
+            <div className="shrink-0 rounded-lg border border-gold-500/35 bg-surface-1 px-3.5 py-2 text-end">
+              <p className="text-xs font-semibold uppercase tracking-label text-ink-muted">
+                {ui.p("Target ETA", "موعد الوصول")}
+              </p>
+              <p
+                className="font-tnum text-2xl font-bold leading-tight text-gold-300 sm:text-3xl"
+                dir="ltr"
+              >
+                {ui.time(activeTrip.deadlineAt ?? activeTrip.scheduledAt)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            {activeTripNext ? (
+              <Button
+                type="button"
+                variant="gold"
+                size="lg"
+                data-captain-primary-cta={activeTripNext}
+                className="h-[52px] w-full text-base font-bold"
+                loading={busyTask === activeTrip.id}
+                onClick={() => void advance(activeTrip, activeTripNext)}
+              >
+                {sunlitStepActionLabel(activeTripNext, ui.isArabic)}
+              </Button>
+            ) : null}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <a
+                href={buildCaptainMapsUrl(activeTrip)}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-captain-open-maps
+                className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-hairline bg-surface-1 px-4 text-sm font-semibold text-ink transition-colors hover:border-gold-500/50 hover:bg-surface-3 focus-visible:outline-none focus-visible:shadow-focus"
+              >
+                <ExternalLink className="size-4 shrink-0 text-gold-500" aria-hidden />
+                <span className="truncate">{ui.p("Open in Maps", "فتح في الخرائط")}</span>
+              </a>
+              {coordinatorContact?.phone ? (
+                <a
+                  href={`tel:${coordinatorContact.phone.replace(/\s+/g, "")}`}
+                  data-captain-call-coordinator
+                  className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-hairline bg-surface-1 px-4 text-sm font-semibold text-ink transition-colors hover:border-gold-500/50 hover:bg-surface-3 focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  <Phone className="size-4 shrink-0 text-gold-500" aria-hidden />
+                  <span className="truncate">
+                    {ui.p("Call Coordinator", "الاتصال بالمنسق")}
+                  </span>
+                </a>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full"
+                  leadingIcon={<Navigation className="size-4" aria-hidden />}
+                  onClick={() => void shareDriverLocation(captain.id)}
+                >
+                  {ui.p("Ping Dispatch", "إشعار غرفة العمليات")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <KpiTile

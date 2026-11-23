@@ -2,6 +2,8 @@ import { OnboardingWorkspace } from "./OnboardingWorkspace";
 import { PlanApprovalQueue } from "./PlanApprovalQueue";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
   Banknote,
   Building2,
   CalendarClock,
@@ -31,6 +33,7 @@ import { DEFAULT_COMPLAINTS } from "@shared/constants";
 import type { PlanApprovalQueueResponse } from "@shared/overhaul";
 import { compact, integer, money, shortDate, shortTime } from "../lib/format";
 import { deriveExecutiveKpis, fleetUtilisation, slaSample } from "../lib/metrics";
+import { localizeDemoText } from "../lib/localizeDemo";
 import { localizeCategory, localizePaymentTerms } from "../lib/localizeDomain";
 import { useWorkspaceResource } from "../lib/workspaceApi";
 import { AreaTrend, EventHistogram } from "./charts";
@@ -268,6 +271,25 @@ export function AdminExecutiveDashboard({
     openComplaints
   });
 
+  const ATTENTION_SECTION_ID: Partial<Record<AdminTab, string>> = {
+    plans: "section-admin-plans-queue",
+    vault: "section-admin-vault",
+    complaints: "section-admin-complaints"
+  };
+
+  const openAttentionTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    const sectionId = ATTENTION_SECTION_ID[tab];
+    if (!sectionId || typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(sectionId);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const derivedCommissionOnly = kpis.contractedSpend.value === 0 && kpis.commission.value > 0;
+  const DirectionArrow = isArabic ? ArrowLeft : ArrowRight;
+
   return (
     <div className="space-y-6" dir={isArabic ? "rtl" : "ltr"}>
       <PortalHero
@@ -305,7 +327,15 @@ export function AdminExecutiveDashboard({
             value={kpis.commission.value}
             format="money"
             delta={kpis.commission.delta}
-            detail={isArabic ? "مقارنة بالأسبوع السابق" : "vs previous week"}
+            detail={
+              derivedCommissionOnly
+                ? isArabic
+                  ? "من العروض المعتمدة"
+                  : "From approved quotes"
+                : isArabic
+                  ? "مقارنة بالأسبوع السابق"
+                  : "vs previous week"
+            }
             sparkline={kpis.commission.series.points}
             source={kpis.commission.source}
             icon={<Banknote className="size-4" aria-hidden />}
@@ -316,9 +346,13 @@ export function AdminExecutiveDashboard({
             value={kpis.contractedSpend.value}
             format="money"
             detail={
-              isArabic
-                ? `عبر ${integer(kpis.contractedSpend.categories)} فئات موردين`
-                : `Across ${integer(kpis.contractedSpend.categories)} vendor categories`
+              kpis.contractedSpend.value === 0
+                ? isArabic
+                  ? "0 عقود موقعة بالخزنة"
+                  : "0 signed in Vault"
+                : isArabic
+                  ? `عبر ${integer(kpis.contractedSpend.categories)} فئات موردين`
+                  : `Across ${integer(kpis.contractedSpend.categories)} vendor categories`
             }
             sparkline={kpis.contractedSpend.series.points}
             source={kpis.contractedSpend.source}
@@ -354,7 +388,7 @@ export function AdminExecutiveDashboard({
           eyebrow={isArabic ? "من البيانات الحالية" : "From current data"}
           isArabic={isArabic}
         >
-          <div className="grid gap-3 sm:grid-cols-3" data-admin-attention>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" data-admin-attention>
             {attention.map((item) => {
               const meta = attentionMeta[item.tab];
               return (
@@ -362,10 +396,10 @@ export function AdminExecutiveDashboard({
                   key={item.tab}
                   padding="sm"
                   tone={item.count ? meta.tone : "none"}
-                  onClick={() => setActiveTab(item.tab)}
+                  onClick={() => openAttentionTab(item.tab)}
                   aria-label={`${meta.label}: ${integer(item.count)}`}
                   data-attention={item.tab}
-                  className="flex flex-col gap-2"
+                  className="group flex min-w-0 cursor-pointer flex-col gap-2 transition-colors hover:border-gold-500/60"
                 >
                   <span className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-label text-ink-muted">
                     {meta.label}
@@ -373,6 +407,16 @@ export function AdminExecutiveDashboard({
                   </span>
                   <span className={`font-tnum text-2xl font-bold ${item.count ? "text-ink" : "text-ink-faint"}`}>{integer(item.count)}</span>
                   <span className="text-xs text-ink-muted">{item.count ? meta.detail : isArabic ? "لا شيء معلق" : "Nothing pending"}</span>
+                  <span className="mt-auto inline-flex items-center gap-1 pt-1 text-xs font-semibold text-gold-300 transition-colors group-hover:text-gold-500">
+                    {item.count
+                      ? isArabic
+                        ? "مراجعة الآن"
+                        : "Review now"
+                      : isArabic
+                        ? "فتح القسم"
+                        : "Open section"}
+                    <DirectionArrow className="size-3.5 shrink-0" aria-hidden />
+                  </span>
                 </Surface>
               );
             })}
@@ -775,9 +819,9 @@ export function AdminExecutiveDashboard({
                   {pipeline.map((act) => (
                     <li key={act.id} className="flex items-start justify-between gap-3 py-2.5">
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-ink">{act.activityName}</span>
+                        <span className="block truncate text-sm font-semibold text-ink">{localizeDemoText(act.activityName, isArabic)}</span>
                         <span className="block text-xs text-ink-muted">
-                          {act.activityPlace} · {integer(act.visitorCount)} {isArabic ? "ضيف" : "guests"}
+                          {localizeDemoText(act.activityPlace, isArabic)} · {integer(act.visitorCount)} {isArabic ? "ضيف" : "guests"}
                         </span>
                       </span>
                       <StatusPill status={act.status} size="sm" />
