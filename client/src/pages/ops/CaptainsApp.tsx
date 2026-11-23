@@ -366,7 +366,7 @@ function LegacyCaptainsApp({
         </form>
       </Section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <Section title={ui.l("Task routes and feedback")}>
           <div className="space-y-3">
             {tasks.length === 0 ? (

@@ -49,7 +49,7 @@ export function ActTitleCard({
           role="status"
           aria-live="polite"
         >
-          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gold-500/45 bg-surface-0/92 shadow-luxury backdrop-blur-md">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gold-500/45 bg-surface-0/95 shadow-luxury backdrop-blur-md">
             <SaduRibbon variant="crest" />
             <div className="px-8 py-7 text-center sm:px-10">
               <div
@@ -65,7 +65,7 @@ export function ActTitleCard({
                 {pick(state.actTitle, isArabic)}
               </h2>
               {state.actSubtitle ? (
-                <p className="mt-2.5 text-base text-ink-muted">
+                <p className="mt-2.5 text-base text-ink/90">
                   {pick(state.actSubtitle, isArabic)}
                 </p>
               ) : null}

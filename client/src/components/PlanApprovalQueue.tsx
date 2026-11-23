@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   BedDouble,
   CalendarDays,
@@ -170,6 +170,17 @@ export function PlanApprovalQueueView({
 }) {
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const idPrefix = useId().replace(/:/g, "");
+  const stampRef = useRef<HTMLDivElement | null>(null);
+
+  // On narrow screens the figure tiles wrap, so the card grows and its
+  // lower-end stamp can sit behind the mobile dock. Bring it into view once
+  // per approval; scroll-margin keeps it clear of the dock.
+  useEffect(() => {
+    if (!sealedPlanId) return;
+    const reducedMotion =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    stampRef.current?.scrollIntoView?.({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+  }, [sealedPlanId]);
 
   return (
     <Section
@@ -253,8 +264,9 @@ export function PlanApprovalQueueView({
                   {sealed ? (
                     <div
                       aria-hidden="true"
+                      ref={stampRef}
                       data-approval-stamp={plan.id}
-                      className="qasr-approval-circular-stamp pointer-events-none absolute bottom-3 end-4 z-10 grid size-[136px] place-items-center rounded-full p-2.5 text-center sm:end-6"
+                      className="qasr-approval-circular-stamp pointer-events-none absolute bottom-3 end-4 z-10 grid size-[136px] scroll-mb-24 place-items-center rounded-full p-2.5 text-center sm:end-6"
                     >
                       <div className="flex size-full flex-col items-center justify-center rounded-full border border-dashed border-current/70 px-2">
                         <span className="font-display text-2xl font-bold leading-none">

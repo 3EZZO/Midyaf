@@ -108,8 +108,8 @@ export function LoginPage({
         </Button>
       </div>
 
-      <main className="relative z-[1] mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
-        <section className="space-y-7">
+      <main className="relative z-[1] mx-auto grid min-h-screen max-w-6xl grid-cols-1 items-center gap-10 px-5 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+        <section className="min-w-0 space-y-7">
           <motion.div
             variants={entrance.rise(0)}
             initial={reduced ? false : "initial"}
@@ -131,7 +131,7 @@ export function LoginPage({
                 {t("common.riyadhOnly")}
               </p>
               <p className="text-xs text-ink-muted">
-                {isArabic ? "منصة الضيافة الملكية والقمم" : "Sovereign Hospitality & Summit Ops"}
+                {isArabic ? "منصة الضيافة الملكية والقمم" : "Royal Hospitality & Summit Ops"}
               </p>
             </div>
           </motion.div>
@@ -218,7 +218,7 @@ export function LoginPage({
           initial={reduced ? false : "initial"}
           animate="animate"
           onSubmit={(event) => void handleSubmit(event)}
-          className="overflow-hidden rounded-xl border border-hairline-strong bg-surface-2/95 shadow-luxury backdrop-blur-md"
+          className="min-w-0 overflow-hidden rounded-xl border border-hairline-strong bg-surface-2/95 shadow-luxury backdrop-blur-md"
           aria-labelledby="login-title"
         >
           <SaduRibbon variant="hairline" className="opacity-90" />
