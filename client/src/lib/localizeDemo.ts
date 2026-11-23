@@ -80,6 +80,22 @@ const ALIAS_MAP: Record<string, BilingualPair> = {
     en: "Riyadh Global Hospitality Expo",
     ar: "معرض الرياض العالمي للضيافة"
   },
+  "overhaul demo summit (synthetic)": {
+    en: "Riyadh Executive Hospitality Summit",
+    ar: "قمة الرياض التنفيذية للضيافة"
+  },
+  "overhaul demo forum 2026 (synthetic)": {
+    en: "Diriyah Diplomatic Forum 2026",
+    ar: "منتدى الدرعية الدبلوماسي 2026"
+  },
+  "overhaul demo events co (synthetic)": {
+    en: "Sila Events Management",
+    ar: "شركة صلة لإدارة الفعاليات"
+  },
+  "riyadh, north business district (synthetic)": {
+    en: "North Riyadh Business District",
+    ar: "حي الأعمال شمال الرياض"
+  },
   "sila demo organizing co.": {
     en: "Sila Organizing Company",
     ar: "شركة صلة لتنظيم الفعاليات"

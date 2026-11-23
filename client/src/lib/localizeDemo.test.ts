@@ -12,6 +12,11 @@ describe("localizeDemoText", () => {
   it("localizes seeded synthetic demo event titles in both EN and AR", () => {
     expect(localizeDemoText("Overhaul Demo Expo (Synthetic)", false)).toBe("Riyadh Global Hospitality Expo");
     expect(localizeDemoText("Overhaul Demo Expo (Synthetic)", true)).toBe("معرض الرياض العالمي للضيافة");
+    expect(localizeDemoText("Overhaul Demo Summit (Synthetic)", false)).toBe("Riyadh Executive Hospitality Summit");
+    expect(localizeDemoText("Overhaul Demo Summit (Synthetic)", true)).toBe("قمة الرياض التنفيذية للضيافة");
+    expect(localizeDemoText("Overhaul Demo Forum 2026 (Synthetic)", false)).toBe("Diriyah Diplomatic Forum 2026");
+    expect(localizeDemoText("Overhaul Demo Events Co (Synthetic)", true)).toBe("شركة صلة لإدارة الفعاليات");
+    expect(localizeDemoText("Riyadh, north business district (synthetic)", true)).toBe("حي الأعمال شمال الرياض");
     expect(localizeDemoText("Global Investment Summit", true)).toBe("القمة العالمية للاستثمار");
     expect(localizeDemoText("Global Investment Summit", false)).toBe("Global Investment Summit");
   });

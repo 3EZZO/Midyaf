@@ -170,7 +170,7 @@ export function InvestorStoryGuide({
               type="button"
               data-open-presenter-shortcuts
               onClick={onOpenShortcuts}
-              className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-gold-500/40 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+              className="hidden items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-gold-500/40 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus md:inline-flex"
             >
               <Keyboard className="size-3.5 text-gold-500" aria-hidden />
               <span>{isArabic ? "الاختصارات" : "Shortcuts"}</span>

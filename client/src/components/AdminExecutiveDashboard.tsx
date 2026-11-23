@@ -330,8 +330,8 @@ export function AdminExecutiveDashboard({
             detail={
               derivedCommissionOnly
                 ? isArabic
-                  ? "تشمل عروض الموردين المعتمدة قبل توقيع العقود"
-                  : "Includes approved vendor quotes (pre-signature)"
+                  ? "من العروض المعتمدة"
+                  : "From approved quotes"
                 : isArabic
                   ? "مقارنة بالأسبوع السابق"
                   : "vs previous week"
@@ -348,8 +348,8 @@ export function AdminExecutiveDashboard({
             detail={
               kpis.contractedSpend.value === 0
                 ? isArabic
-                  ? "0 عقود موقعة بعد — افتح الخزنة للاعتماد"
-                  : "0 signed contracts yet — approve in Vault"
+                  ? "0 عقود موقعة بالخزنة"
+                  : "0 signed in Vault"
                 : isArabic
                   ? `عبر ${integer(kpis.contractedSpend.categories)} فئات موردين`
                   : `Across ${integer(kpis.contractedSpend.categories)} vendor categories`
