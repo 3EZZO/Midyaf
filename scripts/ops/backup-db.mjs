@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * PLAN_READY_1 Sprint 4: Safe local PostgreSQL backup wrapper (`pg_dump`).
  *
