@@ -5,6 +5,7 @@ import { DEFAULT_CLIENT_CONFIG, DEFAULT_CLIENT_MESSAGES, DEFAULT_SCHEDULE_AMENDM
 import type { WorkspaceEventDto } from "@shared/overhaul";
 import { integer, shortDate, shortTime } from "../lib/format";
 import { deriveClientKpis, guestFunnel, slaSample } from "../lib/metrics";
+import { localizeDemoText } from "../lib/localizeDemo";
 import { localizeAmendmentType } from "../lib/localizeDomain";
 import { useWorkspaceResource } from "../lib/workspaceApi";
 import { Funnel } from "./charts";
@@ -96,6 +97,10 @@ export function ClientDashboard({
     { on: config.canViewPerformance, label: isArabic ? "مؤشرات الأداء" : "Performance KPIs" }
   ];
 
+  const clientDisplayName = localizeDemoText(config.clientName, isArabic);
+  const clientDisplayEntity = localizeDemoText(config.clientEntity, isArabic);
+  const eventDisplayTitle = localizeDemoText(config.eventTitle, isArabic);
+
   return (
     <div className="space-y-5">
       {/* Qasr P4: Compact royal hospitality welcome header so the decision card sits immediately above the fold */}
@@ -107,14 +112,16 @@ export function ClientDashboard({
               {isArabic ? "بوابة العميل المستفيد المخصصة" : "Dedicated Client Executive Portal"}
             </Badge>
             <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-              {isArabic ? `مرحباً بك: ${config.clientName} — ${config.clientEntity}` : `Welcome: ${config.clientName} — ${config.clientEntity}`}
+              {isArabic
+                ? `مرحباً بك: ${clientDisplayName} — ${clientDisplayEntity}`
+                : `Welcome: ${clientDisplayName} — ${clientDisplayEntity}`}
             </h1>
           </div>
         </div>
         <p className="hidden max-w-3xl text-sm leading-relaxed text-ink-muted sm:block">
           {isArabic
-            ? `لوحة المتابعة الخاصة بفعالية (${config.eventTitle}) تحت إشراف الشركة المنظمة (صلة)، تتيح لك الاطلاع الفوري على التقارير، تعديلات الجداول، والتواصل مع العمليات.`
-            : `Executive dashboard for (${config.eventTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`}
+            ? `لوحة المتابعة الخاصة بفعالية (${eventDisplayTitle}) تحت إشراف الشركة المنظمة (صلة)، تتيح لك الاطلاع الفوري على التقارير، تعديلات الجداول، والتواصل مع العمليات.`
+            : `Executive dashboard for (${eventDisplayTitle}) managed by Sila, providing verified reports, live schedule adjustments, and direct communication with logistics.`}
         </p>
         <SaduRibbon variant="hairline" className="opacity-70" />
       </header>
@@ -155,7 +162,7 @@ export function ClientDashboard({
               {workspaceEvents.data.events.map((wsEvent) => (
                 <Surface key={wsEvent.id} padding="sm" className="space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-bold text-ink">{wsEvent.name}</h3>
+                    <h3 className="text-sm font-bold text-ink">{localizeDemoText(wsEvent.name, isArabic)}</h3>
                     <div className="flex items-center gap-1.5">
                       <Badge size="sm" tone={wsEvent.planApproved ? "ok" : "warn"}>
                         {wsEvent.planApproved
@@ -170,7 +177,7 @@ export function ClientDashboard({
                     </div>
                   </div>
                   <p className="text-xs text-ink-muted">
-                    {wsEvent.locationLabel} · {integer(wsEvent.vipGuestCount + wsEvent.regularGuestCount)}{" "}
+                    {localizeDemoText(wsEvent.locationLabel, isArabic)} · {integer(wsEvent.vipGuestCount + wsEvent.regularGuestCount)}{" "}
                     {isArabic ? "ضيف" : "guests"}
                     {wsEvent.startAt ? ` · ${shortDate(wsEvent.startAt, isArabic ? "ar" : "en")}` : ""}
                   </p>

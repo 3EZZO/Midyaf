@@ -370,6 +370,11 @@ export function App() {
     return () => controller.abort();
   }, [session?.accessToken, session?.user.onboardingPending, demoStatusRev]);
 
+  const handleLanguageToggle = useCallback(() => {
+    toast.clearTransient();
+    void i18n.changeLanguage(isArabicLanguage(i18n.language) ? "en" : "ar");
+  }, [i18n, toast]);
+
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
   // Explicit gate: while the director controls the demo captains, real
@@ -578,9 +583,7 @@ export function App() {
         <ApplicantRegistration
           isArabic={isArabic}
           fixedKind={registrationKind}
-          onLanguageToggle={() =>
-            void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-          }
+          onLanguageToggle={handleLanguageToggle}
           onRegistered={(nextSession) => {
             navigateRegistration(null);
             installSession(nextSession);
@@ -597,9 +600,7 @@ export function App() {
         isArabic={isArabic}
         error={authError}
         isLoading={isLoading}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLanguageToggle={handleLanguageToggle}
         onOpenRegistration={(kind) => navigateRegistration(kind)}
         onRegistered={(nextSession) => {
           navigateRegistration(null);
@@ -616,9 +617,7 @@ export function App() {
       <StandaloneOnboardingFrame
         session={session}
         isArabic={isArabic}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLanguageToggle={handleLanguageToggle}
         onLogout={handleLogout}
         onRefresh={async () => {
           const next = await refreshSession(session.refreshToken);
@@ -667,9 +666,7 @@ export function App() {
         onSwitchDemoPersona={handleSwitchDemoPersona}
         onCaptureDemoBaseline={handleCaptureDemoBaseline}
         onResetDemoData={handleResetDemoData}
-        onLanguageToggle={() =>
-          void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-        }
+        onLanguageToggle={handleLanguageToggle}
         onLogout={handleLogout}
       >
         {loadError ? (
@@ -725,9 +722,7 @@ export function App() {
       onResetDemoData={handleResetDemoData}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
-      onLanguageToggle={() =>
-        void i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")
-      }
+      onLanguageToggle={handleLanguageToggle}
       onLogout={handleLogout}
     >
       <ErrorBoundary key={workspaceRevision} resetKey={`${portal}:${workspaceRevision}`} isArabic={isArabic}>
@@ -792,10 +787,13 @@ export function App() {
       installSession(nextSession);
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
-      toast.success(
-        isArabic ? "تم تبديل دور العرض" : "Switched demo role",
-        isArabic ? persona.labelAr : persona.labelEn
-      );
+      toast.show({
+        id: "demo-role-switch",
+        type: "success",
+        duration: 2500,
+        title: isArabic ? "تم تبديل دور العرض" : "Switched demo role",
+        message: isArabic ? persona.labelAr : persona.labelEn
+      });
     } catch (error) {
       toast.alert(
         isArabic ? "تعذر تبديل الدور" : "Could not switch persona",
@@ -847,12 +845,15 @@ export function App() {
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
       await refreshData();
-      toast.success(
-        isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
-        isArabic
+      toast.show({
+        id: "demo-data-reset",
+        type: "success",
+        duration: 3400,
+        title: isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
+        message: isArabic
           ? `تمت استعادة ${result.restored} سجلاً وإزالة ${result.removed} سجلاً.`
           : `Restored ${result.restored} rows and cleared ${result.removed} rows.`
-      );
+      });
     } catch (error) {
       toast.alert(
         isArabic ? "تعذر إعادة ضبط البيانات" : "Could not reset demo data",

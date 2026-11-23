@@ -16,6 +16,7 @@ import type { PlanApprovalQueueItem, PlanApprovalQueueResponse } from "@shared/o
 import { planProvenanceLabel } from "@shared/planEditing";
 import { cn } from "../lib/cn";
 import { shortDate } from "../lib/format";
+import { localizeDemoText } from "../lib/localizeDemo";
 import { useWorkspaceResource, workspaceRequest } from "../lib/workspaceApi";
 import { approvePlan, planSections, type PlanSection } from "../lib/workspaceWorkflow";
 import "../styles/signature.css";
@@ -286,7 +287,7 @@ export function PlanApprovalQueueView({
                     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                       <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-bold text-ink">{event.name}</h3>
+                          <h3 className="text-base font-bold text-ink">{localizeDemoText(event.name, isArabic)}</h3>
                           <Badge tone="gold" size="sm" data-plan-provenance>
                             {provenance}
                           </Badge>
@@ -296,7 +297,7 @@ export function PlanApprovalQueueView({
                           <StatusPill status={event.operationalStatus} size="sm" />
                         </div>
                         <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                          {event.organizationName ? <span>{event.organizationName}</span> : null}
+                          {event.organizationName ? <span>{localizeDemoText(event.organizationName, isArabic)}</span> : null}
                           {event.startAt ? (
                             <span className="inline-flex items-center gap-1 font-tnum">
                               <CalendarDays className="size-3.5 text-gold-500" aria-hidden />

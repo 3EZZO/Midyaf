@@ -134,7 +134,7 @@ export function IconRail({
       {/* Portal items */}
       <ul
         id={PORTAL_RAIL_LIST_ID}
-        className="flex flex-1 flex-col gap-1 px-3 py-3"
+        className="flex flex-1 flex-col gap-1 px-2.5 py-3"
         role="list"
       >
         {allowedPortals.map((item) => {
@@ -155,7 +155,7 @@ export function IconRail({
                 className={cn(
                   "relative flex h-12 w-full items-center rounded-lg text-start",
                   "transition-colors duration-base focus-visible:outline-none focus-visible:shadow-focus motion-reduce:transition-none",
-                  collapsed ? "justify-center px-0" : "gap-3 px-3",
+                  collapsed ? "justify-center px-0" : "gap-2.5 px-2.5",
                   active ? "text-ink" : "text-ink-muted hover:bg-white/5 hover:text-ink"
                 )}
               >
