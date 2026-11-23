@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Car,
   FileText,
-  Luggage,
+  Maximize2,
   Phone,
   Plane,
   Play,
@@ -32,7 +32,6 @@ import { CaptainPhoto } from "./CaptainPhoto";
 import {
   DeliveryLog,
   DocumentCard,
-  JourneyCard,
   MiniStat,
   PortalHero,
   assetFileName,
@@ -99,6 +98,7 @@ function LegacyGuestJourneyApp({
   const [guestNote, setGuestNote] = useState("");
   const [status, setStatus] = useState(journey.arrivalStatus);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [brightQrOpen, setBrightQrOpen] = useState(false);
   const journeyKey = journey.id ?? journey.guestId;
 
   useEffect(() => {
@@ -197,6 +197,8 @@ function LegacyGuestJourneyApp({
               siteName={siteName}
               code={`midyaf:guest:${guest.qrCode}`}
               reveal
+              brightQrOpen={brightQrOpen}
+              onBrightQrOpenChange={setBrightQrOpen}
             />
           ) : (
             <motion.div
@@ -230,23 +232,87 @@ function LegacyGuestJourneyApp({
           )}
         </AnimatePresence>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <JourneyCard
-            icon={Plane}
-            title={ui.l("1. Arrival")}
-            detail={`${ui.l("Gate")} ${journey.arrivalGate} · ${ui.l(status)}`}
-            active
-          />
-          <JourneyCard
-            icon={Car}
-            title={ui.l("2. Event transport")}
-            detail={ui.l("Hotel to venue and return")}
-          />
-          <JourneyCard
-            icon={Luggage}
-            title={ui.l("3. Departure")}
-            detail={`${ui.time(journey.departurePickupTime)} ${ui.l("pickup")}`}
-          />
+        {/* Calm 3-Card Concierge Itinerary: Flight & Gate · Captain & ETA · Curbside Pass */}
+        <div
+          data-guest-concierge-itinerary
+          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+        >
+          <Card padding="sm" tone="gold" className="flex min-w-0 flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-label text-gold-300">
+                <Plane className="size-3.5 shrink-0 text-gold-500" aria-hidden />
+                {ui.p("1. Flight & Gate", "1. الرحلة والبوابة")}
+              </span>
+              <Badge tone="gold" size="sm">
+                {ui.l(status)}
+              </Badge>
+            </div>
+            <div className="min-w-0">
+              <p className="font-tnum text-lg font-bold text-ink">
+                {ui.l("Gate")} {journey.arrivalGate}
+              </p>
+              <p className="truncate text-xs text-ink-muted">
+                {ui.p("Flight", "رحلة")} {journey.departureFlight} · {ui.time(journey.departurePickupTime)}
+              </p>
+            </div>
+          </Card>
+
+          <Card padding="sm" className="flex min-w-0 flex-col justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-label text-ink-muted">
+                <Car className="size-3.5 shrink-0 text-gold-500" aria-hidden />
+                {ui.p("2. Captain & ETA", "2. الكابتن والوصول")}
+              </span>
+              <span className="font-tnum text-sm font-bold text-gold-300">
+                {journey.etaMinutes} {ui.p("min", "د")}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-ink">
+                {assignedDriver ? ui.l(assignedDriver.user.name) : ui.l(journey.driverName)}
+              </p>
+              <p className="truncate text-xs text-ink-muted">
+                {ui.l(journey.carDetails)}
+              </p>
+            </div>
+          </Card>
+
+          <Card
+            padding="sm"
+            tone={passRevealed ? "ok" : "none"}
+            className="flex min-w-0 flex-col justify-between gap-2"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-label text-ink-muted">
+                <Ticket className="size-3.5 shrink-0 text-gold-500" aria-hidden />
+                {ui.p("3. Curbside Pass", "3. بطاقة الصعود")}
+              </span>
+              <Badge tone={passRevealed ? "ok" : "neutral"} size="sm">
+                {passRevealed
+                  ? ui.p("Ready", "جاهزة")
+                  : ui.p("Pending", "قيد الإصدار")}
+              </Badge>
+            </div>
+            {passRevealed ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                leadingIcon={<Maximize2 className="size-3.5" aria-hidden />}
+                onClick={() => setBrightQrOpen(true)}
+              >
+                {ui.p("Bright QR pass", "عرض الرمز الساطع")}
+              </Button>
+            ) : (
+              <p className="text-xs text-ink-muted">
+                {ui.p(
+                  "Activates automatically at curbside.",
+                  "تُفعَّل تلقائياً عند الوصول للرصيف."
+                )}
+              </p>
+            )}
+          </Card>
         </div>
 
         <Section title={ui.l("Arrival status updates")}>

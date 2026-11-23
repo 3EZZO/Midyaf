@@ -1,10 +1,13 @@
-import { Car, Crown, MapPin, User } from "lucide-react";
+import { useState } from "react";
+import { Car, Crown, MapPin, Maximize2, Sun, User } from "lucide-react";
 import { motion, useReducedMotion, type Variants } from "motion/react";
 import { GEOFENCE_RING_META, GEOFENCE_RING_ORDER } from "@shared/constants";
 import type { GeofenceRingType } from "@shared/domain";
 import { cn } from "../../lib/cn";
 import { EASE_OUT } from "../../lib/motion";
 import "../../styles/signature.css";
+import { Button } from "./Button";
+import { Dialog } from "./Dialog";
 import { QrCode } from "./QrCode";
 import { SaduRibbon } from "./SaduRibbon";
 
@@ -23,6 +26,9 @@ export type BoardingPassProps = {
   code: string;
   /** Play the one-shot curbside slide-up reveal (curbside handshake / arrival). */
   reveal?: boolean;
+  /** Optional controlled state for the full-screen bright QR modal. */
+  brightQrOpen?: boolean;
+  onBrightQrOpenChange?: (open: boolean) => void;
   className?: string;
 };
 
@@ -64,9 +70,14 @@ export function BoardingPass({
   siteName,
   code,
   reveal = false,
+  brightQrOpen: controlledBrightQrOpen,
+  onBrightQrOpenChange,
   className
 }: BoardingPassProps) {
   const reduced = useReducedMotion();
+  const [internalBrightQrOpen, setInternalBrightQrOpen] = useState(false);
+  const brightQrOpen = controlledBrightQrOpen ?? internalBrightQrOpen;
+  const setBrightQrOpen = onBrightQrOpenChange ?? setInternalBrightQrOpen;
   const ringName = ring ?? "OUTSIDE";
   const depth =
     ringName === "OUTSIDE" ? 0 : GEOFENCE_RING_META[ringName].order + 1;
@@ -194,7 +205,7 @@ export function BoardingPass({
       {/* Lower stub: dedicated high-contrast warm ivory QR pod for sunlit airport scanning */}
       <div
         data-boarding-pass-qr-pod
-        className="flex flex-col items-center justify-center gap-2 bg-surface-1/60 px-4 py-5"
+        className="flex flex-col items-center justify-center gap-2.5 bg-surface-1/60 px-4 py-5"
       >
         <div className="qasr-ivory-qr-pod rounded-xl p-3">
           <QrCode
@@ -204,12 +215,76 @@ export function BoardingPass({
             className="border-0 bg-transparent p-0"
           />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-boarding-pass-fullscreen-qr
+          leadingIcon={<Maximize2 className="size-3.5" aria-hidden />}
+          onClick={() => setBrightQrOpen(true)}
+        >
+          {isArabic ? "عرض الرمز بسطوع كامل للشمس" : "Full-screen bright QR"}
+        </Button>
         <p className="text-center text-xs text-ink-muted">
           {isArabic
             ? "أبرز الرمز لمنسق الصالة أو الكابتن عند الوصول"
             : "Present this code to the curbside coordinator or captain"}
         </p>
       </div>
+
+      {/* Sunlit airport gate full-screen high-contrast warm ivory QR modal (Radix focus trap + Esc + close button) */}
+      <Dialog
+        open={brightQrOpen}
+        onOpenChange={setBrightQrOpen}
+        size="sm"
+        closeLabel={isArabic ? "إغلاق" : "Close"}
+        className="border-gold-500/70 bg-[#F6F4EE] text-[#0D0E12] [&>header]:border-[#0D0E12]/15 [&>header_h2]:text-[#0D0E12] [&>header_p]:text-[#3A3730] [&>header_button]:text-[#0D0E12] [&>footer]:border-[#0D0E12]/15"
+        title={
+          <span className="inline-flex items-center gap-2 text-[#0D0E12]">
+            <Sun className="size-4 text-[#8C6D2A]" aria-hidden />
+            {isArabic ? "بطاقة المسح السريع — وضع السطوع العالي" : "Sunlit Curbside Scan Pass"}
+          </span>
+        }
+        description={eventName}
+        footer={
+          <Button
+            type="button"
+            variant="gold"
+            size="lg"
+            className="h-11 w-full"
+            onClick={() => setBrightQrOpen(false)}
+          >
+            {isArabic ? "إغلاق البطاقة" : "Close pass"}
+          </Button>
+        }
+      >
+        <div
+          data-bright-qr-modal
+          className="flex flex-col items-center gap-4 py-2 text-center text-[#0D0E12]"
+          dir={isArabic ? "rtl" : "ltr"}
+        >
+          <div className="rounded-2xl border-2 border-[#0D0E12]/15 bg-white p-4 shadow-sm">
+            <QrCode
+              value={code}
+              size={228}
+              label={guestName}
+              className="border-0 bg-transparent p-0"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="font-display text-xl font-bold text-[#0D0E12]">{guestName}</p>
+            {vehicle ? (
+              <p className="text-sm font-medium text-[#3A3730]">
+                {vehicle}
+                {plate ? ` · ${plate}` : ""}
+              </p>
+            ) : null}
+            <p className="font-mono text-xs text-[#575246]" dir="ltr">
+              {code}
+            </p>
+          </div>
+        </div>
+      </Dialog>
     </motion.article>
   );
 }
