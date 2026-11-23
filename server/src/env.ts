@@ -23,6 +23,13 @@ const schema = z.object({
   // Reverse-proxy hops in front of Express (Render edge + load balancer). Measured
   // via GET /auth/ip-check; set in Render without a code change.
   TRUST_PROXY_HOPS: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(5).default(1)),
+  // Plan Ready 1 · Sprint 2: transactional email (Brevo). Inert unless both are set.
+  // Empty strings (e.g. a blank Render value) count as unset so they never crash boot.
+  BREVO_API_KEY: z.preprocess(blankToUndefined, z.string().min(1).optional()),
+  MAIL_FROM_EMAIL: z.preprocess(blankToUndefined, z.string().email().optional()),
+  MAIL_FROM_NAME: z.preprocess(blankToUndefined, z.string().default("Midyaf")),
+  // Public origin for links in emails; defaults to the first CLIENT_ORIGIN.
+  PUBLIC_APP_URL: z.preprocess(blankToUndefined, z.string().url().optional()),
   ENABLE_CITY: z
     .string()
     .default("true")

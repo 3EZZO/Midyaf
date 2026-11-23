@@ -75,6 +75,31 @@ export type PasswordResetLinkResponse = {
   resetPath: string;
 };
 
+/** Public: whether self-service "Forgot password?" email recovery is available. */
+export async function getRecoveryOptions(): Promise<{ emailRecovery: boolean }> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/recovery-options`);
+    if (!response.ok) return { emailRecovery: false };
+    const body = (await response.json()) as { emailRecovery?: unknown };
+    return { emailRecovery: body.emailRecovery === true };
+  } catch {
+    return { emailRecovery: false };
+  }
+}
+
+/** Public: request a self-service reset email (same answer whether or not the account exists). */
+export async function requestPasswordRecovery(email: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error?.message ?? "Recovery request failed");
+  }
+}
+
 /** Public single-use password reset completion using a Super Admin issued link token. */
 export async function resetPasswordWithToken(
   token: string,
