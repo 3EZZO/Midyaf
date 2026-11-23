@@ -7,9 +7,18 @@ import { FileAssetType, Role } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { requireAuth, requireRole, verifyAccessToken } from "../middleware/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { sendNotification } from "../services/notificationDelivery.js";
+import {
+  buildCloudinaryPrivateDownloadUrl,
+  hydrateSignedFileAsset,
+  parseCloudinaryKey,
+  resolveCloudinaryConfig,
+  resolveSignedFileAssetUrl,
+  uploadFileToCloudinary,
+  verifySignedLocalContentParams
+} from "../services/cloudinaryStorage.js";
 import type { AuthRequest } from "../types/auth.js";
 import {
   safeDriverRelation,
@@ -40,6 +49,14 @@ const upload = multer({
 });
 
 const router = Router();
+/** MIME types the protected content route may render inline (never HTML/SVG/XML). */
+const INLINE_SAFE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "application/pdf"
+]);
 const fullAccessRoles: Role[] = [
   Role.LOGISTICS_MANAGER,
   Role.ORGANIZER,
@@ -48,6 +65,92 @@ const fullAccessRoles: Role[] = [
 const operationalAccessRoles: Role[] = [...fullAccessRoles, Role.COORDINATOR];
 
 type AuthUser = NonNullable<AuthRequest["user"]>;
+
+/**
+ * Protected file content delivery (replaces public `express.static("/uploads")`).
+ * Admits EITHER a valid unexpired server-signed HMAC URL (`?exp=&sig=`, minted
+ * only after RBAC checks) OR a live `Authorization: Bearer` token that passes
+ * `buildFileAssetVisibilityWhere`. Never reveals whether an unauthorized ID exists.
+ */
+router.get(
+  "/file-assets/:id/content",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const id = req.params.id;
+    const hasValidSignedUrl = verifySignedLocalContentParams(id, req.query.exp, req.query.sig);
+
+    let asset: { id: string; key: string; url: string; mimeType: string } | null = null;
+    if (hasValidSignedUrl) {
+      asset = await prisma.fileAsset.findUnique({
+        where: { id },
+        select: { id: true, key: true, url: true, mimeType: true }
+      });
+    } else {
+      const header = req.headers.authorization;
+      const bearer = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
+      if (!bearer) {
+        throw new HttpError(401, "Authentication or valid signed URL required");
+      }
+      let actor: AuthUser;
+      try {
+        actor = verifyAccessToken(bearer);
+      } catch {
+        throw new HttpError(401, "Invalid or expired token");
+      }
+      const visibilityWhere = await buildFileAssetVisibilityWhere(actor);
+      asset = await prisma.fileAsset.findFirst({
+        where: { AND: [{ id }, visibilityWhere ?? {}] },
+        select: { id: true, key: true, url: true, mimeType: true }
+      });
+    }
+
+    if (!asset) {
+      throw new HttpError(404, "File asset not found");
+    }
+
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const parsedCloud = parseCloudinaryKey(asset.key);
+    if (parsedCloud) {
+      const config = resolveCloudinaryConfig();
+      if (!config) {
+        throw new HttpError(503, "Cloud media storage is not configured");
+      }
+      const { url } = buildCloudinaryPrivateDownloadUrl(
+        config,
+        parsedCloud.resourceType,
+        parsedCloud.publicId
+      );
+      res.redirect(302, url);
+      return;
+    }
+
+    const safeFileName = path.basename(asset.key);
+    const resolvedPath = path.resolve(uploadRoot, safeFileName);
+    if (
+      !resolvedPath.startsWith(`${uploadRoot}${path.sep}`) ||
+      !fs.existsSync(resolvedPath)
+    ) {
+      throw new HttpError(404, "File content unavailable");
+    }
+
+    // Uploaded MIME types are client-declared. Only render known-safe types inline;
+    // everything else (HTML, SVG, XML, JS, ...) downloads as an opaque attachment so a
+    // hostile upload can never execute on this origin. The sandbox CSP is a backstop.
+    const declared = (asset.mimeType || "").toLowerCase().split(";")[0].trim();
+    const inlineSafe = INLINE_SAFE_MIME_TYPES.has(declared);
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"
+    );
+    res.type(inlineSafe ? declared : "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `${inlineSafe ? "inline" : "attachment"}; filename="${safeFileName.replace(/"/g, "")}"`
+    );
+    res.sendFile(resolvedPath);
+  })
+);
 
 router.use(requireAuth);
 
@@ -72,7 +175,33 @@ router.get(
       orderBy: { createdAt: "desc" }
     });
 
-    res.json({ fileAssets });
+    res.json({
+      fileAssets: fileAssets.map((asset) => hydrateSignedFileAsset(asset))
+    });
+  })
+);
+
+router.get(
+  "/file-assets/:id/signed-url",
+  asyncHandler(async (req: AuthRequest, res) => {
+    const visibilityWhere = await buildFileAssetVisibilityWhere(req.user!);
+    const asset = await prisma.fileAsset.findFirst({
+      where: { AND: [{ id: req.params.id }, visibilityWhere ?? {}] },
+      select: { id: true, key: true, url: true }
+    });
+
+    if (!asset) {
+      throw new HttpError(404, "File asset not found");
+    }
+
+    const signed = resolveSignedFileAssetUrl(asset);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({
+      id: asset.id,
+      url: signed.url,
+      expiresAt: signed.expiresAt,
+      storage: signed.storage
+    });
   })
 );
 
@@ -93,25 +222,66 @@ router.post(
       throw new HttpError(400, "Missing upload file");
     }
 
-    const body = z
-      .object({
-        type: z.nativeEnum(FileAssetType),
-        userId: z.string().optional(),
-        guestId: z.string().optional(),
-        driverId: z.string().optional(),
-        eventId: z.string().optional()
-      })
-      .parse(req.body);
+    const tempFilePath = req.file.path;
+    const cleanupTempFile = async () => {
+      if (tempFilePath) {
+        await fs.promises.unlink(tempFilePath).catch(() => undefined);
+      }
+    };
 
-    await validateUploadTarget(req.user!, body);
+    let body: UploadNotificationBody;
+    try {
+      body = z
+        .object({
+          type: z.nativeEnum(FileAssetType),
+          userId: z.string().optional(),
+          guestId: z.string().optional(),
+          driverId: z.string().optional(),
+          eventId: z.string().optional()
+        })
+        .parse(req.body);
+
+      await validateUploadTarget(req.user!, body);
+    } catch (error) {
+      await cleanupTempFile();
+      throw error;
+    }
+
+    const cloudinaryConfig = resolveCloudinaryConfig();
+    let storedKey = req.file.filename;
+    let storedSize = req.file.size;
+    let storageProvider: "cloudinary" | "local" = "local";
+
+    if (cloudinaryConfig) {
+      try {
+        const uploaded = await uploadFileToCloudinary(
+          {
+            filePath: tempFilePath,
+            mimeType: req.file.mimetype,
+            assetType: body.type,
+            originalName: req.file.originalname
+          },
+          cloudinaryConfig
+        );
+        storedKey = uploaded.key;
+        storedSize = uploaded.bytes;
+        storageProvider = "cloudinary";
+      } catch (error) {
+        await cleanupTempFile();
+        throw new HttpError(502, "Failed to store uploaded file in cloud media storage");
+      }
+      // Remove ephemeral local file once persisted to Cloudinary.
+      await cleanupTempFile();
+    }
 
     const fileAsset = await prisma.fileAsset.create({
       data: {
         ...body,
-        key: req.file.filename,
-        url: `/uploads/${req.file.filename}`,
+        key: storedKey,
+        // Canonical non-public reference; responses always hydrate a short-lived signed URL.
+        url: "/api/file-assets/protected",
         mimeType: req.file.mimetype,
-        size: req.file.size
+        size: storedSize
       }
     });
     const deliveries = await queueUploadNotifications(body, fileAsset.id);
@@ -126,6 +296,7 @@ router.post(
       metadata: {
         deliveryCount: deliveries.length,
         type: fileAsset.type,
+        storage: storageProvider,
         guestId: fileAsset.guestId,
         driverId: fileAsset.driverId,
         userId: fileAsset.userId
@@ -133,7 +304,7 @@ router.post(
     });
 
     res.status(201).json({
-      fileAsset,
+      fileAsset: hydrateSignedFileAsset(fileAsset, { config: cloudinaryConfig }),
       deliveries,
       verification: {
         status: "UPLOADED",
