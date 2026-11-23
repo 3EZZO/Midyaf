@@ -9,6 +9,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "prompt",
+      includeAssets: [
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "icons/apple-touch-icon-v2.png",
+        "icons/favicon-v2.svg",
+        "icons/favicon-v2.png"
+      ],
       manifest: {
         id: "/",
         name: "Midyaf",
@@ -24,10 +31,20 @@ export default defineConfig({
         theme_color: "#0D0E12",
         background_color: "#0D0E12",
         icons: [
-          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
           {
-            src: "pwa-maskable-512x512.png",
+            src: "/icons/pwa-192x192-v2.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/icons/pwa-512x512-v2.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/icons/pwa-maskable-512x512-v2.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable"
