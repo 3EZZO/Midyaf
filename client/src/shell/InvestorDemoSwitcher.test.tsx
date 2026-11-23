@@ -8,7 +8,13 @@ import {
   fetchDemoStatus,
   formatDemoTimestamp
 } from "../lib/investorDemoApi";
-import { InvestorDemoSwitcher } from "./InvestorDemoSwitcher";
+import {
+  InvestorDemoSwitcher,
+  demoPersonaScopeCopy,
+  isEditableEventTarget,
+  resolvePersonaHotkey,
+  shouldShowRemoteResetToast
+} from "./InvestorDemoSwitcher";
 
 const sampleStatus = (over: Partial<DemoStatusDto> = {}): DemoStatusDto => ({
   enabled: true,
@@ -136,5 +142,44 @@ describe("InvestorDemoSwitcher SSR", () => {
     expect(arHtml).toContain("حفظ الحالة الحالية كنقطة العرض");
     expect(arHtml).toContain("إعادة الضبط غير متاحة: احفظ نقطة البداية أولاً");
     expect(arHtml).not.toContain("data-demo-reset-trigger");
+    // Qasr P2: 2-column grid, 1-9 hotkey hints, and >= 12px floor (no text-[11px])
+    expect(enHtml).toContain("data-demo-persona-grid");
+    expect(enHtml).toContain("sm:grid-cols-2");
+    expect(enHtml).toContain('data-demo-hotkey="2"');
+    expect(enHtml).not.toContain("text-[11px]");
+    expect(arHtml).not.toContain("text-[11px]");
+  });
+
+  it("resolves 1–9 persona hotkeys safely and ignores inputs, modifiers, busy/disabled, unavailable, and active", () => {
+    const personas = sampleStatus().personas;
+    const bodyTarget = { tagName: "DIV" } as unknown as EventTarget;
+    const inputTarget = { tagName: "INPUT" } as unknown as EventTarget;
+    const textareaTarget = { tagName: "TEXTAREA" } as unknown as EventTarget;
+    const editableTarget = { tagName: "DIV", isContentEditable: true } as unknown as EventTarget;
+
+    // Key "2" maps to client (available, not active)
+    expect(resolvePersonaHotkey({ key: "2", target: bodyTarget }, personas, "admin")?.key).toBe("client");
+    // Key "1" is already active ("admin")
+    expect(resolvePersonaHotkey({ key: "1", target: bodyTarget }, personas, "admin")).toBeNull();
+    // Key "3" is unavailable ("supplier")
+    expect(resolvePersonaHotkey({ key: "3", target: bodyTarget }, personas, "admin")).toBeNull();
+    // Ignored while typing in inputs, textareas, or contentEditable
+    expect(isEditableEventTarget(inputTarget)).toBe(true);
+    expect(resolvePersonaHotkey({ key: "2", target: inputTarget }, personas, "admin")).toBeNull();
+    expect(resolvePersonaHotkey({ key: "2", target: textareaTarget }, personas, "admin")).toBeNull();
+    expect(resolvePersonaHotkey({ key: "2", target: editableTarget }, personas, "admin")).toBeNull();
+    // Ignored with modifier keys or when busy / disabled
+    expect(resolvePersonaHotkey({ key: "2", ctrlKey: true, target: bodyTarget }, personas, "admin")).toBeNull();
+    expect(resolvePersonaHotkey({ key: "2", metaKey: true, target: bodyTarget }, personas, "admin")).toBeNull();
+    expect(resolvePersonaHotkey({ key: "2", target: bodyTarget }, personas, "admin", { busy: true })).toBeNull();
+    expect(resolvePersonaHotkey({ key: "2", target: bodyTarget }, personas, "admin", { disabled: true })).toBeNull();
+    // Scope copy is bilingual
+    expect(demoPersonaScopeCopy("client", false)).toContain("Client-scoped");
+    expect(demoPersonaScopeCopy("client", true)).toContain("فعاليات العميل");
+    // Remote reset broadcast toast suppressed on originating window, kept for other open windows
+    expect(shouldShowRemoteResetToast(true, null, "2026-11-22T18:00:00Z")).toBe(false);
+    expect(shouldShowRemoteResetToast(false, "2026-11-22T18:00:00Z", "2026-11-22T18:00:00Z")).toBe(false);
+    expect(shouldShowRemoteResetToast(false, null, "2026-11-22T18:00:00Z")).toBe(true);
+    expect(shouldShowRemoteResetToast(false, "2026-11-22T17:00:00Z", "2026-11-22T18:00:00Z")).toBe(true);
   });
 });

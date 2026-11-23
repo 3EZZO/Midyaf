@@ -73,12 +73,12 @@ export function RadarSweep({
       >
         <defs>
           <radialGradient id="radar-bg" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(212,175,55,0.10)" />
-            <stop offset="100%" stopColor="rgba(212,175,55,0)" />
+            <stop offset="0%" stopColor="rgba(201,164,76,0.10)" />
+            <stop offset="100%" stopColor="rgba(201,164,76,0)" />
           </radialGradient>
           <linearGradient id="radar-sweep" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(212,175,55,0)" />
-            <stop offset="100%" stopColor="rgba(212,175,55,0.35)" />
+            <stop offset="0%" stopColor="rgba(201,164,76,0)" />
+            <stop offset="100%" stopColor="rgba(201,164,76,0.35)" />
           </linearGradient>
         </defs>
         <circle
@@ -138,7 +138,7 @@ export function RadarSweep({
               y1={cy}
               x2={cx + R}
               y2={cy}
-              stroke="#D4AF37"
+              stroke="#C9A44C"
               strokeOpacity={0.8}
               strokeWidth={1.2}
             />
@@ -169,14 +169,14 @@ export function RadarSweep({
               <circle
                 r={selected ? 5 : 3.5}
                 fill={color}
-                stroke={selected ? "#F2D575" : "#03050C"}
+                stroke={selected ? "#E6CC85" : "#03050C"}
                 strokeWidth={selected ? 2 : 1}
               />
               <title>{`${p.name} · ${pick(RING_LABEL[p.ring], isArabic)} · ${p.distanceMeters} m`}</title>
             </g>
           );
         })}
-        <circle cx={cx} cy={cy} r={2.5} fill="#D4AF37" />
+        <circle cx={cx} cy={cy} r={2.5} fill="#C9A44C" />
       </svg>
       <div
         className="mt-1 w-full truncate text-center text-xs font-semibold text-ink-muted"

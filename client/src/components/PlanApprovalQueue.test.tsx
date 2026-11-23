@@ -23,10 +23,13 @@ vi.mock("../lib/workspaceApi", () => ({
 vi.mock("./charts", () => ({ Funnel: () => null }));
 
 import {
+  APPROVAL_SEAL_MS,
+  APPROVAL_SEAL_REDUCED_MS,
   PlanApprovalQueue,
   PlanApprovalQueueView,
   canApproveQueueItem,
-  canShowApprovalQueue
+  canShowApprovalQueue,
+  extractPlanKeyFigures
 } from "./PlanApprovalQueue";
 import { ClientDashboard } from "./ClientDashboard";
 
@@ -196,6 +199,51 @@ describe("PlanApprovalQueueView SSR", () => {
     expect(html).toContain("Riyadh Hospitality Summit");
     expect(html).toContain('data-approve-plan="plan_1"');
     expect(html).toContain("data-client-workspace-events");
+    expect(html).toContain("data-client-compact-hero");
+    expect(html).toContain('data-sadu-ribbon="hairline"');
     expect(html).toContain("KAFD");
+  });
+
+  it("extracts factual plan key figures, uses a single Sadu ribbon per screen, and renders the 136px circular approval stamp", () => {
+    expect(APPROVAL_SEAL_MS).toBe(1200);
+    expect(APPROVAL_SEAL_REDUCED_MS).toBe(600);
+
+    const item = makeItem();
+    const figures = extractPlanKeyFigures(item.plan.content);
+    expect(figures.map((f) => [f.id, f.value])).toEqual([
+      ["rooms", 32],
+      ["vehicles", 17],
+      ["teams", 4]
+    ]);
+
+    const sealedEn = renderToStaticMarkup(
+      <PlanApprovalQueueView
+        items={[item]}
+        sealedPlanId="plan_1"
+        isArabic={false}
+        onApprove={() => undefined}
+      />
+    );
+    expect(sealedEn).not.toContain("data-sadu-ribbon");
+    expect(sealedEn).toContain('data-approval-sealed="true"');
+    expect(sealedEn).toContain('data-approval-stamp="plan_1"');
+    expect(sealedEn).toContain("qasr-approval-circular-stamp");
+    expect(sealedEn).toContain("معتمد");
+    expect(sealedEn).toContain("APPROVED");
+    expect(sealedEn).toContain('data-approval-seal-badge="plan_1"');
+    expect(sealedEn).toContain("qasr-approval-sealed-card");
+    expect(sealedEn).toContain("Approved · Unlocking ops");
+    expect(sealedEn).toContain("data-approval-key-figures");
+
+    const sealedAr = renderToStaticMarkup(
+      <PlanApprovalQueueView
+        items={[item]}
+        sealedPlanId="plan_1"
+        isArabic
+        onApprove={() => undefined}
+      />
+    );
+    expect(sealedAr).toContain("تم الاعتماد · جارٍ فتح التشغيل");
+    expect(sealedAr).toContain('data-approval-stamp="plan_1"');
   });
 });

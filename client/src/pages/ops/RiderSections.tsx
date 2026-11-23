@@ -283,7 +283,7 @@ export function AirportExpressSection({
         >
           {ui.p("Exit Kiosk Mode", "خروج من وضع الكشك")}
         </button>
-        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-xl border border-amber-500/30 shadow-[0_0_50px_rgba(212, 175, 55,0.15)] backdrop-blur-2xl">
+        <div className="max-w-xl w-full text-center space-y-6 bg-slate-900/80 p-8 rounded-xl border border-amber-500/30 shadow-[0_0_50px_rgba(201, 164, 76,0.15)] backdrop-blur-2xl">
           <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
             <Crown size={48} className="animate-pulse" />
           </div>

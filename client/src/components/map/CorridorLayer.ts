@@ -13,12 +13,12 @@ const STATE_STYLE: Record<CorridorState, (base: string) => { glow: L.PolylineOpt
     core: { color, weight: 2.5, opacity: 0.85, dashArray: "6 8" }
   }),
   closed: () => ({
-    glow: { color: "#FB7185", weight: 10, opacity: 0.18 },
-    core: { color: "#FB7185", weight: 3, opacity: 0.9, dashArray: "2 6" }
+    glow: { color: "#F46B7A", weight: 10, opacity: 0.18 },
+    core: { color: "#F46B7A", weight: 3, opacity: 0.9, dashArray: "2 6" }
   }),
   reroute: () => ({
-    glow: { color: "#FBBF24", weight: 10, opacity: 0.28 },
-    core: { color: "#FBBF24", weight: 3, opacity: 0.95, dashArray: "10 6" }
+    glow: { color: "#F5B742", weight: 10, opacity: 0.28 },
+    core: { color: "#F5B742", weight: 3, opacity: 0.95, dashArray: "10 6" }
   })
 };
 

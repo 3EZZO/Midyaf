@@ -2,16 +2,25 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ACT_TIMING } from "../../lib/demo/data";
 import type { DirectorState } from "../../lib/demo/director";
+import { cn } from "../../lib/cn";
 import { cinematic } from "../../lib/motion";
+import "../../styles/signature.css";
+import { SaduRibbon } from "../ui/SaduRibbon";
 import { pick } from "./shared";
 
-/** Cinematic title card on every act entry (play-through or jump); auto-dismisses. */
+/**
+ * Qasr Obsidian cinema intertitle card shown on every act entry (play-through
+ * or jump) with static Sadu crest and one-shot brass rule sweep; auto-dismisses.
+ */
 export function ActTitleCard({
   isArabic,
-  state
+  state,
+  forceVisible = false
 }: {
   isArabic: boolean;
   state: DirectorState;
+  /** Allows SSR tests to render the visible title card directly. */
+  forceVisible?: boolean;
 }) {
   const [shownToken, setShownToken] = useState<number | null>(null);
   useEffect(() => {
@@ -24,7 +33,7 @@ export function ActTitleCard({
     return () => window.clearTimeout(id);
   }, [state.actEntryToken, state.actTitle]);
 
-  const visible = shownToken !== null && shownToken === state.actEntryToken;
+  const visible = forceVisible || (shownToken !== null && shownToken === state.actEntryToken);
 
   return (
     <AnimatePresence>
@@ -35,27 +44,36 @@ export function ActTitleCard({
           initial="initial"
           animate="animate"
           exit="exit"
-          className="pointer-events-none absolute inset-x-0 top-[22%] z-[1100] flex justify-center px-6"
+          data-warroom-act-card
+          className="pointer-events-none absolute inset-x-0 top-[20%] z-[1100] flex justify-center px-6"
           role="status"
           aria-live="polite"
         >
-          <div className="max-w-3xl rounded-lg border border-gold-500/40 bg-surface-0/85 px-10 py-7 text-center shadow-dropdown backdrop-blur-md">
-            <div className="text-xs font-bold uppercase tracking-label text-gold-500">
-              {isArabic ? "وصول الفعالية" : "Event Arrival"} ·{" "}
-              {state.actIndex + 1}/{state.actCount}
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-gold-500/45 bg-surface-0/95 shadow-luxury backdrop-blur-md">
+            <SaduRibbon variant="crest" />
+            <div className="px-8 py-7 text-center sm:px-10">
+              <div
+                className={cn(
+                  "font-tnum text-xs font-bold text-gold-300",
+                  !isArabic && "uppercase tracking-label"
+                )}
+              >
+                {isArabic ? "وصول الفعالية" : "Event Arrival"} ·{" "}
+                {state.actIndex + 1}/{state.actCount}
+              </div>
+              <h2 className="mt-2.5 font-display text-display-md text-ink">
+                {pick(state.actTitle, isArabic)}
+              </h2>
+              {state.actSubtitle ? (
+                <p className="mt-2.5 text-base text-ink/90">
+                  {pick(state.actSubtitle, isArabic)}
+                </p>
+              ) : null}
+              <div
+                className="qasr-act-rule mx-auto mt-5 h-0.5 w-28 rounded-full bg-gradient-to-r from-transparent via-gold-500 to-transparent"
+                aria-hidden
+              />
             </div>
-            <h2 className="mt-2 text-display-md text-ink">
-              {pick(state.actTitle, isArabic)}
-            </h2>
-            {state.actSubtitle ? (
-              <p className="mt-2 text-base text-ink-muted">
-                {pick(state.actSubtitle, isArabic)}
-              </p>
-            ) : null}
-            <div
-              className="mx-auto mt-4 h-0.5 w-24 rounded-full bg-gold-500"
-              aria-hidden
-            />
           </div>
         </motion.div>
       ) : null}

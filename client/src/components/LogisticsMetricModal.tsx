@@ -376,7 +376,7 @@ export function LogisticsMetricModal({
       {/* Modal Top Bar */}
       <div className="flex items-center justify-between border-b border-midyaf-gold/30 bg-slate-950/95 px-6 py-4 shadow-xl shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-3.5">
-          <div className="grid size-11 place-items-center rounded-lg bg-[#121626] text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
+          <div className="grid size-11 place-items-center rounded-lg bg-[#15171E] text-midyaf-gold ring-2 ring-midyaf-gold/50 shadow-md">
             {modal === "visitors" && <Users className="size-6" />}
             {modal === "tasks" && <ClipboardCheck className="size-6" />}
             {modal === "contracts" && <ReceiptText className="size-6" />}
@@ -521,7 +521,7 @@ export function LogisticsMetricModal({
               </div>
 
               {/* Action Banner to Jump to In-Page Vault */}
-              <div className="flex items-center justify-between rounded-lg bg-[#121626] p-4 border border-midyaf-gold/30">
+              <div className="flex items-center justify-between rounded-lg bg-[#15171E] p-4 border border-midyaf-gold/30">
                 <div className="flex items-center gap-3">
                   <ShieldCheck size={24} className="text-midyaf-gold" />
                   <div>

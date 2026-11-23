@@ -7,7 +7,7 @@ import { Tooltip } from "./Tooltip";
 export const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 select-none whitespace-nowrap",
-    "rounded-lg font-semibold tracking-tight",
+    "rounded-lg font-semibold",
     "transition-colors duration-base ease-out",
     "focus-visible:outline-none focus-visible:shadow-focus",
     "disabled:pointer-events-none disabled:opacity-50"
@@ -15,10 +15,11 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-surface-3 text-ink border border-hairline hover:bg-surface-4",
-        gold: "bg-gold-500 text-surface-0 hover:bg-gold-300",
-        outline: "border border-gold-500/40 text-gold-300 hover:bg-gold-500/10",
-        ghost: "text-ink-muted hover:text-ink hover:bg-white/5",
+        // Neutral action. Brass ("gold") is reserved for the ONE main action per view.
+        primary: "bg-surface-3 text-ink border border-hairline shadow-sm hover:bg-surface-4 hover:border-hairline-strong",
+        gold: "bg-gold-500 text-surface-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-gold-300",
+        outline: "border border-gold-500/55 text-gold-300 hover:bg-gold-500/10 hover:border-gold-500/80",
+        ghost: "text-ink-muted hover:text-ink hover:bg-ink/5",
         danger: "bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25"
       },
       size: {

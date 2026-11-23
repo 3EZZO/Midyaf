@@ -43,6 +43,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ShellFrame } from "./shell/ShellFrame";
+import { shouldShowRemoteResetToast, type DemoResetPhase } from "./shell/InvestorDemoSwitcher";
 import {
   ApplicantRegistration,
   StandaloneOnboardingFrame,
@@ -110,6 +111,7 @@ import { liveEvents, type LiveSource } from "./lib/liveEvents";
 import { exportPlanAsPdf, sharePlanLink } from "./lib/planExport";
 import { tacticalAudio } from "./lib/tacticalAudio";
 import { useTacticalToast } from "./components/TacticalToast";
+import { restoreProjectorMode, toggleProjectorMode } from "./lib/projectorMode";
 
 const sessionStorageKey = "midyaf.session";
 
@@ -183,9 +185,11 @@ export function App() {
   // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
   const [demoStatus, setDemoStatus] = useState<DemoStatusDto | null>(null);
   const [demoBusy, setDemoBusy] = useState(false);
+  const [demoResetPhase, setDemoResetPhase] = useState<DemoResetPhase>("idle");
   const [demoStatusRev, setDemoStatusRev] = useState(0);
   const pendingPortalRef = useRef<PortalKey | null>(null);
   const lastHandledResetAtRef = useRef<string | null>(null);
+  const localResetInFlightRef = useRef(false);
   const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
   const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
   const rolePortals = session ? portalsByRole[session.user.role] : [];
@@ -321,24 +325,10 @@ export function App() {
     const handler = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "p") {
         event.preventDefault();
-        const root = document.documentElement;
-        const next = root.dataset.density === "projector" ? "" : "projector";
-        if (next) root.dataset.density = next;
-        else delete root.dataset.density;
-        try {
-          window.localStorage.setItem("midyaf.density", next);
-        } catch {
-          // ignore
-        }
+        toggleProjectorMode();
       }
     };
-    try {
-      if (window.localStorage.getItem("midyaf.density") === "projector") {
-        document.documentElement.dataset.density = "projector";
-      }
-    } catch {
-      // ignore
-    }
+    restoreProjectorMode();
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
@@ -497,15 +487,25 @@ export function App() {
       },
       "demo:reset": (payload) => {
         pushLog(`${p("Demo data reset", "تمت إعادة ضبط بيانات العرض")} · ${stamp()}`);
-        if (payload?.resetAt && lastHandledResetAtRef.current === payload.resetAt) return;
+        if (
+          !shouldShowRemoteResetToast(
+            localResetInFlightRef.current,
+            lastHandledResetAtRef.current,
+            payload?.resetAt
+          )
+        ) {
+          if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+          return;
+        }
         if (payload?.resetAt) lastHandledResetAtRef.current = payload.resetAt;
+        setDemoResetPhase("refreshing");
         toast.info(
           isArabic ? "تمت إعادة ضبط بيانات العرض" : "Demo data reset",
           isArabic ? "جارٍ تحديث جميع البيانات إلى نقطة البداية." : "Refreshing all data back to the saved start point."
         );
         setWorkspaceRevision((n) => n + 1);
         setDemoStatusRev((n) => n + 1);
-        void refreshData();
+        void refreshData().finally(() => setDemoResetPhase("idle"));
       }
     }
   });
@@ -663,6 +663,7 @@ export function App() {
         setIsQuickNavOpen={setIsQuickNavOpen}
         investorDemoStatus={demoStatus}
         investorDemoBusy={demoBusy}
+        demoResetPhase={demoResetPhase}
         onSwitchDemoPersona={handleSwitchDemoPersona}
         onCaptureDemoBaseline={handleCaptureDemoBaseline}
         onResetDemoData={handleResetDemoData}
@@ -718,6 +719,7 @@ export function App() {
       setIsQuickNavOpen={setIsQuickNavOpen}
       investorDemoStatus={demoStatus}
       investorDemoBusy={demoBusy}
+      demoResetPhase={demoResetPhase}
       onSwitchDemoPersona={handleSwitchDemoPersona}
       onCaptureDemoBaseline={handleCaptureDemoBaseline}
       onResetDemoData={handleResetDemoData}
@@ -830,7 +832,9 @@ export function App() {
   async function handleResetDemoData() {
     const activeSession = sessionRef.current;
     if (!activeSession) return;
+    localResetInFlightRef.current = true;
     setDemoBusy(true);
+    setDemoResetPhase("restoring");
     try {
       const result = await resetDemoData(activeSession.accessToken);
       lastHandledResetAtRef.current = result.resetAt;
@@ -839,6 +843,7 @@ export function App() {
       } catch {
         // ignore storage errors
       }
+      setDemoResetPhase("refreshing");
       setWorkspaceRevision((n) => n + 1);
       setDemoStatusRev((n) => n + 1);
       await refreshData();
@@ -854,6 +859,8 @@ export function App() {
         error instanceof Error ? error.message : isArabic ? "حدث خطأ غير متوقع" : "Unexpected error"
       );
     } finally {
+      localResetInFlightRef.current = false;
+      setDemoResetPhase("idle");
       setDemoBusy(false);
     }
   }

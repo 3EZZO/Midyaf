@@ -65,7 +65,7 @@ export function AreaTrend({
               <stop offset="100%" stopColor={c.pearl} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke={c.grid} strokeDasharray="0" vertical={false} />
+          <CartesianGrid stroke={c.grid} strokeDasharray="4 6" vertical={false} />
           <XAxis
             dataKey="date"
             tickFormatter={(v) => axisDate(String(v))}

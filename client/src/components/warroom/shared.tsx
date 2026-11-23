@@ -13,7 +13,7 @@ export const RING_LABEL: Record<GeofenceRingName | "OUTSIDE", Bilingual> = {
 };
 
 export const ringColor = (ring: GeofenceRingName | "OUTSIDE") =>
-  ring === "OUTSIDE" ? "#64748B" : GEOFENCE_RING_META[ring].color;
+  ring === "OUTSIDE" ? "#8890A4" : GEOFENCE_RING_META[ring].color;
 
 /** mm:ss from seconds; "—" when not applicable. */
 export function clock(seconds: number | null | undefined): string {

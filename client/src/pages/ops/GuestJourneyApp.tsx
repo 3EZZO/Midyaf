@@ -1,4 +1,6 @@
 import {OperationalEventEntry} from '../../components/EventRadar';
+import { PlaneLanding } from "lucide-react";
+import { EmptyState } from "../../components/ui/EmptyState";
 // Guest-facing journey portal (phone-first).
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -48,7 +50,7 @@ const ARRIVAL_STEPS: GuestJourney["arrivalStatus"][] = [
 
 export function GuestJourneyApp(props:PortalProps){
  const ui=useOpsText();
- const legacy=props.data.events.length>0&&props.data.events[0].guests.length>0?<LegacyGuestJourneyApp {...props}/>:<p>{ui.isArabic?'لا توجد تفاصيل رحلة حاليًا':'No trip details yet'}</p>;
+ const legacy=props.data.events.length>0&&props.data.events[0].guests.length>0?<LegacyGuestJourneyApp {...props}/>:<EmptyState className="mx-auto max-w-md" icon={<PlaneLanding className="size-5" aria-hidden />} title={ui.isArabic?'لا توجد تفاصيل رحلة حاليًا':'No trip details yet'} description={ui.isArabic?'ستظهر بطاقة الصعود وتفاصيل الاستقبال هنا فور تأكيد رحلتكم.':'Your boarding pass and welcome details appear here once your trip is confirmed.'}/>;
  if(props.isDemoMode)return legacy;
  return <OperationalEventEntry session={props.session} isArabic={ui.isArabic} mode="guest">{legacy}</OperationalEventEntry>;
 }
@@ -167,8 +169,8 @@ function LegacyGuestJourneyApp({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="min-w-0 space-y-4">
         <PortalHero
           badge={ui.l("Guest App")}
           title={`${ui.l(guest.user.name)} ${ui.l("hospitality journey")}`}
@@ -350,7 +352,7 @@ function LegacyGuestJourneyApp({
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <Section title={ui.l("Captain and car details")}>
           <div className="flex gap-4">
             <CaptainPhoto

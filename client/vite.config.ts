@@ -21,13 +21,13 @@ export default defineConfig({
         scope: "/",
         display: "standalone",
         orientation: "any",
-        theme_color: "#090C15",
-        background_color: "#090C15",
+        theme_color: "#0D0E12",
+        background_color: "#0D0E12",
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
           {
-            src: "pwa-512x512.png",
+            src: "pwa-maskable-512x512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable"

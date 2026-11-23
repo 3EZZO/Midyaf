@@ -133,7 +133,7 @@ function LiveSummitHotspotsRadar({ hotspots }: { hotspots: DemoHotspot[] }) {
         {hotspots.map((spot) => (
           <div
             key={spot.id}
-            className="rounded-xl border border-white/5 bg-[#121626] p-3.5 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
+            className="rounded-xl border border-white/5 bg-[#15171E] p-3.5 shadow-card-sm transition hover:shadow-card dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-start justify-between gap-2">
               <div>

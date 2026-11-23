@@ -31,14 +31,22 @@ export function EventHistogram({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <div className="flex items-end gap-px" style={{ height, direction: "ltr" }} role="img" aria-label={`${total} events`}>
-        {buckets.map((v, i) => (
-          <span
-            key={i}
-            className={cn("flex-1 rounded-sm transition-[height] duration-slow", v ? "bg-gold-500" : "bg-surface-3")}
-            style={{ height: `${Math.max(6, (v / max) * 100)}%`, opacity: v ? 0.45 + (v / max) * 0.55 : 1 }}
-          />
-        ))}
+      <div className="relative">
+        <div className="flex items-end gap-px" style={{ height, direction: "ltr" }} role="img" aria-label={`${total} events`}>
+          {buckets.map((v, i) => (
+            <span
+              key={i}
+              className={cn("flex-1 rounded-sm transition-[height] duration-slow", v ? "bg-gold-500" : "bg-surface-3")}
+              style={{ height: `${Math.max(6, (v / max) * 100)}%`, opacity: v ? 0.45 + (v / max) * 0.55 : 1 }}
+            />
+          ))}
+        </div>
+        {/* A calm zero state instead of a flat, empty-looking strip. */}
+        {total === 0 ? (
+          <span className="absolute inset-0 grid place-items-center text-xs text-ink-muted">
+            {isArabic ? "بانتظار الأحداث المباشرة" : "Waiting for live events"}
+          </span>
+        ) : null}
       </div>
       <div className="flex justify-between text-xs text-ink-faint">
         <span>{isArabic ? `آخر ${minutes} دقيقة` : `Last ${minutes} min`}</span>

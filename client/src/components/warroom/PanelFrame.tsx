@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
-import { usePanelHighlight } from "./usePanelHighlight";
+import "../../styles/signature.css";
+import { usePanelSpotlight, type PanelSpotlightState } from "./usePanelHighlight";
 
 /**
- * One War Room panel: eyebrow title, optional trailing slot, scrollable
- * body. Subscribes to the director's `highlight(panelId)` and answers with a
- * gold ring — the only motion a panel frame ever does.
+ * One War Room panel: eyebrow title, optional trailing slot, scrollable body.
+ * Subscribes to the director's `demo:highlight(panelId)`: the focused panel
+ * illuminates with a brass hairline & halo while sibling panels dim 20%.
  */
 export function PanelFrame({
   panelId,
@@ -13,6 +14,7 @@ export function PanelFrame({
   icon,
   trailing,
   children,
+  spotlightOverride,
   className,
   bodyClassName
 }: {
@@ -21,22 +23,31 @@ export function PanelFrame({
   icon?: ReactNode;
   trailing?: ReactNode;
   children: ReactNode;
+  /** Optional override for SSR tests or static previews. */
+  spotlightOverride?: PanelSpotlightState;
   className?: string;
   bodyClassName?: string;
 }) {
-  const highlighted = usePanelHighlight(panelId);
+  const liveSpotlight = usePanelSpotlight(panelId);
+  const spotlight = spotlightOverride ?? liveSpotlight;
+
   return (
     <section
       data-panel={panelId}
+      data-panel-spotlight={spotlight}
       className={cn(
-        "flex min-h-0 flex-col rounded-lg border border-hairline bg-surface-2/80 transition-shadow duration-slow",
-        highlighted &&
-          "border-gold-500/60 shadow-[0_0_0_1px_rgba(212,175,55,0.5),0_0_32px_rgba(212,175,55,0.25)]",
+        "qasr-warroom-panel relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-hairline bg-surface-2/85",
         className
       )}
     >
+      {spotlight === "focused" ? (
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-gold-500 to-transparent"
+          aria-hidden
+        />
+      ) : null}
       <header className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-hairline px-3">
-        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-label text-ink-muted">
+        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-label text-ink-muted rtl:normal-case rtl:tracking-normal">
           {icon ? (
             <span className="text-gold-300 [&>svg]:size-3.5">{icon}</span>
           ) : null}
