@@ -66,6 +66,46 @@ export async function registerGuest(
   };
 }
 
+export type PasswordResetLinkResponse = {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  token: string;
+  expiresAt: string;
+  resetPath: string;
+};
+
+/** Public single-use password reset completion using a Super Admin issued link token. */
+export async function resetPasswordWithToken(
+  token: string,
+  password: string
+): Promise<{ ok: boolean; message: string }> {
+  const response = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.error?.message ?? "Password reset failed");
+  }
+
+  return (await response.json()) as { ok: boolean; message: string };
+}
+
+/** Super Admin only: generate a single-use 15-minute password reset link for any user. */
+export async function issueUserResetLink(
+  userId: string,
+  accessToken: string
+): Promise<PasswordResetLinkResponse> {
+  return apiFetch<PasswordResetLinkResponse>(
+    `/users/${encodeURIComponent(userId)}/reset-link`,
+    accessToken,
+    { method: "POST" }
+  );
+}
+
 export async function getBootstrap(accessToken: string): Promise<MidyafData> {
   return apiFetch<MidyafData>("/bootstrap", accessToken);
 }

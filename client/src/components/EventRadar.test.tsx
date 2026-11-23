@@ -113,3 +113,10 @@ it('shows masked guests as codes and refuses malformed route coordinates',()=>{
  expect(guestLabel({id:'synthetic',guestCode:'GV01',isVip:true,masked:true} satisfies GuestDto)).toBe('GV01');
  expect(routePoints('[{"lat":91,"lng":2}]')).toEqual([]);expect(routePoints('not-json')).toEqual([]);expect(routePoints('[{"lat":24.7,"lng":46.6}]')).toEqual([[24.7,46.6]]);
 });
+it('renders live Open-Meteo Riyadh weather and high-wind sandstorm advisory in EN and AR',()=>{
+ state.telemetry={data:{telemetry:{...telemetry,weather:{available:true,source:'Open-Meteo',observedAt:'2026-11-24T10:00:00Z',temperatureC:36.2,windSpeedKmh:41.5,weatherCode:2,condition:'DUST_WIND',sandstormRisk:true}}}};
+ const en=renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={false}/>);
+ expect(en).toContain('36°C');expect(en).toContain('42 km/h');expect(en).toContain('Open-Meteo');expect(en).toContain('High wind / sandstorm advisory');
+ const ar=renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={true}/>);
+ expect(ar).toContain('36°C');expect(ar).toContain('42 كم/س');expect(ar).toContain('تنبيه رياح قوية / غبار');
+});

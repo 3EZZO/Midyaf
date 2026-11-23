@@ -49,7 +49,7 @@ export const safeTaskPeopleInclude = {
   guest: safeGuestRelation
 } as const;
 
-export const SENSITIVE_RESPONSE_KEYS = ["passwordHash", "nationalIdIqama"] as const;
+export const SENSITIVE_RESPONSE_KEYS = ["passwordHash", "nationalIdIqama", "tokenHash"] as const;
 
 const sensitiveKeys = new Set<string>(SENSITIVE_RESPONSE_KEYS);
 

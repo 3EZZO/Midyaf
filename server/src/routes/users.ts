@@ -7,6 +7,7 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { recordAuditLog } from "../services/auditLog.js";
+import { issuePasswordResetLink } from "../services/passwordReset.js";
 
 const router = Router();
 
@@ -149,6 +150,27 @@ router.put(
     });
 
     res.json({ user });
+  })
+);
+
+router.post(
+  "/:id/reset-link",
+  requireRole([Role.SUPER_ADMIN]),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const target = requireEntity(
+      await prisma.user.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, name: true, email: true }
+      }),
+      "User not found"
+    );
+
+    if (target.id === req.user!.id) {
+      throw new HttpError(400, "Use your own account settings to update your password");
+    }
+
+    const issued = await issuePasswordResetLink(req, target);
+    res.status(201).json(issued);
   })
 );
 
