@@ -61,6 +61,7 @@ import {
   switchDemoPersona
 } from "./lib/investorDemoApi";
 import { LoginPage } from "./shell/LoginPage";
+import { resolvePresenterHotkey } from "./lib/presenterHotkeys";
 import { initialPortalForRole, portalsByRole } from "./shell/rolePortals";
 import { PortalSkeleton } from "./components/ui/Skeleton";
 import { GuestSelfOnboarding } from "./pages/GuestSelfOnboarding";
@@ -180,6 +181,7 @@ export function App() {
   const [realtimeLog, setRealtimeLog] = useState<LogEntry[]>([]);
   const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
   const [isQuickNavOpen, setIsQuickNavOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
   // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
@@ -374,6 +376,64 @@ export function App() {
     toast.clearTransient();
     void i18n.changeLanguage(isArabicLanguage(i18n.language) ? "en" : "ar");
   }, [i18n, toast]);
+
+  const handleLaunchWarRoom = () => {
+    if (isDemoMode) {
+      setIsWarRoomOpen(true);
+      return;
+    }
+    if (canTriggerSimulation) {
+      toggleDemoMode();
+      setIsWarRoomOpen(true);
+      return;
+    }
+    toast.info(
+      isArabic ? "غرفة العمليات تتطلب دور المالك أو العمليات" : "War Room requires Owner or Ops role",
+      isArabic
+        ? "استخدم مبدّل أدوار العرض للانتقال إلى المالك أو العمليات أولاً."
+        : "Switch to Midyaf Owner or Sila Operations in the demo switcher first."
+    );
+  };
+
+  // Guarded presenter single-key hotkeys (?, P, L, W) — demo/presenter mode only.
+  useEffect(() => {
+    const presenterEnabled = Boolean(demoStatus?.canSwitch || isDemoMode);
+    if (!presenterEnabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = resolvePresenterHotkey(event, {
+        enabled: presenterEnabled,
+        isWarRoomOpen,
+        isQuickNavOpen,
+        isShortcutsOpen
+      });
+      if (!action) return;
+      event.preventDefault();
+      if (action === "toggle-shortcuts") {
+        setIsShortcutsOpen((prev) => !prev);
+      } else if (action === "toggle-projector") {
+        toggleProjectorMode();
+      } else if (action === "toggle-language") {
+        handleLanguageToggle();
+      } else if (action === "toggle-warroom") {
+        if (isDemoMode) {
+          setIsWarRoomOpen((prev) => !prev);
+        } else {
+          handleLaunchWarRoom();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    demoStatus?.canSwitch,
+    isDemoMode,
+    isWarRoomOpen,
+    isQuickNavOpen,
+    isShortcutsOpen,
+    canTriggerSimulation,
+    isArabic,
+    handleLanguageToggle
+  ]);
 
   const stamp = () =>
     new Date().toLocaleTimeString(isArabic ? "ar-SA-u-nu-latn" : "en-SA");
@@ -666,6 +726,9 @@ export function App() {
         onSwitchDemoPersona={handleSwitchDemoPersona}
         onCaptureDemoBaseline={handleCaptureDemoBaseline}
         onResetDemoData={handleResetDemoData}
+        onLaunchWarRoom={handleLaunchWarRoom}
+        isShortcutsOpen={isShortcutsOpen}
+        setIsShortcutsOpen={setIsShortcutsOpen}
         onLanguageToggle={handleLanguageToggle}
         onLogout={handleLogout}
       >
@@ -720,6 +783,9 @@ export function App() {
       onSwitchDemoPersona={handleSwitchDemoPersona}
       onCaptureDemoBaseline={handleCaptureDemoBaseline}
       onResetDemoData={handleResetDemoData}
+      onLaunchWarRoom={handleLaunchWarRoom}
+      isShortcutsOpen={isShortcutsOpen}
+      setIsShortcutsOpen={setIsShortcutsOpen}
       onExportPdf={handleExportPdf}
       onSharePlan={handleSharePlan}
       onLanguageToggle={handleLanguageToggle}
@@ -770,6 +836,7 @@ export function App() {
     normalDataRef.current = null;
     setIsDemoMode(false);
     setIsWarRoomOpen(false);
+    setIsShortcutsOpen(false);
     setSession(null);
     setData(null);
     setDemoStatus(null);

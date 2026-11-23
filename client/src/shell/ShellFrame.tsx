@@ -20,6 +20,8 @@ import "../styles/signature.css";
 import { BottomTabBar } from "./BottomTabBar";
 import { IconRail } from "./IconRail";
 import { demoPersonaScopeCopy, type DemoResetPhase } from "./InvestorDemoSwitcher";
+import { InvestorStoryGuide } from "./InvestorStoryGuide";
+import { PresenterShortcutsModal } from "./PresenterShortcutsModal";
 import { TopBar } from "./TopBar";
 
 export type ShellFrameProps = {
@@ -53,6 +55,11 @@ export type ShellFrameProps = {
   onSwitchDemoPersona?: (persona: DemoPersonaDto) => Promise<void> | void;
   onCaptureDemoBaseline?: () => Promise<void> | void;
   onResetDemoData?: () => Promise<void> | void;
+  /** Optional 1-click War Room launch from the Investor Story Guide. */
+  onLaunchWarRoom?: () => void;
+  /** Controlled presenter keyboard shortcuts cheat-sheet modal (`?`). */
+  isShortcutsOpen?: boolean;
+  setIsShortcutsOpen?: (open: boolean) => void;
 };
 
 /**
@@ -87,7 +94,10 @@ export function ShellFrame({
   demoResetPhase = "idle",
   onSwitchDemoPersona,
   onCaptureDemoBaseline,
-  onResetDemoData
+  onResetDemoData,
+  onLaunchWarRoom,
+  isShortcutsOpen = false,
+  setIsShortcutsOpen
 }: ShellFrameProps) {
   const { collapsed: railCollapsed, toggle: toggleRail } = usePersistedCollapse(
     RAIL_STORAGE_KEY,
@@ -145,7 +155,7 @@ export function ShellFrame({
           investorDemoStatus={investorDemoStatus}
           investorDemoBusy={investorDemoBusy}
           demoResetPhase={demoResetPhase}
-          hotkeysDisabled={Boolean(isWarRoomOpen || isQuickNavOpen)}
+          hotkeysDisabled={Boolean(isWarRoomOpen || isQuickNavOpen || isShortcutsOpen)}
           onSwitchDemoPersona={onSwitchDemoPersona}
           onCaptureDemoBaseline={onCaptureDemoBaseline}
           onResetDemoData={onResetDemoData}
@@ -210,6 +220,23 @@ export function ShellFrame({
           </div>
         ) : null}
 
+        {/* Optional collapsible 4-step Investor Story Guide (only when Investor Demo switcher is active) */}
+        {investorDemoStatus?.enabled &&
+        investorDemoStatus.canSwitch &&
+        onSwitchDemoPersona ? (
+          <InvestorStoryGuide
+            status={investorDemoStatus}
+            portal={portal}
+            isArabic={isArabic}
+            isWarRoomOpen={isWarRoomOpen}
+            busy={investorDemoBusy}
+            onSwitchPersona={onSwitchDemoPersona}
+            onSelectPortal={setPortal}
+            onLaunchWarRoom={onLaunchWarRoom}
+            onOpenShortcuts={setIsShortcutsOpen ? () => setIsShortcutsOpen(true) : undefined}
+          />
+        ) : null}
+
         {/* Bottom padding clears the tab bar plus the phone's home-indicator inset. */}
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:px-8 lg:pb-8">
           {/*
@@ -256,6 +283,14 @@ export function ShellFrame({
         onExportPdf={onExportPdf}
         onSharePlan={onSharePlan}
       />
+
+      {setIsShortcutsOpen ? (
+        <PresenterShortcutsModal
+          open={isShortcutsOpen}
+          onOpenChange={setIsShortcutsOpen}
+          isArabic={isArabic}
+        />
+      ) : null}
     </div>
   );
 }

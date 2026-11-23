@@ -9,6 +9,7 @@ import { localizeDemoText } from "../lib/localizeDemo";
 import { localizeAmendmentType } from "../lib/localizeDomain";
 import { useWorkspaceResource } from "../lib/workspaceApi";
 import { Funnel } from "./charts";
+import { EventLifecycleRail } from "./EventLifecycleRail";
 import { PlanApprovalQueue, canShowApprovalQueue } from "./PlanApprovalQueue";
 import { Badge, Button, EmptyState, IconTabNav, Input, KpiTile, Section, StatusPill, Surface, useToast } from "./ui";
 import { SaduRibbon } from "./ui/SaduRibbon";
@@ -181,6 +182,13 @@ export function ClientDashboard({
                     {isArabic ? "ضيف" : "guests"}
                     {wsEvent.startAt ? ` · ${shortDate(wsEvent.startAt, isArabic ? "ar" : "en")}` : ""}
                   </p>
+                  <EventLifecycleRail
+                    compact
+                    planApproved={wsEvent.planApproved}
+                    contractSigned={wsEvent.contractSigned}
+                    operationalStatus={wsEvent.operationalStatus}
+                    isArabic={isArabic}
+                  />
                 </Surface>
               ))}
             </div>
