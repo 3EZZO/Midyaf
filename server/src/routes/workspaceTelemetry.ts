@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {z} from 'zod';
-import {dualEta,type Point} from '../services/operationalProviders.js';
+import {dualEta,fetchWeather,type Point} from '../services/operationalProviders.js';
 import {
   EtaSource,
   EventMemberRole,
@@ -272,7 +272,7 @@ router.get(
     if (scope === "CAPTAIN_SELF" && !driverId) throw new HttpError(403, "No driver profile is linked to you");
     const own: { driverId?: string } = driverId ? { driverId } : {};
 
-    const [vehicles, trips, flights, shifts, density, viewer] = await Promise.all([
+    const [vehicles, trips, flights, shifts, density, viewer, weather] = await Promise.all([
       prisma.vehicle.findMany({
         where: { eventId, ...own, ...(query.vehicleStatus ? { status: query.vehicleStatus } : {}) },
         select: VEHICLE_SELECT,
@@ -314,7 +314,9 @@ router.get(
         orderBy: [{ capturedAt: "desc" }, { id: "desc" }],
         take: 500
       }),
-      loadGuestViewer(prisma, access)
+      loadGuestViewer(prisma, access),
+      // Fixed Riyadh coordinates only: never leak event/venue location data to an external weather service.
+      fetchWeather(null)
     ]);
 
     // Position of a vehicle carrying a masked guest hidden from this viewer.
@@ -374,7 +376,7 @@ router.get(
       density: densityDtos,
       guests: scope === 'FULL' ? await guestDtosFor(prisma,eventId,await prisma.eventGuest.findMany({where:{eventId},select:GUEST_CODE_SELECT,take:2000}),viewer) : [],
       observedAt: new Date().toISOString(),
-      weather: {available:false,source:'No weather feed configured',observedAt:null},
+      weather,
       scope
     };
     res.json({ telemetry: snapshot });

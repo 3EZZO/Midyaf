@@ -1,5 +1,6 @@
-import {expect,it,vi} from 'vitest';
-import {approximateRoute,estimateRoute} from './operationalProviders.js';
+import {beforeEach,expect,it,vi} from 'vitest';
+import {approximateRoute,classifyWeather,clearWeatherCacheForTest,estimateRoute,fetchWeather} from './operationalProviders.js';
+beforeEach(()=>clearWeatherCacheForTest());
 const a={lat:24.7,lng:46.6},b={lat:24.8,lng:46.7};
 it('keeps missing coordinates unavailable and labels distance fallback honestly',async()=>{
  expect(approximateRoute(null,b)).toMatchObject({source:'UNAVAILABLE',minutes:null});
@@ -23,4 +24,38 @@ it.each(['malformed','oversize','network','redirect'])('falls back safely for %s
 });
 it('refuses credential-bearing and insecure nonlocal configurations without calling out',async()=>{
  const fetcher=vi.fn();await estimateRoute(a,b,'https://user:secret@route.example.test',fetcher);await estimateRoute(a,b,'http://untrusted.example.test',fetcher);expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('fetches live Open-Meteo weather with caching, sandstorm detection, and safe offline fallbacks',async()=>{
+ // Default in NODE_ENV=test makes zero outbound requests
+ const unused=vi.fn();
+ expect(await fetchWeather(a,undefined,unused)).toMatchObject({available:false});
+ expect(unused).not.toHaveBeenCalled();
+
+ const fetcher=vi.fn(async()=>new Response(JSON.stringify({
+  current:{time:'2026-11-24T12:00',temperature_2m:34.4,wind_speed_10m:18.2,weather_code:0}
+ })));
+ const live=await fetchWeather(a,'https://weather.example.test',fetcher);
+ expect(live).toMatchObject({
+  available:true,
+  source:'Open-Meteo',
+  temperatureC:34.4,
+  windSpeedKmh:18.2,
+  condition:'CLEAR',
+  sandstormRisk:false
+ });
+ // Second call within TTL hits the server-side cache
+ await fetchWeather(a,'https://weather.example.test',fetcher);
+ expect(fetcher).toHaveBeenCalledTimes(1);
+
+ // High wind triggers sandstorm / dust advisory
+ expect(classifyWeather(1,42)).toEqual({condition:'DUST_WIND',sandstormRisk:true});
+ expect(classifyWeather(95,20)).toEqual({condition:'STORM',sandstormRisk:true});
+ expect(classifyWeather(61,15)).toEqual({condition:'RAIN',sandstormRisk:false});
+
+ // Network failure gracefully degrades without throwing and negative-caches for 60s
+ const failing=vi.fn(async()=>{throw Error('Offline');});
+ expect(await fetchWeather(b,'https://down.example.test',failing)).toMatchObject({available:false});
+ expect(await fetchWeather(b,'https://down.example.test',failing)).toMatchObject({available:false});
+ expect(failing).toHaveBeenCalledTimes(1);
 });

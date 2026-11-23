@@ -5,9 +5,25 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 import { requireAuth, signTokens, verifyRefreshToken } from "../middleware/auth.js";
+import { SlidingWindowLimiter } from "../utils/rateLimiter.js";
+import { redeemPasswordResetToken } from "../services/passwordReset.js";
 import type { AuthRequest } from "../types/auth.js";
 
 const router = Router();
+
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const loginEmailLimiter = new SlidingWindowLimiter(5, AUTH_WINDOW_MS);
+const loginAccountLimiter = new SlidingWindowLimiter(20, AUTH_WINDOW_MS);
+const loginIpLimiter = new SlidingWindowLimiter(25, AUTH_WINDOW_MS);
+const resetIpLimiter = new SlidingWindowLimiter(10, AUTH_WINDOW_MS);
+
+/** Test-only helper so unit suites start from a clean rate-limit window. */
+export function resetAuthRateLimits() {
+  loginEmailLimiter.reset();
+  loginAccountLimiter.reset();
+  loginIpLimiter.reset();
+  resetIpLimiter.reset();
+}
 
 const phoneSchema = z.string().regex(/^\+9665\d{8}$/, {
   message: "Phone must use Saudi +9665XXXXXXXX format"
@@ -87,6 +103,22 @@ router.post(
       })
       .parse(req.body);
 
+    const ip = req.ip ?? "unknown";
+    const emailKey = `${ip}:${body.email}`;
+    const ipCheck = loginIpLimiter.check(ip);
+    const emailCheck = loginEmailLimiter.check(emailKey);
+    const accountCheck = loginAccountLimiter.check(body.email);
+    if (!ipCheck.allowed || !emailCheck.allowed || !accountCheck.allowed) {
+      const retryAfter = Math.max(
+        ipCheck.retryAfterSeconds,
+        emailCheck.retryAfterSeconds,
+        accountCheck.retryAfterSeconds,
+        1
+      );
+      res.setHeader("Retry-After", String(retryAfter));
+      throw new HttpError(429, "Too many login attempts; try again later");
+    }
+
     // T-02: only a stored user whose bcrypt hash matches may sign in.
     // There is no shared password, demo identity or database-failure fallback.
     const user = await prisma.user.findUnique({
@@ -94,14 +126,56 @@ router.post(
     });
 
     if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
+      loginEmailLimiter.record(emailKey);
+      loginAccountLimiter.record(body.email);
+      loginIpLimiter.record(ip);
       throw new HttpError(401, "Invalid email or password");
     }
 
+    loginEmailLimiter.clear(emailKey);
+    loginAccountLimiter.clear(body.email);
     const { passwordHash: _passwordHash, ...safeUser } = user;
 
     res.json({
       user: safeUser,
       ...signTokens(user)
+    });
+  })
+);
+
+router.post(
+  "/reset-password",
+  asyncHandler(async (req, res) => {
+    const ip = req.ip ?? "unknown";
+    const attempt = resetIpLimiter.consume(ip);
+    if (!attempt.allowed) {
+      res.setHeader("Retry-After", String(attempt.retryAfterSeconds));
+      throw new HttpError(429, "Too many password reset attempts; try again later");
+    }
+
+    const body = z
+      .object({
+        token: z.string().trim().min(20).max(256),
+        password: z
+          .string()
+          .min(12, "Password must be at least 12 characters")
+          .max(72)
+          .refine(
+            (value) => Buffer.byteLength(value, "utf8") <= 72,
+            "Password must be at most 72 UTF-8 bytes"
+          )
+      })
+      .strict()
+      .parse(req.body);
+
+    const result = await redeemPasswordResetToken(req, body.token, body.password);
+    const normalizedEmail = result.email.toLowerCase();
+    loginEmailLimiter.clear(`${ip}:${normalizedEmail}`);
+    loginAccountLimiter.clear(normalizedEmail);
+
+    res.json({
+      ok: true,
+      message: "Password updated. You may now sign in."
     });
   })
 );

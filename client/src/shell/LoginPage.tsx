@@ -1,18 +1,38 @@
 import { ApplicantRegistration } from "../components/OnboardingWorkspace";
 import { useRef, useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowLeft, ArrowRight, Building2, Globe2, Package, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, CheckCircle2, Globe2, KeyRound, Package, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { OnboardingKind } from "@shared/overhaul";
 import type { Session } from "@shared/domain";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
 import { SaduRibbon } from "../components/ui/SaduRibbon";
+import { resetPasswordWithToken } from "../lib/api";
 import { INVESTOR_DEMO_ADMIN_EMAIL } from "../lib/investorDemoApi";
 import { entrance } from "../lib/motion";
 import { cn } from "../lib/cn";
 import "../styles/signature.css";
 import { DEMO_PERSONAS, demoPersonasEnabled, selectPersona } from "./demoPersonas";
+
+function readInitialResetToken(propToken?: string | null) {
+  if (propToken !== undefined) return propToken || null;
+  if (typeof window === "undefined") return null;
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const fromHash = hashParams.get("resetToken")?.trim();
+  return fromHash || null;
+}
+
+function clearResetTokenFromUrl() {
+  if (typeof window === "undefined") return;
+  const hashRaw = window.location.hash.replace(/^#/, "");
+  const hashParams = new URLSearchParams(hashRaw);
+  if (!hashParams.has("resetToken")) return;
+  hashParams.delete("resetToken");
+  const nextHash = hashParams.toString();
+  const url = new URL(window.location.href);
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ""}`);
+}
 
 export function LoginPage({
   isArabic,
@@ -21,7 +41,8 @@ export function LoginPage({
   onLanguageToggle,
   onLogin,
   onOpenRegistration,
-  onRegistered
+  onRegistered,
+  initialResetToken
 }: {
   isArabic: boolean;
   error: string | null;
@@ -31,6 +52,8 @@ export function LoginPage({
   /** Standalone top-level navigation to /register/supplier or /register/client. */
   onOpenRegistration?: (kind: OnboardingKind) => void;
   onRegistered?: (session: Session) => void;
+  /** Optional override for tests; defaults to ?resetToken=... in window.location.search. */
+  initialResetToken?: string | null;
 }) {
   const { t } = useTranslation();
   const [joinKind, setJoinKind] = useState<OnboardingKind | null>(null);
@@ -38,12 +61,59 @@ export function LoginPage({
   const [password, setPassword] = useState("");
   const [demoPrompt, setDemoPrompt] = useState(false);
   const [showPersonas] = useState(() => demoPersonasEnabled());
+  const [resetToken, setResetToken] = useState<string | null>(() => readInitialResetToken(initialResetToken));
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetDone, setResetDone] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onLogin(email, password);
+  }
+
+  async function handleResetSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!resetToken) return;
+    if (newPassword.length < 12) {
+      setResetError(isArabic ? "يجب أن تكون كلمة المرور 12 حرفاً على الأقل." : "Password must be at least 12 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError(isArabic ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
+      return;
+    }
+    setResetBusy(true);
+    setResetError(null);
+    try {
+      await resetPasswordWithToken(resetToken, newPassword);
+      clearResetTokenFromUrl();
+      setResetToken(null);
+      setNewPassword("");
+      setConfirmPassword("");
+      setResetDone(true);
+    } catch (err) {
+      setResetError(
+        err instanceof Error
+          ? err.message
+          : isArabic
+            ? "الرابط غير صالح أو منتهي الصلاحية."
+            : "Invalid or expired reset link."
+      );
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
+  function handleCancelReset() {
+    clearResetTokenFromUrl();
+    setResetToken(null);
+    setResetError(null);
+    setNewPassword("");
+    setConfirmPassword("");
   }
 
   function handleLaunchLiveDemo() {
@@ -213,6 +283,91 @@ export function LoginPage({
           </motion.div>
         </section>
 
+        {resetToken ? (
+          <motion.form
+            variants={entrance.rise(0.2)}
+            initial={reduced ? false : "initial"}
+            animate="animate"
+            onSubmit={(event) => void handleResetSubmit(event)}
+            data-password-reset-form
+            className="min-w-0 overflow-hidden rounded-xl border border-hairline-strong bg-surface-2/95 shadow-luxury backdrop-blur-md"
+            aria-labelledby="reset-password-title"
+          >
+            <SaduRibbon variant="hairline" className="opacity-90" />
+
+            <div className="p-6 sm:p-7">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-gold-500/30 bg-surface-1 text-gold-500">
+                  <KeyRound className="size-5" strokeWidth={1.6} aria-hidden />
+                </span>
+                <div>
+                  <h2 id="reset-password-title" className="text-xl font-bold tracking-tight text-ink">
+                    {isArabic ? "تعيين كلمة مرور جديدة" : "Set a new password"}
+                  </h2>
+                  <p className="text-sm text-ink-muted">
+                    {isArabic
+                      ? "رابط مؤقت لمرة واحدة (12 حرفاً على الأقل)"
+                      : "Single-use recovery link (minimum 12 characters)"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <Field label={isArabic ? "كلمة المرور الجديدة" : "New password"} required>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={12}
+                    maxLength={72}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    required
+                    dir="ltr"
+                    placeholder="••••••••••••"
+                  />
+                </Field>
+                <Field
+                  label={isArabic ? "تأكيد كلمة المرور" : "Confirm new password"}
+                  required
+                  error={resetError ?? undefined}
+                >
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={12}
+                    maxLength={72}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    required
+                    dir="ltr"
+                    placeholder="••••••••••••"
+                  />
+                </Field>
+              </div>
+
+              <Button type="submit" variant="gold" size="lg" loading={resetBusy} className="mt-6 w-full">
+                {resetBusy
+                  ? isArabic
+                    ? "جارٍ التحديث…"
+                    : "Updating password…"
+                  : isArabic
+                    ? "حفظ كلمة المرور الجديدة"
+                    : "Save new password"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                disabled={resetBusy}
+                onClick={handleCancelReset}
+                className="mt-3 w-full"
+              >
+                {isArabic ? "العودة إلى تسجيل الدخول" : "Back to sign in"}
+              </Button>
+            </div>
+          </motion.form>
+        ) : (
         <motion.form
           variants={entrance.rise(0.2)}
           initial={reduced ? false : "initial"}
@@ -235,6 +390,19 @@ export function LoginPage({
                 <p className="text-sm text-ink-muted">{t("signInSubtitle")}</p>
               </div>
             </div>
+
+            {resetDone ? (
+              <p
+                role="status"
+                data-password-reset-success
+                className="mt-4 flex items-center gap-2 rounded-lg border border-ok/40 bg-ok/10 p-3 text-xs font-medium text-ok"
+              >
+                <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                {isArabic
+                  ? "تم تحديث كلمة المرور بنجاح — يرجى تسجيل الدخول بكلمة المرور الجديدة."
+                  : "Password updated — please sign in with your new password."}
+              </p>
+            ) : null}
 
             {demoPrompt ? (
               <p
@@ -364,6 +532,7 @@ export function LoginPage({
             ) : null}
           </div>
         </motion.form>
+        )}
       </main>
     </div>
   );

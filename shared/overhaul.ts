@@ -1353,10 +1353,23 @@ export type DensityDto = {
   capacity: number | null;
 };
 
+export type WeatherCondition = "CLEAR" | "CLOUDY" | "RAIN" | "DUST_WIND" | "STORM" | "UNKNOWN";
+
+export type WeatherSnapshotDto = {
+  available: boolean;
+  source: string;
+  observedAt: string | null;
+  temperatureC?: number | null;
+  windSpeedKmh?: number | null;
+  weatherCode?: number | null;
+  condition?: WeatherCondition;
+  sandstormRisk?: boolean;
+};
+
 export type TelemetrySnapshotDto = {
   observedAt?: string;
   guests?: GuestDto[];
-  weather?: {available:boolean;source:string;observedAt:string|null};
+  weather?: WeatherSnapshotDto;
   eventId: string;
   vehicles: VehicleDto[];
   trips: TripDto[];

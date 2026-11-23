@@ -76,7 +76,9 @@ vi.mock("../db.js", () => ({ prisma: db }));
 
 const { signTokens, verifyAccessToken } = await import("../middleware/auth.js");
 const { HttpError } = await import("../utils/http.js");
-const authRouter = (await import("./auth.js")).default;
+const authModule = await import("./auth.js");
+const authRouter = authModule.default;
+const { resetAuthRateLimits } = authModule;
 
 let server: Server;
 let base = "";
@@ -138,6 +140,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   db.users.clear();
+  resetAuthRateLimits();
   vi.clearAllMocks();
 });
 
@@ -290,5 +293,49 @@ describe("other auth endpoints are unchanged", () => {
     });
     expect(me.status).toBe(200);
     expect(((await me.json()) as { user: { id: string } }).user.id).toBe("usr_me");
+  });
+});
+
+describe("POST /auth/login: brute-force rate limiting (PLAN_READY_1 Sprint 1)", () => {
+  it("blocks after 5 failed attempts for the same IP+email and returns Retry-After", async () => {
+    await storeUser("usr_rl", "rl@example.test", Role.COORDINATOR, "valid-password-123");
+
+    for (let i = 0; i < 5; i++) {
+      const attempt = await post("/auth/login", { email: "rl@example.test", password: "wrong" });
+      expect(attempt.status).toBe(401);
+    }
+
+    const res = await fetch(`${base}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "rl@example.test", password: "valid-password-123" })
+    });
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    const json = (await res.json()) as Record<string, any>;
+    expectNoSession(json);
+  });
+
+  it("clears the per-email failure counter after a successful login", async () => {
+    await storeUser("usr_rl2", "rl2@example.test", Role.COORDINATOR, "valid-password-123");
+
+    for (let i = 0; i < 4; i++) {
+      expect((await post("/auth/login", { email: "rl2@example.test", password: "wrong" })).status).toBe(401);
+    }
+    expect((await post("/auth/login", { email: "rl2@example.test", password: "valid-password-123" })).status).toBe(200);
+    // Counter was reset, so 4 more failed attempts are still 401 before the 5th trips 429 on the 6th.
+    for (let i = 0; i < 4; i++) {
+      expect((await post("/auth/login", { email: "rl2@example.test", password: "wrong" })).status).toBe(401);
+    }
+    expect((await post("/auth/login", { email: "rl2@example.test", password: "valid-password-123" })).status).toBe(200);
+  });
+
+  it("blocks credential-stuffing sprays from the same IP after 25 failed attempts across distinct emails", async () => {
+    for (let i = 0; i < 25; i++) {
+      const attempt = await post("/auth/login", { email: `spray${i}@example.test`, password: "wrong" });
+      expect(attempt.status).toBe(401);
+    }
+    const blocked = await post("/auth/login", { email: "spray-next@example.test", password: "wrong" });
+    expect(blocked.status).toBe(429);
   });
 });

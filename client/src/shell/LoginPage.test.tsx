@@ -97,6 +97,36 @@ describe("LoginPage render", () => {
     const { html: ar } = render(true);
     expect(ar).toContain("تشغيل العرض المباشر");
   });
+
+  it("renders the single-use password recovery card when a resetToken is present without calling onLogin", () => {
+    const onLogin = vi.fn(async () => undefined);
+    const en = renderToStaticMarkup(
+      <LoginPage
+        isArabic={false}
+        error={null}
+        isLoading={false}
+        onLanguageToggle={() => undefined}
+        onLogin={onLogin}
+        initialResetToken="aud_1.syntheticSecretTokenValue0123456789"
+      />
+    );
+    expect(en).toContain("data-password-reset-form");
+    expect(en).toContain("Set a new password");
+    expect(en).toContain("Save new password");
+    expect(onLogin).not.toHaveBeenCalled();
+
+    const ar = renderToStaticMarkup(
+      <LoginPage
+        isArabic={true}
+        error={null}
+        isLoading={false}
+        onLanguageToggle={() => undefined}
+        onLogin={onLogin}
+        initialResetToken="aud_1.syntheticSecretTokenValue0123456789"
+      />
+    );
+    expect(ar).toContain("تعيين كلمة مرور جديدة");
+  });
 });
 
 describe("LoginPage wiring (source)", () => {

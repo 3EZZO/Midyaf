@@ -36,6 +36,8 @@ import { telemetryBuffer } from "./services/telemetryBuffer.js";
 import { configureRealtime } from "./services/socketAuthorization.js";
 
 const app = express();
+// Render terminates TLS behind 1 reverse proxy hop; trusting 1 hop gives accurate req.ip for rate limiters and audit logs without allowing X-Forwarded-For spoofing.
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const allowedOrigins = env.CLIENT_ORIGIN.split(",").map((origin) =>
   origin.trim()

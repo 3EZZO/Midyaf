@@ -135,10 +135,11 @@ router.post(
     res.status(201).json({
       fileAsset,
       deliveries,
-      aiOcrVerification: {
-        status: "APPROVED",
-        confidence: 0.98,
-        documentType: "Vendor ID / Registration"
+      verification: {
+        status: "UPLOADED",
+        reviewStatus: "PENDING_REVIEW",
+        verified: false,
+        documentType: fileAsset.type
       }
     });
   })
