@@ -339,7 +339,9 @@ function LegacyCaptainsApp({
           padding="md"
           tone="gold"
           data-captain-sunlit-bar
-          className="border-gold-500/50 bg-surface-2 shadow-luxury"
+          // Pinned just above the mobile bottom dock (h-14 + safe area) so the one-thumb
+          // CTA stays reachable while scrolling; normal flow on desktop where there is no dock.
+          className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] z-30 border-gold-500/50 bg-surface-2 shadow-luxury lg:static lg:z-auto"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-1">
