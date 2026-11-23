@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 
 vi.mock("../../components/map", () => ({
   RiyadhMap: () => null
@@ -67,5 +68,19 @@ describe("Field & VIP Mobile UX upgrades (Section 3)", () => {
     const preview = briefingTickerPreview(longText, false);
     expect(preview.length).toBeLessThanOrEqual(92);
     expect(preview.endsWith("…")).toBe(true);
+  });
+
+  it("pins the captain sunlit action bar above the mobile dock (Plan Ready 1 polish)", () => {
+    const source = readFileSync(new URL("./CaptainsApp.tsx", import.meta.url), "utf8");
+    const bar = source.slice(source.indexOf("data-captain-sunlit-bar"));
+    const className = /className="([^"]+)"/.exec(bar)?.[1] ?? "";
+    expect(className).toContain("sticky");
+    expect(className).toContain("bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)]");
+    expect(className).toContain("lg:static");
+  });
+
+  it("publishes an absolute og:image so link previews resolve off-site", () => {
+    const html = readFileSync(new URL("../../../index.html", import.meta.url), "utf8");
+    expect(html).toMatch(/<meta property="og:image" content="https:\/\/[^"]+\/icons\/pwa-512x512-v2\.png"/);
   });
 });
