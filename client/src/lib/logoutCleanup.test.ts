@@ -40,23 +40,27 @@ describe("logoutCleanup + logoutSession (Audit Batch A2 & A3)", () => {
     expect(storage.getItem("other_app_key")).toBe("keep");
   });
 
-  it("posts POST /api/auth/logout with bearer token and never throws on network error", async () => {
+  it("posts POST /api/auth/logout with bearer token + refreshToken and never throws on network error", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-    await logoutSession("test-access-jwt");
+    await logoutSession("test-access-jwt", "test-refresh-jwt");
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/auth/logout",
       expect.objectContaining({
         method: "POST",
         keepalive: true,
-        headers: { Authorization: "Bearer test-access-jwt" }
+        headers: {
+          Authorization: "Bearer test-access-jwt",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refreshToken: "test-refresh-jwt" })
       })
     );
 
     fetchSpy.mockRejectedValueOnce(new Error("offline"));
-    await expect(logoutSession("test-access-jwt")).resolves.toBeUndefined();
+    await expect(logoutSession("test-access-jwt", "test-refresh-jwt")).resolves.toBeUndefined();
     fetchSpy.mockRestore();
   });
 });

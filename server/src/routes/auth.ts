@@ -4,7 +4,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
-import { requireAuth, signTokens, verifyRefreshToken } from "../middleware/auth.js";
+import { requireAuth, signTokens, verifyAccessToken, verifyRefreshToken } from "../middleware/auth.js";
 import { SlidingWindowLimiter } from "../utils/rateLimiter.js";
 import { PASSWORD_RESET_TTL_MS, issuePasswordResetLink, redeemPasswordResetToken } from "../services/passwordReset.js";
 import { emailConfigured, passwordResetEmail, publicAppUrl, sendEmail } from "../services/mailer.js";
@@ -266,19 +266,67 @@ router.post(
 
 router.post(
   "/logout",
-  requireAuth,
   asyncHandler(async (req: AuthRequest, res) => {
+    // Accept EITHER a valid bearer access token OR a valid body refreshToken
+    // (so users idle >15m whose access token already expired still revoke their
+    // 7-day refresh token on logout). Also allowed for onboardingPending users.
+    const header = req.headers.authorization;
+    const bearer = header?.startsWith("Bearer ") ? header.slice(7).trim() : undefined;
+
+    let userIdFromAccess: string | null = null;
+    if (bearer) {
+      try {
+        userIdFromAccess = verifyAccessToken(bearer).id;
+      } catch {
+        // Access token expired or invalid; fall through to body.refreshToken.
+      }
+    }
+
+    if (userIdFromAccess) {
+      try {
+        await prisma.user.update({
+          where: { id: userIdFromAccess },
+          data: { tokenVersion: { increment: 1 } }
+        });
+      } catch (error) {
+        if (!(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "P2025")) {
+          throw error;
+        }
+      }
+      return res.json({ ok: true });
+    }
+
+    const body = z
+      .object({ refreshToken: z.string().min(1).optional() })
+      .safeParse(req.body ?? {});
+    const refreshToken = body.success ? body.data.refreshToken : undefined;
+    if (!refreshToken) {
+      throw new HttpError(401, "Invalid or expired token");
+    }
+
+    let payload: ReturnType<typeof verifyRefreshToken>;
     try {
+      payload = verifyRefreshToken(refreshToken);
+    } catch {
+      throw new HttpError(401, "Invalid or expired token");
+    }
+
+    const found = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, tokenVersion: true }
+    });
+    if (!found) {
+      return res.json({ ok: true });
+    }
+
+    // Only bump when the presented refresh token matches the current tokenVersion,
+    // so a stale/leaked older refresh token cannot force-logout active sessions.
+    const presentedVersion = typeof payload.tv === "number" ? payload.tv : 0;
+    if (presentedVersion === (found.tokenVersion ?? 0)) {
       await prisma.user.update({
-        where: { id: req.user!.id },
-        // Bump tokenVersion so any refresh token issued before logout stops working.
+        where: { id: found.id },
         data: { tokenVersion: { increment: 1 } }
       });
-    } catch (error) {
-      // If the user record was already deleted, treat logout as idempotent success.
-      if (!(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "P2025")) {
-        throw error;
-      }
     }
 
     res.json({ ok: true });

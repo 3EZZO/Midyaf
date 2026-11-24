@@ -219,17 +219,24 @@ export async function refreshSession(refreshToken: string): Promise<Session> {
 }
 
 /**
- * Best-effort server logout: bumps `User.tokenVersion` so existing refresh
- * tokens cannot be reused after signing out. Never throws so offline logout
+ * Best-effort server logout: sends both the access token and refresh token so
+ * `POST /api/auth/logout` still bumps `User.tokenVersion` even if the user was
+ * idle >15 min and their access token expired. Never throws so offline logout
  * always clears local state cleanly.
  */
-export async function logoutSession(accessToken: string): Promise<void> {
+export async function logoutSession(
+  accessToken?: string,
+  refreshToken?: string
+): Promise<void> {
+  if (!accessToken && !refreshToken) return;
   try {
+    const headers: Record<string, string> = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    if (refreshToken) headers["Content-Type"] = "application/json";
     await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      },
+      headers,
+      ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
       keepalive: true
     });
   } catch {

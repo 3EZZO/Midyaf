@@ -826,8 +826,8 @@ export function App() {
 
   function handleLogout() {
     const activeSession = sessionRef.current;
-    if (activeSession?.accessToken) {
-      void logoutSession(activeSession.accessToken);
+    if (activeSession?.accessToken || activeSession?.refreshToken) {
+      void logoutSession(activeSession.accessToken, activeSession.refreshToken);
     }
     setJustJoinedWorkspace(false);
     window.localStorage.removeItem(sessionStorageKey);

@@ -1,3 +1,6 @@
+import httpNode from "node:http";
+import type { AddressInfo } from "node:net";
+import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
@@ -129,5 +132,66 @@ describe("POST /auth/logout (Audit Batch A2)", () => {
     expect(res.status).toBe(200);
     const pendingRow = memory.current.rows("user").find((u) => u.id === "u_pending");
     expect(pendingRow?.tokenVersion).toBe(1);
+  });
+
+  it("revokes via valid refreshToken even when the access token is expired/garbage, and ignores stale refresh tokens", async () => {
+    const loginRes = await http.post("/auth/login", undefined, {
+      email: "ops@example.test",
+      password: "strong-password-2026"
+    });
+    expect(loginRes.status).toBe(200);
+    const oldRefresh = String(loginRes.body.refreshToken);
+
+    // Mount authRouter directly so we can send an actual garbage/expired Bearer header
+    // alongside the valid refreshToken in the JSON body (simulating >15m idle logout).
+    const app = express();
+    app.use(express.json());
+    app.use("/auth", authRouter);
+    const rawServer = await new Promise<httpNode.Server>((resolve) => {
+      const s = app.listen(0, "127.0.0.1", () => resolve(s));
+    });
+    const port = (rawServer.address() as AddressInfo).port;
+    try {
+      const logoutWithExpiredAccess = await fetch(`http://127.0.0.1:${port}/auth/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer expired.or.garbage.jwt",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refreshToken: oldRefresh })
+      });
+      expect(logoutWithExpiredAccess.status).toBe(200);
+      expect(await logoutWithExpiredAccess.json()).toEqual({ ok: true });
+      expect(memory.current.rows("user")[0].tokenVersion).toBe(1);
+    } finally {
+      await new Promise<void>((resolve) => rawServer.close(() => resolve()));
+    }
+
+    // Old refresh token is now rejected by /auth/refresh.
+    const postRefresh = await http.post("/auth/refresh", undefined, {
+      refreshToken: oldRefresh
+    });
+    expect(postRefresh.status).toBe(401);
+
+    // Re-login creates a fresh session at tokenVersion=1; replaying the stale
+    // tv=0 refresh token at /auth/logout must NOT bump tokenVersion to 2.
+    const relogin = await http.post("/auth/login", undefined, {
+      email: "ops@example.test",
+      password: "strong-password-2026"
+    });
+    expect(relogin.status).toBe(200);
+    const freshRefresh = String(relogin.body.refreshToken);
+
+    const staleReplay = await http.post("/auth/logout", undefined, {
+      refreshToken: oldRefresh
+    });
+    expect(staleReplay.status).toBe(200);
+    expect(memory.current.rows("user")[0].tokenVersion).toBe(1);
+
+    // Fresh session remains valid because the stale token could not force-logout it.
+    const stillValid = await http.post("/auth/refresh", undefined, {
+      refreshToken: freshRefresh
+    });
+    expect(stillValid.status).toBe(200);
   });
 });
