@@ -531,8 +531,10 @@ describe("apply on an empty target", () => {
 
   it("covers every model in the Prisma schema", () => {
     // 24 original models + SUPPLIER-001 (SupplierRequestNote) + OPS-COLLAB-001
-    // (TaskHandover, Conversation, ConversationParticipant, ConversationMessage).
-    expect(APPLICATION_MODELS).toHaveLength(47);
+    // (TaskHandover, Conversation, ConversationParticipant, ConversationMessage)
+    // + PLAN_READY_1 Sprint 3 (PushSubscription).
+    expect(APPLICATION_MODELS).toHaveLength(48);
+    expect(APPLICATION_MODELS).toContain("PushSubscription");
     expect(APPLICATION_MODELS).toEqual(expect.arrayContaining(["User", "Driver", "VaultSession", "FileAsset", "CaptainFeedback"]));
     expect(APPLICATION_MODELS).toEqual(
       expect.arrayContaining([
