@@ -54,25 +54,18 @@ export default defineConfig({
       },
       workbox: {
         importScripts: ["/sw-push.js"],
-        // Audit Batch C3: precache only the core shell, fonts, and v2 brand/PWA
-        // assets on first visit; lazy portal chunks (Recharts, Leaflet, admin
-        // dashboards) are runtime-cached on demand so 4G phones don't download
-        // ~3 MB in the background before logging in.
-        globPatterns: [
-          "index.html",
-          "manifest.webmanifest",
-          "sw-push.js",
-          "assets/index-*.{js,css}",
-          "assets/vendor-react-*.js",
-          "assets/vendor-lucide-*.js",
-          "assets/*.woff2",
-          "icons/*.{png,svg}",
-          "favicon.ico",
-          "midyaf-icon.png",
-          "midyaf-logo.png"
-        ],
+        // Keep the app alive offline on venue Wi-Fi / basement car parks: all
+        // entry deps, portal chunks, fonts, and v2 brand assets are precached.
+        // Only unused font subsets and duplicate root icon fallbacks are omitted.
+        globPatterns: ["**/*.{js,css,html,woff2,png,jpeg,svg,ico,webmanifest}"],
         globIgnores: [
-          "**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*"
+          "**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*",
+          "pwa-192x192.png",
+          "pwa-512x512.png",
+          "pwa-maskable-512x512.png",
+          "apple-touch-icon.png",
+          "favicon.png",
+          "favicon.svg"
         ],
         // Server routes are never the SPA: a navigation to a report PDF or an
         // upload must reach the network, not the cached index.html.

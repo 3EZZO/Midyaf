@@ -37,10 +37,14 @@ describe("mountClientStatic (Audit Batch C1)", () => {
     fs.rmSync(tempDist, { recursive: true, force: true });
   });
 
-  it("serves hashed /assets/* as immutable 1-year cache", async () => {
+  it("serves hashed /assets/* as immutable 1-year cache and 404s missing stale chunks", async () => {
     const res = await fetch(`${baseUrl}/assets/index-abc123.js`);
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+
+    const missing = await fetch(`${baseUrl}/assets/stale-deleted-chunk.js`);
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("content-type")).not.toContain("text/html");
   });
 
   it("keeps index.html, SPA fallback, sw.js, and manifest.webmanifest no-cache", async () => {

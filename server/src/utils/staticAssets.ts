@@ -21,8 +21,22 @@ export function mountClientStatic(app: Express, clientDist: string): void {
     "/assets",
     express.static(path.join(clientDist, "assets"), {
       maxAge: "1y",
-      immutable: true
-    })
+      immutable: true,
+      fallthrough: false
+    }),
+    // Convert missing hashed chunk errors from fallthrough:false into clean 404s
+    // instead of serving index.html (200 text/html) with a confusing MIME error.
+    (
+      err: unknown,
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
+      if (err && typeof err === "object" && "statusCode" in err && (err as { statusCode?: number }).statusCode === 404) {
+        return res.status(404).type("text/plain").send("Asset not found");
+      }
+      return next(err);
+    }
   );
 
   app.use(
