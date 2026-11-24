@@ -1,3 +1,5 @@
+import { DEMO_GUIDE_HINT_KEY } from "./demoGuideHint";
+
 /**
  * Clears all session-scoped user caches on logout so a subsequent user sharing
  * the same device/browser tab cannot inspect prior operational snapshots.
@@ -12,6 +14,7 @@ export function clearLogoutSessionStorage(
       storage.removeItem(`midyaf_data_${userId}`);
     }
     storage.removeItem("midyaf.demoPersonas");
+    storage.removeItem(DEMO_GUIDE_HINT_KEY);
 
     // Sweep any stale per-user bootstrap snapshots (e.g. after demo persona switches).
     const staleKeys: string[] = [];

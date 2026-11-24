@@ -22,7 +22,7 @@ import "../styles/signature.css";
 import { BottomTabBar } from "./BottomTabBar";
 import { IconRail } from "./IconRail";
 import { demoPersonaScopeCopy, type DemoResetPhase } from "./InvestorDemoSwitcher";
-import { InvestorStoryGuide } from "./InvestorStoryGuide";
+import { InvestorStoryGuide, InvestorStoryGuidePlaceholder } from "./InvestorStoryGuide";
 import { PresenterShortcutsModal } from "./PresenterShortcutsModal";
 import { TopBar } from "./TopBar";
 
@@ -52,6 +52,8 @@ export type ShellFrameProps = {
   defaultRailCollapsed?: boolean;
   /** SIX-TASKS #6 / Qasr P2: One-click Investor Demo status, reset stage & handlers. */
   investorDemoStatus?: DemoStatusDto | null;
+  /** Reserves the collapsed InvestorStoryGuide bar height while demo status loads. */
+  reserveDemoGuideSpace?: boolean;
   investorDemoBusy?: boolean;
   demoResetPhase?: DemoResetPhase;
   onSwitchDemoPersona?: (persona: DemoPersonaDto) => Promise<void> | void;
@@ -92,6 +94,7 @@ export function ShellFrame({
   onLogout,
   defaultRailCollapsed = false,
   investorDemoStatus,
+  reserveDemoGuideSpace = false,
   investorDemoBusy,
   demoResetPhase = "idle",
   onSwitchDemoPersona,
@@ -237,6 +240,8 @@ export function ShellFrame({
             onLaunchWarRoom={onLaunchWarRoom}
             onOpenShortcuts={setIsShortcutsOpen ? () => setIsShortcutsOpen(true) : undefined}
           />
+        ) : reserveDemoGuideSpace && !investorDemoStatus ? (
+          <InvestorStoryGuidePlaceholder isArabic={isArabic} />
         ) : null}
 
         {/* Bottom padding clears the tab bar plus the phone's home-indicator inset. */}
