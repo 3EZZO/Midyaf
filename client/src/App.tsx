@@ -53,7 +53,8 @@ import {
 const InviteAcceptance = lazy(() =>
   import("./components/EventTeams").then((m) => ({ default: m.InviteAcceptance }))
 );
-import { useWorkspaceResource } from "./lib/workspaceApi";
+import { clearWorkspaceResourceCache, useWorkspaceResource } from "./lib/workspaceApi";
+import { clearPushConfigCache } from "./lib/webPush";
 import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
 import {
@@ -154,6 +155,7 @@ export function App() {
   const bootPending = Boolean(session && session.accessToken === bootExpiredToken);
   const [socketRecoveryGen, setSocketRecoveryGen] = useState(0);
   const loadedSessionScopeRef = useRef<string | null>(null);
+  const inflightLoadScopeRef = useRef<string | null>(null);
   const isArabicRef = useRef(isArabic);
   isArabicRef.current = isArabic;
   const toastRef = useRef(toast);
@@ -369,6 +371,7 @@ export function App() {
   useEffect(() => {
     if (!session) {
       loadedSessionScopeRef.current = null;
+      inflightLoadScopeRef.current = null;
       setData(null);
       setDemoStatus(null);
       return;
@@ -376,9 +379,13 @@ export function App() {
 
     const sessionScope = `${session.user.id}:${Boolean(session.user.onboardingPending)}`;
     // Mid-session proactive or 401-retry refresh for the same already-loaded
-    // user rotates `accessToken` silently without flashing the loading skeleton
-    // or unmounting active forms/portals.
-    if (loadedSessionScopeRef.current === sessionScope) {
+    // (or currently-loading) user rotates `accessToken` silently without
+    // flashing the loading skeleton, unmounting active forms/portals, or
+    // firing a duplicate bootstrap request.
+    if (
+      loadedSessionScopeRef.current === sessionScope ||
+      inflightLoadScopeRef.current === sessionScope
+    ) {
       return;
     }
 
@@ -927,6 +934,7 @@ export function App() {
     try {
       const nextSession = await login(email, password);
       loadedSessionScopeRef.current = null;
+      inflightLoadScopeRef.current = null;
       storeSession(nextSession);
       sessionRef.current = nextSession;
       sessionRefresher.reset();
@@ -955,8 +963,11 @@ export function App() {
     setJustJoinedWorkspace(false);
     window.localStorage.removeItem(sessionStorageKey);
     clearLogoutSessionStorage(window.sessionStorage, activeSession?.user.id);
+    clearWorkspaceResourceCache();
+    clearPushConfigCache();
     sessionRef.current = null;
     loadedSessionScopeRef.current = null;
+    inflightLoadScopeRef.current = null;
     setBootExpiredToken(null);
     sessionRefresher.reset();
     socketRecovery.reset();
@@ -1077,6 +1088,7 @@ export function App() {
       Boolean(sessionRef.current.user.onboardingPending) ===
         Boolean(activeSession.user.onboardingPending);
     const sessionScope = `${activeSession.user.id}:${Boolean(activeSession.user.onboardingPending)}`;
+    inflightLoadScopeRef.current = sessionScope;
     // A rehearsal that is running, or starts or ends meanwhile, keeps its
     // display; the load still refreshes the normal snapshot unless a load
     // started after it has already written (shared with refreshData).
@@ -1128,6 +1140,9 @@ export function App() {
         return curr;
       });
     } finally {
+      if (inflightLoadScopeRef.current === sessionScope) {
+        inflightLoadScopeRef.current = null;
+      }
       // A newer user's load owns the spinner; after a logout nothing does.
       if (isSameUser() || sessionRef.current === null) setIsLoading(false);
     }

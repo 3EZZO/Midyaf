@@ -301,11 +301,11 @@ export function SupplierDashboard({ session, isArabic }: { session?: Session; is
   useEffect(() => {
     controller.reset();
     setState({ status: "loading" });
-    if (!session?.accessToken) return;
+    if (!session?.user.id || !tokenRef.current) return;
     void controller.load();
     // A reply for an older session, or after unmount, must not paint.
     return () => controller.reset();
-  }, [session?.accessToken, controller]);
+  }, [session?.user.id, controller]);
 
   async function submitQuote(intakeId: string, value: QuoteValue) {
     const token = tokenRef.current;

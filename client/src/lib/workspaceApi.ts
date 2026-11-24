@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "./api";
+import { readJwtSubject } from "./demoGuideHint";
 
 const RESOURCE_CACHE_TTL_MS = 5_000;
 const MAX_CACHE_ENTRIES = 60;
@@ -16,7 +17,9 @@ export function clearWorkspaceResourceCache(): void {
 /**
  * Shared cached/deduped GET helper used by `useWorkspaceResource` so multiple
  * mounted portals requesting the same `/workspace/events` (or other read path)
- * with the same token and revision coalesce into a single network request.
+ * for the same user subject and revision coalesce into a single network request.
+ * Scoped by JWT subject (`readJwtSubject`) rather than raw token string so
+ * routine same-user token rotations never blank or refetch mounted panels.
  */
 export function fetchWorkspaceResource<T>(
   token: string,
@@ -24,7 +27,8 @@ export function fetchWorkspaceResource<T>(
   revision = 0,
   prefix = "/workspace"
 ): Promise<T> {
-  const key = `${token}:${prefix}:${path}:${revision}`;
+  const subject = readJwtSubject(token);
+  const key = `${subject}:${prefix}:${path}:${revision}`;
   const now = Date.now();
   const cached = resourceCache.get(key);
   if (cached && cached.expiresAt > now) {
@@ -73,10 +77,13 @@ export function workspaceRequest<T>(token: string, path: string, body?: unknown,
 
 /** Abort and invalidate old event/session requests before displaying another scope. */
 export function useWorkspaceResource<T>(token: string, path: string | null, revision = 0, prefix = "/workspace", keepPrevious = false) {
-  const scope = `${token}:${prefix}:${path}`;
-  const key = `${token}:${prefix}:${path}:${revision}`;
+  const subject = readJwtSubject(token);
+  const scope = `${subject}:${prefix}:${path}`;
+  const key = `${subject}:${prefix}:${path}:${revision}`;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
   const [state, setState] = useState<{ key: string; scope?: string; data?: T; error?: string; refreshing?: boolean }>(() => {
-    if (path && token) {
+    if (path && subject) {
       const hit = resourceCache.get(key);
       if (hit && hit.expiresAt > Date.now()) {
         return { key, scope, data: hit.data as T };
@@ -87,8 +94,9 @@ export function useWorkspaceResource<T>(token: string, path: string | null, revi
 
   useEffect(() => {
     let active = true;
-    if (path && token) {
-      fetchWorkspaceResource<T>(token, path, revision, prefix)
+    const currentToken = tokenRef.current;
+    if (path && subject && currentToken) {
+      fetchWorkspaceResource<T>(currentToken, path, revision, prefix)
         .then((data) => {
           if (active) setState({ key, scope, data });
         })
@@ -105,7 +113,7 @@ export function useWorkspaceResource<T>(token: string, path: string | null, revi
     return () => {
       active = false;
     };
-  }, [key, token, path, revision, prefix, scope]);
+  }, [key, subject, path, revision, prefix, scope]);
 
   return state.key === key ? state : keepPrevious && state.scope === scope && state.data ? { ...state, key, refreshing: true } : { key };
 }

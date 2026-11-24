@@ -242,11 +242,11 @@ export function AdminSupplierWorkspace({ session, isArabic }: { session?: Sessio
     controller.reset();
     setDirectory({ status: "loading" });
     setWorkspace({ status: "idle" });
-    if (!session?.accessToken) return;
+    if (!session?.user.id || !tokenRef.current) return;
     void controller.loadDirectory();
     // A reply for an older session, or after unmount, must not paint.
     return () => controller.reset();
-  }, [session?.accessToken, controller]);
+  }, [session?.user.id, controller]);
 
   return (
     <AdminSupplierWorkspaceView

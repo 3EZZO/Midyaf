@@ -304,7 +304,7 @@ export function SupplierSubmissions({
 
   useEffect(() => {
     setState({ status: "loading" });
-    if (!intakeId || !session?.accessToken) {
+    if (!intakeId || !session?.user.id || !tokenRef.current) {
       controller.close();
       return;
     }
@@ -312,7 +312,7 @@ export function SupplierSubmissions({
     void controller.load();
     // Intake switch, logout or unmount: earlier results must not paint.
     return () => controller.close();
-  }, [intakeId, session?.accessToken, controller]);
+  }, [intakeId, session?.user.id, controller]);
 
   if (!intakeId || !session) return null;
 

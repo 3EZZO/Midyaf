@@ -4,6 +4,7 @@ import type { Session } from "@shared/domain";
 import type { OrganizationDto, WorkspaceEventDto } from "@shared/overhaul";
 import { Section } from "./Section";
 import { EventWorkspace } from "./EventWorkspace";
+import { readJwtSubject } from "../lib/demoGuideHint";
 import { OrganizationMembers, canManageMembers } from "./OrganizationMembers";
 import { Badge, Button } from "./ui";
 import { EVENT_SETUP_HEADING_AR, EVENT_SETUP_HEADING_EN, categorizeEvents, createEventWithPlan, eventSetupBody, landingAfterSetup, type WorkspaceLanding } from "../lib/workspaceWorkflow";
@@ -266,7 +267,7 @@ function OrganizerContent({ token, isArabic: ar, isSuperAdmin = false, currentUs
   // the form shows (and focuses) its notice above it.
   if (selected) return <div className="space-y-4" dir={ar ? "rtl" : "ltr"}>
     <SelectedEventHeader isArabic={ar} eventName={selectedEvent ? localizeDemoText(selectedEvent.name, ar) : undefined} notice={notice} noticeMessage={notice === "error" ? orgs.error : undefined} waiting={wantsNewEvent && entry === "loading"} onBack={() => { openEvent(null); refresh(n => n + 1); }} onDismissNotice={() => setNotice(null)} />
-    <EventWorkspace key={`${token}:${selected}`} token={token} eventId={selected} isArabic={ar} landing={landing} />
+    <EventWorkspace key={`${readJwtSubject(token)}:${selected}`} token={token} eventId={selected} isArabic={ar} landing={landing} />
   </div>;
 
   return <div className="space-y-5" dir={ar ? "rtl" : "ltr"}>

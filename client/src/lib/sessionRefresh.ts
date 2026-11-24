@@ -12,7 +12,6 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 
 export type SessionRefreshResult =
   | { outcome: "installed"; accessToken: string }
-  | { outcome: "already_refreshed"; accessToken: string }
   | { outcome: "unchanged" }
   | { outcome: "signed_out" }
   | { outcome: "offline" }
@@ -97,7 +96,7 @@ export function createSingleFlightRefresher<S extends RecoverableSession>(
       }
 
       const result = await runRefreshFor(current);
-      if (result.outcome === "installed" || result.outcome === "already_refreshed") {
+      if (result.outcome === "installed") {
         return result.accessToken;
       }
       return null;
@@ -179,7 +178,7 @@ export function createSocketRecoveryController<
       recovering = true;
 
       void deps.refreshCurrent().then((result) => {
-        if (result.outcome === "installed" || result.outcome === "already_refreshed") {
+        if (result.outcome === "installed") {
           deps.onRecovered();
           return;
         }
