@@ -90,7 +90,9 @@ import {
   refreshSession
 } from "./lib/api";
 import { clearLogoutSessionStorage } from "./lib/logoutCleanup";
+import { refreshExpiredSessionAtBoot } from "./lib/bootSession";
 import {
+  isJwtExpired,
   loadDemoStatusIfFresh,
   readDemoGuideHint,
   shouldFetchDemoStatus
@@ -137,6 +139,14 @@ export function App() {
   const [session, setSession] = useState<Session | null>(() =>
     loadStoredSession()
   );
+  // Boot freshness gate: the access token of a stored session that had already
+  // expired at page load. While it is the current token, nothing may fetch with
+  // it (workspace, push config, onboarding, socket); the boot refresh replaces it.
+  const [bootExpiredToken, setBootExpiredToken] = useState<string | null>(() => {
+    const stored = loadStoredSession();
+    return stored && isJwtExpired(stored.accessToken) ? stored.accessToken : null;
+  });
+  const bootPending = Boolean(session && session.accessToken === bootExpiredToken);
   const [portal, setPortal] = useState<PortalKey>(() => {
     const stored = loadStoredSession();
     return stored ? initialPortalForRole(stored.user.role) : "sila_operations";
@@ -202,7 +212,7 @@ export function App() {
   const pendingPortalRef = useRef<PortalKey | null>(null);
   const lastHandledResetAtRef = useRef<string | null>(null);
   const localResetInFlightRef = useRef(false);
-  const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending ? "/events" : null, workspaceRevision);
+  const workspaceAccess = useWorkspaceResource<{events:WorkspaceEventDto[]}>(session?.accessToken ?? "", session && !session.user.onboardingPending && !bootPending ? "/events" : null, workspaceRevision);
   const assignedWorkspace = justJoinedWorkspace || workspaceAccess.data?.events.some(event => event.access.eventRole || event.access.organizationRole);
   const rolePortals = session ? portalsByRole[session.user.role] : [];
   const allowedPortals = assignedWorkspace && !rolePortals.includes("company") ? [...rolePortals, "company" as const] : rolePortals;
@@ -360,9 +370,32 @@ export function App() {
       if (allowed.includes(current)) return current;
       return initialPortalForRole(session.user.role);
     });
-    if (!session.user.onboardingPending) {
-      void loadSessionData(session);
-    }
+    // Boot freshness gate: a stored access token that expired while the tab
+    // was closed is refreshed BEFORE any data (cached or live) mounts the
+    // shell, so bootstrap, workspace, push config, onboarding and the socket
+    // never fire with a dead token. "installed" re-runs this effect with the
+    // new token; "offline" lifts the gate so the offline cache still paints.
+    const active = session;
+    const loadAfterGate = !session.user.onboardingPending;
+    void refreshExpiredSessionAtBoot(active, {
+      getSession: () => sessionRef.current,
+      refresh: refreshSession,
+      install: installSession,
+      signOut: () => {
+        handleLogout();
+        toast.info(
+          isArabic ? "انتهت الجلسة" : "Session expired",
+          isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
+        );
+      }
+    }).then((outcome) => {
+      if (outcome === "offline") {
+        setBootExpiredToken((token) => (token === active.accessToken ? null : token));
+      }
+      if (loadAfterGate && (outcome === "fresh" || outcome === "offline")) {
+        void loadSessionData(active);
+      }
+    });
   }, [session?.accessToken]);
 
   // SIX-TASKS #6: Query GET /api/demo/status for the signed-in session (404 -> hide switcher).
@@ -689,6 +722,14 @@ export function App() {
         }}
         onLogin={handleLogin}
       />
+    );
+  }
+
+  if (bootPending && session.user.onboardingPending) {
+    return (
+      <main className="min-h-screen bg-surface-1 p-5 text-ink">
+        <PortalSkeleton />
+      </main>
     );
   }
 

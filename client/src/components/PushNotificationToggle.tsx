@@ -8,6 +8,7 @@ import {
   subscribeToWebPush,
   unsubscribeFromWebPush
 } from "../lib/webPush";
+import { isJwtExpired } from "../lib/demoGuideHint";
 import { IconButton } from "./ui/Button";
 import { Tooltip } from "./ui/Tooltip";
 import { useToast } from "./ui/Toast";
@@ -35,6 +36,9 @@ export function PushNotificationToggle({
   useEffect(() => {
     if (initialEnabled !== undefined) return;
     if (!isBrowserPushSupported()) return;
+    // An expired token would only 401; the boot refresh installs a new one,
+    // which re-runs this effect.
+    if (isJwtExpired(session.accessToken)) return;
     let active = true;
     void fetchPushConfig(session.accessToken)
       .then(async (cfg) => {
