@@ -9,8 +9,6 @@ import { SlidingWindowLimiter } from "../utils/rateLimiter.js";
 import { PASSWORD_RESET_TTL_MS, issuePasswordResetLink, redeemPasswordResetToken } from "../services/passwordReset.js";
 import { emailConfigured, passwordResetEmail, publicAppUrl, sendEmail } from "../services/mailer.js";
 import type { AuthRequest } from "../types/auth.js";
-import { env } from "../env.js";
-import { clientIpForHops, forwardedChain } from "../utils/clientIp.js";
 
 const router = Router();
 
@@ -151,22 +149,6 @@ router.post(
     });
   })
 );
-
-/**
- * TEMPORARY (remove once TRUST_PROXY_HOPS is measured on Render): shows the caller
- * only their own address as Express would resolve it for each trust-proxy hop
- * count, so the correct hop count can be chosen. Read-only, no auth data.
- */
-router.get("/ip-check", (req, res) => {
-  const chain = forwardedChain(req);
-  res.setHeader("Cache-Control", "no-store");
-  res.json({
-    ip: req.ip,
-    trustProxyHops: env.TRUST_PROXY_HOPS,
-    chainLength: chain.length,
-    candidates: [0, 1, 2, 3, 4].map((hops) => ({ hops, ip: clientIpForHops(chain, hops) }))
-  });
-});
 
 /** Whether the login page should offer "Forgot password?" (email delivery configured). */
 router.get("/recovery-options", (_req, res) => {
