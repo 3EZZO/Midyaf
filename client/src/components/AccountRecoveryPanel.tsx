@@ -197,7 +197,7 @@ export function AccountRecoveryPanel({
             {filtered.slice(0, 12).map((account) => {
               const roleMeta = ROLE_LABELS[account.role];
               return (
-                <li key={account.id}>
+                <li key={account.id} className="min-w-0">
                   <Surface padding="sm" className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-ink">{account.name}</p>
