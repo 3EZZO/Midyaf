@@ -20,7 +20,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "demo:provision": "tsx server/src/scripts/provisionDemo.ts",
-    "demo:verify": "tsx server/src/scripts/verifyDemo.ts"
+    "demo:verify": "tsx server/src/scripts/verifyDemo.ts",
+    "ops:first-admin": "tsx server/src/scripts/createFirstAdmin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
