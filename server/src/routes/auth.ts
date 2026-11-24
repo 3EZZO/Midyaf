@@ -141,7 +141,7 @@ router.post(
 
     loginEmailLimiter.clear(emailKey);
     loginAccountLimiter.clear(body.email);
-    const { passwordHash: _passwordHash, ...safeUser } = user;
+    const { passwordHash: _passwordHash, tokenVersion: _tokenVersion, ...safeUser } = user;
 
     res.json({
       user: safeUser,
@@ -238,20 +238,28 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = z.object({ refreshToken: z.string() }).parse(req.body);
     const payload = verifyRefreshToken(body.refreshToken);
-    const user = await prisma.user.findUnique({
+    const found = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: userSelect
+      select: { ...userSelect, tokenVersion: true }
     });
 
-    if (!user) {
+    if (!found) {
       throw new HttpError(401, "Refresh token user no longer exists");
     }
+
+    // Plan Ready 1: a password reset bumps tokenVersion; older refresh tokens
+    // (including pre-versioning tokens, treated as version 0) are rejected.
+    const presentedVersion = typeof payload.tv === "number" ? payload.tv : 0;
+    if (presentedVersion !== (found.tokenVersion ?? 0)) {
+      throw new HttpError(401, "Session expired; please sign in again");
+    }
+    const { tokenVersion, ...user } = found;
 
     // SIX-TASKS #6: a switched demo session keeps its origin across refreshes.
     const demoOrigin = typeof payload.demoOrigin === "string" ? payload.demoOrigin : undefined;
     res.json({
       user,
-      ...signTokens(user, { demoOrigin })
+      ...signTokens({ ...user, tokenVersion }, { demoOrigin })
     });
   })
 );

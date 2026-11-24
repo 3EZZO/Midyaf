@@ -162,7 +162,8 @@ export async function redeemPasswordResetToken(
 
     await tx.user.update({
       where: { id: target.id },
-      data: { passwordHash }
+      // Bump tokenVersion so every refresh token issued before the reset stops working.
+      data: { passwordHash, tokenVersion: { increment: 1 } }
     });
 
     await tx.auditLog.create({
