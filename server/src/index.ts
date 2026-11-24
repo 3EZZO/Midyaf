@@ -62,7 +62,9 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
-app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+// PLAN_READY_1 Sprint 2: unauthenticated express.static("/uploads") removed so
+// visas, tickets, guest IDs, and reports are only reachable via RBAC-checked or
+// short-lived signed URLs (/api/file-assets/:id/content).
 
 mount("/auth", authRouter);
 mount("/events", eventsRouter);

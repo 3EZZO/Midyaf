@@ -31,6 +31,12 @@ const schema = z.object({
   COMMISSION_DEFAULT_PERCENT: z.coerce.number().default(12),
   AWS_REGION: z.string().default("me-south-1"),
   AWS_S3_BUCKET: z.string().default("midyaf-assets"),
+  // PLAN_READY_1 Sprint 2: optional dedicated least-privilege Cloudinary credentials
+  // (configured in Render; inert local-disk fallback when unset).
+  CLOUDINARY_URL: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
   HYPERPAY_ENTITY_ID: z.string().optional(),
   HYPERPAY_ACCESS_TOKEN: z.string().optional(),
   HYPERPAY_BASE_URL: z.string().default("https://eu-test.oppwa.com"),

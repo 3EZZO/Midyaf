@@ -14,6 +14,7 @@ import {
 } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
 import { sealedSupplierQuoteIds } from "../utils/supplierPortal.js";
+import { hydrateSignedFileAsset } from "../services/cloudinaryStorage.js";
 import { loadVisibleNotifications } from "./notifications.js";
 
 const router = Router();
@@ -377,7 +378,7 @@ router.get(
       guestJourneys,
       coordinatorRequests,
       companyReports,
-      fileAssets,
+      fileAssets: fileAssets.map((asset) => hydrateSignedFileAsset(asset)),
       notifications,
       // Snapshots written before T-03 can still hold sensitive keys.
       auditLogs: auditLogs.map((entry) => ({
