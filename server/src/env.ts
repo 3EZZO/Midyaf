@@ -40,6 +40,11 @@ const schema = z.object({
   HYPERPAY_ENTITY_ID: z.string().optional(),
   HYPERPAY_ACCESS_TOKEN: z.string().optional(),
   HYPERPAY_BASE_URL: z.string().default("https://eu-test.oppwa.com"),
+  // PLAN_READY_1 Sprint 4: optional Sentry Free DSN (inert when unset or blank).
+  SENTRY_DSN: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().url().optional()
+  ),
   // SIX-TASKS #6: one-click investor demo (persona switching + reset). Off
   // unless explicitly "true"; switching still needs a signed-in Super Admin.
   DEMO_MODE_ENABLED: z
