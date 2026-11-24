@@ -86,6 +86,14 @@ export function activeStoryStep(
   return null;
 }
 
+const GUIDE_WRAPPER_CLASS =
+  "border-b border-hairline bg-surface-1/95 px-4 py-1.5 text-xs lg:px-6";
+const GUIDE_ROW_CLASS = "flex flex-wrap items-center justify-between gap-2";
+const GUIDE_TOGGLE_CLASS =
+  "inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-xs font-semibold text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:shadow-focus";
+const GUIDE_SHORTCUTS_CLASS =
+  "hidden items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-gold-500/40 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus md:inline-flex";
+
 /**
  * Optional collapsible 4-step presenter guide rendered ONLY when Investor Demo
  * mode (`investorDemoStatus?.canSwitch`) is active. Starts collapsed so it adds
@@ -137,17 +145,17 @@ export function InvestorStoryGuide({
     <div
       data-investor-story-guide
       data-story-open={open ? "true" : "false"}
-      className="border-b border-hairline bg-surface-1/95 px-4 py-1.5 text-xs lg:px-6"
+      className={GUIDE_WRAPPER_CLASS}
     >
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className={GUIDE_ROW_CLASS}>
           <button
             type="button"
             aria-expanded={open}
             aria-controls={panelId}
             data-story-guide-toggle
             onClick={() => setOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-xs font-semibold text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
+            className={GUIDE_TOGGLE_CLASS}
           >
             <Compass className="size-3.5 text-gold-500" aria-hidden />
             <span className="text-gold-300">
@@ -170,7 +178,7 @@ export function InvestorStoryGuide({
               type="button"
               data-open-presenter-shortcuts
               onClick={onOpenShortcuts}
-              className="hidden items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-gold-500/40 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus md:inline-flex"
+              className={GUIDE_SHORTCUTS_CLASS}
             >
               <Keyboard className="size-3.5 text-gold-500" aria-hidden />
               <span>{isArabic ? "الاختصارات" : "Shortcuts"}</span>
@@ -228,6 +236,44 @@ export function InvestorStoryGuide({
             })}
           </ol>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Exact same-height collapsed placeholder rendered on first paint when a demo
+ * session hint (`midyaf.demoGuideHint`) is cached while `/api/demo/status`
+ * resolves, preventing CLS layout shifts on `main` and nav elements at any
+ * viewport width or language.
+ */
+export function InvestorStoryGuidePlaceholder({ isArabic }: { isArabic: boolean }) {
+  return (
+    <div
+      data-investor-story-guide-placeholder
+      aria-hidden="true"
+      inert
+      className={cn(GUIDE_WRAPPER_CLASS, "pointer-events-none select-none")}
+    >
+      <div className="mx-auto max-w-7xl">
+        {/* Identical collapsed header row (visibility:hidden + inert) so height matches by construction. */}
+        <div className={cn("invisible", GUIDE_ROW_CLASS)}>
+          <button type="button" tabIndex={-1} className={GUIDE_TOGGLE_CLASS}>
+            <Compass className="size-3.5 text-gold-500" aria-hidden />
+            <span className="text-gold-300">
+              {isArabic ? "دليل عرض المستثمرين" : "Investor Story Guide"}
+            </span>
+            <span className="hidden text-ink-faint sm:inline">
+              {isArabic ? "· 4 خطوات تفاعلية" : "· 4 guided chapters"}
+            </span>
+            <ChevronDown className="size-3.5 text-ink-faint" aria-hidden />
+          </button>
+          <button type="button" tabIndex={-1} className={GUIDE_SHORTCUTS_CLASS}>
+            <Keyboard className="size-3.5 text-gold-500" aria-hidden />
+            <span>{isArabic ? "الاختصارات" : "Shortcuts"}</span>
+            <Kbd>?</Kbd>
+          </button>
+        </div>
       </div>
     </div>
   );

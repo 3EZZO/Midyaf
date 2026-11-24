@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEMO_GUIDE_HINT_KEY } from "./demoGuideHint";
 import { clearLogoutSessionStorage } from "./logoutCleanup";
 import { logoutSession } from "./api";
 
@@ -24,11 +25,12 @@ function makeMemoryStorage(initial: Record<string, string>) {
 }
 
 describe("logoutCleanup + logoutSession (Audit Batch A2 & A3)", () => {
-  it("removes current and stale midyaf_data_* snapshots and midyaf.demoPersonas while keeping unrelated keys", () => {
+  it("removes current and stale midyaf_data_* snapshots, midyaf.demoPersonas, and demoGuideHint while keeping unrelated keys", () => {
     const storage = makeMemoryStorage({
       midyaf_data_u_1: '{"users":[]}',
       midyaf_data_u_2: '{"auditLogs":[]}',
       "midyaf.demoPersonas": "1",
+      [DEMO_GUIDE_HINT_KEY]: "1",
       other_app_key: "keep"
     });
 
@@ -37,6 +39,7 @@ describe("logoutCleanup + logoutSession (Audit Batch A2 & A3)", () => {
     expect(storage.getItem("midyaf_data_u_1")).toBeNull();
     expect(storage.getItem("midyaf_data_u_2")).toBeNull();
     expect(storage.getItem("midyaf.demoPersonas")).toBeNull();
+    expect(storage.getItem(DEMO_GUIDE_HINT_KEY)).toBeNull();
     expect(storage.getItem("other_app_key")).toBe("keep");
   });
 

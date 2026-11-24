@@ -91,6 +91,11 @@ import {
 } from "./lib/api";
 import { clearLogoutSessionStorage } from "./lib/logoutCleanup";
 import {
+  loadDemoStatusIfFresh,
+  readDemoGuideHint,
+  shouldFetchDemoStatus
+} from "./lib/demoGuideHint";
+import {
   SocketContext,
   createSocketAuthRecovery,
   loadForSession,
@@ -190,6 +195,7 @@ export function App() {
   const [justJoinedWorkspace, setJustJoinedWorkspace] = useState(false);
   // SIX-TASKS #6: One-click Investor Demo state (null when disabled / 404).
   const [demoStatus, setDemoStatus] = useState<DemoStatusDto | null>(null);
+  const [demoGuideHint, setDemoGuideHint] = useState<boolean>(() => readDemoGuideHint());
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoResetPhase, setDemoResetPhase] = useState<DemoResetPhase>("idle");
   const [demoStatusRev, setDemoStatusRev] = useState(0);
@@ -360,18 +366,28 @@ export function App() {
   }, [session?.accessToken]);
 
   // SIX-TASKS #6: Query GET /api/demo/status for the signed-in session (404 -> hide switcher).
+  // Skip when the stored access token is already expired so we don't fire a doomed 401
+  // before `loadSessionData` refreshes it, and keep the reserved guide hint until settled.
   useEffect(() => {
     if (!session?.accessToken || session.user.onboardingPending) {
       setDemoStatus(null);
       return;
     }
+    if (!shouldFetchDemoStatus(session)) {
+      return;
+    }
     const controller = new AbortController();
-    fetchDemoStatus(session.accessToken, controller.signal)
-      .then((next) => {
-        if (!controller.signal.aborted) setDemoStatus(next);
+    loadDemoStatusIfFresh(session, fetchDemoStatus, { signal: controller.signal })
+      .then((outcome) => {
+        if (controller.signal.aborted || outcome.skipped) return;
+        setDemoStatus(outcome.status);
+        setDemoGuideHint(outcome.activeGuide);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setDemoStatus(null);
+        if (!controller.signal.aborted) {
+          setDemoStatus(null);
+          setDemoGuideHint(false);
+        }
       });
     return () => controller.abort();
   }, [session?.accessToken, session?.user.onboardingPending, demoStatusRev]);
@@ -725,6 +741,7 @@ export function App() {
         isQuickNavOpen={isQuickNavOpen}
         setIsQuickNavOpen={setIsQuickNavOpen}
         investorDemoStatus={demoStatus}
+        reserveDemoGuideSpace={demoGuideHint && demoStatus === null}
         investorDemoBusy={demoBusy}
         demoResetPhase={demoResetPhase}
         onSwitchDemoPersona={handleSwitchDemoPersona}
@@ -782,6 +799,7 @@ export function App() {
       isQuickNavOpen={isQuickNavOpen}
       setIsQuickNavOpen={setIsQuickNavOpen}
       investorDemoStatus={demoStatus}
+      reserveDemoGuideSpace={demoGuideHint && demoStatus === null}
       investorDemoBusy={demoBusy}
       demoResetPhase={demoResetPhase}
       onSwitchDemoPersona={handleSwitchDemoPersona}
@@ -849,6 +867,7 @@ export function App() {
     setSession(null);
     setData(null);
     setDemoStatus(null);
+    setDemoGuideHint(false);
     setRealtimeLog([]);
   }
 
