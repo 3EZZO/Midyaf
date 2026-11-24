@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { PortalKey, Role, Session } from "@shared/domain";
 import { Button, IconButton } from "../components/ui/Button";
+import { PushNotificationToggle } from "../components/PushNotificationToggle";
 import { ConnectionDot, connectionLabel } from "../components/ui/ConnectionDot";
 import { Kbd } from "../components/ui/Kbd";
 import { Tooltip } from "../components/ui/Tooltip";
@@ -292,6 +293,8 @@ export function TopBar({
         <span className="2xl:hidden">
           <ConnectionDot />
         </span>
+
+        <PushNotificationToggle session={session} isArabic={isArabic} />
 
         <Button variant="ghost" size="sm" onClick={onLanguageToggle} className="px-2 sm:px-2.5">
           {t("switchLanguage")}

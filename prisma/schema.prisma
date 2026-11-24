@@ -369,6 +369,7 @@ model User {
   driverProfile   Driver?
   supplierProfile Supplier?
   notifications   Notification[]
+  pushSubscriptions PushSubscription[]
   auditLogs       AuditLog[]     @relation("AuditActor")
   sentMessages    Message[]      @relation("SentMessages")
   receivedMessages Message[]     @relation("ReceivedMessages")
@@ -1454,4 +1455,20 @@ model EventInvite {
   revokedAt DateTime?
   createdAt DateTime @default(now())
   @@index([eventId, expiresAt])
+}
+
+/// PLAN_READY_1 Sprint 3: Native Web Push (VAPID) browser/PWA subscription.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique @db.VarChar(1024)
+  p256dh    String   @db.VarChar(256)
+  auth      String   @db.VarChar(128)
+  userAgent String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

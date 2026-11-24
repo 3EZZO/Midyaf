@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import type { Prisma } from "@prisma/client";
+import { isWebPushConfigured, sendWebPushToUser } from "./webPush.js";
 
 export type NotificationChannel = "SMS" | "WHATSAPP" | "FCM" | "IN_APP";
 
@@ -41,6 +42,15 @@ export async function sendNotification(input: SendNotificationInput) {
     provider,
     status
   });
+
+  // Best-effort Native Web Push fanout (inert unless VAPID keys are configured in Render).
+  if (input.userId && isWebPushConfigured()) {
+    void sendWebPushToUser(input.userId, {
+      title: input.title,
+      body: input.body,
+      tag: `midyaf-${input.channel.toLowerCase()}`
+    });
+  }
 
   return {
     provider,

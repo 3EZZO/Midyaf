@@ -54,6 +54,10 @@ const schema = z.object({
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().url().optional()
   ),
+  // PLAN_READY_1 Sprint 3: optional VAPID keys for $0 Native Web Push (inert when unset).
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:ops@midyaf.sa"),
   // SIX-TASKS #6: one-click investor demo (persona switching + reset). Off
   // unless explicitly "true"; switching still needs a signed-in Super Admin.
   DEMO_MODE_ENABLED: z
