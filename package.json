@@ -9,7 +9,7 @@
     "dev:server": "tsx watch server/src/index.ts",
     "dev:client": "vite --host 0.0.0.0 --config client/vite.config.ts",
     "build": "npm run db:generate && npm run build:server && npm run build:client",
-    "build:server": "tsc -p server/tsconfig.json",
+    "build:server": "tsc -p server/tsconfig.json && node scripts/smoke-server-boot.mjs",
     "build:client": "vite build --config client/vite.config.ts",
     "start": "node dist/server/src/index.js",
     "check": "tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p client/tsconfig.json && node scripts/check-kpi-literals.mjs",
