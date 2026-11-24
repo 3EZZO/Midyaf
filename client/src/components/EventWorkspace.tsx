@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { Suspense, lazy, useEffect, useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { WorkspaceEventDto } from "@shared/overhaul";
 import { cn } from "../lib/cn";
@@ -14,7 +14,9 @@ import { EventPermissions } from "./EventPermissions";
 import { EventVendors } from "./EventVendors";
 import { EventTeams } from "./EventTeams";
 import { WorkspaceInbox } from "./WorkspaceInbox";
-import {EventRadar} from './EventRadar';
+const EventRadar = lazy(() =>
+  import("./EventRadar").then((m) => ({ default: m.EventRadar }))
+);
 import { EventGuests } from "./EventGuests";
 
 /** The approval response, held only for the refetch that the approval started. */
@@ -91,6 +93,6 @@ export function displayedEvent(bridge: ApprovalBridge | null, scope: string, rev
   {tabUnlocked(event,tab) && tab === 'vendors' && <EventVendors {...props} event={event}/>}
   {tab === 'guests' && <EventGuests {...props} event={event}/>}
   {tabUnlocked(event,tab) && tab === 'inbox' && <WorkspaceInbox token={token} eventId={eventId} isArabic={ar}/>}
-  {tabUnlocked(event,tab) && tab === 'radar' && <EventRadar key={`${token}:${event.id}`} token={token} event={event} isArabic={ar}/>}
+  {tabUnlocked(event,tab) && tab === 'radar' && <Suspense fallback={null}><EventRadar key={`${token}:${event.id}`} token={token} event={event} isArabic={ar}/></Suspense>}
  </div>;
 }

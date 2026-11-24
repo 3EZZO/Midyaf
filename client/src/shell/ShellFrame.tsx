@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Eye, RotateCcw, X } from "lucide-react";
 import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
@@ -11,7 +11,9 @@ import type {
   Task
 } from "@shared/domain";
 import { QuickNavigator } from "../components/QuickNavigator";
-import { SovereignCommandBridge } from "../components/warroom";
+const SovereignCommandBridge = lazy(() =>
+  import("../components/warroom").then((m) => ({ default: m.SovereignCommandBridge }))
+);
 import { cn } from "../lib/cn";
 import { RAIL_STORAGE_KEY, usePersistedCollapse } from "../lib/collapsibleStorage";
 import { activePersonaForStatus } from "../lib/investorDemoApi";
@@ -258,16 +260,18 @@ export function ShellFrame({
       />
 
       {isWarRoomOpen ? (
-        <SovereignCommandBridge
-          isOpen={isWarRoomOpen}
-          onClose={() => setIsWarRoomOpen?.(false)}
-          isDemoMode={Boolean(isDemoMode)}
-          event={event}
-          drivers={drivers ?? []}
-          session={session}
-          data={data}
-          tasks={tasks ?? []}
-        />
+        <Suspense fallback={null}>
+          <SovereignCommandBridge
+            isOpen={isWarRoomOpen}
+            onClose={() => setIsWarRoomOpen?.(false)}
+            isDemoMode={Boolean(isDemoMode)}
+            event={event}
+            drivers={drivers ?? []}
+            session={session}
+            data={data}
+            tasks={tasks ?? []}
+          />
+        </Suspense>
       ) : null}
 
       <QuickNavigator
