@@ -5,6 +5,13 @@ import {
   workspaceRequest
 } from "./workspaceApi";
 import { clearPushConfigCache, fetchPushConfig } from "./webPush";
+import { readJwtSubject } from "./demoGuideHint";
+
+function makeJwt(payload: Record<string, unknown>): string {
+  const encode = (obj: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(obj), "utf8").toString("base64url");
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode(payload)}.sig`;
+}
 
 afterEach(() => {
   clearWorkspaceResourceCache();
@@ -81,6 +88,45 @@ describe("Request deduplication (Audit Batch C4)", () => {
 
     // Different token fetches independently.
     await fetchPushConfig("tok_other");
+    expect(calls).toBe(3);
+
+    fetchSpy.mockRestore();
+  });
+
+  it("scopes workspace cache by JWT user subject so same-user token rotation keeps state and does not refetch, while a different user refetches", async () => {
+    let calls = 0;
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ events: [{ id: `evt_${calls}` }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    const aliceToken1 = makeJwt({ sub: "user-alice", role: "ORGANIZER", exp: 1_900_000_000 });
+    const aliceToken2 = makeJwt({ sub: "user-alice", role: "ORGANIZER", exp: 1_900_000_900 });
+    const bobToken = makeJwt({ sub: "user-bob", role: "DRIVER", exp: 1_900_000_900 });
+
+    expect(readJwtSubject(aliceToken1)).toBe(readJwtSubject(aliceToken2));
+    expect(readJwtSubject(aliceToken1)).not.toBe(readJwtSubject(bobToken));
+    expect(readJwtSubject("non-jwt-stub")).toBe("non-jwt-stub");
+
+    const first = await fetchWorkspaceResource(aliceToken1, "/events", 0);
+    expect(calls).toBe(1);
+
+    // Same-user proactive token rotation reuses cached data with zero refetch.
+    const afterRotate = await fetchWorkspaceResource(aliceToken2, "/events", 0);
+    expect(calls).toBe(1);
+    expect(afterRotate).toEqual(first);
+
+    // Different user (persona switch / re-login) isolates cache and refetches.
+    const bobData = await fetchWorkspaceResource(bobToken, "/events", 0);
+    expect(calls).toBe(2);
+    expect(bobData).not.toEqual(first);
+
+    // Clearing cache on logout forces a fresh read on next sign-in.
+    clearWorkspaceResourceCache();
+    await fetchWorkspaceResource(aliceToken2, "/events", 0);
     expect(calls).toBe(3);
 
     fetchSpy.mockRestore();

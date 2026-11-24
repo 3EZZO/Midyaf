@@ -135,19 +135,58 @@ export async function getBootstrap(accessToken: string): Promise<MidyafData> {
   return apiFetch<MidyafData>("/bootstrap", accessToken);
 }
 
+export type ApiUnauthorizedHandler = (failedAccessToken: string) => Promise<string | null>;
+
+let apiUnauthorizedHandler: ApiUnauthorizedHandler | null = null;
+
+/**
+ * Registers the single-flight session refresher used by `apiFetch` to recover
+ * once from an expired-token 401. Pass `null` to detach (e.g. on unmount/tests).
+ */
+export function setApiUnauthorizedHandler(handler: ApiUnauthorizedHandler | null): void {
+  apiUnauthorizedHandler = handler;
+}
+
+/**
+ * Auth endpoints (`/auth/*`) are excluded from 401 retry to prevent refresh or
+ * logout loops.
+ */
+export function isRetryableAuthPath(path: string): boolean {
+  return !/^\/?auth(\/|\?|$)/i.test(path.trim());
+}
+
 export async function apiFetch<T>(
   path: string,
   accessToken: string,
   options: RequestInit = {}
 ) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      ...(options.headers ?? {})
+  const execute = (token: string) =>
+    fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+  let response = await execute(accessToken);
+
+  // A 401 means `requireAuth` rejected the request before any route handler ran,
+  // so retrying exactly once with a freshly rotated access token is safe even
+  // for POST/PATCH/DELETE calls (e.g. tapping a button right after waking a phone).
+  if (
+    response.status === 401 &&
+    accessToken &&
+    apiUnauthorizedHandler &&
+    isRetryableAuthPath(path) &&
+    !options.signal?.aborted
+  ) {
+    const freshToken = await apiUnauthorizedHandler(accessToken).catch(() => null);
+    if (freshToken && freshToken !== accessToken && !options.signal?.aborted) {
+      response = await execute(freshToken);
     }
-  });
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);

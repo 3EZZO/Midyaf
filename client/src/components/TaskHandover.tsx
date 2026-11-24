@@ -468,7 +468,7 @@ export function TaskHandoverDialog({
     void controller.open(task);
     // Closing, switching task, signing out or unmounting ends this scope.
     return () => controller.close();
-  }, [open, task?.id, session.accessToken, controller]);
+  }, [open, task?.id, session.user.id, controller]);
 
   async function submit(path: string, body: unknown, success: string) {
     setPending(true);

@@ -274,7 +274,7 @@ function LegacyMessagesCenter({ session, isArabic }: { session?: Session; isArab
     setList({ status: "loading" });
     setSelectedId(null);
     setThread(null);
-    if (!session?.accessToken) return;
+    if (!session?.user.id || !tokenRef.current) return;
     void controller.loadList();
     const timer = window.setInterval(() => {
       if (isVisible()) void controller.loadList();
@@ -284,7 +284,7 @@ function LegacyMessagesCenter({ session, isArabic }: { session?: Session; isArab
       // Logout, account switch or unmount: nothing in flight may paint.
       controller.reset();
     };
-  }, [session?.accessToken, controller]);
+  }, [session?.user.id, controller]);
 
   useEffect(() => {
     controller.select(selectedId);

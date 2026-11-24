@@ -61,6 +61,55 @@ function decodeBase64Url(segment: string): string | null {
   }
 }
 
+function decodeJwtPayload(token: string | null | undefined): Record<string, unknown> | null {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3 || !parts[1]) return null;
+  const decoded = decodeBase64Url(parts[1]);
+  if (!decoded) return null;
+  try {
+    const payload = JSON.parse(decoded) as unknown;
+    return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decodes a JWT access token's `exp` claim into epoch milliseconds, or returns
+ * `null` for non-JWT / stub / malformed tokens.
+ */
+export function readJwtExpMs(token: string | null | undefined): number | null {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+    return null;
+  }
+  return payload.exp * 1000;
+}
+
+/**
+ * Stable per-user cache/mount scope derived from a JWT access token (`sub` /
+ * `id`, `role`, and `onboardingPending`), so routine same-user token rotations
+ * preserve cached workspace state and open forms without refetching or
+ * unmounting, while persona/account switches or role upgrades isolate cleanly.
+ * Non-JWT test stub tokens fall back to the raw token string.
+ */
+export function readJwtSubject(token: string | null | undefined): string {
+  if (!token || typeof token !== "string") return "";
+  const payload = decodeJwtPayload(token);
+  if (!payload) return token;
+  const subject =
+    typeof payload.sub === "string" && payload.sub
+      ? payload.sub
+      : typeof payload.id === "string" && payload.id
+        ? payload.id
+        : null;
+  if (!subject) return token;
+  const role = typeof payload.role === "string" ? payload.role : "";
+  const onboarding = payload.onboardingPending === true ? "p" : "a";
+  return `sub:${subject}:${role}:${onboarding}`;
+}
+
 /**
  * Client-side expiry pre-check for a stored JWT access token.
  * Returns true only when the token has a valid numeric `exp` claim that is
@@ -71,20 +120,9 @@ export function isJwtExpired(
   nowMs = Date.now(),
   skewMs = DEFAULT_EXPIRY_SKEW_MS
 ): boolean {
-  if (!token || typeof token !== "string") return false;
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) return false;
-  const decoded = decodeBase64Url(parts[1]);
-  if (!decoded) return false;
-  try {
-    const payload = JSON.parse(decoded) as { exp?: unknown };
-    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
-      return false;
-    }
-    return payload.exp * 1000 <= nowMs + skewMs;
-  } catch {
-    return false;
-  }
+  const expMs = readJwtExpMs(token);
+  if (expMs === null) return false;
+  return expMs <= nowMs + skewMs;
 }
 
 export function shouldFetchDemoStatus(

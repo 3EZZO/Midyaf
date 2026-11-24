@@ -23,6 +23,18 @@ export type BootRefreshOutcome = "fresh" | "installed" | "signed_out" | "stale" 
  * duplicate call (for example a StrictMode double effect) is harmless; the later
  * result is dropped as stale.
  */
+/**
+ * True only when the server explicitly rejected the refresh token (400 malformed,
+ * 401 expired/revoked, 403 forbidden). Transient failures — network errors,
+ * 5xx cold starts, or 429 rate limits — must NOT sign the user out.
+ */
+export function isFatalRefreshError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.status === 400 || error.status === 401 || error.status === 403)
+  );
+}
+
 export async function refreshExpiredSessionAtBoot<S extends RecoverableSession>(
   active: S,
   deps: SessionRefreshDeps<S>,
@@ -35,10 +47,7 @@ export async function refreshExpiredSessionAtBoot<S extends RecoverableSession>(
     next = await deps.refresh(active.refreshToken);
   } catch (error) {
     if (deps.getSession() !== active) return "stale";
-    // Any HTTP answer means the server judged the refresh token: 401 (expired,
-    // revoked by logout or password reset), 400 (malformed). A thrown non-API
-    // error is the network (offline PWA, cold start dropped): keep the session.
-    if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    if (isFatalRefreshError(error)) {
       deps.signOut();
       return "signed_out";
     }
