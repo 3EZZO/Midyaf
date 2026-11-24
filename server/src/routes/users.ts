@@ -7,7 +7,8 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler, requireEntity } from "../utils/http.js";
 import { recordAuditLog } from "../services/auditLog.js";
-import { issuePasswordResetLink } from "../services/passwordReset.js";
+import { PASSWORD_RESET_TTL_MS, issuePasswordResetLink } from "../services/passwordReset.js";
+import { passwordResetEmail, publicAppUrl, sendEmail } from "../services/mailer.js";
 
 const router = Router();
 
@@ -170,7 +171,17 @@ router.post(
     }
 
     const issued = await issuePasswordResetLink(req, target);
-    res.status(201).json(issued);
+    // Sprint 2: also email the link to the account owner when Brevo is configured
+    // (WhatsApp sharing from the Account Recovery panel keeps working either way).
+    const emailDelivery = await sendEmail(
+      passwordResetEmail(
+        target.email,
+        target.name,
+        `${publicAppUrl()}${issued.resetPath}`,
+        Math.round(PASSWORD_RESET_TTL_MS / 60000)
+      )
+    );
+    res.status(201).json({ ...issued, emailDelivery });
   })
 );
 

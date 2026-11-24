@@ -50,6 +50,7 @@ import { deriveSupplierDemand, opaqueReference } from "../utils/supplierPortal.j
 import { requireAuth } from "../middleware/auth.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
+import { invitationEmail, publicAppUrl, sendEmail } from "../services/mailer.js";
 import { loadMessageRedactions } from "../utils/guestPrivacy.js";
 import { MESSAGE_NOTIFICATION_KIND } from "../utils/messagingPolicy.js";
 import {
@@ -1413,7 +1414,9 @@ router.post("/events/:eventId/invitations",asyncHandler(async(req:AuthRequest,re
     const created=await tx.eventInvite.create({data:{eventId:access.event.id,email:body.email,tokenHash:createHash("sha256").update(token).digest("hex"),role:body.role,subteam:body.subteam??null,permissions:body.permissions,workScope:body.workScope??null,clientVisible:body.clientVisible??false,canReceive:body.canReceive??true,createdById:access.actor.id,expiresAt},select:{id:true,expiresAt:true}});
     await writeWorkspaceAudit(tx,req,{action:"workspace.invitation.create",entityType:"EVENT_INVITE",entityId:created.id,eventId:access.event.id,metadata:{role:body.role}});return created;
   },WORKSPACE_TRANSACTION);
-  res.status(201).json({invitation:{...invitation,token}});
+  // Sprint 2: email the one-time invite link when Brevo is configured (the token is still returned once for manual sharing).
+  const emailDelivery=await sendEmail(invitationEmail(body.email,access.event.name,`${publicAppUrl()}/#workspace-invite=${token}`));
+  res.status(201).json({invitation:{...invitation,token},emailDelivery});
 }));
 router.post("/events/:eventId/invitations/:inviteId/revoke",asyncHandler(async(req:AuthRequest,res)=>{
   const access=await loadEventAccess(req,req.params.eventId);requirePermission(access,EventPermission.INVITE);requirePlanApproved(access);

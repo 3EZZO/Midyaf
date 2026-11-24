@@ -1,5 +1,5 @@
 import { ApplicantRegistration } from "../components/OnboardingWorkspace";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, Globe2, KeyRound, Package, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -8,7 +8,7 @@ import type { Session } from "@shared/domain";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Field";
 import { SaduRibbon } from "../components/ui/SaduRibbon";
-import { resetPasswordWithToken } from "../lib/api";
+import { getRecoveryOptions, requestPasswordRecovery, resetPasswordWithToken } from "../lib/api";
 import { INVESTOR_DEMO_ADMIN_EMAIL } from "../lib/investorDemoApi";
 import { entrance } from "../lib/motion";
 import { cn } from "../lib/cn";
@@ -67,6 +67,43 @@ export function LoginPage({
   const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetDone, setResetDone] = useState(false);
+  // Sprint 2: self-service "Forgot password?" appears only when the server can email links.
+  const [emailRecovery, setEmailRecovery] = useState(false);
+  const [forgotState, setForgotState] = useState<"idle" | "busy" | "sent" | "error">("idle");
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getRecoveryOptions().then((options) => {
+      if (active) setEmailRecovery(options.emailRecovery);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleForgotPassword() {
+    const target = email.trim();
+    if (!target || !target.includes("@")) {
+      setForgotState("error");
+      setForgotMessage(isArabic ? "أدخل بريدك الإلكتروني أولاً." : "Enter your email address first.");
+      return;
+    }
+    setForgotState("busy");
+    setForgotMessage(null);
+    try {
+      await requestPasswordRecovery(target);
+      setForgotState("sent");
+      setForgotMessage(
+        isArabic
+          ? "إذا كان هناك حساب بهذا البريد فقد أرسلنا رابط إعادة التعيين (صالح 15 دقيقة)."
+          : "If an account exists for this email, we've sent a reset link (valid 15 minutes)."
+      );
+    } catch (err) {
+      setForgotState("error");
+      setForgotMessage(err instanceof Error ? err.message : isArabic ? "تعذر إرسال الطلب." : "Request failed.");
+    }
+  }
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
 
@@ -447,6 +484,27 @@ export function LoginPage({
             <Button type="submit" variant="gold" size="lg" loading={isLoading} className="mt-6 w-full">
               {isLoading ? t("signingIn") : t("signIn")}
             </Button>
+
+            {emailRecovery ? (
+              <div className="mt-3 text-center" data-forgot-password>
+                <button
+                  type="button"
+                  onClick={() => void handleForgotPassword()}
+                  disabled={forgotState === "busy"}
+                  className="text-xs font-medium text-gold-400 underline-offset-4 hover:underline disabled:opacity-60"
+                >
+                  {isArabic ? "نسيت كلمة المرور؟" : "Forgot password?"}
+                </button>
+                {forgotMessage ? (
+                  <p
+                    role="status"
+                    className={`mt-2 text-xs ${forgotState === "error" ? "text-danger" : "text-ink-muted"}`}
+                  >
+                    {forgotMessage}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* SIX-TASKS #3: Two standalone registration entry points */}
             <div className="mt-5 border-t border-hairline pt-4">

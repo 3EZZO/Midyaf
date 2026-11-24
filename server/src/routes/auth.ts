@@ -6,7 +6,8 @@ import { prisma } from "../db.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 import { requireAuth, signTokens, verifyRefreshToken } from "../middleware/auth.js";
 import { SlidingWindowLimiter } from "../utils/rateLimiter.js";
-import { redeemPasswordResetToken } from "../services/passwordReset.js";
+import { PASSWORD_RESET_TTL_MS, issuePasswordResetLink, redeemPasswordResetToken } from "../services/passwordReset.js";
+import { emailConfigured, passwordResetEmail, publicAppUrl, sendEmail } from "../services/mailer.js";
 import type { AuthRequest } from "../types/auth.js";
 import { env } from "../env.js";
 import { clientIpForHops, forwardedChain } from "../utils/clientIp.js";
@@ -18,6 +19,10 @@ const loginEmailLimiter = new SlidingWindowLimiter(5, AUTH_WINDOW_MS);
 const loginAccountLimiter = new SlidingWindowLimiter(20, AUTH_WINDOW_MS);
 const loginIpLimiter = new SlidingWindowLimiter(25, AUTH_WINDOW_MS);
 const resetIpLimiter = new SlidingWindowLimiter(10, AUTH_WINDOW_MS);
+// Self-service recovery emails: per-IP burst cap and a per-address hourly cap so the
+// endpoint cannot be used to flood someone's inbox or burn the Brevo daily quota.
+const forgotIpLimiter = new SlidingWindowLimiter(10, AUTH_WINDOW_MS);
+const forgotEmailLimiter = new SlidingWindowLimiter(3, 60 * 60 * 1000);
 
 /** Test-only helper so unit suites start from a clean rate-limit window. */
 export function resetAuthRateLimits() {
@@ -25,6 +30,8 @@ export function resetAuthRateLimits() {
   loginAccountLimiter.reset();
   loginIpLimiter.reset();
   resetIpLimiter.reset();
+  forgotIpLimiter.reset();
+  forgotEmailLimiter.reset();
 }
 
 const phoneSchema = z.string().regex(/^\+9665\d{8}$/, {
@@ -160,6 +167,52 @@ router.get("/ip-check", (req, res) => {
     candidates: [0, 1, 2, 3, 4].map((hops) => ({ hops, ip: clientIpForHops(chain, hops) }))
   });
 });
+
+/** Whether the login page should offer "Forgot password?" (email delivery configured). */
+router.get("/recovery-options", (_req, res) => {
+  res.json({ emailRecovery: emailConfigured() });
+});
+
+/**
+ * Self-service password recovery. Always answers 202 with the same body whether
+ * or not the account exists (no user enumeration); the lookup, link issue and
+ * email happen after the response so timing does not reveal existence either.
+ */
+router.post(
+  "/forgot-password",
+  asyncHandler(async (req, res) => {
+    const ip = req.ip ?? "unknown";
+    const attempt = forgotIpLimiter.consume(ip);
+    if (!attempt.allowed) {
+      res.setHeader("Retry-After", String(attempt.retryAfterSeconds));
+      throw new HttpError(429, "Too many recovery requests; try again later");
+    }
+    const { email } = z.object({ email: z.string().trim().email().max(254).toLowerCase() }).strict().parse(req.body);
+
+    res.status(202).json({
+      ok: true,
+      message: "If an account exists for this email, a reset link has been sent."
+    });
+
+    if (!emailConfigured() || !forgotEmailLimiter.consume(email).allowed) return;
+    void (async () => {
+      const target = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, name: true, email: true }
+      });
+      if (!target) return;
+      const issued = await issuePasswordResetLink(req as AuthRequest, target);
+      await sendEmail(
+        passwordResetEmail(
+          target.email,
+          target.name,
+          `${publicAppUrl()}${issued.resetPath}`,
+          Math.round(PASSWORD_RESET_TTL_MS / 60000)
+        )
+      );
+    })().catch(() => console.warn("Self-service password recovery failed"));
+  })
+);
 
 router.post(
   "/reset-password",
