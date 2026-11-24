@@ -34,6 +34,10 @@ import { HttpError } from "./utils/http.js";
 import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
 import { configureRealtime } from "./services/socketAuthorization.js";
+import { flushErrorReporting, initErrorReporting, reportError } from "./services/errorReporting.js";
+import type { AuthRequest } from "./types/auth.js";
+
+initErrorReporting();
 
 const app = express();
 // Render terminates TLS behind 1 reverse proxy hop; trusting 1 hop gives accurate req.ip for rate limiters and audit logs without allowing X-Forwarded-For spoofing.
@@ -106,7 +110,7 @@ app.use((_req, _res, next) => {
 app.use(
   (
     error: unknown,
-    _req: express.Request,
+    req: express.Request,
     res: express.Response,
     _next: express.NextFunction
   ) => {
@@ -129,12 +133,24 @@ app.use(
     }
 
     if (error instanceof HttpError) {
+      if (error.status >= 500) {
+        reportError(error, {
+          method: req.method,
+          path: req.path,
+          userId: (req as AuthRequest).user?.id
+        });
+      }
       return res.status(error.status).json({
         error: { message: error.message }
       });
     }
 
     console.error(error);
+    reportError(error, {
+      method: req.method,
+      path: req.path,
+      userId: (req as AuthRequest).user?.id
+    });
 
     return res.status(500).json({
       error: { message: "Internal server error" }
@@ -149,12 +165,18 @@ server.listen(env.PORT, () => {
   console.log("Socket.IO realtime layer ready.");
 });
 
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+  reportError(reason, { path: "process:unhandledRejection" });
+});
+
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 async function shutdown() {
   stopDelayMonitor();
   await telemetryBuffer.stop();
+  await flushErrorReporting(2000);
   await prisma.$disconnect();
   server.close(() => process.exit(0));
 }
