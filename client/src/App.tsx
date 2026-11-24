@@ -87,10 +87,17 @@ import {
   getBootstrap,
   login,
   logoutSession,
-  refreshSession
+  refreshSession,
+  setApiUnauthorizedHandler
 } from "./lib/api";
 import { clearLogoutSessionStorage } from "./lib/logoutCleanup";
 import { refreshExpiredSessionAtBoot } from "./lib/bootSession";
+import {
+  createSingleFlightRefresher,
+  createSocketRecoveryController,
+  socketSessionKey,
+  startProactiveSessionRefresh
+} from "./lib/sessionRefresh";
 import {
   isJwtExpired,
   loadDemoStatusIfFresh,
@@ -99,9 +106,7 @@ import {
 } from "./lib/demoGuideHint";
 import {
   SocketContext,
-  createSocketAuthRecovery,
   loadForSession,
-  refreshSessionIfCurrent,
   useSocket
 } from "./lib/useSocket";
 import {
@@ -147,6 +152,12 @@ export function App() {
     return stored && isJwtExpired(stored.accessToken) ? stored.accessToken : null;
   });
   const bootPending = Boolean(session && session.accessToken === bootExpiredToken);
+  const [socketRecoveryGen, setSocketRecoveryGen] = useState(0);
+  const loadedSessionScopeRef = useRef<string | null>(null);
+  const isArabicRef = useRef(isArabic);
+  isArabicRef.current = isArabic;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const [portal, setPortal] = useState<PortalKey>(() => {
     const stored = loadStoredSession();
     return stored ? initialPortalForRole(stored.user.role) : "sila_operations";
@@ -357,8 +368,17 @@ export function App() {
 
   useEffect(() => {
     if (!session) {
+      loadedSessionScopeRef.current = null;
       setData(null);
       setDemoStatus(null);
+      return;
+    }
+
+    const sessionScope = `${session.user.id}:${Boolean(session.user.onboardingPending)}`;
+    // Mid-session proactive or 401-retry refresh for the same already-loaded
+    // user rotates `accessToken` silently without flashing the loading skeleton
+    // or unmounting active forms/portals.
+    if (loadedSessionScopeRef.current === sessionScope) {
       return;
     }
 
@@ -383,9 +403,9 @@ export function App() {
       install: installSession,
       signOut: () => {
         handleLogout();
-        toast.info(
-          isArabic ? "انتهت الجلسة" : "Session expired",
-          isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
+        toastRef.current.info(
+          isArabicRef.current ? "انتهت الجلسة" : "Session expired",
+          isArabicRef.current ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
         );
       }
     }).then((outcome) => {
@@ -503,29 +523,68 @@ export function App() {
     [director, isDemoMode]
   );
 
-  // The socket handshake carries the access token (T-09). When the server
-  // rejects it, refresh once per recovery episode; a new token reconnects
-  // through sessionKey, and a dead refresh token signs out. sessionRef is
-  // updated synchronously on login/logout/refresh so a stale refresh result
-  // can never restore or replace a session that changed meanwhile.
+  // Shared single-flight session refresher used by proactive exp-90s timers,
+  // visibility/online wakeups, apiFetch single-retry 401 fallback, and socket
+  // auth-error recovery. sessionRef is updated synchronously on login/logout/
+  // refresh so a stale refresh result can never restore or replace a session
+  // that changed meanwhile.
   const sessionRef = useRef(session);
   sessionRef.current = session;
-  const socketRecovery = useMemo(
+  const sessionRefresher = useMemo(
     () =>
-      createSocketAuthRecovery<Session>({
+      createSingleFlightRefresher<Session>({
         getSession: () => sessionRef.current,
         refresh: refreshSession,
         install: installSession,
-        signOut: () => handleLogout()
+        signOut: () => {
+          handleLogout();
+          toastRef.current.info(
+            isArabicRef.current ? "انتهت الجلسة" : "Session expired",
+            isArabicRef.current ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
+          );
+        }
       }),
     []
+  );
+
+  // Single-retry 401 fallback in apiFetch (covers workspaceApi, webPush, demo).
+  useEffect(() => {
+    setApiUnauthorizedHandler((failedToken) =>
+      sessionRefresher.refreshForUnauthorized(failedToken)
+    );
+    return () => setApiUnauthorizedHandler(null);
+  }, [sessionRefresher]);
+
+  // Proactive mid-session refresh (~90 s before exp) + visibilitychange/online
+  // wakeups. Cleanup clears the timer and listeners on token rotation or logout.
+  useEffect(() => {
+    if (!session?.accessToken || bootPending) return;
+    return startProactiveSessionRefresh({
+      accessToken: session.accessToken,
+      onRefresh: () => {
+        void sessionRefresher.refreshCurrent();
+      }
+    });
+  }, [session?.accessToken, bootPending, sessionRefresher]);
+
+  // Socket auth-error recovery: increments `socketRecoveryGen` so `sessionKey`
+  // changes and creates a fresh socket, whereas routine proactive refreshes
+  // keep `sessionKey` stable (`user.id:recoveryGen`) without disconnecting.
+  const socketRecovery = useMemo(
+    () =>
+      createSocketRecoveryController<Session>({
+        getSession: () => sessionRef.current,
+        refreshCurrent: () => sessionRefresher.refreshCurrent(),
+        onRecovered: () => setSocketRecoveryGen((n) => n + 1)
+      }),
+    [sessionRefresher]
   );
 
   const { socket, status: socketStatus } = useSocket({
     // SUPPLIER-001: the supplier workspace has no realtime; the server also
     // refuses supplier handshakes.
     enabled: Boolean(session && data && session.user.role !== "SUPPLIER"),
-    sessionKey: session?.accessToken ?? null,
+    sessionKey: socketSessionKey(session, socketRecoveryGen),
     accessToken: session?.accessToken ?? null,
     onAuthError: socketRecovery.onAuthError,
     onConnect: socketRecovery.onConnected,
@@ -867,9 +926,12 @@ export function App() {
 
     try {
       const nextSession = await login(email, password);
+      loadedSessionScopeRef.current = null;
       storeSession(nextSession);
       sessionRef.current = nextSession;
+      sessionRefresher.reset();
       socketRecovery.reset();
+      setSocketRecoveryGen(0);
       setSession(nextSession);
       setPortal(initialPortalForRole(nextSession.user.role));
     } catch (error) {
@@ -894,7 +956,11 @@ export function App() {
     window.localStorage.removeItem(sessionStorageKey);
     clearLogoutSessionStorage(window.sessionStorage, activeSession?.user.id);
     sessionRef.current = null;
+    loadedSessionScopeRef.current = null;
+    setBootExpiredToken(null);
+    sessionRefresher.reset();
     socketRecovery.reset();
+    setSocketRecoveryGen(0);
     // No rehearsal, snapshot or event history may outlive the session.
     // Only stable refs/singletons here: socket recovery calls a first-render copy.
     leaveRehearsal(
@@ -1003,9 +1069,14 @@ export function App() {
   }
 
   async function loadSessionData(activeSession: Session) {
-    // A load belongs to one session. After a logout, an account switch or a
-    // refresh, its late result must not touch the newer session's state.
-    const isCurrent = () => sessionRef.current === activeSession;
+    // A load belongs to one signed-in user scope. A logout or account switch
+    // drops late results; a same-user token rotation (e.g. apiFetch 401 retry)
+    // still lets the fresh bootstrap land without forcing a second fetch.
+    const isSameUser = () =>
+      sessionRef.current?.user.id === activeSession.user.id &&
+      Boolean(sessionRef.current.user.onboardingPending) ===
+        Boolean(activeSession.user.onboardingPending);
+    const sessionScope = `${activeSession.user.id}:${Boolean(activeSession.user.onboardingPending)}`;
     // A rehearsal that is running, or starts or ends meanwhile, keeps its
     // display; the load still refreshes the normal snapshot unless a load
     // started after it has already written (shared with refreshData).
@@ -1025,8 +1096,9 @@ export function App() {
 
     try {
       const fresh = await getBootstrap(activeSession.accessToken);
-      if (!isCurrent()) return;
+      if (!isSameUser()) return;
       if (!ticket.claim()) return;
+      loadedSessionScopeRef.current = sessionScope;
       if (ticket.canShow()) setData(fresh);
       normalDataRef.current = fresh;
       try {
@@ -1038,24 +1110,12 @@ export function App() {
         // Ignore cache write error
       }
     } catch (error) {
-      if (!isCurrent()) return;
+      if (!isSameUser()) return;
       // An expired access token is not a load failure: trade the refresh
-      // token for a new session (its new access token re-runs the session
-      // effect, which reloads); if that fails too, the session is gone and
-      // the login screen is the honest answer. Stale outcomes are dropped.
+      // token for a new session via the single-flight refresher (400/401/403
+      // signs out; offline/5xx preserves the cached UI).
       if (error instanceof ApiError && error.status === 401) {
-        await refreshSessionIfCurrent(activeSession, {
-          getSession: () => sessionRef.current,
-          refresh: refreshSession,
-          install: installSession,
-          signOut: () => {
-            handleLogout();
-            toast.info(
-              isArabic ? "انتهت الجلسة" : "Session expired",
-              isArabic ? "يرجى تسجيل الدخول مرة أخرى" : "Please sign in again"
-            );
-          }
-        });
+        await sessionRefresher.refreshCurrent();
         return;
       }
       // If cached data is present, do not disrupt the UI with a blocking error
@@ -1068,8 +1128,8 @@ export function App() {
         return curr;
       });
     } finally {
-      // A newer session's load owns the spinner; after a logout nothing does.
-      if (isCurrent() || sessionRef.current === null) setIsLoading(false);
+      // A newer user's load owns the spinner; after a logout nothing does.
+      if (isSameUser() || sessionRef.current === null) setIsLoading(false);
     }
   }
 

@@ -62,6 +62,27 @@ function decodeBase64Url(segment: string): string | null {
 }
 
 /**
+ * Decodes a JWT access token's `exp` claim into epoch milliseconds, or returns
+ * `null` for non-JWT / stub / malformed tokens.
+ */
+export function readJwtExpMs(token: string | null | undefined): number | null {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3 || !parts[1]) return null;
+  const decoded = decodeBase64Url(parts[1]);
+  if (!decoded) return null;
+  try {
+    const payload = JSON.parse(decoded) as { exp?: unknown };
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+      return null;
+    }
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Client-side expiry pre-check for a stored JWT access token.
  * Returns true only when the token has a valid numeric `exp` claim that is
  * already past (within `skewMs`). Non-JWT stub tokens return false.
@@ -71,20 +92,9 @@ export function isJwtExpired(
   nowMs = Date.now(),
   skewMs = DEFAULT_EXPIRY_SKEW_MS
 ): boolean {
-  if (!token || typeof token !== "string") return false;
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) return false;
-  const decoded = decodeBase64Url(parts[1]);
-  if (!decoded) return false;
-  try {
-    const payload = JSON.parse(decoded) as { exp?: unknown };
-    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
-      return false;
-    }
-    return payload.exp * 1000 <= nowMs + skewMs;
-  } catch {
-    return false;
-  }
+  const expMs = readJwtExpMs(token);
+  if (expMs === null) return false;
+  return expMs <= nowMs + skewMs;
 }
 
 export function shouldFetchDemoStatus(

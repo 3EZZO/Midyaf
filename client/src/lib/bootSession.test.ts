@@ -76,6 +76,14 @@ describe("refreshExpiredSessionAtBoot", () => {
     expect(deps.signOut).not.toHaveBeenCalled();
   });
 
+  it("keeps the session on 429 rate-limit instead of signing out", async () => {
+    const { deps } = setup(expired, async () => {
+      throw new ApiError("Too many requests", 429);
+    });
+    await expect(refreshExpiredSessionAtBoot(expired, deps, NOW)).resolves.toBe("offline");
+    expect(deps.signOut).not.toHaveBeenCalled();
+  });
+
   it("drops a late result when the session changed meanwhile", async () => {
     let release!: (s: S) => void;
     const { deps, swap } = setup(expired, () => new Promise<S>((r) => (release = r)));
