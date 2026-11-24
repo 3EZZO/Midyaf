@@ -69,7 +69,7 @@ export function requireAuth(
     throw new HttpError(401, "Invalid or expired token");
   }
   const pathname = req.originalUrl.split("?")[0];
-  if (req.user.onboardingPending && !/^(?:\/api)?\/(?:workspace\/onboarding(?:\/|$)|auth\/me$)/.test(pathname)) {
+  if (req.user.onboardingPending && !/^(?:\/api)?\/(?:workspace\/onboarding(?:\/|$)|auth\/(?:me|logout)$)/.test(pathname)) {
     throw new HttpError(403, "Pending applicants can access only their own onboarding request");
   }
   next();
