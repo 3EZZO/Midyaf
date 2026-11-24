@@ -163,10 +163,11 @@ export function TopBar({
           <Icon className="size-4" strokeWidth={1.6} aria-hidden />
         </span>
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-bold text-ink">
+          {/* Not an h1: each page's PortalHero owns the single h1. */}
+          <p className="truncate text-sm font-bold text-ink">
             <span className="sm:hidden">{isArabic ? shortTitle.ar : shortTitle.en}</span>
             <span className="hidden sm:inline">{isArabic ? meta.titleAr : meta.titleEn}</span>
-          </h1>
+          </p>
           <p className="hidden truncate text-xs text-ink-muted 2xl:block">
             {isArabic ? meta.descAr : meta.descEn}
           </p>
@@ -296,8 +297,18 @@ export function TopBar({
 
         <PushNotificationToggle session={session} isArabic={isArabic} />
 
-        <Button variant="ghost" size="sm" onClick={onLanguageToggle} className="px-2 sm:px-2.5">
-          {t("switchLanguage")}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onLanguageToggle}
+          aria-label={t("switchLanguage")}
+          className="px-2 sm:px-2.5"
+        >
+          {/* Compact on phones so Logout never gets pushed off a 390px screen. */}
+          <span className="sm:hidden" aria-hidden>
+            {isArabic ? "EN" : "ع"}
+          </span>
+          <span className="hidden sm:inline">{t("switchLanguage")}</span>
         </Button>
 
         <Tooltip content={session.user.email}>
