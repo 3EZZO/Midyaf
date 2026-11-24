@@ -218,6 +218,25 @@ export async function refreshSession(refreshToken: string): Promise<Session> {
   };
 }
 
+/**
+ * Best-effort server logout: bumps `User.tokenVersion` so existing refresh
+ * tokens cannot be reused after signing out. Never throws so offline logout
+ * always clears local state cleanly.
+ */
+export async function logoutSession(accessToken: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      keepalive: true
+    });
+  } catch {
+    // Best-effort: local session is already cleared regardless of network state.
+  }
+}
+
 export async function apiUploadFile(
   file: File,
   input: FileUploadInput,

@@ -84,8 +84,10 @@ import {
   downloadReportPdf,
   getBootstrap,
   login,
+  logoutSession,
   refreshSession
 } from "./lib/api";
+import { clearLogoutSessionStorage } from "./lib/logoutCleanup";
 import {
   SocketContext,
   createSocketAuthRecovery,
@@ -823,8 +825,13 @@ export function App() {
   }
 
   function handleLogout() {
+    const activeSession = sessionRef.current;
+    if (activeSession?.accessToken) {
+      void logoutSession(activeSession.accessToken);
+    }
     setJustJoinedWorkspace(false);
     window.localStorage.removeItem(sessionStorageKey);
+    clearLogoutSessionStorage(window.sessionStorage, activeSession?.user.id);
     sessionRef.current = null;
     socketRecovery.reset();
     // No rehearsal, snapshot or event history may outlive the session.

@@ -35,6 +35,11 @@ import { startDelayMonitor } from "./services/delayMonitor.js";
 import { telemetryBuffer } from "./services/telemetryBuffer.js";
 import { configureRealtime } from "./services/socketAuthorization.js";
 import { flushErrorReporting, initErrorReporting, reportError } from "./services/errorReporting.js";
+import {
+  apiNoStoreMiddleware,
+  buildHelmetOptions,
+  permissionsPolicyMiddleware
+} from "./utils/securityHeaders.js";
 import type { AuthRequest } from "./types/auth.js";
 
 initErrorReporting();
@@ -57,7 +62,9 @@ const io = new Server(server, {
 });
 
 app.set("io", io);
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet(buildHelmetOptions()));
+app.use(permissionsPolicyMiddleware);
+app.use("/api", apiNoStoreMiddleware);
 app.use(
   cors({
     origin: allowedOrigins,

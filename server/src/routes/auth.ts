@@ -264,6 +264,27 @@ router.post(
   })
 );
 
+router.post(
+  "/logout",
+  requireAuth,
+  asyncHandler(async (req: AuthRequest, res) => {
+    try {
+      await prisma.user.update({
+        where: { id: req.user!.id },
+        // Bump tokenVersion so any refresh token issued before logout stops working.
+        data: { tokenVersion: { increment: 1 } }
+      });
+    } catch (error) {
+      // If the user record was already deleted, treat logout as idempotent success.
+      if (!(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "P2025")) {
+        throw error;
+      }
+    }
+
+    res.json({ ok: true });
+  })
+);
+
 router.get(
   "/me",
   requireAuth,
