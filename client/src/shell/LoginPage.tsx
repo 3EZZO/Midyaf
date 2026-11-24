@@ -34,6 +34,18 @@ function clearResetTokenFromUrl() {
   window.history.replaceState({}, "", `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ""}`);
 }
 
+/**
+ * Only autofocus the email field on desktop fine-pointer devices.
+ * On mobile viewports, unconditional `autoFocus` scrolls past the arrival
+ * brand/hero header (scrollY ~489 on 390x844) and hides the initial hero LCP.
+ */
+export function shouldAutoFocusEmailInput(
+  win: Pick<Window, "matchMedia"> | undefined = typeof window !== "undefined" ? window : undefined
+): boolean {
+  if (!win || typeof win.matchMedia !== "function") return false;
+  return win.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 export function LoginPage({
   isArabic,
   error,
@@ -104,8 +116,16 @@ export function LoginPage({
       setForgotMessage(err instanceof Error ? err.message : isArabic ? "تعذر إرسال الطلب." : "Request failed.");
     }
   }
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (resetToken || joinKind) return;
+    if (shouldAutoFocusEmailInput()) {
+      emailInputRef.current?.focus();
+    }
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -456,9 +476,9 @@ export function LoginPage({
             <div className="mt-6 space-y-4">
               <Field label={t("email")} required>
                 <Input
+                  ref={emailInputRef}
                   type="email"
                   autoComplete="email"
-                  autoFocus
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required

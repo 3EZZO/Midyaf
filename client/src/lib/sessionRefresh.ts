@@ -278,3 +278,46 @@ export function startProactiveSessionRefresh({
     windowTarget?.removeEventListener("online", handleOnline);
   };
 }
+
+export type SessionLoadToken = { readonly scope: string };
+
+/**
+ * Tracks loaded vs. in-flight bootstrap loads per user scope (`userId:onboarding`).
+ *
+ * Each `begin(scope)` returns a unique attempt token so a 401-catch recovery can
+ * release the gate *before* calling `refreshCurrent()` (letting the refreshed
+ * session immediately start a new load) without the old attempt's `finally`
+ * clearing the newer attempt's in-flight guard or loading spinner.
+ */
+export function createSessionLoadGate() {
+  let loadedScope: string | null = null;
+  let inflight: SessionLoadToken | null = null;
+
+  return {
+    shouldSkip(scope: string): boolean {
+      return loadedScope === scope || inflight?.scope === scope;
+    },
+    begin(scope: string): SessionLoadToken {
+      const token: SessionLoadToken = { scope };
+      inflight = token;
+      return token;
+    },
+    markLoaded(token: SessionLoadToken) {
+      loadedScope = token.scope;
+    },
+    release(token: SessionLoadToken): boolean {
+      if (inflight === token) {
+        inflight = null;
+        return true;
+      }
+      return false;
+    },
+    hasInflight(): boolean {
+      return inflight !== null;
+    },
+    reset() {
+      loadedScope = null;
+      inflight = null;
+    }
+  };
+}

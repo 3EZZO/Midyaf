@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { LoginPage } from "./LoginPage";
+import { LoginPage, shouldAutoFocusEmailInput } from "./LoginPage";
 import { DEMO_PERSONAS } from "./demoPersonas";
 
 /**
@@ -139,5 +139,27 @@ describe("LoginPage wiring (source)", () => {
     const calls = source.match(/onLogin\(/g) ?? [];
     expect(calls).toHaveLength(1);
     expect(source).toMatch(/async function handleSubmit[\s\S]*?await onLogin\(email, password\);/);
+  });
+
+  it("gates email autofocus to desktop fine-pointer devices so mobile loads at scrollY 0", () => {
+    const { html } = render();
+    const emailInput = html.match(/<input[^>]*type="email"[^>]*>/)?.[0] ?? "";
+    expect(emailInput).not.toMatch(/\bautofocus\b/i);
+    expect(source).not.toMatch(/<[A-Za-z][^>]*\bautoFocus\b/);
+    expect(source).toContain("shouldAutoFocusEmailInput()");
+
+    expect(shouldAutoFocusEmailInput(undefined)).toBe(false);
+    expect(
+      shouldAutoFocusEmailInput({
+        matchMedia: (query) =>
+          ({ matches: query === "(hover: hover) and (pointer: fine)" && false }) as MediaQueryList
+      })
+    ).toBe(false);
+    expect(
+      shouldAutoFocusEmailInput({
+        matchMedia: (query) =>
+          ({ matches: query === "(hover: hover) and (pointer: fine)" }) as MediaQueryList
+      })
+    ).toBe(true);
   });
 });
