@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import * as webpush from "web-push";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
