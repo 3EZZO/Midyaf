@@ -54,12 +54,23 @@ export default defineConfig({
       },
       workbox: {
         importScripts: ["/sw-push.js"],
-        // Keep the demo alive on venue Wi-Fi: map tiles and fonts are served
-        // from cache once a rehearsal has warmed them.
-        // Hosts must match components/map/constants.ts TILE_LAYERS.
-        // The default glob is js/css/html only; the self-hosted fonts and
-        // brand images must be precached too or they vanish offline.
-        globPatterns: ["**/*.{js,css,html,woff2,png,jpeg,svg,ico,webmanifest}"],
+        // Audit Batch C3: precache only the core shell, fonts, and v2 brand/PWA
+        // assets on first visit; lazy portal chunks (Recharts, Leaflet, admin
+        // dashboards) are runtime-cached on demand so 4G phones don't download
+        // ~3 MB in the background before logging in.
+        globPatterns: [
+          "index.html",
+          "manifest.webmanifest",
+          "sw-push.js",
+          "assets/index-*.{js,css}",
+          "assets/vendor-react-*.js",
+          "assets/vendor-lucide-*.js",
+          "assets/*.woff2",
+          "icons/*.{png,svg}",
+          "favicon.ico",
+          "midyaf-icon.png",
+          "midyaf-logo.png"
+        ],
         globIgnores: [
           "**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*"
         ],
@@ -73,6 +84,19 @@ export default defineConfig({
         // Drop precaches from older builds when this service worker activates.
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // Content-hashed lazy portal JS/CSS/font chunks: cache on first use.
+            urlPattern: /\/assets\/.*\.(?:js|css|woff2)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "midyaf-assets-v1",
+              expiration: {
+                maxEntries: 120,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
+              cacheableResponse: { statuses: [200] }
+            }
+          },
           {
             // Only two Esri base maps: World_Imagery (server.) and the
             // tactical Dark Gray Canvas (services.). No street map and no
@@ -137,7 +161,11 @@ export default defineConfig({
             if (id.includes("lucide-react")) return "vendor-lucide";
             if (id.includes("socket.io-client") || id.includes("engine.io"))
               return "vendor-socket";
-            if (id.includes("react") || id.includes("scheduler"))
+            if (/[\\/]node_modules[\\/](recharts|d3-[^\\/]+)[\\/]/.test(id))
+              return "vendor-charts";
+            // Strict package-name match so react-markdown, react-i18next,
+            // @radix-ui/react-*, and qrcode.react stay code-split with their callers.
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id))
               return "vendor-react";
           }
         }

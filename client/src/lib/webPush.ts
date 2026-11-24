@@ -35,8 +35,35 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
-export async function fetchPushConfig(accessToken: string): Promise<PushConfigResponse> {
-  return apiFetch<PushConfigResponse>("/notifications/push/config", accessToken);
+const MAX_PUSH_CONFIG_CACHE = 5;
+const pushConfigCache = new Map<string, Promise<PushConfigResponse>>();
+
+export function clearPushConfigCache(): void {
+  pushConfigCache.clear();
+}
+
+/**
+ * Memoized per access token so TopBar remounts and persona portal switches do
+ * not refetch `/notifications/push/config` repeatedly. Evicts on error so a
+ * transient failure can retry cleanly.
+ */
+export function fetchPushConfig(accessToken: string): Promise<PushConfigResponse> {
+  const existing = pushConfigCache.get(accessToken);
+  if (existing) return existing;
+
+  if (pushConfigCache.size >= MAX_PUSH_CONFIG_CACHE) {
+    const oldest = pushConfigCache.keys().next().value;
+    if (oldest !== undefined) pushConfigCache.delete(oldest);
+  }
+
+  const req = apiFetch<PushConfigResponse>("/notifications/push/config", accessToken).catch(
+    (err) => {
+      pushConfigCache.delete(accessToken);
+      throw err;
+    }
+  );
+  pushConfigCache.set(accessToken, req);
+  return req;
 }
 
 export async function getActiveBrowserPushSubscription(): Promise<PushSubscription | null> {

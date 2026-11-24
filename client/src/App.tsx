@@ -50,7 +50,9 @@ import {
   registrationKindFromPath,
   registrationPathForKind
 } from "./components/OnboardingWorkspace";
-import { InviteAcceptance } from "./components/EventTeams";
+const InviteAcceptance = lazy(() =>
+  import("./components/EventTeams").then((m) => ({ default: m.InviteAcceptance }))
+);
 import { useWorkspaceResource } from "./lib/workspaceApi";
 import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
@@ -688,7 +690,7 @@ export function App() {
     );
   }
   const inviteToken = new URLSearchParams(window.location.hash.slice(1)).get("workspace-invite");
-  if (inviteToken) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><InviteAcceptance token={session.accessToken} isArabic={isArabic} inviteToken={inviteToken} onAccepted={()=>{setJustJoinedWorkspace(true);setWorkspaceRevision(n=>n+1);setPortal("company");}}/></main>;
+  if (inviteToken) return <main className="min-h-screen bg-surface-1 p-5 text-ink"><Suspense fallback={<PortalSkeleton />}><InviteAcceptance token={session.accessToken} isArabic={isArabic} inviteToken={inviteToken} onAccepted={()=>{setJustJoinedWorkspace(true);setWorkspaceRevision(n=>n+1);setPortal("company");}}/></Suspense></main>;
 
   const handleExportPdf = () => {
     if (data?.aiPlans[0] && data?.activityIntakes[0]) {
