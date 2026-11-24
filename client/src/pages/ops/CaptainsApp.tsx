@@ -33,6 +33,7 @@ import {
 } from "../../components/ui";
 import { apiFetch } from "../../lib/api";
 import { cn } from "../../lib/cn";
+import { localizeText } from "../../lib/localize";
 import { useLiveLocation } from "../../lib/useLiveLocation";
 import { useSocketContext } from "../../lib/useSocket";
 import type { PortalProps } from "../types";
@@ -65,7 +66,9 @@ export function sunlitStepActionLabel(
     case "COMPLETED":
       return isArabic ? "إنهاء الرحلة" : "Trip Complete";
     default:
-      return statusActionLabel(status);
+      // Remaining statuses reuse the shared label, localized so the Arabic
+      // captain app never shows raw English like "Mark assigned".
+      return localizeText(statusActionLabel(status), isArabic);
   }
 }
 

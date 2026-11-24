@@ -14,6 +14,9 @@ describe("Field & VIP Mobile UX upgrades (Section 3)", () => {
   it("builds sunlit captain action labels and external maps links cleanly", () => {
     expect(sunlitStepActionLabel("ARRIVED", false)).toBe("Confirm Arrival");
     expect(sunlitStepActionLabel("PICKED_UP", false)).toBe("Guest On Board");
+    // Fallback statuses are localized too (regression: raw "Mark assigned" in the Arabic UI).
+    expect(sunlitStepActionLabel("ASSIGNED", true)).toBe("تعيين الطلب");
+    expect(sunlitStepActionLabel("ASSIGNED", false)).toBe("Mark assigned");
     expect(sunlitStepActionLabel("COMPLETED", false)).toBe("Trip Complete");
     expect(sunlitStepActionLabel("ARRIVED", true)).toBe("تأكيد الوصول للبوابة");
     expect(sunlitStepActionLabel("PICKED_UP", true)).toBe("الضيف على متن المركبة");

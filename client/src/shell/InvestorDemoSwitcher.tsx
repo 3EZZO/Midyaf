@@ -217,7 +217,7 @@ export function InvestorDemoSwitcher({
         title={isArabic ? `العرض المباشر · ${activeLabel}` : `Investor Demo · ${activeLabel}`}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex h-9 max-w-[148px] items-center gap-1.5 rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 text-xs font-semibold text-gold-300",
+          "inline-flex h-9 max-w-[104px] items-center gap-1.5 rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 text-xs font-semibold text-gold-300",
           "transition-colors duration-base hover:border-gold-500/70 hover:bg-gold-500/20",
           "focus-visible:outline-none focus-visible:shadow-focus disabled:opacity-50 motion-reduce:transition-none sm:max-w-[236px]"
         )}

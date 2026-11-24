@@ -20,18 +20,7 @@
     <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/icons/apple-touch-icon-v2.png" />
     <meta property="og:image" content="https://midyaf.onrender.com/icons/pwa-512x512-v2.png" />
     <title>Midyaf | مِضْيَافٌ</title>
-    <script>
-      // Apply the persisted language before React mounts so the first paint
-      // is already in the right direction. Theme is always dark.
-      (function () {
-        try {
-          var lang = localStorage.getItem("midyaf.lang") || "ar";
-          var root = document.documentElement;
-          root.lang = lang;
-          root.dir = lang === "ar" ? "rtl" : "ltr";
-        } catch (_) {}
-      })();
-    </script>
+    <script src="/rtl-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
