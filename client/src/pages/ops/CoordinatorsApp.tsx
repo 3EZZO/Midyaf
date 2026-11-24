@@ -1,9 +1,13 @@
 // Field coordinator portal.
 // Extracted verbatim from OperationsPortals.tsx (Phase 1 split).
 import { useState } from "react";
-import { MessageSquareText, Sparkles, Zap } from "lucide-react";
+import { MessageCircle, MessageSquareText, Sparkles, Zap } from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { Section } from "../../components/Section";
+import {
+  buildCaptainDispatchWhatsAppUrl,
+  buildGuestPickupWhatsAppUrl
+} from "../../lib/whatsappHandoff";
 import type { CoordinatorRequestInput, PortalProps } from "../types";
 import { DateTimeField, Field, PortalHero, RouteLine, SelectField, defaultDeadline, useOpsText } from "./shared";
 import { AirportExpressSection, HospitalityRidersSection } from "./RiderSections";
@@ -140,18 +144,73 @@ export function CoordinatorsApp({
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <Section title={ui.l("Who is moving now?")}>
           <div className="space-y-3">
-            {event.tasks.map((task) => (
-              <RouteLine
-                key={task.id}
-                title={ui.l(task.guest?.user.name ?? "Guest group")}
-                route={`${ui.l(task.pickupLocation)} ${ui.l("to")} ${ui.l(
-                  task.dropoffLocation
-                )}`}
-                meta={ui.time(task.scheduledAt)}
-                badge={ui.l(task.status)}
-                danger={task.status === "DELAYED"}
-              />
-            ))}
+            {event.tasks.map((task) => {
+              const driver = task.driverId
+                ? data.drivers.find((d) => d.id === task.driverId)
+                : undefined;
+              const guestName = ui.l(task.guest?.user.name ?? "Guest group");
+              const captainHref = driver
+                ? buildCaptainDispatchWhatsAppUrl({
+                    phone: driver.user.phone,
+                    captainName: ui.l(driver.user.name),
+                    guestLabel: guestName,
+                    pickupLocation: ui.l(task.pickupLocation),
+                    dropoffLocation: ui.l(task.dropoffLocation),
+                    scheduledTime: ui.time(task.scheduledAt),
+                    isArabic: ui.isArabic
+                  })
+                : null;
+              const guestHref = buildGuestPickupWhatsAppUrl({
+                phone: task.guest?.user.phone,
+                guestName,
+                captainName: driver ? ui.l(driver.user.name) : undefined,
+                pickupLocation: ui.l(task.pickupLocation),
+                dropoffLocation: ui.l(task.dropoffLocation),
+                appUrl: typeof window !== "undefined" ? window.location.origin : undefined,
+                isArabic: ui.isArabic
+              });
+              return (
+                <div key={task.id} className="space-y-1.5">
+                  <RouteLine
+                    title={guestName}
+                    route={`${ui.l(task.pickupLocation)} ${ui.l("to")} ${ui.l(
+                      task.dropoffLocation
+                    )}`}
+                    meta={ui.time(task.scheduledAt)}
+                    badge={ui.l(task.status)}
+                    danger={task.status === "DELAYED"}
+                  />
+                  {captainHref || guestHref ? (
+                    <div className="flex flex-wrap gap-2 px-1">
+                      {captainHref ? (
+                        <a
+                          href={captainHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-whatsapp-handoff="coordinator-captain"
+                          className="inline-flex items-center gap-1 rounded-md border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-xs font-semibold text-gold-300 transition-colors hover:border-gold-500 hover:bg-gold-500/20"
+                        >
+                          <MessageCircle className="size-3.5 shrink-0" aria-hidden />
+                          {ui.p("WhatsApp Captain", "واتساب الكابتن")}
+                        </a>
+                      ) : null}
+                      {guestHref ? (
+                        <a
+                          href={guestHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-whatsapp-handoff="coordinator-guest"
+                          className="inline-flex items-center gap-1 rounded-md border border-hairline bg-surface-1 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-gold-500/50"
+                        >
+                          <MessageCircle className="size-3.5 shrink-0 text-gold-500" aria-hidden />
+                          {ui.p("WhatsApp Guest", "واتساب الضيف")}
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </Section>
 

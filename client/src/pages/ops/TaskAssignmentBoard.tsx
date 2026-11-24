@@ -1,9 +1,14 @@
 // Kanban task assignment board.
 // Extracted verbatim from OperationsPortals.tsx (Phase 1 split).
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { useTacticalToast } from "../../components/TacticalToast";
 import { Section } from "../../components/Section";
+import {
+  buildCaptainDispatchWhatsAppUrl,
+  buildGuestPickupWhatsAppUrl
+} from "../../lib/whatsappHandoff";
 import type { PortalProps } from "../types";
 import type { Driver, Task, TaskStatus } from "@shared/domain";
 import { nextTaskStatuses, statusActionLabel, taskBoardStatuses, taskStatusTone, useOpsText } from "./shared";
@@ -98,6 +103,7 @@ export function TaskAssignmentBoard({
                         drivers={drivers}
                         canManage={canManage}
                         pendingAction={pendingAction}
+                        isArabic={ui.isArabic}
                         translate={ui.l}
                         formatTime={ui.time}
                         onDriverChange={handleDriverChange}
@@ -124,6 +130,7 @@ function TaskBoardCard({
   drivers,
   canManage,
   pendingAction,
+  isArabic,
   translate,
   formatTime,
   onDriverChange,
@@ -133,6 +140,7 @@ function TaskBoardCard({
   drivers: Driver[];
   canManage: boolean;
   pendingAction: string | null;
+  isArabic: boolean;
   translate: (value: string | number | null | undefined) => string;
   formatTime: (value: string) => string;
   onDriverChange: (task: Task, driverId: string) => Promise<void>;
@@ -143,6 +151,27 @@ function TaskBoardCard({
     : undefined;
   const statusActions = nextTaskStatuses(task.status);
   const isDriverPending = pendingAction === `${task.id}:driver`;
+  const guestLabel = translate(task.guest?.user.name ?? task.ownerName ?? "Guest group");
+  const captainWhatsAppUrl = driver
+    ? buildCaptainDispatchWhatsAppUrl({
+        phone: driver.user.phone,
+        captainName: translate(driver.user.name),
+        guestLabel,
+        pickupLocation: translate(task.pickupLocation),
+        dropoffLocation: translate(task.dropoffLocation),
+        scheduledTime: formatTime(task.scheduledAt),
+        isArabic
+      })
+    : null;
+  const guestWhatsAppUrl = buildGuestPickupWhatsAppUrl({
+    phone: task.guest?.user.phone,
+    guestName: guestLabel,
+    captainName: driver ? translate(driver.user.name) : undefined,
+    pickupLocation: translate(task.pickupLocation),
+    dropoffLocation: translate(task.dropoffLocation),
+    appUrl: typeof window !== "undefined" ? window.location.origin : undefined,
+    isArabic
+  });
 
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100 hover:-translate-y-0.5 transition-transform transition-all duration-200">
@@ -183,6 +212,35 @@ function TaskBoardCard({
           {driver ? translate(driver.user.name) : translate("No assigned captain")}
         </p>
       </div>
+
+      {captainWhatsAppUrl || guestWhatsAppUrl ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {captainWhatsAppUrl ? (
+            <a
+              href={captainWhatsAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-whatsapp-handoff="captain"
+              className="inline-flex items-center gap-1 rounded-lg border border-gold-500/40 bg-gold-500/10 px-2.5 py-1 text-[11px] font-semibold text-gold-300 transition-colors hover:border-gold-500 hover:bg-gold-500/20"
+            >
+              <MessageCircle className="size-3 shrink-0" aria-hidden />
+              {isArabic ? "واتساب الكابتن" : "WhatsApp Captain"}
+            </a>
+          ) : null}
+          {guestWhatsAppUrl ? (
+            <a
+              href={guestWhatsAppUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-whatsapp-handoff="guest"
+              className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-surface-1 px-2.5 py-1 text-[11px] font-semibold text-ink transition-colors hover:border-gold-500/50"
+            >
+              <MessageCircle className="size-3 shrink-0 text-gold-500" aria-hidden />
+              {isArabic ? "واتساب الضيف" : "WhatsApp Guest"}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
 
       {canManage ? (
         <div className="mt-3 space-y-2">
