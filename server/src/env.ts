@@ -20,9 +20,11 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default("gpt-4o"),
   OSRM_BASE_URL: z.string().url().optional(),
   WEATHER_BASE_URL: z.string().url().optional(),
-  // Reverse-proxy hops in front of Express (Render edge + load balancer). Measured
-  // via GET /auth/ip-check; set in Render without a code change.
-  TRUST_PROXY_HOPS: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(5).default(1)),
+  // Reverse-proxy hops in front of Express. Measured live on Render (2026-11-24):
+  // socket + 2 proxies + client, so 3 hops yields the real client IP on every call
+  // while a client-supplied X-Forwarded-For prefix is never trusted (4 would be).
+  // Override in Render only if the platform topology changes.
+  TRUST_PROXY_HOPS: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(5).default(3)),
   // Plan Ready 1 · Sprint 2: transactional email (Brevo). Inert unless both are set.
   // Empty strings (e.g. a blank Render value) count as unset so they never crash boot.
   BREVO_API_KEY: z.preprocess(blankToUndefined, z.string().min(1).optional()),
