@@ -141,25 +141,27 @@ describe("LoginPage wiring (source)", () => {
     expect(source).toMatch(/async function handleSubmit[\s\S]*?await onLogin\(email, password\);/);
   });
 
-  it("gates email autofocus to desktop fine-pointer devices so mobile loads at scrollY 0", () => {
+  it("autofocuses email only when fully visible and using a fine pointer", () => {
     const { html } = render();
     const emailInput = html.match(/<input[^>]*type="email"[^>]*>/)?.[0] ?? "";
     expect(emailInput).not.toMatch(/\bautofocus\b/i);
     expect(source).not.toMatch(/<[A-Za-z][^>]*\bautoFocus\b/);
-    expect(source).toContain("shouldAutoFocusEmailInput()");
 
-    expect(shouldAutoFocusEmailInput(undefined)).toBe(false);
-    expect(
-      shouldAutoFocusEmailInput({
-        matchMedia: (query) =>
-          ({ matches: query === "(hover: hover) and (pointer: fine)" && false }) as MediaQueryList
-      })
-    ).toBe(false);
-    expect(
-      shouldAutoFocusEmailInput({
-        matchMedia: (query) =>
-          ({ matches: query === "(hover: hover) and (pointer: fine)" }) as MediaQueryList
-      })
-    ).toBe(true);
+    const inputAt = (top: number, bottom: number) => ({
+      getBoundingClientRect: () => ({ top, bottom }) as DOMRect
+    });
+    const desktop = {
+      innerHeight: 700,
+      matchMedia: (query: string) =>
+        ({ matches: query === "(hover: hover) and (pointer: fine)" }) as MediaQueryList
+    };
+    const touch = { ...desktop, matchMedia: () => ({ matches: false }) as MediaQueryList };
+
+    expect(shouldAutoFocusEmailInput(inputAt(320, 368), undefined)).toBe(false);
+    expect(shouldAutoFocusEmailInput(inputAt(320, 368), touch)).toBe(false);
+    expect(shouldAutoFocusEmailInput(inputAt(320, 368), desktop)).toBe(true);
+    expect(shouldAutoFocusEmailInput(inputAt(685, 733), desktop)).toBe(false);
+    expect(shouldAutoFocusEmailInput(inputAt(950, 998), desktop)).toBe(false);
+    expect(shouldAutoFocusEmailInput(inputAt(320, 320), desktop)).toBe(false);
   });
 });

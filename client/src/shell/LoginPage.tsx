@@ -34,16 +34,18 @@ function clearResetTokenFromUrl() {
   window.history.replaceState({}, "", `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ""}`);
 }
 
-/**
- * Only autofocus the email field on desktop fine-pointer devices.
- * On mobile viewports, unconditional `autoFocus` scrolls past the arrival
- * brand/hero header (scrollY ~489 on 390x844) and hides the initial hero LCP.
- */
+/** Autofocus only when the email field is already visible to a fine-pointer user. */
 export function shouldAutoFocusEmailInput(
-  win: Pick<Window, "matchMedia"> | undefined = typeof window !== "undefined" ? window : undefined
+  input: Pick<HTMLInputElement, "getBoundingClientRect">,
+  win: Pick<Window, "matchMedia" | "innerHeight"> | undefined = typeof window !== "undefined" ? window : undefined
 ): boolean {
-  if (!win || typeof win.matchMedia !== "function") return false;
-  return win.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!win || typeof win.matchMedia !== "function" ||
+    !win.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    return false;
+  }
+
+  const { top, bottom } = input.getBoundingClientRect();
+  return top >= 0 && bottom > top && bottom <= win.innerHeight;
 }
 
 export function LoginPage({
@@ -121,9 +123,10 @@ export function LoginPage({
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (resetToken || joinKind) return;
-    if (shouldAutoFocusEmailInput()) {
-      emailInputRef.current?.focus();
+    const emailInput = emailInputRef.current;
+    if (resetToken || joinKind || !emailInput) return;
+    if (shouldAutoFocusEmailInput(emailInput)) {
+      emailInput.focus({ preventScroll: true });
     }
   }, []);
 
