@@ -120,14 +120,29 @@ it('renders live Open-Meteo Riyadh weather and high-wind sandstorm advisory in E
  const ar=renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={true}/>);
  expect(ar).toContain('36°C');expect(ar).toContain('42 كم/س');expect(ar).toContain('تنبيه رياح قوية / غبار');
 });
-it('fetches /my-journey only for GUEST sessions so non-guest previews never trigger a 403',()=>{
- state.events=[{...testEvent,planApproved:true}];
+it('fetches /my-journey strictly from event.access.guest (matching server guestId) across role mismatches',()=>{
  const adminSession={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u-admin',role:'SUPER_ADMIN',name:'Admin',email:'admin@example.test',phone:'',language:'en'}} as unknown as Session;
+ const guestSession={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u-guest',role:'GUEST',name:'Guest',email:'guest@example.test',phone:'',language:'en'}} as unknown as Session;
+
+ // Non-guest role without guest record: skipped (no 403).
+ state.events=[{...testEvent,planApproved:true,access:{...testEvent.access,guest:false}}];
  renderToStaticMarkup(<OperationalEventEntry session={adminSession} isArabic={false} mode="guest"/>);
  expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(false);
 
+ // Mismatch 1: GUEST role with NO guest record on this event: skipped (no 403).
  state.requestedPaths=[];
- const guestSession={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u-guest',role:'GUEST',name:'Guest',email:'guest@example.test',phone:'',language:'en'}} as unknown as Session;
+ renderToStaticMarkup(<OperationalEventEntry session={guestSession} isArabic={false} mode="guest"/>);
+ expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(false);
+
+ // Mismatch 2: non-GUEST role WITH a guest record on this event: fetches /my-journey.
+ state.requestedPaths=[];
+ state.events=[{...testEvent,planApproved:true,access:{...testEvent.access,guest:true}}];
+ const adminGuestHtml=renderToStaticMarkup(<OperationalEventEntry session={adminSession} isArabic={false} mode="guest"/>);
+ expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(true);
+ expect(adminGuestHtml).toContain('GV09');
+
+ // GUEST role with guest record: fetches /my-journey.
+ state.requestedPaths=[];
  const guestHtml=renderToStaticMarkup(<OperationalEventEntry session={guestSession} isArabic={false} mode="guest"/>);
  expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(true);
  expect(guestHtml).toContain('GV09');
