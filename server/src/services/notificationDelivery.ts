@@ -57,6 +57,8 @@ export async function sendNotification(input: SendNotificationInput) {
     notifyUsersByWebPush([input.userId], {
       title: "Midyaf — New update",
       body: "Open Midyaf to view details.",
+      titleAr: "مضياف — تحديث جديد",
+      bodyAr: "افتح مضياف لعرض التفاصيل.",
       tag,
       url: "/"
     });

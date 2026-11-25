@@ -7,10 +7,12 @@ import { setApiUnauthorizedHandler } from "./api";
 import {
   PUSH_PAUSED_ON_LOGOUT_KEY,
   consumePushPausedOnLogout,
+  getActiveBrowserPushSubscription,
+  subscribeToWebPush,
   unsubscribeWebPushOnSessionEnd,
   urlBase64ToUint8Array
 } from "./webPush";
-import { PushNotificationToggle } from "../components/PushNotificationToggle";
+import { PushNotificationToggle, syncPushToggleState } from "../components/PushNotificationToggle";
 import { TooltipProvider } from "../components/ui/Tooltip";
 
 const session = {
@@ -145,8 +147,132 @@ describe("client Web Push helpers & PushNotificationToggle (PLAN_READY_1 Sprint 
     const webPushSource = fs.readFileSync(path.join(process.cwd(), "client/src/lib/webPush.ts"), "utf8");
     expect(appSource).toMatch(/function handleLogout\(\)[\s\S]*?unsubscribeWebPushOnSessionEnd\(/);
     expect(appSource).toMatch(/async function handleSwitchDemoPersona[\s\S]*?unsubscribeWebPushOnSessionEnd\(/);
-    const logoutFnSource = webPushSource.slice(webPushSource.indexOf("export async function unsubscribeWebPushOnSessionEnd"));
+    const logoutFnSource = webPushSource.slice(webPushSource.indexOf("export function unsubscribeWebPushOnSessionEnd"));
     expect(logoutFnSource).not.toContain("serviceWorker.ready");
     expect(logoutFnSource).toContain("serviceWorker.getRegistration()");
+  });
+
+  it("R1: syncPushToggleState preserves subscribed ON across same-user token rotation and fetch failure, resetting only on user.id change", async () => {
+    const sub = { endpoint: "https://fcm.googleapis.com/fcm/send/cap" } as unknown as PushSubscription;
+    const initial = { userId: "u_cap", publicKey: "pub-key", subscribed: true };
+
+    // Same-user token rotation with healthy fetch stays ON without flickering off.
+    const rotated = await syncPushToggleState(initial, "u_cap", {
+      fetchConfig: async () => ({ enabled: true, publicKey: "pub-key" }),
+      getSubscription: async () => sub,
+      consumePausedFlag: () => false
+    });
+    expect(rotated.next).toEqual({ userId: "u_cap", publicKey: "pub-key", subscribed: true });
+    expect(rotated.showPausedReminder).toBe(false);
+
+    // Same-user token rotation when fetchPushConfig fails (weak field signal) keeps subscribed ON.
+    const failedFetch = await syncPushToggleState(initial, "u_cap", {
+      fetchConfig: async () => {
+        throw new Error("Network offline");
+      },
+      getSubscription: async () => sub,
+      consumePausedFlag: () => false
+    });
+    expect(failedFetch.next).toEqual({ userId: "u_cap", publicKey: "pub-key", subscribed: true });
+
+    // Switching to another user resets subscribed to OFF even if fetchPushConfig fails.
+    const switchedUserFail = await syncPushToggleState(initial, "u_other", {
+      fetchConfig: async () => {
+        throw new Error("Network offline");
+      },
+      getSubscription: async () => null,
+      consumePausedFlag: () => false
+    });
+    expect(switchedUserFail.next.userId).toBe("u_other");
+    expect(switchedUserFail.next.subscribed).toBe(false);
+  });
+
+  it("R3: getActiveBrowserPushSubscription and subscribeToWebPush wait for in-flight teardown so a dying endpoint is never reused, and persona switch skips the sign-out toast flag", async () => {
+    const store = new Map<string, string>();
+    const fakeStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      }
+    };
+
+    let releaseUnsub!: () => void;
+    let activeSub: PushSubscription | null = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/dying-old-endpoint",
+      toJSON: () => ({
+        endpoint: "https://fcm.googleapis.com/fcm/send/dying-old-endpoint",
+        keys: { p256dh: "B".repeat(65), auth: "A".repeat(22) }
+      }),
+      unsubscribe: () =>
+        new Promise<boolean>((resolve) => {
+          releaseUnsub = () => {
+            activeSub = null;
+            resolve(true);
+          };
+        })
+    } as unknown as PushSubscription;
+
+    const freshSub = {
+      endpoint: "https://fcm.googleapis.com/fcm/send/fresh-new-endpoint",
+      toJSON: () => ({
+        endpoint: "https://fcm.googleapis.com/fcm/send/fresh-new-endpoint",
+        keys: { p256dh: "C".repeat(65), auth: "D".repeat(22) }
+      })
+    } as unknown as PushSubscription;
+
+    const fakeReg = {
+      pushManager: {
+        getSubscription: vi.fn(async () => activeSub),
+        subscribe: vi.fn(async () => {
+          activeSub = freshSub;
+          return freshSub;
+        })
+      }
+    } as unknown as ServiceWorkerRegistration;
+
+    // Persona switch starts deferred teardown with markPaused: false.
+    const teardownPromise = unsubscribeWebPushOnSessionEnd("old-token", {
+      getRegistration: async () => fakeReg,
+      fetchImpl: vi.fn(async () => new Response(null, { status: 200 })) as unknown as typeof fetch,
+      storage: fakeStorage,
+      markPaused: false
+    });
+
+    // While teardown is still in flight, start both getActiveBrowserPushSubscription and subscribeToWebPush.
+    let activeResolved = false;
+    const readPromise = getActiveBrowserPushSubscription({
+      getRegistration: async () => fakeReg
+    }).then((res) => {
+      activeResolved = true;
+      return res;
+    });
+
+    const registeredOnServer = vi.fn(async () => ({ subscribed: true }));
+    const subscribePromise = subscribeToWebPush("new-token", "SGVsbG8tV29ybGRf", {
+      getRegistration: async () => fakeReg,
+      requestPermission: async () => "granted",
+      registerOnServer: registeredOnServer
+    });
+
+    // Give microtasks a chance to run: read must still be waiting on deferred unsubscribe().
+    await new Promise((r) => setTimeout(r, 15));
+    expect(activeResolved).toBe(false);
+    expect(registeredOnServer).not.toHaveBeenCalled();
+
+    // Complete deferred teardown: read sees null (old sub gone), subscribe creates fresh endpoint!
+    releaseUnsub();
+    await teardownPromise;
+    expect(await readPromise).toBeNull();
+    const subResult = await subscribePromise;
+    expect(subResult.endpoint).toBe("https://fcm.googleapis.com/fcm/send/fresh-new-endpoint");
+    expect(registeredOnServer).toHaveBeenCalledWith({
+      endpoint: "https://fcm.googleapis.com/fcm/send/fresh-new-endpoint",
+      keys: { p256dh: "C".repeat(65), auth: "D".repeat(22) }
+    });
+    // Persona switch (markPaused: false) MUST NOT set the sign-out reminder flag.
+    expect(store.has(PUSH_PAUSED_ON_LOGOUT_KEY)).toBe(false);
   });
 });

@@ -181,11 +181,10 @@ describe("Web Push VAPID service & routes (PLAN_READY_1 Sprint 3)", () => {
         { id: "om_1", organizationId: "org_1", userId: "u_orgadmin", role: "OWNER", status: "ACTIVE", createdAt: now, updatedAt: now }
       ],
       guest: [
-        { id: "g_1", userId: "u_guest_ev", vipLevel: "VVIP", createdAt: now, updatedAt: now }
+        // R2: Guest{ eventId, userId } with NO EventGuest row (as created by events.ts:505 / operations.ts:2367).
+        { id: "g_1", eventId: "evt_1", userId: "u_guest_ev", vipLevel: "VVIP", createdAt: now, updatedAt: now }
       ],
-      eventGuest: [
-        { id: "eg_1", eventId: "evt_1", guestId: "g_1", guestCode: "VIP-01", createdAt: now, updatedAt: now }
-      ],
+      eventGuest: [],
       pushSubscription: []
     });
 
@@ -199,7 +198,8 @@ describe("Web Push VAPID service & routes (PLAN_READY_1 Sprint 3)", () => {
     ]);
     expect(allowed).toEqual(["u_active", "u_orgadmin", "u_guest_ev", "u_sa"]);
 
-    // Verify notifyEventUsersByWebPush dedupes, excludes actor, and skips revoked users.
+    // Verify R4 localization by User.language (Arabic default vs English).
+    memory.current.rows("user").find((u) => u.id === "u_active")!.language = "ar";
     await savePushSubscription("u_active", {
       endpoint: "https://fcm.googleapis.com/fcm/send/active-only",
       keys: { p256dh: "B".repeat(65), auth: "A".repeat(22) }
@@ -208,21 +208,42 @@ describe("Web Push VAPID service & routes (PLAN_READY_1 Sprint 3)", () => {
       endpoint: "https://fcm.googleapis.com/fcm/send/revoked-user",
       keys: { p256dh: "C".repeat(65), auth: "D".repeat(22) }
     });
+    await savePushSubscription("u_orgadmin", {
+      endpoint: "https://fcm.googleapis.com/fcm/send/orgadmin-en",
+      keys: { p256dh: "E".repeat(65), auth: "F".repeat(22) }
+    });
     const sender = vi.fn(async (_sub: { endpoint: string }, _body: string) => ({ statusCode: 201 }));
     notifyEventUsersByWebPush(
       "evt_1",
-      ["u_active", "u_active", "u_revoked", "u_sa"],
-      { title: "Midyaf — Task updated", body: "Open Midyaf to view the task update.", tag: "midyaf-task-t1" },
+      ["u_active", "u_active", "u_revoked", "u_orgadmin", "u_sa"],
+      {
+        title: "Midyaf — Task cancelled",
+        body: "Open Midyaf to view the task update.",
+        titleAr: "مضياف — إلغاء مهمة",
+        bodyAr: "افتح مضياف لعرض تحديث المهمة.",
+        tag: "midyaf-task-t1"
+      },
       {
         excludeUserId: "u_sa",
         config: { publicKey: "pub", privateKey: "priv", subject: "mailto:ops@midyaf.sa" },
         sender
       }
     );
-    await vi.waitFor(() => expect(sender).toHaveBeenCalledTimes(1));
-    expect(sender.mock.calls[0]?.[0].endpoint).toBe("https://fcm.googleapis.com/fcm/send/active-only");
-    const body = JSON.parse(String(sender.mock.calls[0]?.[1])) as { tag: string };
-    expect(body.tag).toBe("midyaf-task-t1");
+    await vi.waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
+    const arCall = sender.mock.calls.find((c) => c[0].endpoint.endsWith("/active-only"));
+    const enCall = sender.mock.calls.find((c) => c[0].endpoint.endsWith("/orgadmin-en"));
+    expect(arCall).toBeDefined();
+    expect(enCall).toBeDefined();
+    expect(JSON.parse(String(arCall?.[1]))).toMatchObject({
+      title: "مضياف — إلغاء مهمة",
+      body: "افتح مضياف لعرض تحديث المهمة.",
+      tag: "midyaf-task-t1"
+    });
+    expect(JSON.parse(String(enCall?.[1]))).toMatchObject({
+      title: "Midyaf — Task cancelled",
+      body: "Open Midyaf to view the task update.",
+      tag: "midyaf-task-t1"
+    });
   });
 
   it("notifyUsersByWebPush deduplicates, excludes actor, and swallows errors without rejecting", async () => {

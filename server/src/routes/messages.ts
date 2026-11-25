@@ -290,6 +290,8 @@ router.post(
       {
         title: "Midyaf — New message",
         body: "Open Midyaf to read your message.",
+        titleAr: "مضياف — رسالة جديدة",
+        bodyAr: "افتح مضياف لقراءة الرسالة.",
         tag: `midyaf-msg-${conversation.id}`,
         url: "/"
       },
@@ -365,6 +367,8 @@ router.post(
       const pushPayload = {
         title: "Midyaf — New message",
         body: "Open Midyaf to read your message.",
+        titleAr: "مضياف — رسالة جديدة",
+        bodyAr: "افتح مضياف لقراءة الرسالة.",
         tag: `midyaf-msg-${membership.conversationId}-${message.id}`,
         url: "/"
       };

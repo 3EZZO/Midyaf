@@ -315,6 +315,8 @@ async function commitHandover(
       {
         title: "Midyaf — Task handover",
         body: "Open Midyaf to review your assigned task.",
+        titleAr: "مضياف — إسناد مهمة",
+        bodyAr: "افتح مضياف لمراجعة المهمة المسندة إليك.",
         tag: `midyaf-handover-${handoverId}`,
         url: "/"
       },
@@ -414,6 +416,8 @@ router.post(
         {
           title: "Midyaf — New task assigned",
           body: "Open Midyaf to view your trip assignment.",
+          titleAr: "مضياف — مهمة جديدة",
+          bodyAr: "افتح مضياف لعرض تفاصيل الرحلة.",
           tag: `midyaf-task-${task.id}`,
           url: "/"
         },
@@ -604,6 +608,8 @@ router.put(
           {
             title: "Midyaf — New task assigned",
             body: "Open Midyaf to view your trip assignment.",
+            titleAr: "مضياف — مهمة جديدة",
+            bodyAr: "افتح مضياف لعرض تفاصيل الرحلة.",
             tag: `midyaf-task-${task.id}`,
             url: "/"
           },

@@ -9,7 +9,7 @@ type PushCall = {
   kind: "users" | "event";
   eventId?: string;
   userIds: Array<string | null | undefined>;
-  payload: { title: string; body: string; tag?: string; url?: string };
+  payload: { title: string; body: string; titleAr?: string; bodyAr?: string; tag?: string; url?: string };
   excludeUserId?: string;
   insideTransaction: boolean;
 };
@@ -365,20 +365,30 @@ describe("Web Push post-commit wiring, tags, and lock-screen privacy", () => {
     expect(state.pushCalls[0].payload.tag).toBe(`midyaf-msg-${convRes.body.conversationId}`);
     expect(JSON.stringify(state.pushCalls[0].payload)).not.toContain("Secret Venue");
 
-    // 3. PATCH /workspace/events/:eventId/tasks/:taskId (status update + response shape preserved)
+    // 3. PATCH /workspace/events/:eventId/tasks/:taskId (R5: routine steps stay in-app; cancellation pushes post-commit)
     const taskId = emRes.body.dispatch.taskId as string;
     state.pushCalls = [];
-    const patchRes = await http.patch(`/workspace/events/evt_a/tasks/${taskId}`, a.cap, {
+    const acceptRes = await http.patch(`/workspace/events/evt_a/tasks/${taskId}`, a.cap, {
       status: TaskStatus.ACCEPTED
     });
-    expect(patchRes.status).toBe(200);
-    expect(patchRes.body).toEqual({ task: { id: taskId, status: TaskStatus.ACCEPTED } });
+    expect(acceptRes.status).toBe(200);
+    expect(acceptRes.body).toEqual({ task: { id: taskId, status: TaskStatus.ACCEPTED } });
+    // Routine ACCEPTED step does NOT buzz lock screens.
+    expect(state.pushCalls).toHaveLength(0);
+
+    // Cancellation DOES push active non-actor participants post-commit with bilingual copy.
+    const cancelRes = await http.patch(`/workspace/events/evt_a/tasks/${taskId}`, a.cap, {
+      status: TaskStatus.CANCELLED
+    });
+    expect(cancelRes.status).toBe(200);
+    expect(cancelRes.body).toEqual({ task: { id: taskId, status: TaskStatus.CANCELLED } });
     expect(state.pushCalls).toHaveLength(1);
     expect(state.pushCalls[0].insideTransaction).toBe(false);
     expect(state.pushCalls[0].kind).toBe("event");
     expect(state.pushCalls[0].eventId).toBe("evt_a");
     expect(state.pushCalls[0].userIds).toEqual([a.lm.id]);
-    expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${taskId}-ACCEPTED`);
+    expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${taskId}-CANCELLED`);
+    expect(state.pushCalls[0].payload.titleAr).toBeTruthy();
   });
 
   it("accounts explicitly for every notification.create / createMany site across server/src", () => {

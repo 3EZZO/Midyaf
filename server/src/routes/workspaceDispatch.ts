@@ -488,6 +488,10 @@ router.post(
         {
           title: spec.emergency ? "Midyaf — Emergency dispatch" : "Midyaf — New dispatch",
           body: "Open Midyaf to view operational details.",
+          titleAr: spec.emergency ? "مضياف — توجيه طارئ" : "مضياف — توجيه تشغيلي جديد",
+          bodyAr: spec.emergency
+            ? "افتح مضياف فوراً لعرض التوجيه الطارئ."
+            : "افتح مضياف لعرض التفاصيل التشغيلية.",
           tag: `midyaf-dispatch-${result.record.conversationId}`,
           url: "/"
         },
@@ -502,6 +506,8 @@ router.post(
           {
             title: "Midyaf — Emergency dispatch alert",
             body: "Open Midyaf to review the emergency dispatch.",
+            titleAr: "مضياف — تنبيه توجيه طارئ",
+            bodyAr: "افتح مضياف لمراجعة التوجيه الطارئ.",
             tag: `midyaf-alert-${result.record.alertConversationId}`,
             url: "/"
           },
@@ -630,7 +636,7 @@ router.post("/events/:eventId/conversations",asyncHandler(async(req:AuthRequest,
   return{id:created.id,replayed:false,recipientUserIds};
  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
  if(!result.replayed){
-  notifyUsersByWebPush(result.recipientUserIds,{title:body.kind==="ALERT"?"Midyaf — Event alert":"Midyaf — New event message",body:"Open Midyaf to read the message.",tag:`midyaf-msg-${result.id}`,url:"/"},{excludeUserId:access.actor.id});
+  notifyUsersByWebPush(result.recipientUserIds,{title:body.kind==="ALERT"?"Midyaf — Event alert":"Midyaf — New event message",body:"Open Midyaf to read the message.",titleAr:body.kind==="ALERT"?"مضياف — تنبيه فعالية":"مضياف — رسالة فعالية جديدة",bodyAr:"افتح مضياف لقراءة الرسالة.",tag:`midyaf-msg-${result.id}`,url:"/"},{excludeUserId:access.actor.id});
  }
  res.status(result.replayed?200:201).json({conversationId:result.id,replayed:result.replayed});
 }));
@@ -674,11 +680,15 @@ router.patch('/events/:eventId/tasks/:taskId',asyncHandler(async(req:AuthRequest
   return{id:row.id,status:body.status,recipientUserIds,assignedCaptainUserId:body.driverUserId&&body.driverUserId!==row.driver?.userId?body.driverUserId:null};
  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
  if(task.assignedCaptainUserId){
-  notifyUsersByWebPush([task.assignedCaptainUserId],{title:'Midyaf — New task assigned',body:'Open Midyaf to view your assigned task.',tag:`midyaf-task-${task.id}`,url:'/'},{excludeUserId:access.actor.id});
+  notifyUsersByWebPush([task.assignedCaptainUserId],{title:'Midyaf — New task assigned',body:'Open Midyaf to view your assigned task.',titleAr:'مضياف — مهمة جديدة',bodyAr:'افتح مضياف لعرض المهمة المسندة إليك.',tag:`midyaf-task-${task.id}`,url:'/'},{excludeUserId:access.actor.id});
  }
- const otherTaskRecipients=task.recipientUserIds.filter(id=>id!==task.assignedCaptainUserId);
- if(otherTaskRecipients.length>0){
-  notifyEventUsersByWebPush(access.event.id,otherTaskRecipients,{title:'Midyaf — Task updated',body:'Open Midyaf to view the task update.',tag:`midyaf-task-${task.id}-${task.status}`,url:'/'},{excludeUserId:access.actor.id});
+ // R5: Push cancellation to active thread participants; routine trip status
+ // steps (ACCEPTED, EN_ROUTE, ARRIVED, PICKED_UP, COMPLETED) stay in-app only.
+ if(task.status===TaskStatus.CANCELLED){
+  const otherTaskRecipients=task.recipientUserIds.filter(id=>id!==task.assignedCaptainUserId);
+  if(otherTaskRecipients.length>0){
+   notifyEventUsersByWebPush(access.event.id,otherTaskRecipients,{title:'Midyaf — Task cancelled',body:'Open Midyaf to view the task update.',titleAr:'مضياف — إلغاء مهمة',bodyAr:'افتح مضياف لعرض تحديث المهمة.',tag:`midyaf-task-${task.id}-CANCELLED`,url:'/'},{excludeUserId:access.actor.id});
+  }
  }
  res.json({task:{id:task.id,status:task.status}});
 }));

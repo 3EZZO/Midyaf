@@ -994,7 +994,8 @@ export function App() {
     try {
       const nextSession = await switchDemoPersona(activeSession.accessToken, persona.key);
       if (nextSession.user.id !== activeSession.user.id) {
-        void unsubscribeWebPushOnSessionEnd(activeSession.accessToken);
+        // Persona switch tears down old user's push without showing the sign-out toast.
+        void unsubscribeWebPushOnSessionEnd(activeSession.accessToken, { markPaused: false });
         clearPushConfigCache();
       }
       pendingPortalRef.current = persona.portal;

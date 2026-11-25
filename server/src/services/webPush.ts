@@ -64,6 +64,8 @@ export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
 export type WebPushPayload = {
   title: string;
   body: string;
+  titleAr?: string;
+  bodyAr?: string;
   url?: string;
   tag?: string;
 };
@@ -183,13 +185,28 @@ export async function sendWebPushToUser(
     return { enabled: true, sent: 0, pruned: 0 };
   }
 
+  let useArabic = false;
+  if (payload.titleAr || payload.bodyAr) {
+    try {
+      const recipient = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { language: true }
+      });
+      useArabic = (recipient?.language ?? "ar").toLowerCase().startsWith("ar");
+    } catch {
+      useArabic = false;
+    }
+  }
+  const localizedTitle = useArabic && payload.titleAr ? payload.titleAr : payload.title;
+  const localizedBody = useArabic && payload.bodyAr ? payload.bodyAr : payload.body;
+
   const sender: PushSender =
     options.sender ??
     ((sub, body, reqOpts) => webpush.sendNotification(sub, body, reqOpts));
 
   const message = JSON.stringify({
-    title: payload.title.slice(0, 120),
-    body: payload.body.slice(0, 280),
+    title: localizedTitle.slice(0, 120),
+    body: localizedBody.slice(0, 280),
     url: sanitizeRelativeUrl(payload.url),
     tag: (payload.tag ?? "midyaf-ops").slice(0, 120),
     icon: "/icons/pwa-192x192-v2.png",
@@ -314,9 +331,11 @@ export async function filterActiveEventPushRecipients(
           select: { userId: true }
         })
       : Promise.resolve([]),
-    prisma.eventGuest.findMany({
-      where: { eventId, guest: { userId: { in: uniqueIds } } },
-      select: { guest: { select: { userId: true } } }
+    // Matches workspacePolicy.ts loadEventAccess: event guests are authorized via
+    // Guest{ eventId, userId }, including guests created without an EventGuest row.
+    prisma.guest.findMany({
+      where: { eventId, userId: { in: uniqueIds } },
+      select: { userId: true }
     }),
     prisma.user.findMany({
       where: { id: { in: uniqueIds }, role: Role.SUPER_ADMIN },
@@ -327,9 +346,7 @@ export async function filterActiveEventPushRecipients(
   const allowed = new Set<string>([
     ...eventMembers.map((m) => m.userId),
     ...orgAdmins.map((m) => m.userId),
-    ...eventGuests
-      .map((g) => g.guest?.userId)
-      .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ...eventGuests.map((g) => g.userId),
     ...superAdmins.map((u) => u.id)
   ]);
 
