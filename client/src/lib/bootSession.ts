@@ -14,16 +14,6 @@ import type { RecoverableSession, SessionRefreshDeps } from "./useSocket";
 export type BootRefreshOutcome = "fresh" | "installed" | "signed_out" | "stale" | "offline";
 
 /**
- * Boot freshness gate. A session restored from storage often carries an access
- * token that expired while the tab was closed. Loading data with it mounts the
- * shell (from the offline cache), which fires bootstrap, workspace, push config
- * and the socket handshake with the dead token: each one 401s, and the socket is
- * torn down mid-handshake once the refresh lands. Refreshing first avoids all of
- * that. `/auth/refresh` is stateless (it does not rotate tokenVersion), so a
- * duplicate call (for example a StrictMode double effect) is harmless; the later
- * result is dropped as stale.
- */
-/**
  * True only when the server explicitly rejected the refresh token (400 malformed,
  * 401 expired/revoked, 403 forbidden). Transient failures — network errors,
  * 5xx cold starts, or 429 rate limits — must NOT sign the user out.
@@ -35,6 +25,16 @@ export function isFatalRefreshError(error: unknown): boolean {
   );
 }
 
+/**
+ * Boot freshness gate. A session restored from storage often carries an access
+ * token that expired while the tab was closed. Loading data with it mounts the
+ * shell (from the offline cache), which fires bootstrap, workspace, push config
+ * and the socket handshake with the dead token: each one 401s, and the socket is
+ * torn down mid-handshake once the refresh lands. Refreshing first avoids all of
+ * that. `/auth/refresh` is stateless (it does not rotate tokenVersion), so a
+ * duplicate call (for example a StrictMode double effect) is harmless; the later
+ * result is dropped as stale.
+ */
 export async function refreshExpiredSessionAtBoot<S extends RecoverableSession>(
   active: S,
   deps: SessionRefreshDeps<S>,

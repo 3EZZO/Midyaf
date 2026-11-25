@@ -94,6 +94,7 @@ import {
 import { clearLogoutSessionStorage } from "./lib/logoutCleanup";
 import { refreshExpiredSessionAtBoot } from "./lib/bootSession";
 import {
+  createSessionLoadGate,
   createSingleFlightRefresher,
   createSocketRecoveryController,
   socketSessionKey,
@@ -154,8 +155,7 @@ export function App() {
   });
   const bootPending = Boolean(session && session.accessToken === bootExpiredToken);
   const [socketRecoveryGen, setSocketRecoveryGen] = useState(0);
-  const loadedSessionScopeRef = useRef<string | null>(null);
-  const inflightLoadScopeRef = useRef<string | null>(null);
+  const sessionLoadGate = useMemo(() => createSessionLoadGate(), []);
   const isArabicRef = useRef(isArabic);
   isArabicRef.current = isArabic;
   const toastRef = useRef(toast);
@@ -370,8 +370,7 @@ export function App() {
 
   useEffect(() => {
     if (!session) {
-      loadedSessionScopeRef.current = null;
-      inflightLoadScopeRef.current = null;
+      sessionLoadGate.reset();
       setData(null);
       setDemoStatus(null);
       return;
@@ -382,10 +381,7 @@ export function App() {
     // (or currently-loading) user rotates `accessToken` silently without
     // flashing the loading skeleton, unmounting active forms/portals, or
     // firing a duplicate bootstrap request.
-    if (
-      loadedSessionScopeRef.current === sessionScope ||
-      inflightLoadScopeRef.current === sessionScope
-    ) {
+    if (sessionLoadGate.shouldSkip(sessionScope)) {
       return;
     }
 
@@ -933,8 +929,7 @@ export function App() {
 
     try {
       const nextSession = await login(email, password);
-      loadedSessionScopeRef.current = null;
-      inflightLoadScopeRef.current = null;
+      sessionLoadGate.reset();
       storeSession(nextSession);
       sessionRef.current = nextSession;
       sessionRefresher.reset();
@@ -966,8 +961,7 @@ export function App() {
     clearWorkspaceResourceCache();
     clearPushConfigCache();
     sessionRef.current = null;
-    loadedSessionScopeRef.current = null;
-    inflightLoadScopeRef.current = null;
+    sessionLoadGate.reset();
     setBootExpiredToken(null);
     sessionRefresher.reset();
     socketRecovery.reset();
@@ -1088,7 +1082,7 @@ export function App() {
       Boolean(sessionRef.current.user.onboardingPending) ===
         Boolean(activeSession.user.onboardingPending);
     const sessionScope = `${activeSession.user.id}:${Boolean(activeSession.user.onboardingPending)}`;
-    inflightLoadScopeRef.current = sessionScope;
+    const loadAttempt = sessionLoadGate.begin(sessionScope);
     // A rehearsal that is running, or starts or ends meanwhile, keeps its
     // display; the load still refreshes the normal snapshot unless a load
     // started after it has already written (shared with refreshData).
@@ -1110,7 +1104,7 @@ export function App() {
       const fresh = await getBootstrap(activeSession.accessToken);
       if (!isSameUser()) return;
       if (!ticket.claim()) return;
-      loadedSessionScopeRef.current = sessionScope;
+      sessionLoadGate.markLoaded(loadAttempt);
       if (ticket.canShow()) setData(fresh);
       normalDataRef.current = fresh;
       try {
@@ -1123,10 +1117,12 @@ export function App() {
       }
     } catch (error) {
       if (!isSameUser()) return;
-      // An expired access token is not a load failure: trade the refresh
-      // token for a new session via the single-flight refresher (400/401/403
-      // signs out; offline/5xx preserves the cached UI).
+      // An expired access token is not a load failure: release this in-flight
+      // attempt BEFORE refreshing so installing the fresh session lets the
+      // `[session?.accessToken]` effect reload bootstrap immediately, even if
+      // React flushes before `finally` runs.
       if (error instanceof ApiError && error.status === 401) {
+        sessionLoadGate.release(loadAttempt);
         await sessionRefresher.refreshCurrent();
         return;
       }
@@ -1140,11 +1136,15 @@ export function App() {
         return curr;
       });
     } finally {
-      if (inflightLoadScopeRef.current === sessionScope) {
-        inflightLoadScopeRef.current = null;
+      const releasedOwn = sessionLoadGate.release(loadAttempt);
+      // A newer load attempt (e.g. post-401 refresh retry) owns the spinner;
+      // after logout or when no other load is in flight, clear it.
+      if (
+        sessionRef.current === null ||
+        (isSameUser() && (releasedOwn || !sessionLoadGate.hasInflight()))
+      ) {
+        setIsLoading(false);
       }
-      // A newer user's load owns the spinner; after a logout nothing does.
-      if (isSameUser() || sessionRef.current === null) setIsLoading(false);
     }
   }
 

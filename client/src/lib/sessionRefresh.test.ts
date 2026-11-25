@@ -9,6 +9,7 @@ import { isFatalRefreshError } from "./bootSession";
 import {
   PROACTIVE_REFRESH_LEAD_MS,
   VISIBILITY_REFRESH_LEAD_MS,
+  createSessionLoadGate,
   createSingleFlightRefresher,
   createSocketRecoveryController,
   msUntilProactiveRefresh,
@@ -399,5 +400,65 @@ describe("socketSessionKey + createSocketRecoveryController", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(recoveryGen).toBe(1);
+  });
+});
+
+describe("createSessionLoadGate", () => {
+  it("skips duplicate loads during same-user token rotation while in-flight or already loaded", () => {
+    const gate = createSessionLoadGate();
+    const scope = "user-alice:false";
+
+    expect(gate.shouldSkip(scope)).toBe(false);
+    const attempt = gate.begin(scope);
+    expect(gate.shouldSkip(scope)).toBe(true);
+    expect(gate.shouldSkip("user-bob:false")).toBe(false);
+
+    gate.markLoaded(attempt);
+    expect(gate.release(attempt)).toBe(true);
+    expect(gate.hasInflight()).toBe(false);
+    // Loaded scope remains skipped across subsequent proactive token rotations.
+    expect(gate.shouldSkip(scope)).toBe(true);
+
+    gate.reset();
+    expect(gate.shouldSkip(scope)).toBe(false);
+  });
+
+  it("releases cleanly on catch-401 so a refreshed retry starts immediately without old finally clobbering it", () => {
+    const gate = createSessionLoadGate();
+    const scope = "user-alice:false";
+
+    const attempt1 = gate.begin(scope);
+    expect(gate.shouldSkip(scope)).toBe(true);
+
+    // 401 catch path releases attempt1 BEFORE calling refreshCurrent().
+    expect(gate.release(attempt1)).toBe(true);
+    expect(gate.shouldSkip(scope)).toBe(false);
+
+    // Refresh installs new session and React effect starts attempt2 BEFORE attempt1's finally runs.
+    const attempt2 = gate.begin(scope);
+    expect(gate.shouldSkip(scope)).toBe(true);
+
+    // attempt1's finally runs late: it MUST NOT release attempt2 or clear the active spinner.
+    expect(gate.release(attempt1)).toBe(false);
+    expect(gate.hasInflight()).toBe(true);
+    expect(gate.shouldSkip(scope)).toBe(true);
+
+    // attempt2 finishes normally and marks scope loaded.
+    gate.markLoaded(attempt2);
+    expect(gate.release(attempt2)).toBe(true);
+    expect(gate.hasInflight()).toBe(false);
+    expect(gate.shouldSkip(scope)).toBe(true);
+  });
+
+  it("leaves hasInflight false when catch-401 refresh fails offline so finally clears the spinner", () => {
+    const gate = createSessionLoadGate();
+    const scope = "user-alice:false";
+
+    const attempt1 = gate.begin(scope);
+    expect(gate.release(attempt1)).toBe(true);
+    // Offline refresh does not trigger a new load; finally sees no active load.
+    expect(gate.release(attempt1)).toBe(false);
+    expect(gate.hasInflight()).toBe(false);
+    expect(gate.shouldSkip(scope)).toBe(false);
   });
 });

@@ -156,9 +156,12 @@ export default defineConfig({
               return "vendor-socket";
             if (/[\\/]node_modules[\\/](recharts|d3-[^\\/]+)[\\/]/.test(id))
               return "vendor-charts";
+            // Keep clsx + tailwind-merge (used by cn.ts across the login entry)
+            // in vendor-react so Rollup never places clsx inside vendor-charts
+            // (recharts also imports clsx) and forces login to preload charts.
             // Strict package-name match so react-markdown, react-i18next,
             // @radix-ui/react-*, and qrcode.react stay code-split with their callers.
-            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id))
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|clsx|tailwind-merge)[\\/]/.test(id))
               return "vendor-react";
           }
         }

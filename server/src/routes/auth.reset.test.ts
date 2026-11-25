@@ -86,6 +86,8 @@ describe("Password recovery (PLAN_READY_1 Sprint 1)", () => {
     expect(stripSensitiveFields(meta)).not.toHaveProperty("tokenHash");
   });
 
+  // Password reset runs production bcrypt cost 12 plus login comparisons; give
+  // parallel vitest runs headroom without weakening auth.ts cost.
   it("redeems a valid token once, rotates the password, and rejects replay", async () => {
     const issued = await http.post("/users/u_cap/reset-link", actors.sa, {});
     const token = issued.body.token as string;
@@ -115,7 +117,7 @@ describe("Password recovery (PLAN_READY_1 Sprint 1)", () => {
       password: "another-strong-password-2026"
     });
     expect(replay.status).toBe(400);
-  });
+  }, 15_000);
 
   it("rejects expired tokens and supersedes older unused tokens when a newer link is issued", async () => {
     const first = await http.post("/users/u_cap/reset-link", actors.sa, {});
@@ -185,5 +187,5 @@ describe("Refresh-token invalidation on password reset (PLAN_READY_1 tokenVersio
     expect(after.status).toBe(200);
     const refreshed = await http.post("/auth/refresh", undefined, { refreshToken: after.body.refreshToken });
     expect(refreshed.status).toBe(200);
-  });
+  }, 15_000);
 });
