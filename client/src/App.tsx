@@ -54,7 +54,7 @@ const InviteAcceptance = lazy(() =>
   import("./components/EventTeams").then((m) => ({ default: m.InviteAcceptance }))
 );
 import { clearWorkspaceResourceCache, useWorkspaceResource } from "./lib/workspaceApi";
-import { clearPushConfigCache } from "./lib/webPush";
+import { clearPushConfigCache, unsubscribeWebPushOnSessionEnd } from "./lib/webPush";
 import type { DemoPersonaDto, DemoStatusDto } from "@shared/demo";
 import type { OnboardingKind, WorkspaceEventDto } from "@shared/overhaul";
 import {
@@ -952,6 +952,10 @@ export function App() {
 
   function handleLogout() {
     const activeSession = sessionRef.current;
+    // Unsubscribe Web Push locally and notify server via raw keepalive fetch
+    // so shared devices never keep delivering the previous user's alerts after
+    // manual logout or forced sign-out.
+    void unsubscribeWebPushOnSessionEnd(activeSession?.accessToken);
     if (activeSession?.accessToken || activeSession?.refreshToken) {
       void logoutSession(activeSession.accessToken, activeSession.refreshToken);
     }
@@ -989,6 +993,10 @@ export function App() {
     setDemoBusy(true);
     try {
       const nextSession = await switchDemoPersona(activeSession.accessToken, persona.key);
+      if (nextSession.user.id !== activeSession.user.id) {
+        void unsubscribeWebPushOnSessionEnd(activeSession.accessToken);
+        clearPushConfigCache();
+      }
       pendingPortalRef.current = persona.portal;
       setPortal(persona.portal);
       installSession(nextSession);

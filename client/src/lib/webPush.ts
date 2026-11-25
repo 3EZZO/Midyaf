@@ -1,5 +1,30 @@
 import { apiFetch } from "./api";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+export const PUSH_PAUSED_ON_LOGOUT_KEY = "midyaf_push_paused_on_logout";
+
+export function markPushPausedOnLogout(storage?: Pick<Storage, "setItem">): void {
+  try {
+    const target = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+    target?.setItem(PUSH_PAUSED_ON_LOGOUT_KEY, "1");
+  } catch {
+    // ignore storage restrictions
+  }
+}
+
+/** Returns true once if a live push subscription was unsubscribed on the last sign-out. */
+export function consumePushPausedOnLogout(storage?: Pick<Storage, "getItem" | "removeItem">): boolean {
+  try {
+    const target = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+    if (!target || target.getItem(PUSH_PAUSED_ON_LOGOUT_KEY) !== "1") return false;
+    target.removeItem(PUSH_PAUSED_ON_LOGOUT_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * PLAN_READY_1 Sprint 3: Client Web Push (VAPID) subscription helpers.
  * Inert when the server reports `{ enabled: false }` (VAPID keys not set in Render).
@@ -68,7 +93,10 @@ export function fetchPushConfig(accessToken: string): Promise<PushConfigResponse
 
 export async function getActiveBrowserPushSubscription(): Promise<PushSubscription | null> {
   if (!isBrowserPushSupported()) return null;
-  const registration = await navigator.serviceWorker.ready;
+  // Use getRegistration() rather than .ready so pages without an active SW
+  // never hang indefinitely waiting for a worker to register.
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration?.pushManager) return null;
   return registration.pushManager.getSubscription();
 }
 
@@ -123,4 +151,78 @@ export async function unsubscribeFromWebPush(accessToken: string): Promise<{ uns
     body: JSON.stringify({ endpoint })
   });
   return { unsubscribed: true };
+}
+
+type LogoutUnsubscribeDeps = {
+  getRegistration?: () => Promise<Pick<ServiceWorkerRegistration, "pushManager"> | undefined>;
+  fetchImpl?: typeof fetch;
+  storage?: Pick<Storage, "setItem">;
+};
+
+/**
+ * Best-effort Web Push teardown for logout, forced sign-out, and account/persona
+ * switches on shared event devices.
+ *
+ * - Uses `serviceWorker.getRegistration()` (never `.ready`, which hangs forever
+ *   when no service worker is registered).
+ * - Always calls local `subscription.unsubscribe()` regardless of auth/network
+ *   state so the device immediately stops receiving the previous user's alerts
+ *   (and any stale server row is pruned on 404/410 as fallback).
+ * - Uses raw `fetch(..., { keepalive: true })` instead of `apiFetch` so a 401
+ *   on a session being cleared can never trigger `apiFetch`'s 401 refresh hook.
+ */
+export async function unsubscribeWebPushOnSessionEnd(
+  accessToken: string | null | undefined,
+  deps: LogoutUnsubscribeDeps = {}
+): Promise<{ localUnsubscribed: boolean; serverNotified: boolean }> {
+  let registration: Pick<ServiceWorkerRegistration, "pushManager"> | undefined;
+  try {
+    if (deps.getRegistration) {
+      registration = await deps.getRegistration();
+    } else if (isBrowserPushSupported()) {
+      registration = await navigator.serviceWorker.getRegistration();
+    }
+  } catch {
+    return { localUnsubscribed: false, serverNotified: false };
+  }
+
+  let existing: PushSubscription | null = null;
+  try {
+    existing = (await registration?.pushManager?.getSubscription()) ?? null;
+  } catch {
+    return { localUnsubscribed: false, serverNotified: false };
+  }
+  if (!existing) return { localUnsubscribed: false, serverNotified: false };
+
+  const endpoint = existing.endpoint;
+  let localUnsubscribed = false;
+  try {
+    localUnsubscribed = Boolean(await existing.unsubscribe());
+  } catch {
+    localUnsubscribed = false;
+  }
+  if (localUnsubscribed) {
+    markPushPausedOnLogout(deps.storage);
+  }
+
+  let serverNotified = false;
+  const fetchFn = deps.fetchImpl ?? (typeof fetch === "function" ? fetch : undefined);
+  if (accessToken && endpoint && fetchFn) {
+    try {
+      const response = await fetchFn(`${API_BASE}/notifications/push/unsubscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ endpoint }),
+        keepalive: true
+      });
+      serverNotified = response.ok;
+    } catch {
+      serverNotified = false;
+    }
+  }
+
+  return { localUnsubscribed, serverNotified };
 }

@@ -1,6 +1,6 @@
 import { prisma } from "../db.js";
 import type { Prisma } from "@prisma/client";
-import { isWebPushConfigured, sendWebPushToUser } from "./webPush.js";
+import { notifyUsersByWebPush } from "./webPush.js";
 
 export type NotificationChannel = "SMS" | "WHATSAPP" | "FCM" | "IN_APP";
 
@@ -43,12 +43,22 @@ export async function sendNotification(input: SendNotificationInput) {
     status
   });
 
-  // Best-effort Native Web Push fanout (inert unless VAPID keys are configured in Render).
-  if (input.userId && isWebPushConfigured()) {
-    void sendWebPushToUser(input.userId, {
-      title: input.title,
-      body: input.body,
-      tag: `midyaf-${input.channel.toLowerCase()}`
+  // Best-effort Native Web Push fanout (inert unless VAPID keys are configured).
+  // Lock-screen payloads always use generic no-PII copy and a per-item tag; the
+  // full notification title/body stays strictly inside the authenticated app.
+  if (input.userId) {
+    const fileAssetId =
+      typeof input.metadata?.fileAssetId === "string" ? input.metadata.fileAssetId : null;
+    const tag = fileAssetId
+      ? `midyaf-upload-${fileAssetId}`
+      : notification?.id
+        ? `midyaf-notif-${notification.id}`
+        : `midyaf-${input.channel.toLowerCase()}`;
+    notifyUsersByWebPush([input.userId], {
+      title: "Midyaf — New update",
+      body: "Open Midyaf to view details.",
+      tag,
+      url: "/"
     });
   }
 

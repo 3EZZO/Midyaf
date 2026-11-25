@@ -1,4 +1,5 @@
 import * as webpush from "web-push";
+import { EventPermission, MembershipStatus, OrganizationRole, Role } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
@@ -190,7 +191,7 @@ export async function sendWebPushToUser(
     title: payload.title.slice(0, 120),
     body: payload.body.slice(0, 280),
     url: sanitizeRelativeUrl(payload.url),
-    tag: payload.tag ?? "midyaf-ops",
+    tag: (payload.tag ?? "midyaf-ops").slice(0, 120),
     icon: "/icons/pwa-192x192-v2.png",
     badge: "/icons/pwa-192x192-v2.png"
   });
@@ -236,4 +237,137 @@ export async function sendWebPushToUser(
   }
 
   return { enabled: true, sent, pruned: expiredIds.length };
+}
+
+export type NotifyWebPushOptions = {
+  excludeUserId?: string;
+  config?: PushConfig | null;
+  sender?: PushSender;
+};
+
+/**
+ * Post-commit fire-and-forget Web Push fanout to multiple recipients.
+ * Call ONLY after DB transactions commit — never inside `prisma.$transaction`.
+ * Completely inert when VAPID is unset; swallows errors so responses never fail.
+ */
+export function notifyUsersByWebPush(
+  userIds: ReadonlyArray<string | null | undefined>,
+  payload: WebPushPayload,
+  options: NotifyWebPushOptions = {}
+): void {
+  const recipients = [
+    ...new Set(
+      userIds.filter(
+        (id): id is string =>
+          typeof id === "string" && id.length > 0 && id !== options.excludeUserId
+      )
+    )
+  ];
+  if (recipients.length === 0) return;
+
+  const config = options.config !== undefined ? options.config : resolveWebPushConfig();
+  if (!config) return;
+
+  void Promise.allSettled(
+    recipients.map((userId) =>
+      sendWebPushToUser(userId, payload, { config, sender: options.sender })
+    )
+  ).catch(() => undefined);
+}
+
+/**
+ * Restricts event-scoped push candidates to users who STILL hold active access
+ * to `eventId` (active event member with VIEW, active org OWNER/ADMIN, linked
+ * event guest, or SUPER_ADMIN), preventing push alerts to revoked members.
+ */
+export async function filterActiveEventPushRecipients(
+  eventId: string,
+  candidateUserIds: ReadonlyArray<string>
+): Promise<string[]> {
+  const uniqueIds = [...new Set(candidateUserIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (uniqueIds.length === 0) return [];
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { organizationId: true }
+  });
+  if (!event) return [];
+
+  const [eventMembers, orgAdmins, eventGuests, superAdmins] = await Promise.all([
+    prisma.eventMembership.findMany({
+      where: {
+        eventId,
+        userId: { in: uniqueIds },
+        status: MembershipStatus.ACTIVE,
+        permissions: { has: EventPermission.VIEW }
+      },
+      select: { userId: true }
+    }),
+    event.organizationId
+      ? prisma.organizationMembership.findMany({
+          where: {
+            organizationId: event.organizationId,
+            userId: { in: uniqueIds },
+            status: MembershipStatus.ACTIVE,
+            role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] }
+          },
+          select: { userId: true }
+        })
+      : Promise.resolve([]),
+    prisma.eventGuest.findMany({
+      where: { eventId, guest: { userId: { in: uniqueIds } } },
+      select: { guest: { select: { userId: true } } }
+    }),
+    prisma.user.findMany({
+      where: { id: { in: uniqueIds }, role: Role.SUPER_ADMIN },
+      select: { id: true }
+    })
+  ]);
+
+  const allowed = new Set<string>([
+    ...eventMembers.map((m) => m.userId),
+    ...orgAdmins.map((m) => m.userId),
+    ...eventGuests
+      .map((g) => g.guest?.userId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ...superAdmins.map((u) => u.id)
+  ]);
+
+  return uniqueIds.filter((id) => allowed.has(id));
+}
+
+/**
+ * Post-commit fire-and-forget Web Push fanout for event-scoped threads/tasks.
+ * Inert when VAPID is unset (zero extra DB queries); when configured, verifies
+ * active event visibility before delivering generic lock-screen alerts.
+ */
+export function notifyEventUsersByWebPush(
+  eventId: string,
+  userIds: ReadonlyArray<string | null | undefined>,
+  payload: WebPushPayload,
+  options: NotifyWebPushOptions = {}
+): void {
+  const candidates = [
+    ...new Set(
+      userIds.filter(
+        (id): id is string =>
+          typeof id === "string" && id.length > 0 && id !== options.excludeUserId
+      )
+    )
+  ];
+  if (candidates.length === 0) return;
+
+  const config = options.config !== undefined ? options.config : resolveWebPushConfig();
+  if (!config) return;
+
+  void filterActiveEventPushRecipients(eventId, candidates)
+    .then((activeIds) => {
+      if (activeIds.length === 0) return;
+      return Promise.allSettled(
+        activeIds.map((userId) =>
+          sendWebPushToUser(userId, payload, { config, sender: options.sender })
+        )
+      );
+    })
+    .catch(() => undefined);
 }

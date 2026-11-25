@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import type { Session } from "@shared/domain";
 import {
+  consumePushPausedOnLogout,
   fetchPushConfig,
   getActiveBrowserPushSubscription,
   isBrowserPushSupported,
@@ -40,18 +41,29 @@ export function PushNotificationToggle({
     // which re-runs this effect.
     if (isJwtExpired(session.accessToken)) return;
     let active = true;
+    setSubscribed(false);
     void fetchPushConfig(session.accessToken)
       .then(async (cfg) => {
         if (!active || !cfg.enabled || !cfg.publicKey) return;
         setPublicKey(cfg.publicKey);
         const existing = await getActiveBrowserPushSubscription().catch(() => null);
-        if (active) setSubscribed(Boolean(existing));
+        if (!active) return;
+        const isOn = Boolean(existing);
+        setSubscribed(isOn);
+        if (!isOn && consumePushPausedOnLogout()) {
+          toast.info(
+            isArabic ? "تنبيهات الجهاز متوقفة بعد تسجيل الخروج" : "Lock-screen alerts are off",
+            isArabic
+              ? "اضغط أيقونة الجرس في الشريط العلوي لإعادة تفعيل التنبيهات على هذا الجهاز."
+              : "Alerts were paused on sign-out for privacy. Tap the bell icon to re-enable them."
+          );
+        }
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [session.accessToken, initialEnabled]);
+  }, [session.accessToken, session.user.id, initialEnabled]);
 
   if (!publicKey) return null;
 
@@ -107,13 +119,21 @@ export function PushNotificationToggle({
         aria-pressed={subscribed}
         disabled={busy}
         data-web-push-toggle
+        data-push-state={subscribed ? "on" : "off"}
         variant={subscribed ? "gold" : "ghost"}
+        className="relative"
         onClick={() => void handleToggle()}
       >
         {subscribed ? (
           <Bell className="size-4" aria-hidden />
         ) : (
-          <BellOff className="size-4" aria-hidden />
+          <>
+            <BellOff className="size-4" aria-hidden />
+            <span
+              aria-hidden
+              className="absolute end-1.5 top-1.5 size-2 rounded-full bg-warn ring-2 ring-surface-1"
+            />
+          </>
         )}
       </IconButton>
     </Tooltip>
