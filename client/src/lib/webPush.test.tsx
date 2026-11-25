@@ -162,10 +162,11 @@ describe("client Web Push helpers & PushNotificationToggle (PLAN_READY_1 Sprint 
       getSubscription: async () => sub,
       consumePausedFlag: () => false
     });
+    expect(rotated.updated).toBe(true);
     expect(rotated.next).toEqual({ userId: "u_cap", publicKey: "pub-key", subscribed: true });
     expect(rotated.showPausedReminder).toBe(false);
 
-    // Same-user token rotation when fetchPushConfig fails (weak field signal) keeps subscribed ON.
+    // Same-user token rotation when fetchPushConfig fails (weak field signal) keeps live state untouched (updated: false).
     const failedFetch = await syncPushToggleState(initial, "u_cap", {
       fetchConfig: async () => {
         throw new Error("Network offline");
@@ -173,6 +174,7 @@ describe("client Web Push helpers & PushNotificationToggle (PLAN_READY_1 Sprint 
       getSubscription: async () => sub,
       consumePausedFlag: () => false
     });
+    expect(failedFetch.updated).toBe(false);
     expect(failedFetch.next).toEqual({ userId: "u_cap", publicKey: "pub-key", subscribed: true });
 
     // Switching to another user resets subscribed to OFF even if fetchPushConfig fails.
@@ -183,6 +185,7 @@ describe("client Web Push helpers & PushNotificationToggle (PLAN_READY_1 Sprint 
       getSubscription: async () => null,
       consumePausedFlag: () => false
     });
+    expect(switchedUserFail.updated).toBe(false);
     expect(switchedUserFail.next.userId).toBe("u_other");
     expect(switchedUserFail.next.subscribed).toBe(false);
   });
@@ -250,17 +253,23 @@ describe("client Web Push helpers & PushNotificationToggle (PLAN_READY_1 Sprint 
       return res;
     });
 
+    const requestPermission = vi.fn(async () => "granted" as NotificationPermission);
     const registeredOnServer = vi.fn(async () => ({ subscribed: true }));
     const subscribePromise = subscribeToWebPush("new-token", "SGVsbG8tV29ybGRf", {
       getRegistration: async () => fakeReg,
-      requestPermission: async () => "granted",
+      requestPermission,
       registerOnServer: registeredOnServer
     });
 
-    // Give microtasks a chance to run: read must still be waiting on deferred unsubscribe().
+    // R7: Notification.requestPermission MUST run synchronously in the same
+    // tap tick even while a logout/switch teardown is still pending (iOS Safari).
+    expect(requestPermission).toHaveBeenCalledTimes(1);
+
+    // Give microtasks a chance to run: read & PushManager subscribe must still wait on deferred unsubscribe().
     await new Promise((r) => setTimeout(r, 15));
     expect(activeResolved).toBe(false);
     expect(registeredOnServer).not.toHaveBeenCalled();
+    expect(fakeReg.pushManager.subscribe).not.toHaveBeenCalled();
 
     // Complete deferred teardown: read sees null (old sub gone), subscribe creates fresh endpoint!
     releaseUnsub();

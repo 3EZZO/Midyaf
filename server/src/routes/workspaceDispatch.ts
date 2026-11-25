@@ -677,17 +677,18 @@ router.patch('/events/:eventId/tasks/:taskId',asyncHandler(async(req:AuthRequest
   const recipientUserIds=recipients.filter(p=>p.userId!==current.actor.id).map(p=>p.userId);
   await tx.notification.createMany({data:recipientUserIds.map(userId=>({userId,title:'Event task updated',body:`${row.source}: ${body.status}`,metadata:{eventId:access.event.id,taskId:row.id,conversationId:row.conversationId,kind:MESSAGE_NOTIFICATION_KIND}}))});
   await writeWorkspaceAudit(tx,req,{action:'workspace.task.status',entityType:'TASK',entityId:row.id,eventId:access.event.id,before:{status:row.status},after:{status:body.status}});
-  return{id:row.id,status:body.status,recipientUserIds,assignedCaptainUserId:body.driverUserId&&body.driverUserId!==row.driver?.userId?body.driverUserId:null};
+  return{id:row.id,status:body.status,previousStatus:row.status,recipientUserIds,assignedDriverUserId:row.driver?.userId??null,assignedCaptainUserId:body.driverUserId&&body.driverUserId!==row.driver?.userId?body.driverUserId:null};
  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
  if(task.assignedCaptainUserId){
   notifyUsersByWebPush([task.assignedCaptainUserId],{title:'Midyaf — New task assigned',body:'Open Midyaf to view your assigned task.',titleAr:'مضياف — مهمة جديدة',bodyAr:'افتح مضياف لعرض المهمة المسندة إليك.',tag:`midyaf-task-${task.id}`,url:'/'},{excludeUserId:access.actor.id});
  }
- // R5: Push cancellation to active thread participants; routine trip status
+ // R5/R8: Push cancellation to active thread participants AND the assigned
+ // driver (even with no conversationId or if not a participant); routine trip
  // steps (ACCEPTED, EN_ROUTE, ARRIVED, PICKED_UP, COMPLETED) stay in-app only.
- if(task.status===TaskStatus.CANCELLED){
-  const otherTaskRecipients=task.recipientUserIds.filter(id=>id!==task.assignedCaptainUserId);
-  if(otherTaskRecipients.length>0){
-   notifyEventUsersByWebPush(access.event.id,otherTaskRecipients,{title:'Midyaf — Task cancelled',body:'Open Midyaf to view the task update.',titleAr:'مضياف — إلغاء مهمة',bodyAr:'افتح مضياف لعرض تحديث المهمة.',tag:`midyaf-task-${task.id}-CANCELLED`,url:'/'},{excludeUserId:access.actor.id});
+ if(task.status===TaskStatus.CANCELLED&&task.previousStatus!==TaskStatus.CANCELLED){
+  const cancelRecipients=Array.from(new Set([...task.recipientUserIds,...(task.assignedDriverUserId?[task.assignedDriverUserId]:[])])).filter(id=>id!==access.actor.id&&id!==task.assignedCaptainUserId);
+  if(cancelRecipients.length>0){
+   notifyEventUsersByWebPush(access.event.id,cancelRecipients,{title:'Midyaf — Task cancelled',body:'Open Midyaf to view the task update.',titleAr:'مضياف — إلغاء مهمة',bodyAr:'افتح مضياف لعرض تحديث المهمة.',tag:`midyaf-task-${task.id}-CANCELLED`,url:'/'},{excludeUserId:access.actor.id});
   }
  }
  res.json({task:{id:task.id,status:task.status}});

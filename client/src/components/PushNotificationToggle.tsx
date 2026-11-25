@@ -38,7 +38,7 @@ export async function syncPushToggleState(
     getSubscription: () => Promise<PushSubscription | null>;
     consumePausedFlag: () => boolean;
   }
-): Promise<{ next: PushToggleSyncState; showPausedReminder: boolean }> {
+): Promise<{ next: PushToggleSyncState; updated: boolean; showPausedReminder: boolean }> {
   const userChanged = prev.userId !== nextUserId;
   const base: PushToggleSyncState = userChanged
     ? { userId: nextUserId, publicKey: prev.publicKey, subscribed: false }
@@ -48,11 +48,11 @@ export async function syncPushToggleState(
   try {
     cfg = await deps.fetchConfig();
   } catch {
-    return { next: base, showPausedReminder: false };
+    return { next: base, updated: false, showPausedReminder: false };
   }
 
   if (!cfg.enabled || !cfg.publicKey) {
-    return { next: base, showPausedReminder: false };
+    return { next: base, updated: false, showPausedReminder: false };
   }
 
   const existing = await deps.getSubscription().catch(() => null);
@@ -60,6 +60,7 @@ export async function syncPushToggleState(
   const showPausedReminder = !subscribed && deps.consumePausedFlag();
   return {
     next: { userId: nextUserId, publicKey: cfg.publicKey, subscribed },
+    updated: true,
     showPausedReminder
   };
 }
@@ -99,14 +100,15 @@ export function PushNotificationToggle({
     let active = true;
     const prev = stateRef.current;
     if (prev.userId !== session.user.id) {
+      stateRef.current = { ...prev, userId: session.user.id, subscribed: false };
       setSubscribed(false);
     }
     void syncPushToggleState(prev, session.user.id, {
       fetchConfig: () => fetchPushConfig(session.accessToken),
       getSubscription: () => getActiveBrowserPushSubscription(),
       consumePausedFlag: () => consumePushPausedOnLogout()
-    }).then(({ next, showPausedReminder }) => {
-      if (!active) return;
+    }).then(({ next, updated, showPausedReminder }) => {
+      if (!active || !updated) return;
       stateRef.current = next;
       setPublicKey(next.publicKey);
       setSubscribed(next.subscribed);

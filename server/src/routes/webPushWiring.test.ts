@@ -192,6 +192,33 @@ describe("Web Push post-commit wiring, tags, and lock-screen privacy", () => {
     expect(state.pushCalls[0].userIds).toEqual(["u_cap2"]);
     expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${taskId}`);
     expect(state.memory.rows("notification")).toHaveLength(0);
+
+    // R8: PUT /tasks/:id/status does not push routine transitions, alerts the assigned
+    // driver on a real transition to CANCELLED, and never re-pushes if already CANCELLED.
+    state.pushCalls = [];
+    const acceptedStatus = await http.put(`/tasks/${taskId}/status`, actors.cap2, {
+      status: TaskStatus.ACCEPTED
+    });
+    expect(acceptedStatus.status).toBe(200);
+    expect(state.pushCalls).toHaveLength(0);
+
+    const cancelledStatus = await http.put(`/tasks/${taskId}/status`, actors.lm, {
+      status: TaskStatus.CANCELLED
+    });
+    expect(cancelledStatus.status).toBe(200);
+    expect(state.pushCalls).toHaveLength(1);
+    expect(state.pushCalls[0].insideTransaction).toBe(false);
+    expect(state.pushCalls[0].userIds).toEqual(["u_cap2"]);
+    expect(state.pushCalls[0].excludeUserId).toBe("u_lm");
+    expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${taskId}-CANCELLED`);
+    expect(state.pushCalls[0].payload.titleAr).toBeTruthy();
+
+    state.pushCalls = [];
+    const cancelledAgain = await http.put(`/tasks/${taskId}/status`, actors.lm, {
+      status: TaskStatus.CANCELLED
+    });
+    expect(cancelledAgain.status).toBe(200);
+    expect(state.pushCalls).toHaveLength(0);
   });
 
   it("POST /tasks/:id/handover fires push strictly AFTER transaction commit and never on rollback", async () => {
@@ -389,6 +416,35 @@ describe("Web Push post-commit wiring, tags, and lock-screen privacy", () => {
     expect(state.pushCalls[0].userIds).toEqual([a.lm.id]);
     expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${taskId}-CANCELLED`);
     expect(state.pushCalls[0].payload.titleAr).toBeTruthy();
+
+    // R8: PATCH cancellation still alerts the assigned driver even when conversationId is null.
+    const capDriver = state.memory.rows("driver").find((d) => d.userId === a.cap.id);
+    expect(capDriver?.id).toBeTruthy();
+    const standaloneTask = await state.memory.prisma.task.create({
+      data: {
+        eventId: "evt_a",
+        driverId: capDriver!.id as string,
+        createdById: a.lm.id,
+        responsibleUserId: a.lm.id,
+        type: TaskType.VIP_ESCORT,
+        status: TaskStatus.ACCEPTED,
+        pickupLocation: "VIP Terminal",
+        dropoffLocation: "Summit Hall",
+        scheduledAt: new Date()
+      }
+    });
+    state.pushCalls = [];
+    const cancelNoThread = await http.patch(`/workspace/events/evt_a/tasks/${standaloneTask.id}`, a.lm, {
+      status: TaskStatus.CANCELLED
+    });
+    expect(cancelNoThread.status).toBe(200);
+    expect(state.pushCalls).toHaveLength(1);
+    expect(state.pushCalls[0].insideTransaction).toBe(false);
+    expect(state.pushCalls[0].kind).toBe("event");
+    expect(state.pushCalls[0].eventId).toBe("evt_a");
+    expect(state.pushCalls[0].userIds).toEqual([a.cap.id]);
+    expect(state.pushCalls[0].excludeUserId).toBe(a.lm.id);
+    expect(state.pushCalls[0].payload.tag).toBe(`midyaf-task-${standaloneTask.id}-CANCELLED`);
   });
 
   it("accounts explicitly for every notification.create / createMany site across server/src", () => {

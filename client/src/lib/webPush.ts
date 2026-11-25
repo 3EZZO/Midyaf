@@ -138,16 +138,22 @@ export async function subscribeToWebPush(
     teardownTimeoutMs?: number;
   }
 ): Promise<{ subscribed: boolean; endpoint: string }> {
-  await awaitPendingPushTeardown(deps?.teardownTimeoutMs);
   if (!deps?.getRegistration && !isBrowserPushSupported()) {
     throw new Error("Push notifications are not supported in this browser");
   }
-  const permission = deps?.requestPermission
-    ? await deps.requestPermission()
-    : await Notification.requestPermission();
+  // Invoke Notification.requestPermission() synchronously inside the tap
+  // gesture BEFORE any await so iOS Safari does not reject the prompt.
+  const permissionPromise = deps?.requestPermission
+    ? deps.requestPermission()
+    : Notification.requestPermission();
+  const permission = await permissionPromise;
   if (permission !== "granted") {
     throw new Error("Notification permission was not granted");
   }
+
+  // Wait (bounded) for any in-flight logout/switch teardown before reading
+  // PushManager so a dying previous-user endpoint can never be reused.
+  await awaitPendingPushTeardown(deps?.teardownTimeoutMs);
 
   const registration = deps?.getRegistration
     ? await deps.getRegistration()

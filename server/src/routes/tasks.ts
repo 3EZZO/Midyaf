@@ -497,6 +497,25 @@ router.put(
       });
     }
 
+    if (
+      body.status === TaskStatus.CANCELLED &&
+      existingTask.status !== TaskStatus.CANCELLED &&
+      task.driver?.userId
+    ) {
+      notifyUsersByWebPush(
+        [task.driver.userId],
+        {
+          title: "Midyaf — Task cancelled",
+          body: "Open Midyaf to view the task update.",
+          titleAr: "مضياف — إلغاء مهمة",
+          bodyAr: "افتح مضياف لعرض تحديث المهمة.",
+          tag: `midyaf-task-${task.id}-CANCELLED`,
+          url: "/"
+        },
+        { excludeUserId: req.user!.id }
+      );
+    }
+
     await recordAuditLog({
       req,
       action: "task.status_update",
