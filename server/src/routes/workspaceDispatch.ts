@@ -25,6 +25,7 @@ import {
 } from "../../../shared/overhaul.js";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { notifyEventUsersByWebPush, notifyUsersByWebPush } from "../services/webPush.js";
 import type { AuthRequest } from "../types/auth.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 import { MESSAGE_NOTIFICATION_KIND, previewText } from "../utils/messagingPolicy.js";
@@ -482,10 +483,36 @@ router.post(
       for (const recipient of recipients) {
         io?.to(`user:${recipient.userId}`).emit("message:new", { conversationId: result.record.conversationId });
       }
+      notifyUsersByWebPush(
+        recipients.map((recipient) => recipient.userId),
+        {
+          title: spec.emergency ? "Midyaf — Emergency dispatch" : "Midyaf — New dispatch",
+          body: "Open Midyaf to view operational details.",
+          titleAr: spec.emergency ? "مضياف — توجيه طارئ" : "مضياف — توجيه تشغيلي جديد",
+          bodyAr: spec.emergency
+            ? "افتح مضياف فوراً لعرض التوجيه الطارئ."
+            : "افتح مضياف لعرض التفاصيل التشغيلية.",
+          tag: `midyaf-dispatch-${result.record.conversationId}`,
+          url: "/"
+        },
+        { excludeUserId: access.actor.id }
+      );
       if (result.record.supervisorUserId && result.record.alertConversationId) {
         io?.to(`user:${result.record.supervisorUserId}`).emit("message:new", {
           conversationId: result.record.alertConversationId
         });
+        notifyUsersByWebPush(
+          [result.record.supervisorUserId],
+          {
+            title: "Midyaf — Emergency dispatch alert",
+            body: "Open Midyaf to review the emergency dispatch.",
+            titleAr: "مضياف — تنبيه توجيه طارئ",
+            bodyAr: "افتح مضياف لمراجعة التوجيه الطارئ.",
+            tag: `midyaf-alert-${result.record.alertConversationId}`,
+            url: "/"
+          },
+          { excludeUserId: access.actor.id }
+        );
       }
     }
 
@@ -600,13 +627,17 @@ router.post("/events/:eventId/conversations",asyncHandler(async(req:AuthRequest,
   const recipients=await tx.eventMembership.findMany({where:{eventId:access.event.id,userId:{in:body.recipientUserIds},status:MembershipStatus.ACTIVE,canReceive:true,permissions:{has:EventPermission.VIEW}},select:{userId:true}});
   if(recipients.length!==body.recipientUserIds.length)throw recipientsRefused();
   const existing=await tx.conversation.findUnique({where:{dedupeKey},select:{id:true,eventId:true,requestHash:true}});
-  if(existing){if(existing.eventId!==access.event.id||existing.requestHash!==hash)throw new HttpError(409,"This retry id was used for different message content");return{id:existing.id,replayed:true};}
+  if(existing){if(existing.eventId!==access.event.id||existing.requestHash!==hash)throw new HttpError(409,"This retry id was used for different message content");return{id:existing.id,replayed:true,recipientUserIds:[] as string[]};}
   const audience=await visibleMessageRecipients(tx,current,body.clientVisible,body.executiveVisible),ids=[...new Set([access.actor.id,...body.recipientUserIds,...audience])],now=new Date();
   const created=await tx.conversation.create({data:{eventId:access.event.id,subject:body.subject,createdById:access.actor.id,lastMessageAt:now,dedupeKey,requestHash:hash,clientVisible:body.clientVisible,executiveVisible:body.executiveVisible,messageClass:body.kind==="ALERT"?MessageClass.ALERT:body.kind==="INQUIRY"?MessageClass.INQUIRY:body.recipientUserIds.length>1?MessageClass.GROUP:MessageClass.INDIVIDUAL,participants:{create:ids.map(userId=>({userId,...(userId===access.actor.id?{lastReadAt:now}:{})}))},messages:{create:{senderId:access.actor.id,body:body.body,createdAt:now}}},select:{id:true}});
-  await tx.notification.createMany({data:ids.filter(id=>id!==access.actor.id).map(userId=>({userId,title:"New event message",body:body.subject,metadata:{kind:MESSAGE_NOTIFICATION_KIND,conversationId:created.id,eventId:access.event.id}}))});
+  const recipientUserIds=ids.filter(id=>id!==access.actor.id);
+  await tx.notification.createMany({data:recipientUserIds.map(userId=>({userId,title:"New event message",body:body.subject,metadata:{kind:MESSAGE_NOTIFICATION_KIND,conversationId:created.id,eventId:access.event.id}}))});
   await writeWorkspaceAudit(tx,req,{action:"workspace.conversation.create",entityType:"CONVERSATION",entityId:created.id,eventId:access.event.id,metadata:{kind:body.kind,participants:ids.length,clientVisible:body.clientVisible,executiveVisible:body.executiveVisible}});
-  return{id:created.id,replayed:false};
+  return{id:created.id,replayed:false,recipientUserIds};
  },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
+ if(!result.replayed){
+  notifyUsersByWebPush(result.recipientUserIds,{title:body.kind==="ALERT"?"Midyaf — Event alert":"Midyaf — New event message",body:"Open Midyaf to read the message.",titleAr:body.kind==="ALERT"?"مضياف — تنبيه فعالية":"مضياف — رسالة فعالية جديدة",bodyAr:"افتح مضياف لقراءة الرسالة.",tag:`midyaf-msg-${result.id}`,url:"/"},{excludeUserId:access.actor.id});
+ }
  res.status(result.replayed?200:201).json({conversationId:result.id,replayed:result.replayed});
 }));
 
@@ -643,10 +674,24 @@ router.patch('/events/:eventId/tasks/:taskId',asyncHandler(async(req:AuthRequest
   if(body.status==='ASSIGNED'&&!driverId)throw new HttpError(400,'Choose a captain for assignment');
   await tx.task.update({where:{id:row.id},data:{status:body.status,driverId}});
   const recipients=await tx.conversationParticipant.findMany({where:{conversationId:row.conversationId??'no-thread'},select:{userId:true}});
-  await tx.notification.createMany({data:recipients.filter(p=>p.userId!==current.actor.id).map(p=>({userId:p.userId,title:'Event task updated',body:`${row.source}: ${body.status}`,metadata:{eventId:access.event.id,taskId:row.id,conversationId:row.conversationId,kind:MESSAGE_NOTIFICATION_KIND}}))});
+  const recipientUserIds=recipients.filter(p=>p.userId!==current.actor.id).map(p=>p.userId);
+  await tx.notification.createMany({data:recipientUserIds.map(userId=>({userId,title:'Event task updated',body:`${row.source}: ${body.status}`,metadata:{eventId:access.event.id,taskId:row.id,conversationId:row.conversationId,kind:MESSAGE_NOTIFICATION_KIND}}))});
   await writeWorkspaceAudit(tx,req,{action:'workspace.task.status',entityType:'TASK',entityId:row.id,eventId:access.event.id,before:{status:row.status},after:{status:body.status}});
-  return{id:row.id,status:body.status};
- },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});res.json({task});
+  return{id:row.id,status:body.status,previousStatus:row.status,recipientUserIds,assignedDriverUserId:row.driver?.userId??null,assignedCaptainUserId:body.driverUserId&&body.driverUserId!==row.driver?.userId?body.driverUserId:null};
+ },WORKSPACE_TRANSACTION).catch((error:unknown)=>{throw toWorkspaceHttpError(error);});
+ if(task.assignedCaptainUserId){
+  notifyUsersByWebPush([task.assignedCaptainUserId],{title:'Midyaf — New task assigned',body:'Open Midyaf to view your assigned task.',titleAr:'مضياف — مهمة جديدة',bodyAr:'افتح مضياف لعرض المهمة المسندة إليك.',tag:`midyaf-task-${task.id}`,url:'/'},{excludeUserId:access.actor.id});
+ }
+ // R5/R8: Push cancellation to active thread participants AND the assigned
+ // driver (even with no conversationId or if not a participant); routine trip
+ // steps (ACCEPTED, EN_ROUTE, ARRIVED, PICKED_UP, COMPLETED) stay in-app only.
+ if(task.status===TaskStatus.CANCELLED&&task.previousStatus!==TaskStatus.CANCELLED){
+  const cancelRecipients=Array.from(new Set([...task.recipientUserIds,...(task.assignedDriverUserId?[task.assignedDriverUserId]:[])])).filter(id=>id!==access.actor.id&&id!==task.assignedCaptainUserId);
+  if(cancelRecipients.length>0){
+   notifyEventUsersByWebPush(access.event.id,cancelRecipients,{title:'Midyaf — Task cancelled',body:'Open Midyaf to view the task update.',titleAr:'مضياف — إلغاء مهمة',bodyAr:'افتح مضياف لعرض تحديث المهمة.',tag:`midyaf-task-${task.id}-CANCELLED`,url:'/'},{excludeUserId:access.actor.id});
+  }
+ }
+ res.json({task:{id:task.id,status:task.status}});
 }));
 
 export default router;

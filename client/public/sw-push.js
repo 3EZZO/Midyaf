@@ -45,6 +45,7 @@ self.addEventListener("push", (event) => {
       icon: payload.icon,
       badge: payload.badge,
       tag: payload.tag,
+      renotify: true,
       data: { url: payload.url }
     })
   );

@@ -12,12 +12,16 @@ vi.mock("../db.js", async () => {
 
 const { startHarness } = await import("../testing/httpHarness.js");
 const {
+  filterActiveEventPushRecipients,
   isWebPushConfigured,
+  notifyEventUsersByWebPush,
+  notifyUsersByWebPush,
   pushSubscriptionInputSchema,
   resolveWebPushConfig,
   savePushSubscription,
   sendWebPushToUser
 } = await import("./webPush.js");
+const { sendNotification } = await import("./notificationDelivery.js");
 const notificationsRouter = (await import("../routes/notifications.js")).default;
 
 const actors = {
@@ -153,5 +157,140 @@ describe("Web Push VAPID service & routes (PLAN_READY_1 Sprint 3)", () => {
     expect(ownDelete.status).toBe(200);
     expect(ownDelete.body.removed).toBe(1);
     expect(memory.current.rows("pushSubscription")).toHaveLength(0);
+  });
+
+  it("filters event-scoped push recipients to active viewers only and excludes revoked members", async () => {
+    const now = new Date();
+    memory.current.seed({
+      user: [
+        { id: "u_active", name: "Active Cap", email: "active@example.test", phone: "+966500000011", role: Role.DRIVER, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now },
+        { id: "u_revoked", name: "Revoked Cap", email: "revoked@example.test", phone: "+966500000012", role: Role.DRIVER, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now },
+        { id: "u_noview", name: "NoView Member", email: "noview@example.test", phone: "+966500000013", role: Role.COORDINATOR, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now },
+        { id: "u_orgadmin", name: "Org Admin", email: "orgadmin@example.test", phone: "+966500000014", role: Role.COMPANY_ORGANIZER, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now },
+        { id: "u_guest_ev", name: "Event Guest", email: "eguest@example.test", phone: "+966500000015", role: Role.GUEST, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now },
+        { id: "u_sa", name: "Super Admin", email: "sa@example.test", phone: "+966500000016", role: Role.SUPER_ADMIN, language: "en", avatar: null, passwordHash: "x", onboardingPending: false, onboardingKind: null, createdAt: now, updatedAt: now }
+      ],
+      organization: [{ id: "org_1", name: "Org", createdAt: now, updatedAt: now }],
+      event: [{ id: "evt_1", name: "Summit", organizationId: "org_1", organizerId: "u_orgadmin", startDate: now, endDate: now, location: "Riyadh", status: "ACTIVE", createdAt: now, updatedAt: now }],
+      eventMembership: [
+        { id: "em_1", eventId: "evt_1", userId: "u_active", role: "CAPTAIN", status: "ACTIVE", permissions: ["VIEW"], available: true, canReceive: true, createdAt: now, updatedAt: now },
+        { id: "em_2", eventId: "evt_1", userId: "u_revoked", role: "CAPTAIN", status: "REVOKED", permissions: ["VIEW"], available: false, canReceive: false, createdAt: now, updatedAt: now },
+        { id: "em_3", eventId: "evt_1", userId: "u_noview", role: "COORDINATOR", status: "ACTIVE", permissions: [], available: true, canReceive: true, createdAt: now, updatedAt: now }
+      ],
+      organizationMembership: [
+        { id: "om_1", organizationId: "org_1", userId: "u_orgadmin", role: "OWNER", status: "ACTIVE", createdAt: now, updatedAt: now }
+      ],
+      guest: [
+        // R2: Guest{ eventId, userId } with NO EventGuest row (as created by events.ts:505 / operations.ts:2367).
+        { id: "g_1", eventId: "evt_1", userId: "u_guest_ev", vipLevel: "VVIP", createdAt: now, updatedAt: now }
+      ],
+      eventGuest: [],
+      pushSubscription: []
+    });
+
+    const allowed = await filterActiveEventPushRecipients("evt_1", [
+      "u_active",
+      "u_revoked",
+      "u_noview",
+      "u_orgadmin",
+      "u_guest_ev",
+      "u_sa"
+    ]);
+    expect(allowed).toEqual(["u_active", "u_orgadmin", "u_guest_ev", "u_sa"]);
+
+    // Verify R4 localization by User.language (Arabic default vs English).
+    memory.current.rows("user").find((u) => u.id === "u_active")!.language = "ar";
+    await savePushSubscription("u_active", {
+      endpoint: "https://fcm.googleapis.com/fcm/send/active-only",
+      keys: { p256dh: "B".repeat(65), auth: "A".repeat(22) }
+    });
+    await savePushSubscription("u_revoked", {
+      endpoint: "https://fcm.googleapis.com/fcm/send/revoked-user",
+      keys: { p256dh: "C".repeat(65), auth: "D".repeat(22) }
+    });
+    await savePushSubscription("u_orgadmin", {
+      endpoint: "https://fcm.googleapis.com/fcm/send/orgadmin-en",
+      keys: { p256dh: "E".repeat(65), auth: "F".repeat(22) }
+    });
+    const sender = vi.fn(async (_sub: { endpoint: string }, _body: string) => ({ statusCode: 201 }));
+    notifyEventUsersByWebPush(
+      "evt_1",
+      ["u_active", "u_active", "u_revoked", "u_orgadmin", "u_sa"],
+      {
+        title: "Midyaf — Task cancelled",
+        body: "Open Midyaf to view the task update.",
+        titleAr: "مضياف — إلغاء مهمة",
+        bodyAr: "افتح مضياف لعرض تحديث المهمة.",
+        tag: "midyaf-task-t1"
+      },
+      {
+        excludeUserId: "u_sa",
+        config: { publicKey: "pub", privateKey: "priv", subject: "mailto:ops@midyaf.sa" },
+        sender
+      }
+    );
+    await vi.waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
+    const arCall = sender.mock.calls.find((c) => c[0].endpoint.endsWith("/active-only"));
+    const enCall = sender.mock.calls.find((c) => c[0].endpoint.endsWith("/orgadmin-en"));
+    expect(arCall).toBeDefined();
+    expect(enCall).toBeDefined();
+    expect(JSON.parse(String(arCall?.[1]))).toMatchObject({
+      title: "مضياف — إلغاء مهمة",
+      body: "افتح مضياف لعرض تحديث المهمة.",
+      tag: "midyaf-task-t1"
+    });
+    expect(JSON.parse(String(enCall?.[1]))).toMatchObject({
+      title: "Midyaf — Task cancelled",
+      body: "Open Midyaf to view the task update.",
+      tag: "midyaf-task-t1"
+    });
+  });
+
+  it("notifyUsersByWebPush deduplicates, excludes actor, and swallows errors without rejecting", async () => {
+    await savePushSubscription("u_cap", {
+      endpoint: "https://fcm.googleapis.com/fcm/send/cap-1",
+      keys: { p256dh: "B".repeat(65), auth: "A".repeat(22) }
+    });
+    const sender = vi.fn(async (_sub: { endpoint: string }, _body: string) => {
+      throw new Error("Push provider outage");
+    });
+
+    expect(() =>
+      notifyUsersByWebPush(
+        ["u_cap", "u_cap", "u_guest", null, undefined],
+        { title: "Midyaf — New dispatch", body: "Open Midyaf to view operational details.", tag: "midyaf-dispatch-c1" },
+        {
+          excludeUserId: "u_guest",
+          config: { publicKey: "pub", privateKey: "priv", subject: "mailto:ops@midyaf.sa" },
+          sender
+        }
+      )
+    ).not.toThrow();
+
+    await vi.waitFor(() => expect(sender).toHaveBeenCalledTimes(1));
+    expect(sender.mock.calls[0]?.[0].endpoint).toBe("https://fcm.googleapis.com/fcm/send/cap-1");
+  });
+
+  it("sendNotification keeps in-app title/body while sending generic no-PII lock-screen push with per-item tag", async () => {
+    const prevPub = process.env.VAPID_PUBLIC_KEY;
+    const prevPriv = process.env.VAPID_PRIVATE_KEY;
+    try {
+      const result = await sendNotification({
+        channel: "WHATSAPP",
+        userId: "u_cap",
+        phone: "+966500000001",
+        title: "VIP Royal Arrival — Confidential Name",
+        body: "Suite 901 secret gate code 4499",
+        metadata: { fileAssetId: "file_77" }
+      });
+      // In-app notification retains full authenticated copy.
+      expect(result.notification?.title).toBe("VIP Royal Arrival — Confidential Name");
+      expect(result.notification?.body).toBe("Suite 901 secret gate code 4499");
+    } finally {
+      if (prevPub === undefined) delete process.env.VAPID_PUBLIC_KEY;
+      else process.env.VAPID_PUBLIC_KEY = prevPub;
+      if (prevPriv === undefined) delete process.env.VAPID_PRIVATE_KEY;
+      else process.env.VAPID_PRIVATE_KEY = prevPriv;
+    }
   });
 });

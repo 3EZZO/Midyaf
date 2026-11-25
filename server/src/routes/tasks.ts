@@ -10,6 +10,7 @@ import { RIYADH_CENTER, sortDriversByDistance } from "../utils/riyadh.js";
 import { safeDriverRelation, safeGuestRelation } from "../utils/safeResponse.js";
 import type { AuthRequest } from "../types/auth.js";
 import { recordAuditLog } from "../services/auditLog.js";
+import { notifyUsersByWebPush } from "../services/webPush.js";
 import {
   HANDOVER_ACTOR_ROLES,
   HANDOVER_CLOSED_STATUSES,
@@ -309,6 +310,18 @@ async function commitHandover(
   const io = req.app.get("io") as Server | undefined;
   if (updated && plan.toUserId && plan.toUserId !== actor.id) {
     io?.to(`user:${plan.toUserId}`).emit("task:assigned", updated);
+    notifyUsersByWebPush(
+      [plan.toUserId],
+      {
+        title: "Midyaf — Task handover",
+        body: "Open Midyaf to review your assigned task.",
+        titleAr: "مضياف — إسناد مهمة",
+        bodyAr: "افتح مضياف لمراجعة المهمة المسندة إليك.",
+        tag: `midyaf-handover-${handoverId}`,
+        url: "/"
+      },
+      { excludeUserId: actor.id }
+    );
   }
 
   return {
@@ -398,6 +411,18 @@ router.post(
 
     if (task.driver?.userId) {
       io?.to(`user:${task.driver.userId}`).emit("task:assigned", task);
+      notifyUsersByWebPush(
+        [task.driver.userId],
+        {
+          title: "Midyaf — New task assigned",
+          body: "Open Midyaf to view your trip assignment.",
+          titleAr: "مضياف — مهمة جديدة",
+          bodyAr: "افتح مضياف لعرض تفاصيل الرحلة.",
+          tag: `midyaf-task-${task.id}`,
+          url: "/"
+        },
+        { excludeUserId: req.user!.id }
+      );
     }
 
     await recordAuditLog({
@@ -470,6 +495,25 @@ router.put(
         guestId: task.guestId,
         guestName: task.guest?.user.name
       });
+    }
+
+    if (
+      body.status === TaskStatus.CANCELLED &&
+      existingTask.status !== TaskStatus.CANCELLED &&
+      task.driver?.userId
+    ) {
+      notifyUsersByWebPush(
+        [task.driver.userId],
+        {
+          title: "Midyaf — Task cancelled",
+          body: "Open Midyaf to view the task update.",
+          titleAr: "مضياف — إلغاء مهمة",
+          bodyAr: "افتح مضياف لعرض تحديث المهمة.",
+          tag: `midyaf-task-${task.id}-CANCELLED`,
+          url: "/"
+        },
+        { excludeUserId: req.user!.id }
+      );
     }
 
     await recordAuditLog({
@@ -571,6 +615,26 @@ router.put(
 
     if (task.driver?.userId) {
       io?.to(`user:${task.driver.userId}`).emit("task:assigned", task);
+      // On new assignment or reassignment, push only the newly assigned captain
+      // (no silent DB Notification row added; old captain is not pushed).
+      if (
+        task.driverId !== existingTask.driverId &&
+        task.status !== TaskStatus.COMPLETED &&
+        task.status !== TaskStatus.CANCELLED
+      ) {
+        notifyUsersByWebPush(
+          [task.driver.userId],
+          {
+            title: "Midyaf — New task assigned",
+            body: "Open Midyaf to view your trip assignment.",
+            titleAr: "مضياف — مهمة جديدة",
+            bodyAr: "افتح مضياف لعرض تفاصيل الرحلة.",
+            tag: `midyaf-task-${task.id}`,
+            url: "/"
+          },
+          { excludeUserId: req.user!.id }
+        );
+      }
     }
 
     if (task.guest?.userId) {

@@ -1,17 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import type { Session } from "@shared/domain";
 import {
+  consumePushPausedOnLogout,
   fetchPushConfig,
   getActiveBrowserPushSubscription,
   isBrowserPushSupported,
   subscribeToWebPush,
-  unsubscribeFromWebPush
+  unsubscribeFromWebPush,
+  type PushConfigResponse
 } from "../lib/webPush";
 import { isJwtExpired } from "../lib/demoGuideHint";
 import { IconButton } from "./ui/Button";
 import { Tooltip } from "./ui/Tooltip";
 import { useToast } from "./ui/Toast";
+
+export type PushToggleSyncState = {
+  userId: string;
+  publicKey: string | null;
+  subscribed: boolean;
+};
+
+/**
+ * Pure state transition for PushNotificationToggle across user switches,
+ * mid-session token rotations (~13.5m), and transient fetch failures.
+ *
+ * - Resets `subscribed` to `false` ONLY when `userId` changes (never on a
+ *   same-user `accessToken` rotation).
+ * - Preserves the last known `publicKey` and `subscribed` state if
+ *   `fetchPushConfig` fails on weak field signal.
+ */
+export async function syncPushToggleState(
+  prev: PushToggleSyncState,
+  nextUserId: string,
+  deps: {
+    fetchConfig: () => Promise<PushConfigResponse>;
+    getSubscription: () => Promise<PushSubscription | null>;
+    consumePausedFlag: () => boolean;
+  }
+): Promise<{ next: PushToggleSyncState; updated: boolean; showPausedReminder: boolean }> {
+  const userChanged = prev.userId !== nextUserId;
+  const base: PushToggleSyncState = userChanged
+    ? { userId: nextUserId, publicKey: prev.publicKey, subscribed: false }
+    : prev;
+
+  let cfg: PushConfigResponse;
+  try {
+    cfg = await deps.fetchConfig();
+  } catch {
+    return { next: base, updated: false, showPausedReminder: false };
+  }
+
+  if (!cfg.enabled || !cfg.publicKey) {
+    return { next: base, updated: false, showPausedReminder: false };
+  }
+
+  const existing = await deps.getSubscription().catch(() => null);
+  const subscribed = Boolean(existing);
+  const showPausedReminder = !subscribed && deps.consumePausedFlag();
+  return {
+    next: { userId: nextUserId, publicKey: cfg.publicKey, subscribed },
+    updated: true,
+    showPausedReminder
+  };
+}
 
 /**
  * PLAN_READY_1 Sprint 3: Compact TopBar toggle for Native Web Push (VAPID)
@@ -32,6 +84,12 @@ export function PushNotificationToggle({
   const [publicKey, setPublicKey] = useState<string | null>(initialEnabled ? "test-key" : null);
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const stateRef = useRef<PushToggleSyncState>({
+    userId: session.user.id,
+    publicKey: initialEnabled ? "test-key" : null,
+    subscribed: false
+  });
+  stateRef.current = { userId: stateRef.current.userId, publicKey, subscribed };
 
   useEffect(() => {
     if (initialEnabled !== undefined) return;
@@ -40,18 +98,33 @@ export function PushNotificationToggle({
     // which re-runs this effect.
     if (isJwtExpired(session.accessToken)) return;
     let active = true;
-    void fetchPushConfig(session.accessToken)
-      .then(async (cfg) => {
-        if (!active || !cfg.enabled || !cfg.publicKey) return;
-        setPublicKey(cfg.publicKey);
-        const existing = await getActiveBrowserPushSubscription().catch(() => null);
-        if (active) setSubscribed(Boolean(existing));
-      })
-      .catch(() => undefined);
+    const prev = stateRef.current;
+    if (prev.userId !== session.user.id) {
+      stateRef.current = { ...prev, userId: session.user.id, subscribed: false };
+      setSubscribed(false);
+    }
+    void syncPushToggleState(prev, session.user.id, {
+      fetchConfig: () => fetchPushConfig(session.accessToken),
+      getSubscription: () => getActiveBrowserPushSubscription(),
+      consumePausedFlag: () => consumePushPausedOnLogout()
+    }).then(({ next, updated, showPausedReminder }) => {
+      if (!active || !updated) return;
+      stateRef.current = next;
+      setPublicKey(next.publicKey);
+      setSubscribed(next.subscribed);
+      if (showPausedReminder) {
+        toast.info(
+          isArabic ? "تنبيهات الجهاز متوقفة بعد تسجيل الخروج" : "Lock-screen alerts are off",
+          isArabic
+            ? "اضغط أيقونة الجرس في الشريط العلوي لإعادة تفعيل التنبيهات على هذا الجهاز."
+            : "Alerts were paused on sign-out for privacy. Tap the bell icon to re-enable them."
+        );
+      }
+    });
     return () => {
       active = false;
     };
-  }, [session.accessToken, initialEnabled]);
+  }, [session.accessToken, session.user.id, initialEnabled]);
 
   if (!publicKey) return null;
 
@@ -107,13 +180,21 @@ export function PushNotificationToggle({
         aria-pressed={subscribed}
         disabled={busy}
         data-web-push-toggle
+        data-push-state={subscribed ? "on" : "off"}
         variant={subscribed ? "gold" : "ghost"}
+        className="relative"
         onClick={() => void handleToggle()}
       >
         {subscribed ? (
           <Bell className="size-4" aria-hidden />
         ) : (
-          <BellOff className="size-4" aria-hidden />
+          <>
+            <BellOff className="size-4" aria-hidden />
+            <span
+              aria-hidden
+              className="absolute end-1.5 top-1.5 size-2 rounded-full bg-warn ring-2 ring-surface-1"
+            />
+          </>
         )}
       </IconButton>
     </Tooltip>

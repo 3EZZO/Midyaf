@@ -8,6 +8,7 @@ import { databaseSchemaName } from "../utils/supplierPortal.js";
 import type { Server } from "socket.io";
 import { prisma } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { notifyEventUsersByWebPush, notifyUsersByWebPush } from "../services/webPush.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 import type { AuthRequest, AuthenticatedUser } from "../types/auth.js";
 import {
@@ -282,7 +283,20 @@ router.post(
       return created;
     });
 
-    notifyParticipants(req, recipients.map((recipient) => recipient.id), conversation.id);
+    const recipientIds = recipients.map((recipient) => recipient.id);
+    notifyParticipants(req, recipientIds, conversation.id);
+    notifyUsersByWebPush(
+      recipientIds,
+      {
+        title: "Midyaf — New message",
+        body: "Open Midyaf to read your message.",
+        titleAr: "مضياف — رسالة جديدة",
+        bodyAr: "افتح مضياف لقراءة الرسالة.",
+        tag: `midyaf-msg-${conversation.id}`,
+        url: "/"
+      },
+      { excludeUserId: user.id }
+    );
     res.status(201).json({ conversation: await loadThread(conversation.id, user.id) });
   })
 );
@@ -313,14 +327,14 @@ router.post(
       await lockConversation(tx, membership.conversationId);
       await guardScopedConversation(req, membership.conversationId, tx, true);
       const conversation = await tx.conversation.findUnique({
-        where: { id: membership.conversationId }, select: { lastMessageAt: true }
+        where: { id: membership.conversationId }, select: { lastMessageAt: true, eventId: true }
       });
       if (!conversation) throw new HttpError(404, "Conversation not found");
       if(body.clientRequestId) {
         const existing=await tx.conversationMessage.findUnique({where:{senderId_clientRequestId:{senderId:user.id,clientRequestId:body.clientRequestId}},select:{id:true,conversationId:true,body:true,createdAt:true,sender:personSelect}});
         if(existing) {
           if(existing.conversationId!==membership.conversationId||existing.body!==body.body)throw new HttpError(409,"This retry id was used for another reply");
-          return {...existing,replayed:true};
+          return {...existing,eventId:conversation.eventId,replayed:true};
         }
       }
       const now = new Date(Math.max(Date.now(), conversation.lastMessageAt.getTime() + 1));
@@ -340,14 +354,30 @@ router.post(
       });
       // Sending does not read: earlier incoming messages the sender has not
       // been shown stay unread (own messages never count as unread).
-      return {...created,replayed:false};
+      return {...created,eventId:conversation.eventId,replayed:false};
     }, CONVERSATION_TRANSACTION);
 
     const others = await prisma.conversationParticipant.findMany({
       where: { conversationId: membership.conversationId, userId: { not: user.id } },
       select: { userId: true }
     });
-    if(!message.replayed)notifyParticipants(req, others.map((p) => p.userId), membership.conversationId);
+    if (!message.replayed) {
+      const otherIds = others.map((p) => p.userId);
+      notifyParticipants(req, otherIds, membership.conversationId);
+      const pushPayload = {
+        title: "Midyaf — New message",
+        body: "Open Midyaf to read your message.",
+        titleAr: "مضياف — رسالة جديدة",
+        bodyAr: "افتح مضياف لقراءة الرسالة.",
+        tag: `midyaf-msg-${membership.conversationId}-${message.id}`,
+        url: "/"
+      };
+      if (message.eventId) {
+        notifyEventUsersByWebPush(message.eventId, otherIds, pushPayload, { excludeUserId: user.id });
+      } else {
+        notifyUsersByWebPush(otherIds, pushPayload, { excludeUserId: user.id });
+      }
+    }
 
     res.status(201).json({
       message: {
