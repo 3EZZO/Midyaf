@@ -546,7 +546,7 @@ export function OnboardingWorkspace({
           title={`${application.companyName} · ${statuses[application.status][ar ? 1 : 0]}`}
           isArabic={ar}
         >
-          <dl className="grid gap-2 text-sm md:grid-cols-2">
+          <div className="grid gap-2 text-sm md:grid-cols-2">
             <div>
               {ar ? "رقم السجل" : "Registration"}: {application.registrationNumber}
             </div>
@@ -559,7 +559,7 @@ export function OnboardingWorkspace({
             <div>
               {application.contactPhone} · {application.city}
             </div>
-          </dl>
+          </div>
           {application.decisionNote && <p className="mt-3">{application.decisionNote}</p>}
           <ul className="my-4 space-y-2">
             {application.documents.map((doc) => (
@@ -674,7 +674,7 @@ export function OnboardingWorkspace({
                 <textarea required name="note" maxLength={1000} className={input} />
               </label>
               <label>
-                <input required type="checkbox" />{" "}
+                <input required name="confirmAction" type="checkbox" />{" "}
                 {ar
                   ? "راجعت المستندات وأؤكد هذا الإجراء. عند تسجيل التوقيع، العقد موقع فعلياً."
                   : "I reviewed the documents and confirm this action. A recorded signature attests an already signed contract."}

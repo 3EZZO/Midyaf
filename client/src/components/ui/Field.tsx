@@ -68,8 +68,9 @@ export function Field({
 
 function useFieldA11y(explicitId?: string) {
   const ctx = useContext(FieldContext);
+  const fallbackId = useId();
   return {
-    id: explicitId ?? ctx?.id,
+    id: explicitId ?? ctx?.id ?? fallbackId,
     "aria-describedby": ctx?.describedBy,
     "aria-invalid": ctx?.invalid || undefined
   };
@@ -181,12 +182,14 @@ export function Switch({
   disabled?: boolean;
   className?: string;
 }) {
+  const labelId = useId();
   return (
     <label className={cn("inline-flex cursor-pointer items-center gap-3 select-none", disabled && "opacity-50", className)}>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-labelledby={labelId}
         disabled={disabled}
         onClick={() => onCheckedChange(!checked)}
         className={cn(
@@ -203,7 +206,7 @@ export function Switch({
           )}
         />
       </button>
-      <span className="text-sm text-ink">{label}</span>
+      <span id={labelId} className="text-sm text-ink">{label}</span>
     </label>
   );
 }

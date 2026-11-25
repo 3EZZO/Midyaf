@@ -1,13 +1,13 @@
 import {renderToStaticMarkup}from'react-dom/server';import{afterEach,expect,it,vi}from'vitest';import type{GuestDto,TelemetrySnapshotDto}from'@shared/overhaul';
 import{testEvent}from'../lib/workspaceWorkflow.test';
 const telemetry={eventId:'evt_test',vehicles:[{id:'v1',label:'Synthetic shuttle',plateNumber:'SYN-1',status:'AVAILABLE',driver:{id:'driver',name:'Synthetic captain'},position:null,positionWithheld:true,inZone:true,capacity:4}],trips:[],flights:[],shifts:[],density:[],scope:'FULL'} as unknown as TelemetrySnapshotDto;
-const state=vi.hoisted(()=>({telemetry:{} as {data?:unknown;error?:string},events:[] as unknown[]}));
+const state=vi.hoisted(()=>({telemetry:{} as {data?:unknown;error?:string},events:[] as unknown[],requestedPaths:[] as Array<string|null>}));
 // Each path gets the shape its real route returns; /fleet-captains answers {captains:[]}, /events {events:state.events} (none approved by default),
 // /my-journey {guest,trips}. A null path (signed out) is the disabled resource: no data, no error, nothing fetched.
-vi.mock('../lib/workspaceApi',()=>({useWorkspaceResource:(_token:string,path:string|null)=>path==null?{}:path==='/events'?{data:{events:state.events}}:path.includes('/telemetry')?state.telemetry:path.includes('/fleet-captains')?{data:{captains:[]}}:path.endsWith('/my-journey')?{data:{guest:{id:'g-synthetic',guestCode:'GV09',isVip:false,masked:true},trips:[]}}:{data:{tasks:[],members:[],recipients:[]}},workspaceRequest:vi.fn()}));
+vi.mock('../lib/workspaceApi',()=>({useWorkspaceResource:(_token:string,path:string|null)=>{state.requestedPaths.push(path);return path==null?{}:path==='/events'?{data:{events:state.events}}:path.includes('/telemetry')?state.telemetry:path.includes('/fleet-captains')?{data:{captains:[]}}:path.endsWith('/my-journey')?{data:{guest:{id:'g-synthetic',guestCode:'GV09',isVip:false,masked:true},trips:[]}}:{data:{tasks:[],members:[],recipients:[]}};},workspaceRequest:vi.fn()}));
 import type{Session}from'@shared/domain';
 import{EventRadar,OperationalEventEntry,ROLE_WORKSPACE_LABELS,guestLabel,radarMapKey,radarShellClassName,radarTelemetry,routePoints}from'./EventRadar';
-afterEach(()=>{state.telemetry={data:{telemetry}};state.events=[];});
+afterEach(()=>{state.telemetry={data:{telemetry}};state.events=[];state.requestedPaths=[];});
 state.telemetry={data:{telemetry}};
 const render=()=>renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={false}/>);
 const controls=['Vehicle status','Map style','Tracking focus','Permitted guest positions','Recenter','Fullscreen'];
@@ -119,4 +119,16 @@ it('renders live Open-Meteo Riyadh weather and high-wind sandstorm advisory in E
  expect(en).toContain('36°C');expect(en).toContain('42 km/h');expect(en).toContain('Open-Meteo');expect(en).toContain('High wind / sandstorm advisory');
  const ar=renderToStaticMarkup(<EventRadar token="synthetic" event={{...testEvent,planApproved:true}} isArabic={true}/>);
  expect(ar).toContain('36°C');expect(ar).toContain('42 كم/س');expect(ar).toContain('تنبيه رياح قوية / غبار');
+});
+it('fetches /my-journey only for GUEST sessions so non-guest previews never trigger a 403',()=>{
+ state.events=[{...testEvent,planApproved:true}];
+ const adminSession={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u-admin',role:'SUPER_ADMIN',name:'Admin',email:'admin@example.test',phone:'',language:'en'}} as unknown as Session;
+ renderToStaticMarkup(<OperationalEventEntry session={adminSession} isArabic={false} mode="guest"/>);
+ expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(false);
+
+ state.requestedPaths=[];
+ const guestSession={accessToken:'synthetic',refreshToken:'synthetic',user:{id:'u-guest',role:'GUEST',name:'Guest',email:'guest@example.test',phone:'',language:'en'}} as unknown as Session;
+ const guestHtml=renderToStaticMarkup(<OperationalEventEntry session={guestSession} isArabic={false} mode="guest"/>);
+ expect(state.requestedPaths.some(p=>p?.endsWith('/my-journey'))).toBe(true);
+ expect(guestHtml).toContain('GV09');
 });

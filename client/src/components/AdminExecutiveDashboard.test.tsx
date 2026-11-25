@@ -154,7 +154,7 @@ describe("AdminExecutiveDashboard", () => {
     } as MidyafData;
     const html = render(data, false, false, adminSession);
     queueState.items = [];
-    expect(html).toMatch(/aria-label="Plans awaiting approval: 2"/);
+    expect(html).toMatch(/data-attention="plans"[^>]*>[\s\S]*?Plans awaiting approval[\s\S]*?>2</);
   });
 
   it("keeps the scripted demo labelled as such and keeps onboarding review visible for SUPER_ADMIN in demo mode", () => {

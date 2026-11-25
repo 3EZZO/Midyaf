@@ -528,6 +528,9 @@ function LegacyGuestJourneyApp({
             }}
           >
             <input
+              id="guest-request-note"
+              name="guestNote"
+              aria-label={ui.l("Add request, note, or complaint")}
               value={guestNote}
               onChange={(e) => setGuestNote(e.target.value)}
               placeholder={ui.l("Add request, note, or complaint")}
