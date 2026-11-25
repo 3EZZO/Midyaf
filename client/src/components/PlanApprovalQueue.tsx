@@ -365,14 +365,14 @@ export function PlanApprovalQueueView({
 
                     {/* Executive key-figure strip derived directly from the plan content */}
                     {keyFigures.length > 0 ? (
-                      <dl
+                      <ul
                         className="grid grid-cols-2 gap-2 sm:grid-cols-3"
                         data-approval-key-figures
                       >
                         {keyFigures.map((fig) => {
                           const Icon = fig.id === "rooms" ? BedDouble : fig.id === "vehicles" ? Car : Users;
                           return (
-                            <div
+                            <li
                               key={fig.id}
                               className="flex items-center gap-2.5 rounded-lg border border-hairline bg-surface-1/90 px-3 py-2"
                             >
@@ -380,22 +380,22 @@ export function PlanApprovalQueueView({
                                 <Icon className="size-4" strokeWidth={1.6} aria-hidden />
                               </span>
                               <div className="min-w-0">
-                                <dt className="truncate text-xs text-ink-muted">
+                                <p className="truncate text-xs text-ink-muted">
                                   {isArabic ? fig.labelAr : fig.labelEn}
-                                </dt>
-                                <dd className="flex items-baseline gap-1.5 font-tnum text-sm font-bold text-ink">
+                                </p>
+                                <p className="flex items-baseline gap-1.5 font-tnum text-sm font-bold text-ink">
                                   <span>{fig.value}</span>
                                   {fig.detailEn ? (
                                     <span className="text-xs font-medium text-gold-300">
                                       {isArabic ? fig.detailAr : fig.detailEn}
                                     </span>
                                   ) : null}
-                                </dd>
+                                </p>
                               </div>
-                            </div>
+                            </li>
                           );
                         })}
-                      </dl>
+                      </ul>
                     ) : null}
 
                     <p className="rounded-lg border border-hairline bg-surface-1 p-3 text-sm leading-relaxed text-ink-muted">

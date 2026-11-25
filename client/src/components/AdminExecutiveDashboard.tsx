@@ -398,7 +398,6 @@ export function AdminExecutiveDashboard({
                   padding="sm"
                   tone={item.count ? meta.tone : "none"}
                   onClick={() => openAttentionTab(item.tab)}
-                  aria-label={`${meta.label}: ${integer(item.count)}`}
                   data-attention={item.tab}
                   className="group flex min-w-0 cursor-pointer flex-col gap-2 transition-colors hover:border-gold-500/60"
                 >

@@ -666,6 +666,7 @@ function SupplierQuotesSection({
       <label className="flex flex-col gap-1 text-sm text-ink-muted sm:max-w-md">
         {isArabic ? "النشاط" : "Activity"}
         <select
+          name="quoteIntakeId"
           value={intakeId}
           onChange={(event) => setIntakeId(event.target.value)}
           className="rounded-md border border-hairline bg-surface-1 p-2 text-ink"

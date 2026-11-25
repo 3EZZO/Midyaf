@@ -374,6 +374,7 @@ export function ClientDashboard({
               action={
                 liveEvents.length > 1 ? (
                   <select
+                    name="eventTimelineFilter"
                     aria-label={isArabic ? "اختر الفعالية" : "Select event"}
                     value={activeWorkspaceEvent?.id ?? ""}
                     onChange={(e) => setSelectedUpdateEventId(e.target.value)}

@@ -301,7 +301,7 @@ export function TopBar({
           variant="ghost"
           size="sm"
           onClick={onLanguageToggle}
-          aria-label={t("switchLanguage")}
+          aria-label={isArabic ? `EN · ${t("switchLanguage")}` : `ع · ${t("switchLanguage")}`}
           className="px-2 sm:px-2.5"
         >
           {/* Compact on phones so Logout never gets pushed off a 390px screen. */}
